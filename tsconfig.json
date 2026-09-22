@@ -21,6 +21,9 @@
       "path": "./packages/skill-router"
     },
     {
+      "path": "./packages/a2ui"
+    },
+    {
       "path": "./packages/run"
     },
     {

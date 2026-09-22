@@ -1,0 +1,114 @@
+{
+ "card": "unauthorized",
+ "raw": {
+  "yl_assets": {
+   "auth_link": "https://example.test/auth"
+  }
+ },
+ "hierarchy": null,
+ "sessionId": "sess-1234abcd",
+ "surfaceId": "asset-no-auth-card",
+ "payload": {
+  "event": "surfaceUpdate",
+  "surfaceId": "asset-no-auth-card",
+  "version": "1.0.0",
+  "rootComponentId": "root-container",
+  "components": [
+   {
+    "id": "auth-text",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "暂未获取到可用于分析的资产。请点击下方按钮完成账户授权，授权后即可查看您的全景资产分布。"
+      },
+      "fontSize": "16px",
+      "lineHeight": "24px",
+      "color": "#1A1A1A",
+      "textAlign": "left",
+      "width": 100,
+      "marginBottom": 0
+     }
+    }
+   },
+   {
+    "id": "auth-btn",
+    "component": {
+     "Button": {
+      "size": "auto",
+      "text": {
+       "literalString": "去授权"
+      },
+      "type": "custom",
+      "backgroundColor": "transparent",
+      "width": "66px",
+      "height": "33px",
+      "borderRadius": "16px",
+      "fontSize": "14px",
+      "color": "#FA5900",
+      "border": "1px solid #FA5900",
+      "action": [
+       {
+        "name": "openLink",
+        "args": {
+         "url": "https://example.test/auth"
+        }
+       },
+       {
+        "name": "callLocalTools",
+        "surfaceId": "{{surfaceId}}",
+        "args": {
+         "toolName": "authAndRefresh",
+         "toolArgs": {
+          "query": "{{queryMsg}}"
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "auth-btn-row",
+    "component": {
+     "Row": {
+      "width": 100,
+      "alignment": "middle",
+      "distribution": "end",
+      "children": {
+       "explicitList": [
+        "auth-btn"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "root-container",
+    "component": {
+     "Column": {
+      "width": 100,
+      "borderRadius": "middle",
+      "gap": 16,
+      "children": {
+       "explicitList": [
+        "auth-text",
+        "auth-btn-row"
+       ]
+      }
+     }
+    }
+   }
+  ],
+  "businessPayload": {
+   "auth_link": "https://example.test/auth"
+  }
+ },
+ "warnings": [],
+ "digest": "[卡片:资产/未授权] 已出示未授权提示与去授权按钮，本轮到此为止",
+ "stateDelta": null,
+ "guard": {
+  "ok": true,
+  "errors": [],
+  "warnings": []
+ }
+}

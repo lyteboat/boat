@@ -1,0 +1,14 @@
+# business_hierarchy.yaml — templates_v2/unauthorized/
+#
+# Single shape: the no-authorization prompt + 去授权 button. There is no
+# data-driven hide and no variant to choose, so the model never selects here —
+# the default hierarchy is the only one.
+
+default: unauthorized
+
+hierarchies:
+  unauthorized:
+    root: root-container
+    ui_ids:
+      - auth-text
+      - auth-btn-row

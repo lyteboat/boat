@@ -1,0 +1,174 @@
+/**
+ * The render tool at the driver's seams: raw data from boatState, the card on
+ * tool/result.meta, the boatCards projection (tool results, boat/card nodes,
+ * surfaceUpdate replacement), the digest as model text, terminal cards.
+ */
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { afterEach, describe, expect, it } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
+import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
+import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
+import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
+import { defineTool } from '@deepseek-ai/dsh-tools'
+import AgentLoop from '@boat/runtime'
+import * as AgentLoopInvariant from '@boat/runtime/invariant'
+import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
+import ToolPolicyService from '@boat/tool-policy'
+import A2uiService, { boatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@boat/a2ui'
+import type { BoatCard, IntakeDecision, JsonValue } from '@boat/contracts'
+import { MockAdapter, textResponse, toolCallResponse } from '../../runtime/tests/mock-adapter.ts'
+
+const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
+const FULL = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/baseline/asset_overview-full.json', import.meta.url)), 'utf8')) as {
+  raw: Record<string, unknown>; payload: Record<string, unknown>; digest: string
+}
+
+const cleanups: (() => Promise<void>)[] = []
+afterEach(async () => {
+  for (const cleanup of cleanups.reverse()) await cleanup()
+  cleanups.length = 0
+})
+
+async function harness(adapter: MockAdapter): Promise<Context> {
+  const ctx = new Context()
+  cleanups.push(() => ctx.fiber.dispose())
+  await ctx.plugin(InvariantRegistry)
+  await ctx.plugin(SessionInvariant)
+  await ctx.plugin(AgentInvariant)
+  await ctx.plugin(AgentLoopInvariant)
+  await mountAgentLoopTestDependencies(ctx)
+  await ctx.plugin(AgentLoop, { agents: [] })
+  await ctx.plugin(ToolPolicyService)
+  await ctx.plugin(A2uiService)
+  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
+  // The data tool: its result becomes session state through the tool policy's delta.
+  ctx.toolPolicy.register(defineTool({
+    name: 'query_assets', description: 'query', parameters: {},
+    output: { schema: { type: 'json' }, render: () => [{ type: 'text', text: 'assets loaded' }] },
+    execute: async () => FULL.raw as JsonValue,
+  }), { stateDelta: (_args, value) => value as JsonValue })
+  await ctx.a2ui.registerRenderTool({ templates: TEMPLATES, stateKeys: ['yl_assets', 'yl_assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' } })
+  return ctx
+}
+
+async function send(agent: Agent, text: string): Promise<void> {
+  agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
+  await agent.whenIdle()
+}
+
+const results = (agent: Agent): SessionEvent<'tool/result'>[] =>
+  agent.session.snapshotEvents().filter((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')
+
+describe('render_a2ui', () => {
+  it('renders from boatState, puts the card on tool/result.meta, folds it into boatCards, and shows the digest to the model', async () => {
+    const adapter = new MockAdapter([
+      toolCallResponse('c1', 'query_assets', {}),
+      toolCallResponse('c2', 'render_a2ui', { template: 'asset_overview' }),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('render'), { provider: 'mock', model: 'mock' })
+    await send(agent, '看看资产')
+
+    const first = adapter.requests[0] as GenerateOptions
+    const render = (first.tools ?? []).find(tool => tool.name === 'render_a2ui')!
+    expect(render.description).toContain('asset_overview: 资产总览卡')
+    expect(JSON.stringify(render.parameters)).toContain('"enum":["asset_overview","unauthorized"]')
+    expect(JSON.stringify(render.parameters)).not.toContain('business_hierarchy')
+
+    const [, rendered] = results(agent)
+    expect(rendered).toBeDefined()
+    const meta = rendered!.data.meta as unknown as { boat: { card: BoatCard }; a2ui: { template: string; event: string; warnings: string[] } }
+    expect(meta.a2ui).toEqual({ template: 'asset_overview', event: 'beginRendering', warnings: [] })
+    const payload = meta.boat.card.payload as Record<string, unknown>
+    expect(payload['surfaceId']).toMatch(/^asset_overview-render-[0-9a-f]{6}$/u)
+    const expected = { ...FULL.payload }
+    delete expected['surfaceId']
+    const actual = { ...payload }
+    delete actual['surfaceId']
+    expect(actual).toEqual(expected)
+    expect(meta.boat).not.toHaveProperty('stateDelta')
+    const block = rendered!.data.message.content[0]!
+    expect(JSON.stringify(block)).toContain(FULL.digest)
+    expect(JSON.stringify(block)).not.toContain('rootComponentId')
+
+    const cards = ctx.a2ui.cardsOf(agent)
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({ callId: 'c2', surfaceId: payload['surfaceId'] })
+    expect(ctx.sessionProjections.snapshot(agent.session).values['boatCards']).toEqual(cards)
+    expect(JSON.stringify(adapter.requests[2]!.messages)).toContain(FULL.digest)
+    expect(ctx.sessionProjections.stateOf(agent.session, 'boatState')).toMatchObject({ yl_assets: { auth_state: 'full' } })
+  })
+
+  it('replaces a surface in boatCards on surfaceUpdate and concludes the turn on a terminal card', async () => {
+    const adapter = new MockAdapter([
+      toolCallResponse('c1', 'render_a2ui', { template: 'unauthorized', surface_id: 'auth-card' }),
+      toolCallResponse('c2', 'render_a2ui', { template: 'unauthorized', surface_id: 'auth-card' }),
+      textResponse('never'),
+    ])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('terminal'), { provider: 'mock', model: 'mock' })
+    await send(agent, '授权')
+    // The terminal card concluded the turn after the first result: one model request, no text step.
+    expect(adapter.requests).toHaveLength(1)
+    const [first] = results(agent)
+    const meta = first!.data.meta as unknown as { boat: { card: BoatCard } }
+    expect((meta.boat.card.payload as Record<string, unknown>)['event']).toBe('surfaceUpdate')
+    expect(ctx.a2ui.cardsOf(agent)).toHaveLength(1)
+    const turnEnd = agent.session.snapshotEvents().findLast(event => event.type === 'turn/end') as SessionEvent<'turn/end'>
+    expect(turnEnd.data.reason.kind).toBe('completed')
+
+    await send(agent, '再来')
+    expect(adapter.requests).toHaveLength(2)
+    // Same surface updated twice: one card, the latest call.
+    const cards = ctx.a2ui.cardsOf(agent)
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({ callId: 'c2', surfaceId: 'auth-card' })
+  })
+
+  it('folds boat/card nodes from intake replies into the same projection', async () => {
+    const adapter = new MockAdapter([])
+    const ctx = await harness(adapter)
+    ctx.on('boat/intake', async (): Promise<IntakeDecision> => ({
+      kind: 'reply', plugin: 'gate', content: [{ type: 'text', text: '先授权' }],
+      cards: [{ surfaceId: 'gate-card', payload: { event: 'beginRendering', rootComponentId: 'r', components: [] } }],
+    }))
+    const agent = await ctx.agentLoop.create(SessionId('intake-card'), { provider: 'mock', model: 'mock' })
+    await send(agent, '炒股')
+    expect(ctx.a2ui.cardsOf(agent)).toEqual([{ surfaceId: 'gate-card', payload: { event: 'beginRendering', rootComponentId: 'r', components: [] } }])
+  })
+
+  it('rejects an unknown card and reports it as a tool error', async () => {
+    const adapter = new MockAdapter([toolCallResponse('c1', 'render_a2ui', { template: 'nope' }), textResponse('done')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('unknown'), { provider: 'mock', model: 'mock' })
+    await send(agent, 'x')
+    const [first] = results(agent)
+    // The registry validated the enum before execution; either way the model sees an error, no card.
+    expect(JSON.stringify(first!.data.message.content[0])).toContain('"isError":true')
+    expect(ctx.a2ui.cardsOf(agent)).toEqual([])
+  })
+})
+
+describe('helpers', () => {
+  it('collectRawData namespaces and flattens each state key, parsing JSON strings', () => {
+    expect(collectRawData({ a: { x: 1 }, b: '{"y":2}', c: 'nope', d: 3 }, ['a', 'b', 'c', 'd', 'missing'])).toEqual({ a: { x: 1 }, x: 1, b: { y: 2 }, y: 2 })
+  })
+
+  it('parseObjectArgs accepts objects and JSON object strings only', () => {
+    expect(parseObjectArgs(undefined)).toBeUndefined()
+    expect(parseObjectArgs({ k: 1 })).toEqual({ k: 1 })
+    expect(parseObjectArgs('{"k":1}')).toEqual({ k: 1 })
+    expect(() => parseObjectArgs('[1]')).toThrow(/JSON 对象/u)
+    expect(() => parseObjectArgs('{')).toThrow(/JSON 对象/u)
+  })
+
+  it('boatCards projection ignores unrelated events by reference', () => {
+    const state: BoatCard[] = []
+    expect(boatCardsProjectionDefinition.apply(state, { type: 'turn/start', seq: 0, time: 0, data: { turn: 1 } } as never)).toBe(state)
+  })
+})

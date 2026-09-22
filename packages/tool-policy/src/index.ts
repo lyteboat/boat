@@ -79,10 +79,11 @@ function withStateDelta(definition: ToolDefinition, stateDelta: NonNullable<Boat
       presentationMeta(args: unknown, value: JsonValue): JsonValue {
         const base = inner?.(args, value)
         const delta = stateDelta(args, value)
-        const boat = delta === undefined ? {} : { stateDelta: delta }
-        if (base === undefined) return { boat }
-        if (isJsonObject(base)) return { ...base, boat }
-        return { presentation: base, boat }
+        const own = delta === undefined ? {} : { stateDelta: delta }
+        if (base === undefined) return { boat: own }
+        // A tool's own `boat` object (a rendered card) merges with the delta instead of losing it.
+        if (isJsonObject(base)) return { ...base, boat: { ...isJsonObject(base['boat']) ? base['boat'] : {}, ...own } }
+        return { presentation: base, boat: own }
       },
     },
   }

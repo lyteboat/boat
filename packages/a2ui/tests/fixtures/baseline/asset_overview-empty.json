@@ -1,0 +1,331 @@
+{
+ "card": "asset_overview",
+ "raw": {},
+ "hierarchy": null,
+ "sessionId": "sess-1234abcd",
+ "surfaceId": "",
+ "payload": {
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "asset_overview-sess-123-44edc1",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "hideVoteRecorder": true,
+  "components": [
+   {
+    "id": "asset-label",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "集团全景资产(元)"
+      },
+      "fontSize": "14px",
+      "color": "rgba(0, 0, 0, 0.6)"
+     }
+    }
+   },
+   {
+    "id": "asset-amount",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "0.00"
+      },
+      "fontSize": "24px",
+      "fontFamily": "PingFang SC",
+      "color": "#000000",
+      "fontWeight": 600
+     }
+    }
+   },
+   {
+    "id": "asset-summary",
+    "component": {
+     "Column": {
+      "width": 100,
+      "alignment": "left",
+      "distribution": "start",
+      "gap": 6,
+      "marginBottom": 16,
+      "children": {
+       "explicitList": [
+        "asset-label",
+        "asset-amount"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "asset-progress",
+    "component": {
+     "AssetProportionProgress": {
+      "assetsList": [
+       {
+        "name": "日常开销",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#FFB759",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       },
+       {
+        "name": "稳健投资",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#4872D6",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       },
+       {
+        "name": "进取收益",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#E51414",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "asset-list",
+    "component": {
+     "AssetListCard": {
+      "assetsList": [
+       {
+        "name": "日常开销",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#FFB759",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       },
+       {
+        "name": "稳健投资",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#4872D6",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       },
+       {
+        "name": "进取收益",
+        "percent": "0%",
+        "amount": "0.00",
+        "color": "#E51414",
+        "authorization": false,
+        "auth_url": "",
+        "children": []
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "insurance-label",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "保险保障"
+      },
+      "fontSize": "14px",
+      "color": "#000000",
+      "fontWeight": 400
+     }
+    }
+   },
+   {
+    "id": "insurance-action-text-unauth",
+    "component": {
+     "Button": {
+      "text": {
+       "literalString": "授权查看"
+      },
+      "backgroundColor": "transparent",
+      "fontSize": "14px",
+      "color": "rgba(0, 0, 0, 0.4)",
+      "action": [
+       {
+        "name": "openLink",
+        "args": {
+         "url": ""
+        }
+       },
+       {
+        "name": "callLocalTools",
+        "surfaceId": "{{surfaceId}}",
+        "args": {
+         "toolName": "authAndRefresh",
+         "toolArgs": {
+          "query": "{{queryMsg}}",
+          "isQueryHide": true,
+          "ui_event": {
+           "name": "a2ui_refresh",
+           "location": "assets_overview",
+           "data": {
+            "surface_id": "{{_localCommonParams.surfaceId}}",
+            "history_id": "{{_localCommonParams.historyId}}"
+           }
+          }
+         }
+        }
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "insurance-action-arrow",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": ">"
+      },
+      "fontSize": "14px",
+      "color": "rgba(0, 0, 0, 0.4)"
+     }
+    }
+   },
+   {
+    "id": "insurance-action",
+    "component": {
+     "Row": {
+      "alignment": "middle",
+      "distribution": "end",
+      "gap": 4,
+      "children": {
+       "explicitList": [
+        "insurance-action-text-unauth",
+        "insurance-action-arrow"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "insurance-row",
+    "component": {
+     "Row": {
+      "width": 100,
+      "alignment": "middle",
+      "distribution": "spaceBetween",
+      "children": {
+       "explicitList": [
+        "insurance-label",
+        "insurance-action"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "disclaimer",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "数据基于你已授权账户聚合，未授权账户不计入，本图仅供参考"
+      },
+      "fontSize": "12px",
+      "color": "rgba(0, 0, 0, 0.4)",
+      "lineHeight": "18px"
+     }
+    }
+   },
+   {
+    "id": "main-card",
+    "component": {
+     "Column": {
+      "width": 100,
+      "padding": 32,
+      "backgroundColor": "#ffffff",
+      "borderRadius": "middle",
+      "shadow": true,
+      "gap": 16,
+      "children": {
+       "explicitList": [
+        "asset-summary",
+        "asset-progress",
+        "asset-list",
+        "insurance-row",
+        "disclaimer"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "root-container",
+    "component": {
+     "Column": {
+      "width": 100,
+      "alignment": "left",
+      "distribution": "start",
+      "gap": 32,
+      "children": {
+       "explicitList": [
+        "main-card"
+       ]
+      }
+     }
+    }
+   }
+  ],
+  "businessPayload": {
+   "assets_list": [
+    {
+     "name": "日常开销",
+     "percent": "0%",
+     "amount": "0.00",
+     "color": "#FFB759",
+     "authorization": false,
+     "auth_url": "",
+     "children": []
+    },
+    {
+     "name": "稳健投资",
+     "percent": "0%",
+     "amount": "0.00",
+     "color": "#4872D6",
+     "authorization": false,
+     "auth_url": "",
+     "children": []
+    },
+    {
+     "name": "进取收益",
+     "percent": "0%",
+     "amount": "0.00",
+     "color": "#E51414",
+     "authorization": false,
+     "auth_url": "",
+     "children": []
+    }
+   ],
+   "auth_btn_hide": true,
+   "auth_link": "",
+   "auth_tip_hide": true,
+   "diag_btn_hide": true,
+   "insurance_auth_hide": true,
+   "insurance_unauth_hide": false,
+   "summary_label": "集团全景资产(元)",
+   "total_display": "0.00"
+  }
+ },
+ "warnings": [
+  "[MANIFEST] state 'auth_link' path 'yl_assets.auth_link' 解析失败: 字段 'yl_assets.auth_link' 不存在于数据中 (在 'yl_assets' 处失败, 可用字段: [])",
+  "[MANIFEST] state 'insurance_sub_page_link' path 'yl_assets.assets_sub_page_link' 解析失败: 字段 'yl_assets.assets_sub_page_link' 不存在于数据中 (在 'yl_assets' 处失败, 可用字段: [])"
+ ],
+ "digest": "[卡片:资产/none] 总额0.00元 · 保单0份 · 已授权0/3桶 · 卡后一句简短收尾（≤25字），不复述卡内数字",
+ "stateDelta": null,
+ "guard": {
+  "ok": true,
+  "errors": [],
+  "warnings": []
+ }
+}

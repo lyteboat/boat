@@ -4,7 +4,7 @@
 # publishes them as the `boatRunStartup` service; the agent-presets roster
 # reads its roots from that service (no roots without `--agents`, so the
 # roster's "every agent joins a preset" rule stays off); boat's service rows
-# (tool policy, skill router) sit on the host plane, where preset rows can
+# (tool policy, skill router, a2ui) sit on the host plane, where preset rows can
 # inject them; the runner row creates one agent — composed from the preset
 # when one was named — drives the task to quiescence, prints the final answer,
 # and exits.
@@ -31,6 +31,9 @@
 
     - id: boat-skill-router
       name: '@boat/skill-router'
+
+    - id: boat-a2ui
+      name: '@boat/a2ui'
 
     - id: agent-presets
       name: '@deepseek-ai/dsh-agent-presets'

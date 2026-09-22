@@ -133,11 +133,15 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     boatState: BoatStateValue
     /** The skill active for the session (the last `boat/skill-routed`), owned by `@boat/skill-router`; null before routing. */
     boatActiveSkill: string | null
+    /** Cards from `tool/result.meta.boat.card` and `boat/card` nodes, in log order; a `surfaceUpdate` replaces its surface. Owned by `@boat/a2ui`. */
+    boatCards: BoatCard[]
   }
   interface SessionProjectionMap {
     /** Session tool state as the client sees it: the fold state itself. */
     boatState: BoatStateValue
     /** The active skill as the client sees it. */
     boatActiveSkill: string | null
+    /** Every card rendered in the session, as the client sees it. */
+    boatCards: BoatCard[]
   }
 }

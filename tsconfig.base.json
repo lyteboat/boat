@@ -25,6 +25,15 @@
       "node"
     ],
     "paths": {
+      "@boat/a2ui": [
+        "./packages/a2ui/src/index.ts"
+      ],
+      "@boat/a2ui/engine": [
+        "./packages/a2ui/src/engine.ts"
+      ],
+      "@boat/a2ui/preset": [
+        "./packages/a2ui/src/preset.ts"
+      ],
       "@boat/contracts": [
         "./packages/contracts/src/index.ts"
       ],
