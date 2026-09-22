@@ -1,9 +1,12 @@
 /**
  * The `boatState` projection: the session's accumulated tool state, folded
- * from `boat/state` nodes. A delta is a JSON object whose top-level keys are
+ * from the `stateDelta` a successful `tool/result` carries on
+ * `meta.boat.stateDelta`. A delta is a JSON object whose top-level keys are
  * dot paths (`assets.total`); each path is assigned into the state, nested
- * plain objects deep-merge, every other value replaces. The fold is immutable
- * and returns the same reference when nothing changed.
+ * plain objects deep-merge (ark's `apply_state_delta` overwrites the leaf
+ * instead; boat keeps sibling fields a partial refresh did not mention),
+ * every other value replaces. The fold is immutable and returns the same
+ * reference when nothing changed.
  * @module @boat/tool-policy/state
  */
 
@@ -37,7 +40,7 @@ function deepMerge(target: BoatStateValue, source: BoatStateValue): BoatStateVal
 function assignPath(target: BoatStateValue, path: readonly string[], value: JsonValue): BoatStateValue {
   const [head, ...rest] = path
   /* v8 ignore next -- mergeStateDelta rejects an empty path before descending */
-  if (head === undefined) throw new Error('boat/state delta path must not be empty')
+  if (head === undefined) throw new Error('state delta path must not be empty')
   const current = target[head]
   let replacement: JsonValue
   if (rest.length > 0) replacement = assignPath(isJsonObject(current) ? current : {}, rest, value)
@@ -54,14 +57,22 @@ function assignPath(target: BoatStateValue, path: readonly string[], value: Json
  * @returns the next state, or `state` itself when the delta changed nothing.
  */
 export function mergeStateDelta(state: BoatStateValue, delta: JsonValue): BoatStateValue {
-  if (!isJsonObject(delta)) throw new Error('boat/state delta must be a JSON object keyed by dot paths')
+  if (!isJsonObject(delta)) throw new Error('state delta must be a JSON object keyed by dot paths')
   let next = state
   for (const [path, value] of Object.entries(delta)) {
     const segments = path.split('.')
-    if (segments.some(segment => segment === '')) throw new Error(`boat/state delta path ${JSON.stringify(path)} has an empty segment`)
+    if (segments.some(segment => segment === '')) throw new Error(`state delta path ${JSON.stringify(path)} has an empty segment`)
     next = assignPath(next, segments, value)
   }
   return next
+}
+
+/** The delta a result's presentation meta carries under `boat.stateDelta`, when the meta is a JSON object. */
+export function stateDeltaOfMeta(meta: JsonValue | undefined): JsonValue | undefined {
+  if (!isJsonObject(meta)) return undefined
+  const boat = meta['boat']
+  if (!isJsonObject(boat)) return undefined
+  return boat['stateDelta']
 }
 
 export const boatStateProjectionDefinition = {
@@ -69,11 +80,18 @@ export const boatStateProjectionDefinition = {
   stateSchema: boatStateSchema,
   init: (): BoatStateValue => ({}),
   apply(state: BoatStateValue, event) {
-    if (event.type !== 'boat/state') return state
+    // dsh computes presentation meta for top-level calls only, so a subagent's
+    // tool never reaches here; an errored result carries no delta worth folding.
+    if (event.type !== 'tool/result') return state
+    const block = event.data.message.content.find(candidate => candidate.type === 'tool-result')
+    if (block?.isError === true) return state
+    const delta = stateDeltaOfMeta(event.data.meta)
+    if (delta === undefined) return state
+    if (!isJsonObject(delta)) throw new Error(`tool result at session seq ${String(event.seq)} carries a non-object state delta`)
     try {
-      return mergeStateDelta(state, event.data.delta)
+      return mergeStateDelta(state, delta)
     } catch (error: unknown) {
-      throw new Error(`invalid boat/state delta at session seq ${String(event.seq)}`, { cause: error })
+      throw new Error(`invalid state delta at session seq ${String(event.seq)}`, { cause: error })
     }
   },
   wire: { viewSchema: boatStateSchema, view: (state: BoatStateValue) => state },

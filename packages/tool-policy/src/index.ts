@@ -12,9 +12,11 @@
  *   with `ask`, so the approval seam decides (and denies when no answerer is
  *   composed);
  * - state: a tool registered with `stateDelta` carries its delta on the
- *   result's presentation meta (`meta.boat.stateDelta`); an accepted result
- *   appends `boat/state`, folded into the `boatState` projection and rendered
- *   to the model as the `boat:state` runtime context.
+ *   result's presentation meta (`meta.boat.stateDelta`); the `boatState`
+ *   projection folds it straight from the `tool/result` node (successful,
+ *   top-level calls only) and renders it to the model as the `boat:state`
+ *   runtime context. No boat node is written: dsh's persistence refuses logs
+ *   with event types it does not know.
  *
  * Only inherited tools can be hidden — dsh's `restrict` never filters an
  * agent's own layer — so register and declare through the host or a preset
@@ -26,13 +28,13 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { NamedEntries, ScopedLayers, scopeOf, scopeParentOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
-import type { PostToolDecision, PreToolDecision, ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { PreToolDecision, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { BoatToolMeta, JsonValue } from '@boat/contracts'
 import { boatStateProjectionDefinition, isJsonObject, renderBoatState } from './state.ts'
 
-export { boatStateProjectionDefinition, boatStateSchema, mergeStateDelta, renderBoatState } from './state.ts'
+export { boatStateProjectionDefinition, boatStateSchema, mergeStateDelta, renderBoatState, stateDeltaOfMeta } from './state.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -89,14 +91,6 @@ function withStateDelta(definition: ToolDefinition, stateDelta: NonNullable<Boat
   }
 }
 
-/** The delta a result's presentation meta carries, when it is a JSON object. */
-function stateDeltaOf(meta: JsonValue | undefined): JsonValue | undefined {
-  if (!isJsonObject(meta)) return undefined
-  const boat = meta['boat']
-  if (!isJsonObject(boat)) return undefined
-  return boat['stateDelta']
-}
-
 function sameNames(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((name, index) => name === right[index])
 }
@@ -134,18 +128,6 @@ export class ToolPolicyService extends Service {
       return meta?.requiresConfirmation === true
         ? { kind: 'ask', reason: `tool "${exec.name}" requires confirmation` }
         : decision
-    })
-    ctx.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {
-      const decision = await next()
-      if (decision.kind !== 'accept' || result.isError || exec.agent === undefined || exec.parent !== undefined) return decision
-      const delta = stateDeltaOf(result.meta)
-      if (delta === undefined) return decision
-      if (!isJsonObject(delta)) {
-        ctx.logger.warn(`boat tool policy: tool "${exec.name}" produced a non-object state delta; ignored`)
-        return decision
-      }
-      exec.agent.session.append('boat/state', { callId: exec.callId, delta })
-      return decision
     })
   }
 
@@ -245,18 +227,34 @@ export class ToolPolicyService extends Service {
 
   /**
    * Recompute one agent's restriction: every `auto` tool it inherits and has
-   * not activated is denied. A declared name no row registered is skipped
-   * (`restrict` rejects unknown names). Reissued only when the set changed.
+   * not activated is denied. Reissued only when the set changed.
+   * @throws when a declared name reaches the agent registered by no row, or
+   * an `auto` tool sits in the agent's own layer, where `restrict` cannot hide
+   * it: both are composition mistakes and never silently pass.
    */
   private reconcile(agent: Agent): void {
     const key = scopeOf(agent.ctx)
     if (key === undefined) return
     const state = this.stateOf(agent)
     const inheritedView = scopeParentOf(key)
-    const deny = [...this.layers.merge(key, layer => layer.metas)]
-      .filter(([name, meta]) => meta.visibility === 'auto'
-        && !state.activated.has(name)
-        && this.ctx.tools.get(name, inheritedView) !== undefined)
+    const declared = [...this.layers.merge(key, layer => layer.metas)]
+    // `get` answers from the visible view, which the agent's own restriction
+    // filters; the parent's view is unrestricted, and an own-layer tool is
+    // never restricted, so between the two every registered name shows.
+    const unregistered = declared
+      .filter(([name]) => this.ctx.tools.get(name, inheritedView) === undefined && this.ctx.tools.get(name, key) === undefined)
+      .map(([name]) => name)
+    if (unregistered.length > 0) {
+      throw new Error(`boat tool policy: declared tool${unregistered.length > 1 ? 's' : ''} ${unregistered.map(name => JSON.stringify(name)).join(', ')} registered by no row reachable from agent "${agent.id}"`)
+    }
+    const unrestrictable = declared
+      .filter(([name, meta]) => meta.visibility === 'auto' && this.ctx.tools.get(name, inheritedView) === undefined)
+      .map(([name]) => name)
+    if (unrestrictable.length > 0) {
+      throw new Error(`boat tool policy: auto tool${unrestrictable.length > 1 ? 's' : ''} ${unrestrictable.map(name => JSON.stringify(name)).join(', ')} registered in agent "${agent.id}"'s own layer, which restrict() cannot hide; register through the host or a preset row`)
+    }
+    const deny = declared
+      .filter(([name, meta]) => meta.visibility === 'auto' && !state.activated.has(name))
       .map(([name]) => name)
       .sort()
     if (sameNames(deny, state.deny)) return

@@ -100,9 +100,9 @@ describe('demo preset under boat run --driver boat (built bin, scripted model)',
     expect(digest).not.toContain('rootComponentId')
     const types = records.map(record => record.type)
     expect(records.find(record => record.type === 'boat/skill-routed')?.data).toMatchObject({ skill: 'asset-overview', source: 'router' })
-    expect(records.find(record => record.type === 'boat/state')?.data).toMatchObject({ callId: 'call-overview', delta: { yl_assets: { auth_state: 'full', total_display: '300,000.00' } } })
     const result = records.find(record => record.type === 'tool/result')
-    const meta = result?.data?.['meta'] as { boat: { card: { surfaceId: string; payload: Record<string, unknown> } } }
+    const meta = result?.data?.['meta'] as { boat: { card: { surfaceId: string; payload: Record<string, unknown> }; stateDelta: Record<string, unknown> } }
+    expect(meta.boat.stateDelta).toMatchObject({ yl_assets: { auth_state: 'full', total_display: '300,000.00' } })
     expect(meta.boat.card.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
     expect(meta.boat.card.payload['rootComponentId']).toBe('root-container')
     expect((meta.boat.card.payload['businessPayload'] as Record<string, unknown>)['total_display']).toBe('300,000.00')
@@ -119,7 +119,7 @@ describe('demo preset under boat run --driver boat (built bin, scripted model)',
     expect(messageTexts(loop[0]!)).toContain('<skill_content name="asset-diagnosis">')
     expect(records.find(record => record.type === 'boat/skill-routed')?.data).toMatchObject({ skill: 'asset-diagnosis' })
     expect(JSON.stringify(records.find(record => record.type === 'tool/result'))).toContain('请先查看资产')
-    expect(records.map(record => record.type)).not.toContain('boat/state')
+    expect(JSON.stringify(records.find(record => record.type === 'tool/result'))).not.toContain('stateDelta')
   })
 
   it('"帮我炒股": the intake gate answers with zero model requests', async () => {
@@ -127,7 +127,7 @@ describe('demo preset under boat run --driver boat (built bin, scripted model)',
     expect(requests.filter(request => request.purpose !== 'title')).toHaveLength(0)
     expect(stdout).toContain('不提供股票买卖建议')
     const types = records.map(record => record.type)
-    expect(types).toContain('boat/intake-decided')
+    expect(types).toContain('assistant/message')
     expect(types).not.toContain('request/header')
     expect(types).not.toContain('boat/route-request')
   })

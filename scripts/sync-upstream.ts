@@ -7,7 +7,9 @@
  *
  * The copy is deliberately dumb so that `git diff` after a re-sync shows
  * exactly what upstream changed. Behavioral changes boat makes to the fork
- * live in the boat tree and are re-applied by hand from that diff.
+ * live in the boat tree and are re-applied by hand from that diff; the files
+ * boat owns outright (`keep`) are never overwritten or deleted. Each forked
+ * package's `UPSTREAM.md` is hand-maintained and lists the divergence.
  * @module scripts/sync-upstream
  */
 
@@ -23,13 +25,17 @@ const upstream = JSON.parse(readFileSync(join(repoRoot, 'dsh.upstream.json'), 'u
 interface ForkTarget {
   source: string
   target: string
-  /** Files (relative to `source`) that boat keeps under its own version instead of copying. */
+  /** Files (relative to `target`) boat owns: kept as they are, whether or not upstream has a file of that name. */
   keep?: readonly string[]
 }
 
 const TARGETS: readonly ForkTarget[] = [
   { source: 'packages/core/agent-loop/src', target: 'packages/runtime/src' },
-  { source: 'packages/core/agent-loop/tests', target: 'packages/runtime/tests' },
+  {
+    source: 'packages/core/agent-loop/tests',
+    target: 'packages/runtime/tests',
+    keep: ['boat-intake.spec.ts', 'support/pi-context.ts'],
+  },
   { source: 'packages/test-support/agent-loop-testkit/src', target: 'packages/runtime-testkit/src' },
 ]
 
@@ -69,27 +75,30 @@ function main(): void {
     const targetDir = resolve(repoRoot, target)
     const kept = new Map<string, string>()
     for (const file of keep) {
-      try { kept.set(file, readFileSync(join(targetDir, file), 'utf8')) } catch { /* not yet present */ }
+      try {
+        kept.set(file, readFileSync(join(targetDir, file), 'utf8'))
+      } catch {
+        // A kept file boat has not written yet: nothing to preserve.
+      }
     }
     rmSync(targetDir, { recursive: true, force: true })
     let copied = 0
     for (const file of listFiles(sourceDir)) {
       const rel = relative(sourceDir, file)
+      if (kept.has(rel)) continue
       const destination = join(targetDir, rel)
       mkdirSync(join(destination, '..'), { recursive: true })
-      let text = kept.get(rel) ?? readFileSync(file, 'utf8')
-      if (!kept.has(rel)) for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement)
+      let text = readFileSync(file, 'utf8')
+      for (const [pattern, replacement] of REWRITES) text = text.replace(pattern, replacement)
       writeFileSync(destination, text)
       copied += 1
     }
-    writeFileSync(join(targetDir, '..', 'UPSTREAM.md'), [
-      `# Upstream`,
-      ``,
-      `Forked from deepseek-ai/deepseek-harness \`${source}\` at ${upstream.tag} (${upstream.commit}), MIT.`,
-      `Re-sync with \`node --import tsx scripts/sync-upstream.ts <checkout>\`; identity rewrites are listed in that script.`,
-      ``,
-    ].join('\n'))
-    console.log(`${target}: ${String(copied)} files from ${source}`)
+    for (const [rel, text] of kept) {
+      const destination = join(targetDir, rel)
+      mkdirSync(join(destination, '..'), { recursive: true })
+      writeFileSync(destination, text)
+    }
+    console.log(`${target}: ${String(copied)} files from ${source}, ${String(kept.size)} kept; re-apply the divergence listed in ${target.split('/').slice(0, 2).join('/')}/UPSTREAM.md`)
   }
 }
 

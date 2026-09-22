@@ -2,18 +2,16 @@
  * @boat/history-import — external conversation history as a session seed.
  * dsh derives every model request from the log, so history a caller brings
  * (ark's `context.sa_history`) has to become log nodes: this service parses
- * it with ark's rules, builds a seed of closed turns, and folds the trace ids
- * it imported into the `boatImportedTraces` projection so a later import can
- * skip rounds the session already holds.
+ * it with ark's rules and builds the seed of closed turns a new session
+ * starts from. Importing into a live session is not offered: the driver
+ * counts turns from its own phase, and dsh's persistence would refuse a
+ * boat-specific audit node.
  * @module @boat/history-import
  */
 
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
-import { z as zod } from 'zod'
-import type { Session } from '@deepseek-ai/dsh-session'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import { parseSaHistory } from './sa-history.ts'
 import type { HistoryRound, SaHistoryParse } from './sa-history.ts'
 import { seedFromRounds } from './seed.ts'
@@ -29,21 +27,6 @@ declare module '@deepseek-ai/cordis' {
     historyImport: HistoryImportService
   }
 }
-
-const tracesSchema = zod.array(zod.string())
-
-export const boatImportedTracesProjectionDefinition = {
-  key: 'boatImportedTraces',
-  stateSchema: tracesSchema,
-  init: (): string[] => [],
-  apply(state: string[], event) {
-    if (event.type !== 'boat/history-imported') return state
-    const fresh = event.data.traceIds.filter(traceId => !state.includes(traceId))
-    return fresh.length === 0 ? state : [...state, ...fresh]
-  },
-  wire: { viewSchema: tracesSchema, view: (state: string[]) => state },
-  stateVersion: 1,
-} satisfies ProjectionDefinition<'boatImportedTraces', string[]>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -63,13 +46,10 @@ export function saHistoryOf(document: unknown): unknown {
   return undefined
 }
 
-/** Host service: parse, seed, and remember what was imported. */
+/** Host service: parse a history document and build the seed. */
 export class HistoryImportService extends Service {
-  static inject = ['sessionProjections']
-
   constructor(ctx: Context) {
     super(ctx, 'historyImport')
-    ctx.sessionProjections.register(boatImportedTracesProjectionDefinition)
   }
 
   /** ark's SA history rules over a raw entry list. */
@@ -95,13 +75,8 @@ export class HistoryImportService extends Service {
   }
 
   /** The seed for a new session: every round as a closed turn. */
-  seed(rounds: readonly HistoryRound[], options: SeedOptions): SeedResult {
+  seed(rounds: readonly HistoryRound[], options: SeedOptions = {}): SeedResult {
     return seedFromRounds(rounds, options)
-  }
-
-  /** The trace ids one session already imported. */
-  importedTraceIds(session: Session): Set<string> {
-    return new Set(this.ctx.sessionProjections.stateOf(session, 'boatImportedTraces') ?? [])
   }
 }
 

@@ -1,0 +1,18 @@
+# A card with model-extracted arguments and two hierarchies: the test double
+# for the template_args / business_hierarchy branches of render_a2ui.
+args:
+  bucket:
+    type: string
+    enum: ["日常", "稳健", "进取"]
+    required: true
+    description: "要下钻查看的那一笔钱"
+
+paths:
+  title:
+    kind: state
+    path: "args.bucket"
+    default: "未指定"
+  detail:
+    kind: state
+    path: "yl_assets.total_display"
+    default: "-"

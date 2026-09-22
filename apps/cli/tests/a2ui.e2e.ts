@@ -61,9 +61,9 @@ describe('@boat/a2ui under boat run --driver boat (built bin, scripted model)', 
       expect(JSON.stringify(loop[2]!.body.messages)).not.toContain('rootComponentId')
       const [log] = findSessionLogs(home)
       const records = readSessionLog(log!) as unknown as Record_[]
-      const state = records.find(record => record.type === 'boat/state')
-      expect(state?.data).toMatchObject({ callId: 'call-query', delta: { yl_assets: { auth_state: 'full' } } })
-      const rendered = records.filter(record => record.type === 'tool/result')[1]
+      const [queried, rendered] = records.filter(record => record.type === 'tool/result')
+      expect(queried?.data?.['meta']).toMatchObject({ boat: { stateDelta: { yl_assets: { auth_state: 'full' } } } })
+      expect(records.map(record => record.type).filter(type => type.startsWith('boat/'))).toEqual([])
       const meta = rendered?.data?.['meta'] as { boat: { card: { surfaceId: string; payload: Record<string, unknown> } }; a2ui: { warnings: string[] } }
       expect(meta.a2ui.warnings).toEqual([])
       expect(meta.boat.card.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)

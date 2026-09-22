@@ -183,7 +183,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   let seed: SeedResult | undefined
   if (config.history !== undefined) {
     const history = historyImport.readFile(config.history)
-    seed = historyImport.seed(history.rounds, { source: history.source })
+    seed = historyImport.seed(history.rounds)
     io.stderr.write(`boat: imported ${String(seed.imported.length)} history round(s) from ${history.source}\n`)
   }
   const seeded = seed !== undefined && seed.events.length > 0

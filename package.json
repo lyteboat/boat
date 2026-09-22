@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
     "lint": "oxlint .",
     "test": "pnpm run build && vitest run",
     "test:unit": "vitest run --exclude '**/*.e2e.ts'",

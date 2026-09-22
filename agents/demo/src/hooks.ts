@@ -14,7 +14,6 @@ const OUT_OF_SCOPE = /炒股|股票|买卖|涨停|荐股/u
 const REPLY: IntakeReply = {
   kind: 'reply',
   plugin: name,
-  reason: 'out-of-scope',
   content: [{ type: 'text', text: '抱歉，我只负责资产配置相关的问题，不提供股票买卖建议。' }],
 }
 

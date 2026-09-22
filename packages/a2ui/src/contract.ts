@@ -18,19 +18,35 @@ const ALLOWED_BY_EVENT: Record<string, Set<string>> = {
   deleteSurface: new Set(['event', 'version', 'surfaceId']),
 }
 
-export const SUPPORTED_COMPONENT_TYPES = new Set([
-  'Row', 'Column', 'Card', 'List', 'Table', 'Popup', 'Text', 'RichText', 'Image', 'Icon', 'Tag', 'Circle', 'Divider', 'Line', 'Button',
-  'LineChart', 'CandlestickChart', 'Pie', 'IdealRange', 'CollapseList', 'AssetProportionProgress', 'AssetListCard', 'FundFavIcon',
-  'EtfFavIcon', 'StockChangeColorText', 'StockKlineCard', 'ProductSelectionList', 'RadarChart', 'ProductCompareChart',
-])
+/**
+ * What one A2UI client renders: the component types it knows (an unknown type
+ * is reported, as in ark, not rejected) and, per type, the fields whose value
+ * is a `{path}` / `{literalString}` binding.
+ */
+export interface A2uiComponentCatalog {
+  types: readonly string[]
+  bindingFields: Readonly<Record<string, readonly string[]>>
+}
 
-const BINDING_FIELDS_BY_COMPONENT: Record<string, string[]> = {
-  Text: ['text'], RichText: ['text'], Image: ['url'], Icon: ['name'], Tag: ['text'], Button: ['text'], List: ['dataSource'],
-  CollapseList: ['dataSource', 'expandText', 'foldText'], Pie: ['text'], IdealRange: ['actualValue', 'idealRange'],
-  LineChart: ['title', 'dataSource', 'emptyText'], CandlestickChart: ['title', 'dataSource', 'emptyText'], FundFavIcon: ['fundCode'],
-  EtfFavIcon: ['productCode'], StockChangeColorText: ['text'], StockKlineCard: ['stockCode', 'stockName', 'market', 'isCommon'],
-  ProductSelectionList: ['productList', 'filterConfig', 'headerConfig', 'sortOrder', 'type'], RadarChart: ['series', 'scoreMax', 'legend'],
-  ProductCompareChart: ['productCodeList'],
+/**
+ * The catalog of ark's reference client (validator.py), the default when a
+ * composition names none. A deployment with another client passes its own
+ * through `RenderToolOptions.components`.
+ */
+export const ARK_A2UI_COMPONENT_CATALOG: A2uiComponentCatalog = {
+  types: [
+    'Row', 'Column', 'Card', 'List', 'Table', 'Popup', 'Text', 'RichText', 'Image', 'Icon', 'Tag', 'Circle', 'Divider', 'Line', 'Button',
+    'LineChart', 'CandlestickChart', 'Pie', 'IdealRange', 'CollapseList', 'AssetProportionProgress', 'AssetListCard', 'FundFavIcon',
+    'EtfFavIcon', 'StockChangeColorText', 'StockKlineCard', 'ProductSelectionList', 'RadarChart', 'ProductCompareChart',
+  ],
+  bindingFields: {
+    Text: ['text'], RichText: ['text'], Image: ['url'], Icon: ['name'], Tag: ['text'], Button: ['text'], List: ['dataSource'],
+    CollapseList: ['dataSource', 'expandText', 'foldText'], Pie: ['text'], IdealRange: ['actualValue', 'idealRange'],
+    LineChart: ['title', 'dataSource', 'emptyText'], CandlestickChart: ['title', 'dataSource', 'emptyText'], FundFavIcon: ['fundCode'],
+    EtfFavIcon: ['productCode'], StockChangeColorText: ['text'], StockKlineCard: ['stockCode', 'stockName', 'market', 'isCommon'],
+    ProductSelectionList: ['productList', 'filterConfig', 'headerConfig', 'sortOrder', 'type'], RadarChart: ['series', 'scoreMax', 'legend'],
+    ProductCompareChart: ['productCodeList'],
+  },
 }
 const COMMON_BINDING_FIELDS = ['hide']
 const STRICT_BINDING_FIELDS = new Set(['text', 'url', 'name', ...COMMON_BINDING_FIELDS])
@@ -80,8 +96,11 @@ export function validateEventPayload(payload: unknown): void {
 
 export interface ValidationResult {
   ok: boolean
+  /** Messages in detection order; `entries` pairs each with its code. */
   errors: string[]
+  /** Distinct codes in first-detection order. */
   errorCodes: string[]
+  entries: { code: string; message: string }[]
 }
 
 function componentReferences(props: Record<string, unknown>): string[] {
@@ -103,17 +122,29 @@ function componentReferences(props: Record<string, unknown>): string[] {
  * Validate the component layer: duplicate ids, entry shapes, dangling
  * references, binding XOR, root reference. An unsupported component type is
  * reported to the log, as in ark, not counted as an error.
+ * @param payload - the rendered payload.
+ * @param log - where unsupported types are reported.
+ * @param catalog - the client's component catalog; ark's reference client by default.
  */
-export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG): ValidationResult {
-  const errors: string[] = []
-  const errorCodes: string[] = []
-  const add = (code: string, message: string): void => {
-    errors.push(message)
-    if (!errorCodes.includes(code)) errorCodes.push(code)
+export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG, catalog: A2uiComponentCatalog = ARK_A2UI_COMPONENT_CATALOG): ValidationResult {
+  const entries: { code: string; message: string }[] = []
+  const add = (code: string, message: string): void => { entries.push({ code, message }) }
+  const done = (): ValidationResult => ({
+    ok: entries.length === 0,
+    errors: entries.map(entry => entry.message),
+    errorCodes: [...new Set(entries.map(entry => entry.code))],
+    entries,
+  })
+  if (!isRecord(payload)) {
+    add('A2UI_PAYLOAD_INVALID', 'payload must be a dict')
+    return done()
   }
-  if (!isRecord(payload)) return { ok: false, errors: ['payload must be a dict'], errorCodes: ['A2UI_PAYLOAD_INVALID'] }
   const components = payload['components'] ?? []
-  if (!Array.isArray(components)) return { ok: false, errors: ['components must be a list'], errorCodes: ['A2UI_COMPONENTS_INVALID'] }
+  if (!Array.isArray(components)) {
+    add('A2UI_COMPONENTS_INVALID', 'components must be a list')
+    return done()
+  }
+  const supportedTypes = new Set(catalog.types)
   const ids = new Set<string>()
   for (const entry of components) {
     if (!isRecord(entry)) continue
@@ -134,7 +165,7 @@ export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG): Va
       return
     }
     const [type, props] = Object.entries(component)[0] as [string, unknown]
-    if (!SUPPORTED_COMPONENT_TYPES.has(type)) log.warn(`Unsupported A2UI component type: ${type} (component id=${id} index=${String(index)})`)
+    if (!supportedTypes.has(type)) log.warn(`Unsupported A2UI component type: ${type} (component id=${id} index=${String(index)})`)
     if (!isRecord(props)) {
       add('A2UI_COMPONENT_PROPS_INVALID', `Component '${id}' props for type '${type}' must be a dict`)
       return
@@ -142,7 +173,7 @@ export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG): Va
     for (const ref of componentReferences(props)) {
       if (!ids.has(ref)) add('A2UI_COMPONENT_REF_MISSING', `Component '${id}' references missing component id: ${ref}`)
     }
-    const fields = new Set([...BINDING_FIELDS_BY_COMPONENT[type] ?? [], ...COMMON_BINDING_FIELDS])
+    const fields = new Set([...catalog.bindingFields[type] ?? [], ...COMMON_BINDING_FIELDS])
     for (const field of fields) {
       if (!(field in props)) continue
       const binding = props[field]
@@ -159,7 +190,7 @@ export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG): Va
   })
   const rootId = payload['rootComponentId']
   if (typeof rootId === 'string' && rootId !== '' && !ids.has(rootId)) add('A2UI_ROOT_REF_MISSING', `rootComponentId '${rootId}' is not found in components`)
-  return { ok: errors.length === 0, errors, errorCodes }
+  return done()
 }
 
 /** Ids of row-template subtrees: descendants of a `child` whose owner still carries a `dataSource` after the walk. */
@@ -233,9 +264,11 @@ export interface GuardResult {
 
 /**
  * Every validation layer over one payload; `strict` turns event-contract
- * violations into errors instead of warnings.
+ * violations into errors instead of warnings. Each component error carries
+ * its own code (ark paired codes and messages by index over a deduplicated
+ * code list, mislabelling from the third error on).
  */
-export function validateFullPayload(payload: Record<string, unknown>, options: { strict?: boolean; log?: A2uiLog } = {}): GuardResult {
+export function validateFullPayload(payload: Record<string, unknown>, options: { strict?: boolean; log?: A2uiLog; catalog?: A2uiComponentCatalog } = {}): GuardResult {
   const strict = options.strict ?? true
   const errors: string[] = []
   const warnings: string[] = []
@@ -246,12 +279,8 @@ export function validateFullPayload(payload: Record<string, unknown>, options: {
     if (strict) errors.push(message)
     else warnings.push(message)
   }
-  const result = validatePayload(payload, options.log)
-  if (!result.ok) {
-    result.errors.forEach((message, index) => {
-      errors.push(`[${result.errorCodes[Math.min(index, result.errorCodes.length - 1)] ?? 'A2UI_INVALID'}] ${message}`)
-    })
-  }
+  const result = validatePayload(payload, options.log, options.catalog)
+  for (const { code, message } of result.entries) errors.push(`[${code}] ${message}`)
   warnings.push(...validateDataCoverage(payload))
   return { ok: errors.length === 0, errors, warnings }
 }

@@ -16,6 +16,7 @@
 
 import { Command, CommanderError } from 'commander'
 import { DEFAULT_DRIVER, DRIVERS, isDriver, type Driver } from './drivers.ts'
+import { pluginFilesProblem } from './plugins.ts'
 import { DEFAULT_RUN_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
@@ -80,6 +81,8 @@ function validateBoot(program: Command, options: BootOptions): { profile: string
   if (patches.includes('')) program.error('error: --patch needs a path')
   const plugins = options.plugin ?? []
   if (plugins.includes('')) program.error('error: --plugin needs a path')
+  const pluginProblem = pluginFilesProblem(plugins)
+  if (pluginProblem !== undefined) program.error(`error: ${pluginProblem}`)
   if (options.profile === '') program.error('error: --profile needs a name')
   const driver = options.driver ?? DEFAULT_DRIVER
   if (!isDriver(driver)) program.error(`error: --driver must be one of ${DRIVERS.join(', ')}, got ${JSON.stringify(driver)}`)

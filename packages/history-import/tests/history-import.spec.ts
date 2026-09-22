@@ -45,10 +45,10 @@ async function send(agent: Agent, text: string): Promise<void> {
 const round = (traceId: string, user: string, assistant: string): HistoryRound => ({ traceId, createTime: undefined, user: { text: user, meta: {} }, assistant: { text: assistant, meta: {} } })
 
 describe('a seeded session', () => {
-  it('starts after the imported turns, derives them into the first request, and records the trace ids', async () => {
+  it('starts after the imported turns and derives them into the first request', async () => {
     const adapter = new MockAdapter([textResponse('继续')])
     const ctx = await harness(adapter)
-    const seed = ctx.historyImport.seed([round('t1', '看看资产', '总额 100'), round('t2', '风险如何', '偏高')], { source: 'sa.json' })
+    const seed = ctx.historyImport.seed([round('t1', '看看资产', '总额 100'), round('t2', '风险如何', '偏高')])
     const { agent } = await ctx.agents.create({
       sessionId: SessionId('seeded'),
       meta: { isSeeded: true },
@@ -59,8 +59,7 @@ describe('a seeded session', () => {
     expect(agent.session.header.isSeeded).toBe(true)
     expect(agent.session.inheritedEventCount).toBe(seed.events.length)
     expect(agent.session.eventAt(agent.session.surface.nodes[0]!)?.type).toBe('system/message')
-    expect(ctx.historyImport.importedTraceIds(agent.session)).toEqual(new Set(['t1', 't2']))
-    expect(ctx.sessionProjections.snapshot(agent.session).values['boatImportedTraces']).toEqual(['t1', 't2'])
+    expect(seed.events.map(event => event.type).filter(type => type.startsWith('boat/'))).toEqual([])
 
     await send(agent, '那怎么办')
     const request = adapter.requests[0] as GenerateOptions

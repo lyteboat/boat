@@ -44,7 +44,7 @@ function resolveComputed(key: string, entry: Record<string, unknown>, raw: RawDa
   const fnName = typeof entry['fn'] === 'string' ? entry['fn'] : ''
   const fn = compute?.[fnName]
   if (typeof fn !== 'function') {
-    warnings.push(`[MANIFEST] computed '${key}': compute.py 缺少函数 '${fnName}'`)
+    warnings.push(`[MANIFEST] computed '${key}': compute.js 缺少导出 '${fnName}'`)
     return ''
   }
   const args = (Array.isArray(entry['args']) ? entry['args'] : []).map(arg => resolveArg(arg, raw))

@@ -66,7 +66,7 @@ export interface SkillRouterSettings {
   /** Conversation lines shown to the router; 0 shows none. */
   historyWindow: number
   timeoutMs: number
-  /** Router route; absent uses the agent's own model. Supplied together. */
+  /** Router route; absent uses the agent's own model. Declared together (`declare` rejects one without the other). */
   provider?: string
   model?: string
 }
@@ -84,8 +84,11 @@ export const Config: z<Config> = z.object({
 
 const DEFAULT_SETTINGS: SkillRouterSettings = { mode: 'off', historyWindow: 6, timeoutMs: 10_000 }
 
-/** Drop undefined fields so a partial declaration never erases an inherited one. */
+/** Drop undefined fields so a partial declaration never erases an inherited one; a route is declared whole or not at all. */
 function compact(settings: Partial<SkillRouterSettings>): Partial<SkillRouterSettings> {
+  if ((settings.provider === undefined) !== (settings.model === undefined)) {
+    throw new Error(`boat skill router: provider and model are declared together; got provider=${JSON.stringify(settings.provider)} model=${JSON.stringify(settings.model)}`)
+  }
   return Object.fromEntries(Object.entries(settings).filter(([, value]) => value !== undefined)) as Partial<SkillRouterSettings>
 }
 
@@ -186,21 +189,30 @@ export class SkillRouterService extends Service {
       if (this.settingsFor(agent).mode !== 'dynamic') return
       const args = exec.arguments as { name?: unknown }
       if (typeof args.name !== 'string' || this.activeOf(agent) === args.name) return
+      const skillName = args.name
       const state = this.stateOf(agent)
+      // The call's own signal ends with the call, so the lookup runs without one;
+      // the next assembly awaits `pending` and checks its own signal.
       const lookup: SkillViewOptions = { cwd: agent.session.header.cwd, scope: agent }
-      state.pending = this.activate(agent, args.name, 'model', 'loaded through the skill tool', state.turn, lookup)
+      // Chained, not replaced: two skill loads in one step activate in order,
+      // and the next assembly waits for both.
+      const pending: Promise<void> = (state.pending ?? Promise.resolve())
+        .then(() => this.activate(agent, skillName, 'model', 'loaded through the skill tool', state.turn, lookup))
         .catch((error: unknown) => {
-          ctx.logger.warn(`boat skill router: model-initiated activation of "${args.name}" failed: ${error instanceof Error ? error.message : String(error)}`)
+          ctx.logger.warn(`boat skill router: model-initiated activation of "${skillName}" failed: ${error instanceof Error ? error.message : String(error)}`)
         })
-        .finally(() => { state.pending = undefined })
+        .finally(() => { if (state.pending === pending) state.pending = undefined })
+      state.pending = pending
     })
   }
 
   /**
    * Declare settings in the calling scope's layer; nearer scopes override
-   * farther ones, and absent fields keep what they inherit.
+   * farther ones, and absent fields keep what they inherit. `provider` and
+   * `model` come together or not at all.
    * @param settings - the fields to override.
    * @returns the exact disposer that withdraws the declaration.
+   * @throws when only one of `provider` and `model` is given.
    */
   declare(settings: Partial<SkillRouterSettings>): () => void {
     const compacted = compact(settings)
@@ -253,7 +265,7 @@ export class SkillRouterService extends Service {
     }
     const input = userText(messages)
     if (input !== '') await this.route(agent, settings, lookup, input, turn, signal)
-    await this.refreshBody(agent, lookup)
+    await this.refreshActive(agent, lookup)
   }
 
   /** Full mode: every model-invocable skill's body in one section, every required tool activated. */
@@ -392,8 +404,14 @@ export class SkillRouterService extends Service {
     if (known.length > 0) policy.activate(agent, known)
   }
 
-  /** Keep the cached body in step with the durable active skill (a resumed session starts with none cached). */
-  private async refreshBody(agent: Agent, lookup: SkillViewOptions): Promise<void> {
+  /**
+   * Keep the in-process state in step with the durable active skill: a
+   * resumed session (or one whose activation this process never saw) starts
+   * with no body cached and no tools activated, so both are restored from the
+   * projection, the way ark re-derives visibility from
+   * `current_active_skill_id` every turn.
+   */
+  private async refreshActive(agent: Agent, lookup: SkillViewOptions): Promise<void> {
     const state = this.stateOf(agent)
     const active = this.activeOf(agent)
     if (active === null) {
@@ -403,7 +421,13 @@ export class SkillRouterService extends Service {
     if (state.body?.name === active) return
     const definition = await this.ctx.skills.get(active, lookup)
     lookup.signal?.throwIfAborted()
-    state.body = definition === undefined ? undefined : { name: active, text: renderSkillContent(definition) }
+    if (definition === undefined) {
+      state.body = undefined
+      this.ctx.logger.warn(`boat skill router: active skill "${active}" is not available to this agent; its body and tools are not restored`)
+      return
+    }
+    state.body = { name: active, text: renderSkillContent(definition) }
+    this.activateTools(agent, boatSkillMeta(definition.metadata)?.requiredTools ?? [])
   }
 }
 
