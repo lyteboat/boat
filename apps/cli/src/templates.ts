@@ -17,7 +17,7 @@ export interface BoatProfileTemplate {
 /** Templates by profile name. */
 export const BOAT_PROFILE_TEMPLATES: Readonly<Record<string, BoatProfileTemplate>> = {
   run: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-headless'],
+    bundles: ['@deepseek-ai/dsh-base', '@boat/run'],
     patchReload: 'startup',
   },
   web: {

@@ -13,6 +13,7 @@
   "scripts": {},
   "dependencies": {
     "@boat/cordis-compat": "workspace:*",
+    "@boat/run": "workspace:*",
     "@boat/runtime": "workspace:*",
     "@deepseek-ai/cordis": "4.0.2",
     "@deepseek-ai/cordis-plugin-hmr": "1.0.17",
