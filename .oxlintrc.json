@@ -1,22 +1,52 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript"],
+  "plugins": [
+    "typescript"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
   },
-  "ignorePatterns": ["**/lib/**", "**/node_modules/**", "**/*.js", "**/*.cjs", "**/*.config.ts"],
+  "ignorePatterns": [
+    "**/lib/**",
+    "**/node_modules/**",
+    "**/*.js",
+    "**/*.cjs",
+    "**/*.config.ts"
+  ],
   "rules": {
     "no-var": "error",
     "prefer-const": "error",
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
     "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "error"
   },
   "overrides": [
     {
-      "files": ["**/tests/**/*.ts"],
-      "rules": { "typescript/no-non-null-assertion": "off" }
+      "files": [
+        "**/tests/**/*.ts"
+      ],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/runtime/**/*.ts",
+        "packages/runtime-testkit/**/*.ts"
+      ],
+      "rules": {
+        "no-shadow": "off",
+        "no-underscore-dangle": "off",
+        "preserve-caught-error": "off"
+      }
     }
   ]
 }

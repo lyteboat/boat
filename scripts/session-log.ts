@@ -137,3 +137,58 @@ export function findSessionLogs(home: string): string[] {
 export function eventTypes(records: readonly SessionLogRecord[]): string[] {
   return records.slice(1).map(record => String(record['type']))
 }
+
+/** Values that differ between two otherwise identical runs, replaced during normalization. */
+export interface NormalizeOptions {
+  /** Workspace directory of the run; every occurrence in strings becomes `<cwd>`. */
+  cwd: string
+  /** Harness home of the run; every occurrence in strings becomes `<home>`. */
+  home: string
+}
+
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu
+const TIMING_KEYS = new Set(['time', 'time0', 'dt', 'createdAt'])
+const DROPPED_EVENT_TYPES = /^session\/title/u
+
+/**
+ * Normalize a session log for comparison across runs: timing fields go, every
+ * UUID becomes a placeholder numbered by first appearance, workspace and home
+ * paths become `<cwd>` and `<home>`, and the title provider's events (which
+ * land at timing-dependent positions) are dropped. `seq` is kept: two runs of
+ * the same scenario must agree on event order.
+ * @param records - decoded records, header first.
+ * @param options - the run's paths.
+ * @returns a structurally comparable copy.
+ */
+export function normalizeSessionLog(records: readonly SessionLogRecord[], options: NormalizeOptions): SessionLogRecord[] {
+  const uuids = new Map<string, string>()
+  const placeholder = (uuid: string): string => {
+    const key = uuid.toLowerCase()
+    let name = uuids.get(key)
+    if (name === undefined) {
+      name = `<uuid-${String(uuids.size + 1)}>`
+      uuids.set(key, name)
+    }
+    return name
+  }
+  const scrubString = (value: string): string => value
+    .replaceAll(options.cwd, '<cwd>')
+    .replaceAll(options.home, '<home>')
+    .replace(UUID, placeholder)
+  const visit = (node: unknown): unknown => {
+    if (typeof node === 'string') return scrubString(node)
+    if (Array.isArray(node)) return node.map(visit)
+    if (node !== null && typeof node === 'object') {
+      const out: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(node)) {
+        if (TIMING_KEYS.has(key)) continue
+        out[key] = visit(value)
+      }
+      return out
+    }
+    return node
+  }
+  return records
+    .filter(record => !DROPPED_EVENT_TYPES.test(String(record['type'])))
+    .map(record => visit(record) as SessionLogRecord)
+}

@@ -12,7 +12,8 @@
     "lint": "oxlint .",
     "test": "pnpm run build && vitest run",
     "test:unit": "vitest run --exclude '**/*.e2e.ts'",
-    "check": "pnpm run lint && pnpm run test"
+    "check": "pnpm run lint && pnpm run test",
+    "smoke:equivalence": "pnpm run build && vitest run apps/cli/tests/driver-equivalence.e2e.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",

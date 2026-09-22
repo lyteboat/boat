@@ -166,13 +166,20 @@ function allPatches(composed: ComposedProfile): PatchOptions[] {
  * Load `name` and compose its effective patch stack.
  * @param name - the profile name.
  * @param patchFiles - `--patch` overlay paths, in argv order.
+ * @param launcherOverlays - in-memory layers the launcher derives from its own flags.
  * @returns the profile and its patch layers.
  */
-async function composeProfile(name: string, patchFiles: readonly string[]): Promise<ComposedProfile> {
+async function composeProfile(
+  name: string,
+  patchFiles: readonly string[],
+  launcherOverlays: readonly PatchOptions[],
+): Promise<ComposedProfile> {
   const profile = prepareProfile(name, true)
   await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, profile })
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
-  const overlays = patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file)))
+  // Launcher-generated layers (the driver switch) sit above every file overlay so a
+  // user file can never displace them.
+  const overlays = [...patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file))), ...launcherOverlays]
   const bundlePatches = profile.layers.flatMap(layer => layer.patches)
   const rows = new Map<string, EntryOptions>()
   for (const row of composeEntries([bundlePatches, profile.patches, homePatches, overlays])) {
@@ -192,6 +199,8 @@ export interface RunProfileOptions {
   profile: string
   /** `--patch` overlay paths, in argv order. */
   patchFiles: readonly string[]
+  /** In-memory layers derived from launcher flags, applied above every file overlay. */
+  launcherOverlays?: readonly PatchOptions[]
   /** The invocation's inner arguments, handed to the tree through `ctx.cmdlineArgs`. */
   args: readonly string[]
 }
@@ -221,7 +230,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     (message) => { process.stderr.write(`${NAME}: ${message}\n`) },
   )
 
-  const composed = await composeProfile(options.profile, options.patchFiles)
+  const composed = await composeProfile(options.profile, options.patchFiles, options.launcherOverlays ?? [])
   const app: { current?: Context } = {}
   const appReady = createAppReady()
   const shutdown = createProcessShutdown(async () => {

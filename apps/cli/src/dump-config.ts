@@ -11,6 +11,7 @@
 
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import {
   loadOptionalPatches,
   loadOverlayPatches,
@@ -24,8 +25,14 @@ import { homePatchPath, NAME, prepareProfile, PROFILE_ROOT_FILENAME } from './pr
  * @param profile - the profile name.
  * @param defaultOnly - omit the profile's user layer and `--patch` overlays.
  * @param patches - `--patch` overlay paths, in argv order.
+ * @param launcherOverlays - in-memory layers derived from launcher flags (the driver switch).
  */
-export function runDumpConfig(profile: string, defaultOnly: boolean, patches: readonly string[]): void {
+export function runDumpConfig(
+  profile: string,
+  defaultOnly: boolean,
+  patches: readonly string[],
+  launcherOverlays: readonly PatchOptions[] = [],
+): void {
   const loaded = prepareProfile(profile, !defaultOnly)
   const layers: ConfigDumpLayer[] = loaded.layers.map(layer => ({
     label: layer.packageName,
@@ -44,6 +51,7 @@ export function runDumpConfig(profile: string, defaultOnly: boolean, patches: re
       const absolute = resolve(file)
       layers.push({ label: absolute, patches: loadOverlayPatches(NAME, absolute) })
     }
+    if (launcherOverlays.length > 0) layers.push({ label: 'launcher: --driver', patches: [...launcherOverlays] })
   }
   process.stdout.write(renderConfigDump(NAME, join(loaded.dir, PROFILE_ROOT_FILENAME), layers))
 }

@@ -3,6 +3,8 @@
   "files": [],
   "references": [
     { "path": "./packages/cordis-compat" },
+    { "path": "./packages/runtime" },
+    { "path": "./packages/runtime-testkit" },
     { "path": "./apps/cli" },
     { "path": "./scripts" }
   ]

@@ -15,12 +15,15 @@
  */
 
 import { Command, CommanderError } from 'commander'
+import { DEFAULT_DRIVER, DRIVERS, isDriver, type Driver } from './drivers.ts'
 import { DEFAULT_RUN_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
 export interface ProfileInvocation {
   mode: 'profile'
   profile: string
+  /** The agent driver to mount. */
+  driver: Driver
   /** Extra patch-list overlays applied after the profile's own layer, in argv order. */
   patches: string[]
   /** Everything after the launcher's own flags, verbatim, for the app plugins. */
@@ -31,6 +34,8 @@ export interface ProfileInvocation {
 export interface DumpConfigInvocation {
   mode: 'dump-config'
   profile: string
+  /** The agent driver whose overlay to include. */
+  driver: Driver
   /** Omit the profile's user layer and --patch overlays; print bundle layers only. */
   defaultOnly: boolean
   patches: string[]
@@ -48,6 +53,7 @@ export interface BoatVersions {
 interface BootOptions {
   profile?: string
   patch?: string[]
+  driver?: string
 }
 
 /** Repeatable single-value collector; never variadic, which would swallow the inner arguments. */
@@ -57,17 +63,20 @@ const HELP_EXAMPLES = `
 Examples:
   boat run "summarize this workspace"         answer one task, print the result, and exit
   boat run --patch ./extra.yml "task"         boot the run profile with one extra overlay
+  boat run --driver boat "task"               mount boat's own agent driver instead of dsh's
   boat run -h                                  the one-shot app's own flags and help
   boat web                                     serve the browser UI (boat web --help for its flags)
   boat web --no-open --port 8080               serve without opening a browser, on another port
   boat config dump --profile run               print the composed plugin tree and exit
 `
 
-function validateBoot(program: Command, options: BootOptions): { profile: string; patches: string[] } {
+function validateBoot(program: Command, options: BootOptions): { profile: string; patches: string[]; driver: Driver } {
   const patches = options.patch ?? []
   if (patches.includes('')) program.error('error: --patch needs a path')
   if (options.profile === '') program.error('error: --profile needs a name')
-  return { profile: options.profile ?? '', patches }
+  const driver = options.driver ?? DEFAULT_DRIVER
+  if (!isDriver(driver)) program.error(`error: --driver must be one of ${DRIVERS.join(', ')}, got ${JSON.stringify(driver)}`)
+  return { profile: options.profile ?? '', patches, driver }
 }
 
 /** Configure a subcommand that hands its unknown tokens to the booted app. */
@@ -101,9 +110,10 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .argument('[task...]', 'the task text and any flags of the one-shot app')
     .option('--profile <name>', 'the profile under $BOAT_HOME/profiles to boot', DEFAULT_RUN_PROFILE)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .action((args: string[], options: BootOptions) => {
-      const { profile, patches } = validateBoot(run, options)
-      resolved = { mode: 'profile', profile, patches, args }
+      const { profile, patches, driver } = validateBoot(run, options)
+      resolved = { mode: 'profile', profile, driver, patches, args }
     })
 
   const web = passThrough(program.command('web'))
@@ -111,9 +121,10 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .argument('[args...]', 'arguments for the web app (see: boat web --help)')
     .option('--profile <name>', 'the profile under $BOAT_HOME/profiles to boot', DEFAULT_WEB_PROFILE)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .action((args: string[], options: BootOptions) => {
-      const { profile, patches } = validateBoot(web, options)
-      resolved = { mode: 'profile', profile, patches, args }
+      const { profile, patches, driver } = validateBoot(web, options)
+      resolved = { mode: 'profile', profile, driver, patches, args }
     })
 
   const config = program.command('config').description('inspect profile composition without booting')
@@ -122,11 +133,12 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .option('--profile <name>', 'the profile to compose', DEFAULT_RUN_PROFILE)
     .option('--default', 'print the bundle layers only, without the user layer or --patch overlays')
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .action((options: BootOptions & { default?: boolean }) => {
-      const { profile, patches } = validateBoot(dump, options)
+      const { profile, patches, driver } = validateBoot(dump, options)
       const defaultOnly = options.default === true
       if (defaultOnly && patches.length > 0) dump.error('error: --default prints the bundle layers and takes no --patch')
-      resolved = { mode: 'dump-config', profile, defaultOnly, patches }
+      resolved = { mode: 'dump-config', profile, driver, defaultOnly, patches }
     })
 
   try {

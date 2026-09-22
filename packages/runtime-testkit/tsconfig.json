@@ -6,7 +6,6 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../packages/cordis-compat" },
-    { "path": "../../packages/runtime" }
+    { "path": "../runtime" }
   ]
 }
