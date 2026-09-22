@@ -40,6 +40,9 @@
       "@boat/cordis-compat": [
         "./packages/cordis-compat/src/index.ts"
       ],
+      "@boat/history-import": [
+        "./packages/history-import/src/index.ts"
+      ],
       "@boat/run": [
         "./packages/run/src/index.ts"
       ],

@@ -7,6 +7,7 @@
  */
 
 import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm'
+import { BOAT_HISTORY_IMPORT_PLUGIN } from '@boat/contracts'
 
 /** ark's router system prompt, verbatim (the scripted test model classifies router requests by it). */
 export const SKILL_ROUTER_SYSTEM_PROMPT = '你是一个 skill 路由器。根据用户对话上下文，从可用 skill 列表中选择最匹配的一个。\n仅输出严格 JSON：{"skill_id": "<id 或 null>", "reason": "<≤30字>"}，不要包含其它文本。'
@@ -122,7 +123,8 @@ export function renderHistory(messages: readonly Message[], window: number): str
       for (const result of results) lines.push(`tool: ${cap(textOf(result.content))}`)
       continue
     }
-    if (message.source.kind !== 'user') continue
+    // Imported history rounds are conversation; every other plugin-sourced user message is context.
+    if (message.source.kind !== 'user' && !(message.source.kind === 'plugin' && message.source.plugin === BOAT_HISTORY_IMPORT_PLUGIN)) continue
     const text = textOf(message.content)
     if (text !== '') lines.push(`user: ${cap(text)}`)
   }

@@ -9,7 +9,7 @@
   ],
   "references": [
     {
-      "path": "../history-import"
+      "path": "../contracts"
     }
   ]
 }

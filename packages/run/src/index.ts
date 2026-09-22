@@ -20,10 +20,12 @@ import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentSetup, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@boat/history-import'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
-import { SessionSeq } from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import type { SeedResult } from '@boat/history-import'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
 
@@ -31,7 +33,7 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 export const name = 'boat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions']
+export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport']
 
 /** Plugin config: the task and preset resolved from the startup provider service. */
 export interface Config {
@@ -39,11 +41,14 @@ export interface Config {
   task: string
   /** The preset to compose the agent from; absent runs the host composition alone. */
   preset?: string
+  /** An external history file (SA entries) seeded into the session as closed turns before the task. */
+  history?: string
 }
 
 export const Config: z<Config> = z.object({
   task: z.string().required(),
   preset: z.string(),
+  history: z.string(),
 })
 
 interface RunOutcome {
@@ -158,7 +163,8 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const agents = ctx.get('agents')
   const defaultModel = ctx.get('agentDefaultModel')
   const sessions = ctx.get('sessions')
-  if (agents === undefined || defaultModel === undefined || sessions === undefined) return
+  const historyImport = ctx.get('historyImport')
+  if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined) return
 
   const selection = defaultModel.currentSelection()
   const presets = ctx.get('agentPresets')
@@ -172,9 +178,19 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
     installModelSelection(agentCtx, selected)
     if (agentPreset !== undefined && presets !== undefined) await presets.mount(agentCtx, agentPreset)
   }
+  // History arrives as a seed: closed turns the driver counts from, so the task
+  // becomes turn N+1 and the first request already derives the imported rounds.
+  let seed: SeedResult | undefined
+  if (config.history !== undefined) {
+    const history = historyImport.readFile(config.history)
+    seed = historyImport.seed(history.rounds, { source: history.source })
+    io.stderr.write(`boat: imported ${String(seed.imported.length)} history round(s) from ${history.source}\n`)
+  }
+  const seeded = seed !== undefined && seed.events.length > 0
   const { agent } = await agents.create({
     sessionId: brandString<SessionId>(`session-${randomUUID()}`),
-    meta: { cwd: process.cwd(), ...agentPreset === undefined ? {} : { agentPreset } },
+    meta: { cwd: process.cwd(), ...agentPreset === undefined ? {} : { agentPreset }, ...seeded ? { isSeeded: true } : {} },
+    ...seeded && seed !== undefined ? { seed: seed.events, inheritedEventCount: SessionLogOffset(seed.events.length) } : {},
     agentOptions: { provider: selection.provider, model: selection.model },
     setup,
   })

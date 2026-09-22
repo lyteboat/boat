@@ -24,6 +24,9 @@
       "path": "./packages/a2ui"
     },
     {
+      "path": "./packages/history-import"
+    },
+    {
       "path": "./packages/run"
     },
     {

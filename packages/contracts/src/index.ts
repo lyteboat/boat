@@ -20,6 +20,9 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /** `provider` of every assistant message boat writes without a model call (intake replies, imported history). */
 export const BOAT_ASSISTANT_PROVIDER = 'boat'
 
+/** `plugin` of the user messages imported history writes; consumers treat them as conversation, not as context. */
+export const BOAT_HISTORY_IMPORT_PLUGIN = 'boat-history-import'
+
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type BoatToolVisibility = 'always' | 'auto'
 
@@ -135,6 +138,8 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     boatActiveSkill: string | null
     /** Cards from `tool/result.meta.boat.card` and `boat/card` nodes, in log order; a `surfaceUpdate` replaces its surface. Owned by `@boat/a2ui`. */
     boatCards: BoatCard[]
+    /** Trace ids of every round `boat/history-imported` recorded, in log order. Owned by `@boat/history-import`. */
+    boatImportedTraces: string[]
   }
   interface SessionProjectionMap {
     /** Session tool state as the client sees it: the fold state itself. */
@@ -143,5 +148,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     boatActiveSkill: string | null
     /** Every card rendered in the session, as the client sees it. */
     boatCards: BoatCard[]
+    /** The trace ids of every imported history round, as the client sees it. */
+    boatImportedTraces: string[]
   }
 }
