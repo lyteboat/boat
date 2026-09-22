@@ -2,8 +2,7 @@
  * @boat/a2ui — A2UI cards for boat agents. One host service, `ctx.a2ui`,
  * owns the template engine (ark's template mode, ported), the `render_a2ui`
  * tool a composition registers over a templates root, and the `boatCards`
- * projection that collects every rendered card from `tool/result.meta` and
- * `boat/card` nodes.
+ * projection that collects every rendered card from `tool/result.meta`.
  *
  * The tool reads its raw data from the session's `boatState` projection (the
  * configured state keys, as ark's `state_keys`), renders the chosen card, and
@@ -21,7 +20,8 @@ import type { BoatCard, BoatStateValue, JsonValue } from '@boat/contracts'
 import type {} from '@boat/tool-policy'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
-import { validateFullPayload } from './contract.ts'
+import { ARK_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
+import type { A2uiComponentCatalog } from './contract.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 
 export { TemplateEngine, TemplateModeError, mintSurfaceId, renderTemplate } from './engine.ts'
@@ -33,8 +33,8 @@ export { execOne, executeTransforms, resolvePath, TransformError } from './trans
 export type { A2uiLog, RawData } from './transforms.ts'
 export { BoundPathTracker, walk } from './walker.ts'
 export type { TemplateDocument } from './walker.ts'
-export { rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload, SUPPORTED_COMPONENT_TYPES } from './contract.ts'
-export type { GuardResult, ValidationResult } from './contract.ts'
+export { ARK_A2UI_COMPONENT_CATALOG, rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload } from './contract.ts'
+export type { A2uiComponentCatalog, GuardResult, ValidationResult } from './contract.ts'
 export { templateBusinessPayload, BUSINESS_PAYLOAD_KEY } from './business-payload.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -61,6 +61,8 @@ export interface RenderToolOptions {
   group?: string
   /** Contract violations: `warn` keeps the card and records them (ark's default); `enforce` fails the call. */
   validation?: 'warn' | 'enforce'
+  /** The client's component catalog the contract is checked against; ark's reference client by default. */
+  components?: A2uiComponentCatalog
 }
 
 const jsonValueSchema: zod.ZodType<JsonValue> = zod.lazy(() => zod.union([
@@ -68,10 +70,10 @@ const jsonValueSchema: zod.ZodType<JsonValue> = zod.lazy(() => zod.union([
 ]))
 
 const boatCardSchema: zod.ZodType<BoatCard> = zod.object({
-  callId: zod.string().optional(),
+  callId: zod.string(),
   surfaceId: zod.string(),
   payload: jsonValueSchema,
-}) as unknown as zod.ZodType<BoatCard>
+})
 
 const boatCardsSchema: zod.ZodType<BoatCard[]> = zod.array(boatCardSchema)
 
@@ -101,15 +103,12 @@ export const boatCardsProjectionDefinition = {
   stateSchema: boatCardsSchema,
   init: (): BoatCard[] => [],
   apply(state: BoatCard[], event) {
-    if (event.type === 'boat/card') {
-      const { callId, surfaceId, payload } = event.data
-      return appendCard(state, { ...callId === undefined ? {} : { callId }, surfaceId, payload })
-    }
     if (event.type !== 'tool/result') return state
     const card = cardOfMeta(event.data.meta)
     if (card === undefined) return state
     const block = event.data.message.content.find(candidate => candidate.type === 'tool-result')
-    return appendCard(state, { ...block === undefined ? {} : { callId: block.toolCallId }, ...card })
+    if (block === undefined) return state
+    return appendCard(state, { callId: block.toolCallId, ...card })
   },
   wire: { viewSchema: boatCardsSchema, view: (state: BoatCard[]) => state },
   stateVersion: 1,
@@ -211,6 +210,7 @@ export class A2uiService extends Service {
     const stateKeys = options.stateKeys ?? []
     const terminal = new Set(options.terminalCards ?? [])
     const validation = options.validation ?? 'warn'
+    const components = options.components ?? ARK_A2UI_COMPONENT_CATALOG
     const log = this.log
     const projections = this.ctx.sessionProjections
     const tool = defineTool({
@@ -264,7 +264,7 @@ export class A2uiService extends Service {
           surfaceId: typeof args.surface_id === 'string' ? args.surface_id : undefined,
         })
         for (const warning of result.warnings) log.warn(warning)
-        const guard = validateFullPayload(result.payload, { strict: validation === 'enforce', log })
+        const guard = validateFullPayload(result.payload, { strict: validation === 'enforce', log, catalog: components })
         if (validation === 'enforce' && guard.errors.length > 0) throw new Error(`A2UI contract invalid: ${guard.errors[0] ?? ''}`)
         for (const message of [...guard.errors, ...guard.warnings]) log.warn(message)
         if (terminal.has(card)) exec.concludeTurn()

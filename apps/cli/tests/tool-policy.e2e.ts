@@ -64,8 +64,7 @@ describe('@boat/tool-policy under boat run --driver boat (built bin, scripted mo
       expect(second).toContain('1234')
       const [log] = findSessionLogs(home)
       const records = readSessionLog(log!) as { type: string; data?: Record<string, unknown> }[]
-      const state = records.find(record => record.type === 'boat/state')
-      expect(state?.data).toEqual({ callId: 'call-lookup_assets', delta: { 'assets.total': 1234, 'assets.currency': 'CNY' } })
+      expect(records.map(record => record.type).filter(type => type.startsWith('boat/'))).toEqual([])
       const toolResult = records.find(record => record.type === 'tool/result')
       expect(toolResult?.data?.['meta']).toEqual({ boat: { stateDelta: { 'assets.total': 1234, 'assets.currency': 'CNY' } } })
       expect(records.map(record => record.type)).not.toContain('approval/asked')
@@ -94,7 +93,7 @@ describe('@boat/tool-policy under boat run --driver boat (built bin, scripted mo
       expect(decided?.data).toMatchObject({ outcome: 'unavailable' })
       const toolResult = records.find(record => record.type === 'tool/result')
       expect(JSON.stringify(toolResult)).toContain('requires approval, but no approval channel is available')
-      expect(types).not.toContain('boat/state')
+      expect(JSON.stringify(toolResult)).not.toContain('stateDelta')
     } finally {
       await model.close()
     }

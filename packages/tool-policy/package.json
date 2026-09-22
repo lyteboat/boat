@@ -18,7 +18,7 @@
   "dependencies": {
     "@boat/contracts": "workspace:*",
     "@deepseek-ai/dsh-scope": "0.1.5-alpha.2",
-    "@deepseek-ai/schemastery": "*",
+    "@deepseek-ai/schemastery": "^3.18.2",
     "zod": "*"
   },
   "peerDependencies": {

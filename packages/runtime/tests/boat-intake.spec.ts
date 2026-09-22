@@ -54,9 +54,7 @@ describe('boat/intake', () => {
       return {
         kind: 'reply',
         plugin: 'test-gate',
-        reason: 'out-of-scope',
         content: [{ type: 'text', text: '不提供股票建议' }],
-        cards: [{ surfaceId: 'gate-card', payload: { kind: 'notice' } }],
       }
     })
     const agent = await ctx.agentLoop.create(SessionId('intake-reply'), { provider: 'mock', model: 'mock' })
@@ -65,16 +63,13 @@ describe('boat/intake', () => {
     expect(adapter.requests).toHaveLength(0)
     const events = agent.session.snapshotEvents()
     expect(typesOf(events)).toEqual([
-      'turn/start', 'step/start', 'system/message', 'user/message',
-      'boat/intake-decided', 'boat/card', 'assistant/message', 'step/end', 'turn/end',
+      'turn/start', 'step/start', 'system/message', 'user/message', 'assistant/message', 'step/end', 'turn/end',
     ])
     const turnEnd = events.at(-1) as SessionEvent<'turn/end'>
     expect(turnEnd.data.reason).toEqual({ kind: 'completed' })
     const reply = events.find((event): event is SessionEvent<'assistant/message'> => event.type === 'assistant/message')!
     expect(reply.data.message.source).toEqual({ kind: 'model', provider: BOAT_ASSISTANT_PROVIDER, model: 'test-gate' })
     expect(reply.data.stream).toEqual([])
-    const decided = events.find((event): event is SessionEvent<'boat/intake-decided'> => event.type === 'boat/intake-decided')!
-    expect(decided.data).toEqual({ turn: 1, step: 1, plugin: 'test-gate', reason: 'out-of-scope' })
     // An empty system head projects to no wire message, but it holds surface node 0.
     expect(agent.session.deriveMessages().map(message => message.role)).toEqual(['user', 'assistant'])
     expect(agent.session.eventAt(agent.session.surface.nodes[0]!)?.type).toBe('system/message')
@@ -90,13 +85,33 @@ describe('boat/intake', () => {
     expect(agent.session.eventAt(headSeq)?.type).toBe('system/message')
   })
 
+  it('replaces the empty head on an in-history route too: the first request of a session starts its series', async () => {
+    const adapter = new MockAdapter([textResponse('model answer')])
+    adapter.systemPromptUpdate = 'in-history'
+    const { ctx } = await harness(adapter)
+    ctx.on('boat/intake', async (payload, next): Promise<IntakeDecision> => {
+      const text = payload.messages.map(message => message.content.map(block => block.type === 'text' ? block.text : '').join('')).join('')
+      if (!/股票/u.test(text)) return next()
+      return { kind: 'reply', plugin: 'test-gate', content: [{ type: 'text', text: '不提供股票建议' }] }
+    })
+    const agent = await ctx.agentLoop.create(SessionId('intake-in-history'), { provider: 'mock', model: 'mock' })
+    await send(agent, '帮我买股票')
+    await send(agent, '看看资产配置')
+    const request = adapter.requests[0] as GenerateOptions
+    expect(request.messages.map(message => message.role)).toEqual(['system', 'user', 'assistant', 'user'])
+    const systemNodes = agent.session.snapshotEvents().filter(event => event.type === 'system/message')
+    expect(systemNodes).toHaveLength(2)
+    expect(systemNodes[1]?.surfaceOp).toEqual({ op: 'replace', startSeq: systemNodes[0]?.seq, endSeq: systemNodes[0]?.seq })
+  })
+
   it('passes by default and never fires under an unhandled step', async () => {
     const adapter = new MockAdapter([textResponse('ok')])
     const { ctx } = await harness(adapter)
     const agent = await ctx.agentLoop.create(SessionId('intake-pass'), { provider: 'mock', model: 'mock' })
     await send(agent, 'hello')
     expect(adapter.requests).toHaveLength(1)
-    expect(typesOf(agent.session.snapshotEvents())).not.toContain('boat/intake-decided')
+    const reply = agent.session.snapshotEvents().find((event): event is SessionEvent<'assistant/message'> => event.type === 'assistant/message')!
+    expect(reply.data.message.source).toEqual({ kind: 'model', provider: 'mock', model: 'mock' })
   })
 })
 

@@ -1,6 +1,6 @@
 /**
  * The tool policy at the driver's seams: visibility through restriction,
- * confirmation through `ask`, and state deltas through `boat/state`.
+ * confirmation through `ask`, and state deltas folded from `tool/result.meta`.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -15,6 +15,7 @@ import AgentLoop from '@boat/runtime'
 import * as AgentLoopInvariant from '@boat/runtime/invariant'
 import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
 import ToolPolicyService from '@boat/tool-policy'
+import * as ToolPolicyPreset from '@boat/tool-policy/preset'
 import { MockAdapter, textResponse, toolCallResponse } from '../../runtime/tests/mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
@@ -49,6 +50,11 @@ function echo(name: string): ToolDefinition {
   })
 }
 
+function errorMessage(turnEnd: SessionEvent<'turn/end'>): string {
+  const reason = turnEnd.data.reason as { kind: string; error?: { message: string } }
+  return reason.kind === 'error' ? reason.error?.message ?? '' : ''
+}
+
 function toolNames(adapter: MockAdapter, index: number): string[] {
   return (adapter.requests[index]?.tools ?? []).map(tool => tool.name)
 }
@@ -62,8 +68,6 @@ describe('visibility', () => {
     // Declared through the registrar path, registered by an ordinary row.
     ctx.tools.register(echo('official_tool'))
     ctx.toolPolicy.declare('official_tool', { visibility: 'auto' })
-    // Declared but registered nowhere: skipped, never a restrict() error.
-    ctx.toolPolicy.declare('phantom_tool', { visibility: 'auto' })
     let changes = 0
     ctx.on('tools/change', () => { changes += 1 })
     let activate: string[] = []
@@ -88,6 +92,29 @@ describe('visibility', () => {
     expect(ctx.toolPolicy.activated(agent)).toEqual(['auto_tool'])
     // Lifting the old restriction and issuing the new one: two notifications.
     expect(changes).toBe(3)
+  })
+
+  it('fails the step loudly for a declared name no row registered, instead of skipping it', async () => {
+    const adapter = new MockAdapter([textResponse('never')])
+    const ctx = await harness(adapter)
+    ctx.toolPolicy.declare('phantom_tool', { visibility: 'auto' })
+    const agent = await ctx.agentLoop.create(SessionId('phantom'), { provider: 'mock', model: 'mock' })
+    await send(agent, 'hello')
+    expect(adapter.requests).toHaveLength(0)
+    const turnEnd = agent.session.snapshotEvents().findLast(event => event.type === 'turn/end') as SessionEvent<'turn/end'>
+    expect(errorMessage(turnEnd)).toContain('declared tool "phantom_tool" registered by no row')
+  })
+
+  it('fails the step loudly for an auto tool in the agent\'s own layer, which restrict() cannot hide', async () => {
+    const adapter = new MockAdapter([textResponse('never')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('own-layer'), { provider: 'mock', model: 'mock' })
+    agent.ctx.tools.register(echo('own_tool'))
+    ctx.toolPolicy.declare('own_tool', { visibility: 'auto' })
+    await send(agent, 'hello')
+    expect(adapter.requests).toHaveLength(0)
+    const turnEnd = agent.session.snapshotEvents().findLast(event => event.type === 'turn/end') as SessionEvent<'turn/end'>
+    expect(errorMessage(turnEnd)).toContain('registered in agent "own-layer"\'s own layer')
   })
 
   it('activate() rejects undeclared names and takes effect at once; clear() hides again', async () => {
@@ -130,7 +157,7 @@ describe('confirmation', () => {
 })
 
 describe('state', () => {
-  it('appends boat/state from the result meta, folds it into boatState, and shows it to the model next step', async () => {
+  it('folds the result meta delta into boatState and shows it to the model next step, writing no boat node', async () => {
     const adapter = new MockAdapter([toolCallResponse('c1', 'lookup', {}), textResponse('done')])
     const ctx = await harness(adapter)
     ctx.toolPolicy.register(defineTool({
@@ -146,16 +173,25 @@ describe('state', () => {
 
     await send(agent, 'go')
     const events = agent.session.snapshotEvents()
-    const state = events.find((event): event is SessionEvent<'boat/state'> => event.type === 'boat/state')!
-    expect(state.data).toEqual({ callId: 'c1', delta: { 'portfolio.total': 5 } })
+    expect(events.map(event => event.type).filter(type => type.startsWith('boat/'))).toEqual([])
     const result = events.find((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')!
     expect(result.data.meta).toEqual({ card: 'own', boat: { stateDelta: { 'portfolio.total': 5 } } })
-    expect(events.indexOf(state)).toBeLessThan(events.indexOf(result))
     expect(ctx.sessionProjections.stateOf(agent.session, 'boatState')).toEqual({ portfolio: { total: 5 } })
     expect(ctx.sessionProjections.snapshot(agent.session).values['boatState']).toEqual({ portfolio: { total: 5 } })
     // The second request carries the runtime context with the state; the first had none.
     expect(JSON.stringify(adapter.requests[0]!.messages)).not.toContain('Session state')
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('Session state, accumulated from tool results')
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('portfolio')
+  })
+})
+
+describe('preset row', () => {
+  it('declares the configured policies in its scope and rejects a misspelt key instead of declaring nothing', async () => {
+    const adapter = new MockAdapter([textResponse('one')])
+    const ctx = await harness(adapter)
+    ctx.tools.register(echo('official_tool'))
+    await ctx.plugin(ToolPolicyPreset, { tools: { official_tool: { visibility: 'auto' } } })
+    expect(ctx.toolPolicy.metaOf('official_tool')).toEqual({ visibility: 'auto' })
+    await expect(ctx.plugin(ToolPolicyPreset, { tools: { official_tool: { visibilty: 'auto' } as never } })).rejects.toThrow(/unknown key "visibilty"/u)
   })
 })

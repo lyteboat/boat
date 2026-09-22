@@ -5,6 +5,15 @@
  * projection keys they publish. Declared here, by declaration merging onto
  * the dsh maps, so that providers and consumers depend on this package and
  * never on each other — the same rule dsh applies to its own seams.
+ *
+ * Session log vocabulary: dsh's persistence layer refuses to reopen a log
+ * that carries an event type outside its compiled catalog unless the event is
+ * marked `ignorable`, and `Session.append` cannot set that mark. Every boat
+ * fact therefore rides an envelope dsh already knows — `tool/result.meta`
+ * for cards and state deltas, the assistant message `source` for a reply's
+ * author — except the skill router's two nodes, which have no existing
+ * envelope and keep a routed session from reopening until dsh offers a
+ * write path for the mark.
  * @module @boat/contracts
  */
 
@@ -51,27 +60,30 @@ export interface BoatSkillMeta {
   tags?: string[]
 }
 
-/** One rendered A2UI card. */
+/** One rendered A2UI card, as `tool/result.meta.boat.card` carries it. */
 export interface BoatCard {
-  /** The tool call that produced the card; absent for cards an intake reply attached. */
-  callId?: string
+  /** The tool call that produced the card. */
+  callId: string
   surfaceId: string
   payload: JsonValue
 }
 
-/** An intake listener's verdict: let the step proceed, or answer without a model call. */
+/**
+ * An intake listener's verdict: let the step proceed, or answer without a
+ * model call. The reply is logged as an ordinary assistant message whose
+ * `source` is `{ provider: 'boat', model: plugin }`; no other node records it.
+ */
 export interface IntakeReply {
   kind: 'reply'
-  /** The deciding plugin; recorded as the assistant message's `model` and in `boat/intake-decided`. */
+  /** The deciding plugin; recorded as the assistant message's `model`. */
   plugin: string
-  content: ContentBlock[]
-  reason?: string
-  cards?: BoatCard[]
+  /** The reply's blocks. A tool call cannot be replied: nothing would execute it. */
+  content: Exclude<ContentBlock, { type: 'tool-call' }>[]
 }
 
 export type IntakeDecision = { kind: 'pass' } | IntakeReply
 
-/** The `boatState` projection value: tool state accumulated by dot-path deep merge of `boat/state` deltas. */
+/** The `boatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.boat.stateDelta`. */
 export type BoatStateValue = { [key: string]: JsonValue }
 
 /** Payload of the boat driver's pre-assembly events. */
@@ -88,10 +100,12 @@ declare module '@deepseek-ai/cordis' {
   interface Events {
     /**
      * Intake gate, dispatched by the boat driver after the inbox claim and
-     * before prompt assembly. A `reply` answers the claimed messages with a
-     * fixed assistant message and closes the turn without a model request.
-     * The default `next()` passes. Scope-filtered: agent-scoped listeners
-     * receive only their agent. Never dispatched by the official driver.
+     * before prompt assembly, so before (and, on a reply, instead of)
+     * `agent/pre-step`. A `reply` answers the claimed messages with a fixed
+     * assistant message inside one step without a model request; the turn
+     * then ends unless next-step input is already queued. The default
+     * `next()` passes. Scope-filtered: agent-scoped listeners receive only
+     * their agent. Never dispatched by the official driver.
      * @mode waterfall
      */
     'boat/intake'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<IntakeDecision>): Promise<IntakeDecision>
@@ -108,13 +122,13 @@ declare module '@deepseek-ai/cordis' {
 
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
-    /** An intake listener answered the step without a model call. */
-    'boat/intake-decided': { turn: number; step: number; plugin: string; reason?: string }
-    /** A rendered card outside a tool result (intake replies); tool cards ride `tool/result.meta`. */
-    'boat/card': { turn: number; step: number; callId?: string; surfaceId: string; payload: JsonValue }
-    /** The skill router's decision for a turn, or a model-initiated activation. */
+    /**
+     * The skill router's decision for a turn, or a model-initiated activation.
+     * Written before the step's `system/message`; the `boatActiveSkill`
+     * projection and the `boat:skill` runtime context derive from it.
+     */
     'boat/skill-routed': { turn: number; skill: string | null; reason: string; source: 'router' | 'model' }
-    /** Audit record of one router model call. */
+    /** Audit record of one router model call, written before the `boat/skill-routed` it may lead to. */
     'boat/route-request': {
       turn: number
       route: { provider: string; model: string }
@@ -123,23 +137,17 @@ declare module '@deepseek-ai/dsh-session/types' {
       reason: string
       durationMs: number
     }
-    /** A tool result's state delta, folded into the `boatState` projection. */
-    'boat/state': { callId: string; delta: JsonValue }
-    /** External history rounds imported as this session's seed. */
-    'boat/history-imported': { source: string; traceIds: string[]; rounds: number }
   }
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
-    /** Session tool state (host fold), owned by `@boat/tool-policy`. */
+    /** Session tool state (host fold of `tool/result.meta.boat.stateDelta`), owned by `@boat/tool-policy`. */
     boatState: BoatStateValue
     /** The skill active for the session (the last `boat/skill-routed`), owned by `@boat/skill-router`; null before routing. */
     boatActiveSkill: string | null
-    /** Cards from `tool/result.meta.boat.card` and `boat/card` nodes, in log order; a `surfaceUpdate` replaces its surface. Owned by `@boat/a2ui`. */
+    /** Cards from `tool/result.meta.boat.card`, in log order; a `surfaceUpdate` replaces its surface. Owned by `@boat/a2ui`. */
     boatCards: BoatCard[]
-    /** Trace ids of every round `boat/history-imported` recorded, in log order. Owned by `@boat/history-import`. */
-    boatImportedTraces: string[]
   }
   interface SessionProjectionMap {
     /** Session tool state as the client sees it: the fold state itself. */
@@ -148,7 +156,5 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     boatActiveSkill: string | null
     /** Every card rendered in the session, as the client sees it. */
     boatCards: BoatCard[]
-    /** The trace ids of every imported history round, as the client sees it. */
-    boatImportedTraces: string[]
   }
 }

@@ -35,7 +35,7 @@
     "@deepseek-ai/dsh-cmdline": "0.1.5-alpha.2",
     "@deepseek-ai/dsh-code-runtime-worker-thread": "0.1.5-alpha.2",
     "@deepseek-ai/dsh-util-values": "0.1.5-alpha.2",
-    "@deepseek-ai/schemastery": "*",
+    "@deepseek-ai/schemastery": "^3.18.2",
     "commander": "^15.0.0"
   },
   "peerDependencies": {

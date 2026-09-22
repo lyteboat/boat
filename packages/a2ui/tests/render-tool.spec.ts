@@ -1,7 +1,7 @@
 /**
  * The render tool at the driver's seams: raw data from boatState, the card on
- * tool/result.meta, the boatCards projection (tool results, boat/card nodes,
- * surfaceUpdate replacement), the digest as model text, terminal cards.
+ * tool/result.meta, the boatCards projection (tool results, surfaceUpdate
+ * replacement), the digest as model text, terminal cards.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -19,10 +19,11 @@ import * as AgentLoopInvariant from '@boat/runtime/invariant'
 import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
 import ToolPolicyService from '@boat/tool-policy'
 import A2uiService, { boatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@boat/a2ui'
-import type { BoatCard, IntakeDecision, JsonValue } from '@boat/contracts'
+import type { BoatCard, JsonValue } from '@boat/contracts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../runtime/tests/mock-adapter.ts'
 
 const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
+const VARIANTS = fileURLToPath(new URL('./fixtures/templates-variants', import.meta.url))
 const FULL = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/baseline/asset_overview-full.json', import.meta.url)), 'utf8')) as {
   raw: Record<string, unknown>; payload: Record<string, unknown>; digest: string
 }
@@ -130,18 +131,6 @@ describe('render_a2ui', () => {
     expect(cards[0]).toMatchObject({ callId: 'c2', surfaceId: 'auth-card' })
   })
 
-  it('folds boat/card nodes from intake replies into the same projection', async () => {
-    const adapter = new MockAdapter([])
-    const ctx = await harness(adapter)
-    ctx.on('boat/intake', async (): Promise<IntakeDecision> => ({
-      kind: 'reply', plugin: 'gate', content: [{ type: 'text', text: '先授权' }],
-      cards: [{ surfaceId: 'gate-card', payload: { event: 'beginRendering', rootComponentId: 'r', components: [] } }],
-    }))
-    const agent = await ctx.agentLoop.create(SessionId('intake-card'), { provider: 'mock', model: 'mock' })
-    await send(agent, '炒股')
-    expect(ctx.a2ui.cardsOf(agent)).toEqual([{ surfaceId: 'gate-card', payload: { event: 'beginRendering', rootComponentId: 'r', components: [] } }])
-  })
-
   it('rejects an unknown card and reports it as a tool error', async () => {
     const adapter = new MockAdapter([toolCallResponse('c1', 'render_a2ui', { template: 'nope' }), textResponse('done')])
     const ctx = await harness(adapter)
@@ -151,6 +140,64 @@ describe('render_a2ui', () => {
     // The registry validated the enum before execution; either way the model sees an error, no card.
     expect(JSON.stringify(first!.data.message.content[0])).toContain('"isError":true')
     expect(ctx.a2ui.cardsOf(agent)).toEqual([])
+  })
+})
+
+describe('render_a2ui over cards with arguments and hierarchies', () => {
+  async function variants(adapter: MockAdapter): Promise<Context> {
+    const ctx = await harness(adapter)
+    await ctx.a2ui.registerRenderTool({ templates: VARIANTS, name: 'render_variant', stateKeys: ['yl_assets'] })
+    await ctx.a2ui.registerRenderTool({ templates: VARIANTS, name: 'render_strict', validation: 'enforce' })
+    return ctx
+  }
+
+  const card = (event: SessionEvent<'tool/result'>): Record<string, unknown> =>
+    (event.data.meta as unknown as { boat: { card: BoatCard } }).boat.card.payload as Record<string, unknown>
+  const componentIds = (payload: Record<string, unknown>): string[] => (payload['components'] as { id: string }[]).map(component => component.id)
+  const textOf = (payload: Record<string, unknown>, id: string): unknown =>
+    ((payload['components'] as { id: string; component: { Text?: { text?: unknown } } }[]).find(component => component.id === id)?.component.Text?.text)
+
+  it('exposes the hierarchy enum and the argument summary, and renders the chosen variant from template_args', async () => {
+    const adapter = new MockAdapter([
+      toolCallResponse('c1', 'render_variant', { template: 'bucket_detail', template_args: '{"bucket":"稳健"}', business_hierarchy: 'full' }),
+      toolCallResponse('c2', 'render_variant', { template: 'bucket_detail' }),
+      textResponse('done'),
+    ])
+    const ctx = await variants(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('variants'), { provider: 'mock', model: 'mock' })
+    await send(agent, '看看稳健')
+
+    const tool = ((adapter.requests[0] as GenerateOptions).tools ?? []).find(candidate => candidate.name === 'render_variant')!
+    const parameters = JSON.stringify(tool.parameters)
+    expect(parameters).toContain('"enum":["brief","full"]')
+    expect(parameters).toContain('bucket_detail: bucket(必填)')
+
+    const [full, brief] = results(agent)
+    // The walker emits children before their parent.
+    expect(componentIds(card(full!))).toEqual(['title', 'detail', 'root'])
+    expect(textOf(card(full!), 'title')).toEqual({ literalString: '稳健' })
+    expect(JSON.stringify(full!.data.message.content[0])).toContain('[卡片:bucket] 稳健')
+    // No arguments: the default hierarchy and the manifest default, the card still renders.
+    expect(componentIds(card(brief!))).toEqual(['title', 'root'])
+    expect(textOf(card(brief!), 'title')).toEqual({ literalString: '未指定' })
+  })
+
+  it('records a contract violation as a warning by default and fails the call under enforce', async () => {
+    const adapter = new MockAdapter([
+      toolCallResponse('c1', 'render_variant', { template: 'broken_binding' }),
+      toolCallResponse('c2', 'render_strict', { template: 'broken_binding' }),
+      textResponse('done'),
+    ])
+    const ctx = await variants(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('enforce'), { provider: 'mock', model: 'mock' })
+    await send(agent, '坏卡')
+    const [warned, enforced] = results(agent)
+    const meta = warned!.data.meta as unknown as { a2ui: { warnings: string[] } }
+    expect(meta.a2ui.warnings).toEqual([expect.stringContaining("[A2UI_BINDING_XOR] Component 'empty-text' field 'text'")])
+    expect(ctx.a2ui.cardsOf(agent)).toHaveLength(1)
+    const failure = JSON.stringify(enforced!.data.message.content[0])
+    expect(failure).toContain('"isError":true')
+    expect(failure).toContain('A2UI contract invalid: [A2UI_BINDING_XOR]')
   })
 })
 

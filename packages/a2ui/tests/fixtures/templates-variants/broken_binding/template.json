@@ -1,0 +1,10 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "broken-binding",
+  "rootComponentId": "root",
+  "components": [
+    { "id": "root", "component": { "Column": { "children": { "explicitList": ["empty-text"] } } } },
+    { "id": "empty-text", "component": { "Text": { "text": { "literalString": "" } } } }
+  ]
+}

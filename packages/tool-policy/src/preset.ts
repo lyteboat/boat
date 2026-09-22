@@ -46,13 +46,20 @@ export const Config: z<Config> = z.object({
   })).required(),
 })
 
+const POLICY_KEYS = new Set(['visibility', 'group', 'requiresConfirmation'])
+
 /**
  * Declare every configured policy in the calling scope.
  * @param ctx - the row's context (the preset's standing scope when mounted by agent-presets).
  * @param config - validated tool policies.
+ * @throws on a key no policy has: schemastery passes unknown keys through, and a misspelt one must not silently declare nothing.
  */
 export function apply(ctx: Context, config: Config): void {
   for (const [toolName, policy] of Object.entries(config.tools)) {
+    const unknown = Object.keys(policy).filter(key => !POLICY_KEYS.has(key))
+    if (unknown.length > 0) {
+      throw new Error(`boat tool policy preset: tool "${toolName}" has unknown key${unknown.length > 1 ? 's' : ''} ${unknown.map(key => JSON.stringify(key)).join(', ')}; allowed: ${[...POLICY_KEYS].join(', ')}`)
+    }
     const meta: BoatToolMeta = {
       ...policy.visibility === undefined ? {} : { visibility: policy.visibility },
       ...policy.group === undefined ? {} : { group: policy.group },

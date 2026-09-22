@@ -1,0 +1,11 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "bucket-detail",
+  "rootComponentId": "root",
+  "components": [
+    { "id": "root", "component": { "Column": { "children": { "explicitList": ["title", "detail"] } } } },
+    { "id": "title", "component": { "Text": { "text": { "path": "title" } } } },
+    { "id": "detail", "component": { "Text": { "text": { "path": "detail" } } } }
+  ]
+}

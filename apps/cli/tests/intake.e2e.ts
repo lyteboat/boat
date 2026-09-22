@@ -53,7 +53,7 @@ describe('boat run --plugin examples/intake-gate (built bin, mock model)', () =>
     // The session-title plugin's fallback title lands wherever its listener runs; it is not part of the turn's shape.
     const turn = types.slice(types.indexOf('turn/start')).filter(type => !type.startsWith('agent/inbox/') && !type.startsWith('session/title'))
     expect(turn).toEqual([
-      'turn/start', 'step/start', 'system/message', 'user/message', 'boat/intake-decided', 'assistant/message', 'step/end', 'turn/end',
+      'turn/start', 'step/start', 'system/message', 'user/message', 'assistant/message', 'step/end', 'turn/end',
     ])
   })
 

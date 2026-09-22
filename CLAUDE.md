@@ -15,13 +15,13 @@ apps/cli/                 @boat/cli — the `boat` launcher: profile templates, 
 packages/
   cordis-compat/          @boat/cordis-compat — runtime values for const enums the published cordis build erases
   contracts/              @boat/contracts — boat's declarations over the dsh seams: tool/skill metadata, boat/* events, log nodes, projection keys
-  runtime/                @boat/runtime — the boat driver, a fork of dsh-agent-loop (UPSTREAM.md, three boat hunks in src/agent.ts)
+  runtime/                @boat/runtime — the boat driver, a fork of dsh-agent-loop (UPSTREAM.md lists every boat change)
   runtime-testkit/        @boat/runtime-testkit — fork of agent-loop-testkit; the harness every plugin unit test mounts
   run/                    @boat/run — the one-shot bundle behind `boat run` (cordis.patch.yml, startup flags, the runner)
   tool-policy/            @boat/tool-policy — visibility always/auto + activation, confirmation, state deltas → boatState projection
   skill-router/           @boat/skill-router — skill load modes full/dynamic, ark's LLM router, boatActiveSkill projection
   a2ui/                   @boat/a2ui — ark's A2UI template engine, the render_a2ui tool, boatCards projection
-  history-import/         @boat/history-import — SA history → session seed; boatImportedTraces projection
+  history-import/         @boat/history-import — SA history → session seed of closed turns
 agents/
   demo/                   @boat/agent-demo — a preset directory: preset.yml, agent.cordis.yml, skills/, a2ui/, fixtures/, src/ → lib/
 examples/                 runnable plugin files for `boat run --plugin <file>`; each directory is its own private package
@@ -48,10 +48,10 @@ Hard rules:
 
 - **contracts is the only shared declaration home.** A new event, log node, projection key, or metadata field is declared once in `@boat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
 - **Plugins sit on dsh seams; they do not re-implement them.** Tools go through `ctx.tools`, skills through `ctx.skills`, model calls through `ctx.llm`, state through `ctx.sessionProjections`, prompt text through `ctx.systemPrompt`, confirmation through the approval seam. If a seam is missing, first check whether dsh already has one under a different name.
-- **The driver fork carries exactly three boat hunks** (`packages/runtime/src/agent.ts`: the `boat/intake` waterfall after the inbox claim, the `boat/pre-assemble` waterfall before assembly, and `replyStep`). Everything else in `packages/runtime` and `packages/runtime-testkit` is upstream verbatim after the identity rewrites in `scripts/sync-upstream.ts`. New behavior is a plugin on those two events or on a dsh event; adding a fourth hunk is a design decision, not a code change, and needs the design document updated first.
+- **The driver fork carries exactly the boat changes `packages/runtime/UPSTREAM.md` lists** (in `src/agent.ts`: the `boat/intake` waterfall after the inbox claim, the `boat/pre-assemble` waterfall before assembly, `replyStep`, and the first-request series start). Everything else in `packages/runtime` and `packages/runtime-testkit` is upstream verbatim after the identity rewrites in `scripts/sync-upstream.ts`. New behavior is a plugin on those two events or on a dsh event; another change to the fork is a design decision, not a code change: it needs the design document updated first and its line in UPSTREAM.md in the same commit.
 - **Composition is data.** `packages/run/cordis.patch.yml` is the host composition; `agents/<id>/agent.cordis.yml` is the per-preset composition. Host rows publish services (`@boat/tool-policy`, `@boat/skill-router`, `@boat/a2ui`, `@boat/history-import`); preset rows declare policy against them (`@boat/tool-policy/preset`, `@boat/skill-router/preset`, `@boat/a2ui/preset`, `./lib/x.js`). A preset row must never publish a service into the root realm.
 - **Framework packages stay domain-neutral.** `packages/*` know no business vocabulary; asset buckets, personas, and Chinese product copy live under `agents/*`. Strings ported from ark for golden fidelity (error messages, digest formats) are allowed inside `a2ui` and say so in a comment.
-- **Model-visible ⟺ logged** (dsh rule, boat inherits it). Anything that reaches a model request is reconstructable from the session log. boat's own additions (`boat/state`, `boat/skill-routed`, `boat/card`, `boat/intake-decided`, `boat/history-imported`, `boat/route-request`) exist for that reason; a new model-visible input requires a new node in contracts.
+- **Model-visible ⟺ logged** (dsh rule, boat inherits it). Anything that reaches a model request is reconstructable from the session log. boat's facts ride dsh envelopes (`tool/result.meta.boat.{card,stateDelta}`, the assistant `source` of a reply); only the skill router's `boat/skill-routed` and `boat/route-request` are boat's own nodes, and a new model-visible input needs the same treatment: an existing envelope first, a new node in contracts only with the persist-and-reopen proof below.
 - **A new session event type is proven reopenable before it ships.** dsh's persistence layer refuses a stored log that carries an event type outside its compiled catalog unless the event is marked `ignorable`, and `Session.append` offers no way to set that mark today, so every `boat/*` node currently makes its session unreadable by `boat web` and by resume. Prefer folding a fact into an existing envelope (`tool/result.meta`, the assistant message `source`) over a new node; a new node needs a persist-and-reopen test and an upstream path for the mark, and the design document records both.
 - **Registrations are effects.** Every contribution goes through `ctx.effect()` / `ctx.on()` / a registry `register()` that returns the disposer, so an agent scope or a plugin unload leaves nothing behind. Per-agent state lives in a `WeakMap<Agent, …>` or behind the agent scope's disposer, never in a module-level map that outlives the agent.
 - **Waterfall listeners MUST call `next()`.** `boat/intake`, `boat/pre-assemble`, `tools/pre-execute`, `tools/post-execute` are waterfalls; returning without `next()` short-circuits every listener behind you. Choose the side of `next()` deliberately: work that must be visible to later listeners in the same step runs before `await next()`, reconciliation runs after.
@@ -114,14 +114,14 @@ boat is delivered one runnable milestone at a time (§9 of the design document),
 
 - **Required**: remove imports, helpers, config fields, and events your change orphaned; keep `README.md`'s package table and status in step with the code in the same commit.
 - **Allowed**: dead-code removal limited to files you already edit, provably unreferenced, not a public export.
-- **Forbidden**: drive-by renames or reformatting, refactors of working code outside the task, edits to `packages/runtime` beyond the three hunks, lint fixes in untouched files, changes to `data/`, `.env*`, `.github/`, `dsh.upstream.json`, or `.pnpmfile.cjs` without an explicit instruction.
+- **Forbidden**: drive-by renames or reformatting, refactors of working code outside the task, edits to `packages/runtime` beyond what UPSTREAM.md lists, lint fixes in untouched files, changes to `data/`, `.env*`, `.github/`, `dsh.upstream.json`, or `.pnpmfile.cjs` without an explicit instruction.
 
 ### Done criteria
 
 Run only the gates the change can affect, and report only the commands you ran.
 
 1. Touched `src/` or `tests/`? `pnpm run check` (lint + build + full vitest run, unit and e2e) passes. `pnpm run test:unit` is the fast loop while iterating.
-2. Touched types or a `tsconfig.json`? `pnpm run typecheck` and `npx tsc -p tsconfig.tests.json --noEmit` introduce no new errors.
+2. Touched types or a `tsconfig.json`? `pnpm run typecheck` (sources and tests) introduces no new errors.
 3. Tests for the new code match the [test table](#testing).
 4. Touched anything a user runs (CLI flags, `cordis.patch.yml`, a preset, an example)? Run it once from the built binary (`node apps/cli/lib/bin.js …`) with the scripted model or a real key, and paste the command in the commit or PR.
 5. Touched a fork file? `git diff` against the re-synced upstream shows only the boat hunks.
@@ -139,7 +139,7 @@ Run only the gates the change can affect, and report only the commands you ran.
 
 Conventions:
 
-- **Tests are type-checked, not only transpiled.** `tsc -b` covers `src/` only and vitest strips types, so a change to `tests/` runs `npx tsc -p tsconfig.tests.json --noEmit` before it is pushed until that command is part of `pnpm run typecheck`.
+- **Tests are type-checked, not only transpiled.** `tsc -b` covers `src/` only and vitest strips types, so `pnpm run typecheck` also runs `tsc -p tsconfig.tests.json`; CI runs it.
 - **Tests describe behavior, not implementation.** Name them `test('<subject> <does what> when <condition>')`; assert on session-log nodes, projection state, the model request the scripted server recorded, or the tool result, never on private fields.
 - **Mock the boundary, not the unit.** The model (`MockAdapter` in unit tests, the scripted OpenAI-compatible server in e2e), the filesystem for skills and templates (fixtures under `tests/fixtures`), the clock when ordering matters. Never mock a boat service to test another boat service; mount both.
 - **Unit harness** (`packages/runtime-testkit`): `new Context()` + invariant registry + `mountAgentLoopTestDependencies(ctx)` + `ctx.plugin(AgentLoop, { agents: [] })` + the boat services under test + `ctx.llm.registerAdapter(['mock'], adapter)`. Router requests are recognized by their system text, never by call order.
@@ -153,7 +153,7 @@ Conventions:
 - If the designated branch's PR is already merged, restart the branch from `origin/master` and treat the work as a new change.
 - One focused fix attempt on a failing new test. Still failing → mark ⚠️ partial, skip the test with a reason, and say so in the commit and the design document.
 - State assumptions in the commit message and the PR description instead of guessing silently; never create a PR unless asked.
-- Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or `packages/runtime` outside the three hunks without explicit instruction.
+- Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or `packages/runtime` beyond what UPSTREAM.md lists without explicit instruction.
 - Commit messages: `<milestone-step>: <package> — <what it delivers>` for milestone work (`M2-3: @boat/tool-policy — …`), conventional `fix:` / `chore:` / `docs:` otherwise, followed by a body that states what runs now and what was accepted. End with the attribution trailers the session provides.
 - Never put a model identifier in a commit, PR, code comment, or file.
 
@@ -182,8 +182,7 @@ Read `docs/agent_design_principles.md` in ark-agentic before designing, reviewin
 | Install | `pnpm install` (CI uses `--frozen-lockfile`) |
 | Build | `pnpm run build` (`tsc -b`; emits every package's `lib/`) |
 | Lint | `pnpm run lint` |
-| Typecheck sources | `pnpm run typecheck` |
-| Typecheck tests | `npx tsc -p tsconfig.tests.json --noEmit` |
+| Typecheck sources and tests | `pnpm run typecheck` |
 | Unit tests (fast loop) | `pnpm run test:unit` |
 | All tests (unit + e2e, builds first) | `pnpm run test` |
 | Everything CI runs | `pnpm run check` |

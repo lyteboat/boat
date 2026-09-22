@@ -322,7 +322,9 @@ export class ReactLoopAgent implements Agent {
           } finally {
             this.session.append('step/end', { turn, step })
           }
-          turnEnds = { kind: 'completed' }
+          // max-tokens stays sticky here too: a reply to steering queued after
+          // a truncated step must not report the turn as completed.
+          if (turnEnds === null || turnEnds.kind !== 'max-tokens') turnEnds = { kind: 'completed' }
           signal.throwIfAborted()
           if (this.inbox.nextStep.length === 0) {
             await this.dispatch.serial('agent/turn-stopping', { turn, signal })
@@ -403,7 +405,9 @@ export class ReactLoopAgent implements Agent {
    * appended first when none exists, so the next real step's prompt replaces
    * node 0 instead of trailing the history; the claimed messages are admitted
    * as they would be on a model step; the reply is an assistant message whose
-   * provider is boat and whose model names the deciding plugin.
+   * provider is boat and whose model names the deciding plugin. No other node
+   * records the reply: dsh's persistence refuses logs with event types it does
+   * not know, and `append` cannot mark one ignorable.
    */
   private replyStep(turn: number, step: number, decision: Extract<PreparedStep, { kind: 'reply' }>): void {
     if (!this.hasSystemNode()) {
@@ -417,15 +421,6 @@ export class ReactLoopAgent implements Agent {
       this.session.append('user/message', message, { surfaceOp: 'append' })
     }
     const { reply } = decision
-    this.session.append('boat/intake-decided', {
-      turn, step, plugin: reply.plugin, ...reply.reason === undefined ? {} : { reason: reply.reason },
-    })
-    for (const card of reply.cards ?? []) {
-      this.session.append('boat/card', {
-        turn, step, surfaceId: card.surfaceId, payload: card.payload,
-        ...card.callId === undefined ? {} : { callId: card.callId },
-      })
-    }
     this.session.append('assistant/message', {
       turn,
       step,
@@ -449,9 +444,13 @@ export class ReactLoopAgent implements Agent {
     while (true) {
       const { config, preparedCall } = await this.prepareRequest(turn, step, signal)
       const startsRequestSeries = firstAttempt && decision.startsRequestSeries === true
+      // boat: before the first request there is no series to continue, so an
+      // empty head left by a reply step or a history seed is replaced on
+      // every route; upstream only ever meets a head it wrote itself.
       const commits = this.systemPrompt.project(renderedPrompt, {
         inHistory: preparedCall?.systemPromptUpdate === 'in-history',
         startsSeries: startsRequestSeries
+          || this.session.requestHeader() === undefined
           || this.requestSurfaceGeneration !== this.session.surface.replaceGeneration
           || this.toolsChanged(assembly.tools),
       })

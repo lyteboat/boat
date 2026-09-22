@@ -30,6 +30,10 @@ pnpm run check                                            # lint + build + tests
 
 Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSEEK_BASE_URL`) in the environment or in `$BOAT_HOME/.env`. All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports that directory as `DSH_HOME` to the dsh packages before any of them load, so a user's own `~/.dsh` is never touched.
 
+## Session logs
+
+Everything boat records rides an envelope dsh already knows: a card and a state delta sit on `tool/result.meta.boat`, an intake reply is an assistant message whose `source` is `{ provider: 'boat', model: <plugin> }`, and imported history is closed turns of ordinary nodes. Those sessions reopen under dsh's own persistence (`apps/cli/tests/reopen.e2e.ts` proves it). The skill router's `boat/skill-routed` and `boat/route-request` have no dsh envelope yet, so a session that routed a skill is refused by dsh's persistence until dsh offers a write path for the envelope's `ignorable` mark; the same test pins that limitation.
+
 ## Layout
 
 | Path | Package | Role |
@@ -40,7 +44,7 @@ Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSE
 | `packages/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./preset` declares policy from a composition file |
 | `packages/skill-router` | `@boat/skill-router` | skill load modes and LLM routing over the dsh skill registry; `./preset` declares the mode from a composition file |
 | `packages/a2ui` | `@boat/a2ui` | the A2UI template engine (ark's template mode), `render_a2ui`, and the `boatCards` projection; `./preset` composes the tool from a composition file |
-| `packages/history-import` | `@boat/history-import` | SA history parsing and the session seed behind `boat run --history`; the `boatImportedTraces` projection |
+| `packages/history-import` | `@boat/history-import` | SA history parsing and the session seed behind `boat run --history` |
 | `agents/demo` | `@boat/agent-demo` | the demo agent preset: `preset.yml`, `agent.cordis.yml`, `skills/`, `a2ui/`, `fixtures/personas/`, `src/` compiled to `lib/` |
 | `packages/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
 | `packages/runtime` | `@boat/runtime` | the boat agent driver (fork of dsh-agent-loop, see `packages/runtime/UPSTREAM.md`) |
