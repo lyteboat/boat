@@ -26,6 +26,7 @@
     }
   },
   "dependencies": {
+    "@boat/skill-router": "workspace:*",
     "@boat/tool-policy": "workspace:*",
     "@deepseek-ai/dsh-agent-presets": "0.1.5-alpha.2",
     "@deepseek-ai/dsh-brand": "0.1.5-alpha.2",

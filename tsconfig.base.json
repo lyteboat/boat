@@ -46,6 +46,12 @@
       "@boat/runtime/invariant": [
         "./packages/runtime/src/invariant.ts"
       ],
+      "@boat/skill-router": [
+        "./packages/skill-router/src/index.ts"
+      ],
+      "@boat/skill-router/preset": [
+        "./packages/skill-router/src/preset.ts"
+      ],
       "@boat/tool-policy": [
         "./packages/tool-policy/src/index.ts"
       ],

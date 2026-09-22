@@ -18,6 +18,9 @@
       "path": "./packages/tool-policy"
     },
     {
+      "path": "./packages/skill-router"
+    },
+    {
       "path": "./packages/run"
     },
     {
