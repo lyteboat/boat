@@ -11,7 +11,9 @@ import type { Session, SessionEvent, SessionSeq, SurfaceIntent, SystemMessage, U
 import { isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
 import type { Context } from '@deepseek-ai/cordis'
 
-const SOURCE = '@deepseek-ai/dsh-system-prompt'
+/** The plugin every loop-owned system node is attributed to (the system-prompt seam's name). */
+export const SYSTEM_PROMPT_SOURCE = '@deepseek-ai/dsh-system-prompt'
+const SOURCE = SYSTEM_PROMPT_SOURCE
 const CLEARED = 'Current runtime context: none. Earlier runtime-context snapshots no longer apply.'
 
 function isOwned(message: UserMessage): boolean {

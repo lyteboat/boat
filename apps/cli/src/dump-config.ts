@@ -51,7 +51,7 @@ export function runDumpConfig(
       const absolute = resolve(file)
       layers.push({ label: absolute, patches: loadOverlayPatches(NAME, absolute) })
     }
-    if (launcherOverlays.length > 0) layers.push({ label: 'launcher: --driver', patches: [...launcherOverlays] })
+    if (launcherOverlays.length > 0) layers.push({ label: 'launcher: --driver / --plugin', patches: [...launcherOverlays] })
   }
   process.stdout.write(renderConfigDump(NAME, join(loaded.dir, PROFILE_ROOT_FILENAME), layers))
 }

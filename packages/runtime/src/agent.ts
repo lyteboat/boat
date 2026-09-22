@@ -20,6 +20,7 @@ import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@
 import {
   LlmError,
   createAssistantMessage,
+  createSystemMessage,
   errorChain,
   markAgentLoopRequest,
 } from '@deepseek-ai/dsh-llm'
@@ -32,8 +33,10 @@ import { joinContextSections, renderContextSections, renderPrompt } from '@deeps
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
+import { BOAT_ASSISTANT_PROVIDER } from '@boat/contracts'
+import type { IntakeDecision, IntakeReply } from '@boat/contracts'
 import { ReactLoopInbox } from './inbox.ts'
-import { RuntimeContextProjection } from './runtime-context.ts'
+import { RuntimeContextProjection, SYSTEM_PROMPT_SOURCE } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
 import { SystemPromptProjection } from './runtime-context.ts'
 import { executeToolCalls } from './tool-calls.ts'
@@ -52,6 +55,8 @@ type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }
 
 type PreparedStep =
   | { kind: 'reject' }
+  // boat: an intake listener answered the claimed messages without a model call.
+  | { kind: 'reply'; messages: UserMessage[]; reply: IntakeReply }
   | {
     kind: 'enter'
     messages: UserMessage[]
@@ -242,6 +247,20 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
+    // boat: the intake gate and the pre-assembly hook run before the prompt is
+    // assembled, so a reply spends no assembly and routing done here shapes
+    // this very step's request. Neither event exists under the official driver.
+    const intake = await this.dispatch.waterfall(
+      'boat/intake', { messages: claimed, ...position, signal },
+      (): Promise<IntakeDecision> => Promise.resolve<IntakeDecision>({ kind: 'pass' }),
+    )
+    signal.throwIfAborted()
+    if (intake.kind === 'reply') return { kind: 'reply', messages: claimed, reply: intake }
+    await this.dispatch.waterfall(
+      'boat/pre-assemble', { messages: claimed, ...position, signal },
+      (): Promise<void> => Promise.resolve(),
+    )
+    signal.throwIfAborted()
     const assembly = await this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))
     signal.throwIfAborted()
     const sections = renderContextSections(assembly)
@@ -290,6 +309,28 @@ export class ReactLoopAgent implements Agent {
         if (decision.kind === 'reject') {
           turnEnds = { kind: 'blocked' }
           return false
+        }
+        if (decision.kind === 'reply') {
+          // boat: a fixed reply is one step without a request: the claimed
+          // messages and the reply land in the log inside an open step so the
+          // invariants and token accounting see an ordinary shape.
+          signal.throwIfAborted()
+          this.session.append('step/start', { turn, step })
+          phase.step = step
+          try {
+            this.replyStep(turn, step, decision)
+          } finally {
+            this.session.append('step/end', { turn, step })
+          }
+          turnEnds = { kind: 'completed' }
+          signal.throwIfAborted()
+          if (this.inbox.nextStep.length === 0) {
+            await this.dispatch.serial('agent/turn-stopping', { turn, signal })
+            signal.throwIfAborted()
+          }
+          if (this.inbox.nextStep.length === 0) break
+          target = 'next-step'
+          continue
         }
         if (turnEnds && decision.messages.length === 0) break
         // A removed waking message or an enter decision rewritten to empty
@@ -347,6 +388,53 @@ export class ReactLoopAgent implements Agent {
     phase.wakeRequested = false
     phase.step = 0
     return true
+  }
+
+  /** Whether the surface already holds a system node (surface node 0 is reserved for the prompt). */
+  private hasSystemNode(): boolean {
+    for (const seq of this.session.surface.nodes) {
+      if (this.session.eventAt(seq)?.type === 'system/message') return true
+    }
+    return false
+  }
+
+  /**
+   * boat: commit an intake reply inside the open step. An empty system head is
+   * appended first when none exists, so the next real step's prompt replaces
+   * node 0 instead of trailing the history; the claimed messages are admitted
+   * as they would be on a model step; the reply is an assistant message whose
+   * provider is boat and whose model names the deciding plugin.
+   */
+  private replyStep(turn: number, step: number, decision: Extract<PreparedStep, { kind: 'reply' }>): void {
+    if (!this.hasSystemNode()) {
+      this.session.append(
+        'system/message',
+        { turn, step, message: createSystemMessage('', SYSTEM_PROMPT_SOURCE) },
+        { surfaceOp: 'append' },
+      )
+    }
+    for (const message of decision.messages) {
+      this.session.append('user/message', message, { surfaceOp: 'append' })
+    }
+    const { reply } = decision
+    this.session.append('boat/intake-decided', {
+      turn, step, plugin: reply.plugin, ...reply.reason === undefined ? {} : { reason: reply.reason },
+    })
+    for (const card of reply.cards ?? []) {
+      this.session.append('boat/card', {
+        turn, step, surfaceId: card.surfaceId, payload: card.payload,
+        ...card.callId === undefined ? {} : { callId: card.callId },
+      })
+    }
+    this.session.append('assistant/message', {
+      turn,
+      step,
+      message: createAssistantMessage({
+        content: reply.content,
+        source: { provider: BOAT_ASSISTANT_PROVIDER, model: reply.plugin },
+      }),
+      stream: [],
+    }, { surfaceOp: 'append' })
   }
 
   private async step(decision: Extract<PreparedStep, { kind: 'enter' }>): Promise<StepEndReason | null> {

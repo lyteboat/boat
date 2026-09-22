@@ -4,9 +4,5 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../cordis-compat" },
-    { "path": "../contracts" }
-  ]
+  "include": ["src"]
 }

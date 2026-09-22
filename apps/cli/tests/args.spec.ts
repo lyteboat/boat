@@ -23,37 +23,43 @@ afterEach(() => { vi.restoreAllMocks() })
 describe('parseBoatArgs', () => {
   it('boots the run profile with the task handed to the app verbatim', () => {
     expect(parse(['run', 'summarize', 'this', 'workspace']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', patches: [], args: ['summarize', 'this', 'workspace'] })
+      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', plugins: [], patches: [], args: ['summarize', 'this', 'workspace'] })
     expect(parse(['run', '--patch', 'a.yml', '--patch', 'b.yml', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', patches: ['a.yml', 'b.yml'], args: ['hello'] })
+      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', plugins: [], patches: ['a.yml', 'b.yml'], args: ['hello'] })
     expect(parse(['run', '--profile', 'custom', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'custom', driver: 'dsh', patches: [], args: ['hello'] })
+      .toEqual({ mode: 'profile', profile: 'custom', driver: 'dsh', plugins: [], patches: [], args: ['hello'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
-    expect(parse(['run', '-h'])).toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', patches: [], args: ['-h'] })
+    expect(parse(['run', '-h'])).toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', plugins: [], patches: [], args: ['-h'] })
     expect(parse(['web', '--no-open', '--port', '0']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'dsh', patches: [], args: ['--no-open', '--port', '0'] })
+      .toEqual({ mode: 'profile', profile: 'web', driver: 'dsh', plugins: [], patches: [], args: ['--no-open', '--port', '0'] })
     expect(parse(['web', '--patch', 'w.yml', '--host', '127.0.0.1', '--patch', 'late.yml']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'dsh', patches: ['w.yml'], args: ['--host', '127.0.0.1', '--patch', 'late.yml'] })
+      .toEqual({ mode: 'profile', profile: 'web', driver: 'dsh', plugins: [], patches: ['w.yml'], args: ['--host', '127.0.0.1', '--patch', 'late.yml'] })
+  })
+
+  it('inserts local plugin files', () => {
+    expect(parse(['run', '--plugin', 'a.mjs', '--plugin', 'b.mjs', 'hi']))
+      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', plugins: ['a.mjs', 'b.mjs'], patches: [], args: ['hi'] })
+    expect(exitCode(['run', '--plugin', '', 'hi'])).toBe(1)
   })
 
   it('selects the agent driver', () => {
     expect(parse(['run', '--driver', 'boat', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', patches: [], args: ['hello'] })
+      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [], patches: [], args: ['hello'] })
     expect(parse(['web', '--driver', 'boat', '--no-open']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'boat', patches: [], args: ['--no-open'] })
+      .toEqual({ mode: 'profile', profile: 'web', driver: 'boat', plugins: [], patches: [], args: ['--no-open'] })
     expect(parse(['config', 'dump', '--driver', 'boat']))
-      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'boat', defaultOnly: false, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'boat', defaultOnly: false, patches: [], plugins: [] })
     expect(exitCode(['run', '--driver', 'other', 'hello'])).toBe(1)
   })
 
   it('resolves config dumps', () => {
-    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'run', driver: 'dsh', defaultOnly: false, patches: [] })
+    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'run', driver: 'dsh', defaultOnly: false, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--profile', 'web', '--default']))
-      .toEqual({ mode: 'dump-config', profile: 'web', driver: 'dsh', defaultOnly: true, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', driver: 'dsh', defaultOnly: true, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--patch', 'x.yml']))
-      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'dsh', defaultOnly: false, patches: ['x.yml'] })
+      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'dsh', defaultOnly: false, patches: ['x.yml'], plugins: [] })
   })
 
   it('exits on usage errors, help, and version', () => {

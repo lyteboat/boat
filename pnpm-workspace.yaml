@@ -9,6 +9,7 @@ packages:
 # .pnpmfile.cjs, so hoisting cannot produce a version conflict.
 publicHoistPattern:
   - "@deepseek-ai/*"
+  - "@boat/*"
 
 # Install scripts are opt-in in pnpm 11. Only the node-pty helper chmod is needed on
 # Linux/macOS; the rest ship prebuilt binaries or are Windows-only.

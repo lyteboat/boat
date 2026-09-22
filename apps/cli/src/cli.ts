@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { loadLayeredEnv } from '@deepseek-ai/dsh-app-boot'
 import { parseBoatArgs, type BoatVersions } from './args.ts'
 import { driverOverlay } from './drivers.ts'
+import { pluginOverlay } from './plugins.ts'
 import { NAME } from './profile-boot.ts'
 
 /** Read boat's own version and the installed dsh version. */
@@ -43,14 +44,14 @@ export async function runCli(): Promise<void> {
         environment: loadLayeredEnv(NAME),
         profile: invocation.profile,
         patchFiles: invocation.patches,
-        launcherOverlays: driverOverlay(invocation.driver),
+        launcherOverlays: [...driverOverlay(invocation.driver), ...pluginOverlay(invocation.plugins)],
         args: invocation.args,
       })
       break
     }
     case 'dump-config': {
       const { runDumpConfig } = await import('./dump-config.ts')
-      runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches, driverOverlay(invocation.driver))
+      runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches, [...driverOverlay(invocation.driver), ...pluginOverlay(invocation.plugins)])
       break
     }
     default:

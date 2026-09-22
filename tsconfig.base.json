@@ -24,6 +24,7 @@
     "types": ["node"],
     "paths": {
       "@boat/cordis-compat": ["./packages/cordis-compat/src/index.ts"],
+      "@boat/contracts": ["./packages/contracts/src/index.ts"],
       "@boat/runtime": ["./packages/runtime/src/index.ts"],
       "@boat/runtime/invariant": ["./packages/runtime/src/invariant.ts"],
       "@boat/runtime-testkit": ["./packages/runtime-testkit/src/index.ts"]

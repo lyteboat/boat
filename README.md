@@ -4,7 +4,9 @@ boat is an agent harness built as plugins on top of [DeepSeek Harness](https://g
 
 ## Status
 
-M0 — runnable skeleton. `boat run` and `boat web` boot the official dsh bundles through boat's own launcher; no boat plugins yet.
+- M0 — runnable skeleton: `boat run` and `boat web` boot the official dsh bundles through boat's own launcher.
+- M1 — `@boat/runtime`, a fork of dsh-agent-loop, selectable with `--driver boat`; both drivers write identical session logs for the same scripted model.
+- M2 (in progress) — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`.
 
 ## Requirements
 
@@ -19,8 +21,12 @@ pnpm run build
 node apps/cli/lib/bin.js run "summarize this workspace"   # one-shot task
 node apps/cli/lib/bin.js web --no-open                    # browser UI
 node apps/cli/lib/bin.js config dump --profile run        # composed plugin tree
+node apps/cli/lib/bin.js run --driver boat --plugin examples/intake-gate/plugin.mjs "帮我炒股"
+                                                          # boat driver + a local plugin file: fixed reply, no model call
 pnpm run check                                            # lint + build + tests
 ```
+
+`--driver boat` mounts `@boat/runtime` instead of dsh's agent-loop. `--plugin <file>` inserts a local ESM plugin file as a row of the tree (the file's own imports resolve from its directory, so it works for files inside this checkout). Under the boat driver two extra waterfall events run after the inbox claim and before prompt assembly: `boat/intake` (answer the step with a fixed reply and no model request) and `boat/pre-assemble` (route skills and activate tools for this very step).
 
 Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSEEK_BASE_URL`) in the environment or in `$BOAT_HOME/.env`. All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports that directory as `DSH_HOME` to the dsh packages before any of them load, so a user's own `~/.dsh` is never touched.
 
@@ -30,6 +36,10 @@ Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSE
 |---|---|---|
 | `apps/cli` | `@boat/cli` | the `boat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `packages/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |
+| `packages/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
+| `packages/runtime` | `@boat/runtime` | the boat agent driver (fork of dsh-agent-loop, see `packages/runtime/UPSTREAM.md`) |
+| `packages/runtime-testkit` | `@boat/runtime-testkit` | test harness for the driver (fork of agent-loop-testkit) |
+| `examples/*` | — | runnable plugin files for `--plugin` |
 | `scripts/session-log.ts` | — | session log reader (multi-frame zstd) shared by tests and tooling |
 | `dsh.upstream.json` | — | the pinned dsh release; `.pnpmfile.cjs` pins every dsh and cordis package to it |
 
