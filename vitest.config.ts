@@ -19,7 +19,7 @@ const alias = Object.entries(base.compilerOptions.paths).map(([name, [target]]) 
 export default defineConfig({
   resolve: { alias },
   test: {
-    include: ['apps/*/tests/**/*.{spec,e2e}.ts', 'packages/*/tests/**/*.{spec,e2e}.ts', 'agents/*/tests/**/*.spec.ts', 'scripts/**/*.spec.ts'],
+    include: ['apps/*/tests/**/*.{spec,e2e}.ts', 'packages/*/tests/**/*.{spec,e2e}.ts', 'packages/bundle/*/tests/**/*.{spec,e2e}.ts', 'agents/*/tests/**/*.spec.ts', 'scripts/**/*.spec.ts'],
     testTimeout: 120_000,
     hookTimeout: 120_000,
   },

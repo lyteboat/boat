@@ -39,8 +39,8 @@
     },
     {
       "files": [
-        "packages/runtime/**/*.ts",
-        "packages/runtime-testkit/**/*.ts"
+        "packages/agentic-loop/**/*.ts",
+        "packages/agentic-loop-testkit/**/*.ts"
       ],
       "rules": {
         "no-shadow": "off",

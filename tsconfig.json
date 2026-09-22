@@ -9,10 +9,10 @@
       "path": "./packages/contracts"
     },
     {
-      "path": "./packages/runtime"
+      "path": "./packages/agentic-loop"
     },
     {
-      "path": "./packages/runtime-testkit"
+      "path": "./packages/agentic-loop-testkit"
     },
     {
       "path": "./packages/tool-policy"
@@ -27,7 +27,7 @@
       "path": "./packages/history-import"
     },
     {
-      "path": "./packages/run"
+      "path": "./packages/bundle/run"
     },
     {
       "path": "./apps/cli"

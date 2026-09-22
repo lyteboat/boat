@@ -30,13 +30,13 @@ interface ForkTarget {
 }
 
 const TARGETS: readonly ForkTarget[] = [
-  { source: 'packages/core/agent-loop/src', target: 'packages/runtime/src' },
+  { source: 'packages/core/agent-loop/src', target: 'packages/agentic-loop/src' },
   {
     source: 'packages/core/agent-loop/tests',
-    target: 'packages/runtime/tests',
+    target: 'packages/agentic-loop/tests',
     keep: ['boat-intake.spec.ts', 'support/pi-context.ts'],
   },
-  { source: 'packages/test-support/agent-loop-testkit/src', target: 'packages/runtime-testkit/src' },
+  { source: 'packages/test-support/agent-loop-testkit/src', target: 'packages/agentic-loop-testkit/src' },
 ]
 
 /**
@@ -46,9 +46,9 @@ const TARGETS: readonly ForkTarget[] = [
  * other dsh packages depend on and must stay.
  */
 const REWRITES: readonly [RegExp, string][] = [
-  [/@deepseek-ai\/dsh-agent-loop-testkit/gu, '@boat/runtime-testkit'],
-  [/@deepseek-ai\/dsh-agent-loop/gu, '@boat/runtime'],
-  [/'agentLoop\.setFactory\(\)'/gu, "'boatRuntime.setFactory()'"],
+  [/@deepseek-ai\/dsh-agent-loop-testkit/gu, '@boat/agentic-loop-testkit'],
+  [/@deepseek-ai\/dsh-agent-loop/gu, '@boat/agentic-loop'],
+  [/'agentLoop\.setFactory\(\)'/gu, "'boatAgenticLoop.setFactory()'"],
   // The published cordis build erases the FiberState const enum; boat reads the values
   // through @boat/cordis-compat (tsconfig isolatedModules rejects the direct read).
   [/import \{ Context, FiberState, Service \} from '@deepseek-ai\/cordis'\n/u,

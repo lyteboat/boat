@@ -21,7 +21,7 @@ export const DEFAULT_DRIVER: Driver = 'dsh'
 export const DSH_DRIVER_ROW_ID = 'agent-loop'
 
 /** The row id boat gives its fork. */
-export const BOAT_DRIVER_ROW_ID = 'boat-runtime'
+export const BOAT_DRIVER_ROW_ID = 'boat-agentic-loop'
 
 /**
  * Whether a `--driver` value names a known driver.
@@ -41,6 +41,6 @@ export function driverOverlay(driver: Driver): PatchOptions[] {
   if (driver === 'dsh') return []
   return [
     { id: DSH_DRIVER_ROW_ID, disabled: true },
-    { insert: [{ id: BOAT_DRIVER_ROW_ID, name: '@boat/runtime', config: { agents: [] } }] },
+    { insert: [{ id: BOAT_DRIVER_ROW_ID, name: '@boat/agentic-loop', config: { agents: [] } }] },
   ]
 }

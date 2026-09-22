@@ -10,12 +10,12 @@ import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
 import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
 import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh-session'
-import AgentLoop from '@boat/runtime'
-import * as AgentLoopInvariant from '@boat/runtime/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
+import AgentLoop from '@boat/agentic-loop'
+import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
+import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
 import HistoryImportService, { saHistoryOf } from '@boat/history-import'
 import type { HistoryRound } from '@boat/history-import'
-import { MockAdapter, textResponse } from '../../runtime/tests/mock-adapter.ts'
+import { MockAdapter, textResponse } from '../../agentic-loop/tests/mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {

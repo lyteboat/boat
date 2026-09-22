@@ -78,8 +78,8 @@ describe('driver equivalence (built bin, mock model)', () => {
     expect(boat.normalized).toEqual(dsh.normalized)
     // The switch is visible in the composed tree: dsh's row disabled, boat's row inserted.
     expect(boat.dump).toMatch(/id: agent-loop[\s\S]*?disabled: true/u)
-    expect(boat.dump).toContain('@boat/runtime')
-    expect(dsh.dump).not.toContain('@boat/runtime')
+    expect(boat.dump).toContain('@boat/agentic-loop')
+    expect(dsh.dump).not.toContain('@boat/agentic-loop')
     // Both drivers mounted through the same profile directory contents.
     expect(readFileSync(join(root, 'home-boat', 'profiles', 'run', 'package.json'), 'utf8'))
       .toBe(readFileSync(join(root, 'home-dsh', 'profiles', 'run', 'package.json'), 'utf8'))
