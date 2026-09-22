@@ -1,0 +1,42 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/cordis-compat"
+    },
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/runtime"
+    },
+    {
+      "path": "./packages/runtime-testkit"
+    },
+    {
+      "path": "./packages/tool-policy"
+    },
+    {
+      "path": "./packages/skill-router"
+    },
+    {
+      "path": "./packages/a2ui"
+    },
+    {
+      "path": "./packages/history-import"
+    },
+    {
+      "path": "./packages/run"
+    },
+    {
+      "path": "./apps/cli"
+    },
+    {
+      "path": "./scripts"
+    },
+    {
+      "path": "./agents/demo"
+    }
+  ]
+}

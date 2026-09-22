@@ -1,0 +1,74 @@
+/**
+ * The preset registrar row: composes a `render_a2ui` tool over the preset's
+ * own templates directory, in the preset's standing scope. A relative
+ * `templates` path resolves against the composition file's directory.
+ *
+ * ```yaml
+ * - id: boat-a2ui
+ *   name: '@boat/a2ui/preset'
+ *   config:
+ *     templates: ./a2ui
+ *     stateKeys: [yl_assets, yl_assets_raw]
+ *     terminalCards: [unauthorized]
+ * ```
+ * @module @boat/a2ui/preset
+ */
+
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import type {} from './index.ts'
+
+/** Stable Cordis plugin name. */
+export const name = 'boat-a2ui-preset'
+
+/** The host service the tool is composed through. */
+export const inject = ['a2ui']
+
+export interface Config {
+  templates: string
+  stateKeys?: string[]
+  terminalCards?: string[]
+  cardDescriptions?: Record<string, string>
+  name?: string
+  visibility?: 'always' | 'auto'
+  group?: string
+  validation?: 'warn' | 'enforce'
+}
+
+export const Config: z<Config> = z.object({
+  templates: z.string().required(),
+  stateKeys: z.array(z.string()),
+  terminalCards: z.array(z.string()),
+  cardDescriptions: z.dict(z.string()),
+  name: z.string(),
+  visibility: z.union(['always', 'auto'] as const),
+  group: z.string(),
+  validation: z.union(['warn', 'enforce'] as const),
+})
+
+/** The composition directory the loader stamps on a row's context, when it did. */
+function compositionDir(ctx: Context): string | undefined {
+  const baseUrl = (ctx as unknown as { baseUrl?: unknown }).baseUrl
+  return typeof baseUrl === 'string' && baseUrl.startsWith('file:') ? fileURLToPath(baseUrl) : undefined
+}
+
+/**
+ * Compose the tool from the row's config.
+ * @param ctx - the row's context (the preset's standing scope when mounted by agent-presets).
+ * @param config - validated options.
+ */
+export async function apply(ctx: Context, config: Config): Promise<void> {
+  const templates = resolve(compositionDir(ctx) ?? process.cwd(), config.templates)
+  await ctx.a2ui.registerRenderTool({
+    templates,
+    ...config.stateKeys === undefined ? {} : { stateKeys: config.stateKeys },
+    ...config.terminalCards === undefined ? {} : { terminalCards: config.terminalCards },
+    ...config.cardDescriptions === undefined ? {} : { cardDescriptions: config.cardDescriptions },
+    ...config.name === undefined ? {} : { name: config.name },
+    ...config.visibility === undefined ? {} : { visibility: config.visibility },
+    ...config.group === undefined ? {} : { group: config.group },
+    ...config.validation === undefined ? {} : { validation: config.validation },
+  })
+}

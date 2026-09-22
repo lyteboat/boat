@@ -1,0 +1,47 @@
+/**
+ * The preset registrar row: declares the skill router's settings for one
+ * preset (its standing scope), overriding the host row's defaults for every
+ * agent joined to it. A preset that wants ark's dynamic routing turns it on
+ * here; the host default is `off`.
+ *
+ * ```yaml
+ * - id: boat-skill-router
+ *   name: '@boat/skill-router/preset'
+ *   config:
+ *     mode: dynamic
+ *     historyWindow: 6
+ *     timeoutMs: 10000
+ * ```
+ * @module @boat/skill-router/preset
+ */
+
+import type { Context } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import type { SkillRouterSettings } from './index.ts'
+import type {} from './index.ts'
+
+/** Stable Cordis plugin name. */
+export const name = 'boat-skill-router-preset'
+
+/** The host service the declaration goes to. */
+export const inject = ['skillRouter']
+
+/** Plugin config: every setting optional; absent ones keep the host defaults. */
+export type Config = Partial<SkillRouterSettings>
+
+export const Config: z<Config> = z.object({
+  mode: z.union(['off', 'full', 'dynamic'] as const),
+  historyWindow: z.natural(),
+  timeoutMs: z.natural(),
+  provider: z.string(),
+  model: z.string(),
+})
+
+/**
+ * Declare the configured settings in the calling scope.
+ * @param ctx - the row's context (the preset's standing scope when mounted by agent-presets).
+ * @param config - validated partial settings.
+ */
+export function apply(ctx: Context, config: Config): void {
+  ctx.skillRouter.declare(config)
+}

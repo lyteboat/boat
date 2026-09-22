@@ -1,0 +1,78 @@
+{
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "sourceMap": true,
+    "declarationMap": true,
+    "composite": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@boat/a2ui": [
+        "./packages/a2ui/src/index.ts"
+      ],
+      "@boat/a2ui/engine": [
+        "./packages/a2ui/src/engine.ts"
+      ],
+      "@boat/a2ui/preset": [
+        "./packages/a2ui/src/preset.ts"
+      ],
+      "@boat/agent-demo/assets": [
+        "./agents/demo/src/assets.ts"
+      ],
+      "@boat/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
+      "@boat/cordis-compat": [
+        "./packages/cordis-compat/src/index.ts"
+      ],
+      "@boat/history-import": [
+        "./packages/history-import/src/index.ts"
+      ],
+      "@boat/run": [
+        "./packages/run/src/index.ts"
+      ],
+      "@boat/run/startup": [
+        "./packages/run/src/startup.ts"
+      ],
+      "@boat/runtime": [
+        "./packages/runtime/src/index.ts"
+      ],
+      "@boat/runtime-testkit": [
+        "./packages/runtime-testkit/src/index.ts"
+      ],
+      "@boat/runtime/invariant": [
+        "./packages/runtime/src/invariant.ts"
+      ],
+      "@boat/skill-router": [
+        "./packages/skill-router/src/index.ts"
+      ],
+      "@boat/skill-router/preset": [
+        "./packages/skill-router/src/preset.ts"
+      ],
+      "@boat/tool-policy": [
+        "./packages/tool-policy/src/index.ts"
+      ],
+      "@boat/tool-policy/preset": [
+        "./packages/tool-policy/src/preset.ts"
+      ]
+    }
+  }
+}

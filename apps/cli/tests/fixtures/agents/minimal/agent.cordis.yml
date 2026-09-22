@@ -1,0 +1,9 @@
+# The smallest agent-plane composition: a persona and nothing else. Every row
+# that publishes a service would need an isolate realm; a persona registers a
+# prompt section only.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      You are MINIMAL-PRESET-PERSONA, a test agent powered by the {{model}} model.
+    suffix: Your working directory is {{cwd}}.

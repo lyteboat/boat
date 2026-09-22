@@ -1,0 +1,431 @@
+{
+ "card": "asset_overview",
+ "raw": {
+  "yl_assets": {
+   "total_display": "293,828.93",
+   "auth_state": "full",
+   "policy_count": 3,
+   "is_aigc": true,
+   "unauth_main_group_count": 0,
+   "insurance_authorized": true,
+   "auth_link": "https://pama/auth",
+   "assets_sub_page_link": "https://pama/policies",
+   "buckets": {
+    "日常": {
+     "pct": 62.0,
+     "amount": "182173.94",
+     "amount_display": "¥182,173.94",
+     "authorized": true
+    },
+    "稳健": {
+     "pct": 13.0,
+     "amount": "38197.76",
+     "amount_display": "¥38,197.76",
+     "authorized": true
+    },
+    "进取": {
+     "pct": 25.0,
+     "amount": "73457.23",
+     "amount_display": "¥73,457.23",
+     "authorized": true
+    }
+   }
+  },
+  "yl_assets_raw": {
+   "accounts": [
+    {
+     "bucket": "日常",
+     "bu": "平安银行",
+     "name": "活期",
+     "amount": "82173.94"
+    },
+    {
+     "bucket": "日常",
+     "bu": "平安证券",
+     "name": "可用",
+     "amount": "100000"
+    },
+    {
+     "bucket": "稳健",
+     "bu": "平安银行",
+     "name": "理财",
+     "amount": "38197.76"
+    }
+   ]
+  }
+ },
+ "hierarchy": null,
+ "sessionId": "sess-1234abcd",
+ "surfaceId": "",
+ "payload": {
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "asset_overview-sess-123-7ec869",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "hideVoteRecorder": true,
+  "components": [
+   {
+    "id": "asset-label",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "集团全景资产(元)"
+      },
+      "fontSize": "14px",
+      "color": "rgba(0, 0, 0, 0.6)"
+     }
+    }
+   },
+   {
+    "id": "asset-amount",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "293,828.93"
+      },
+      "fontSize": "24px",
+      "fontFamily": "PingFang SC",
+      "color": "#000000",
+      "fontWeight": 600
+     }
+    }
+   },
+   {
+    "id": "asset-summary",
+    "component": {
+     "Column": {
+      "width": 100,
+      "alignment": "left",
+      "distribution": "start",
+      "gap": 6,
+      "marginBottom": 16,
+      "children": {
+       "explicitList": [
+        "asset-label",
+        "asset-amount"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "asset-progress",
+    "component": {
+     "AssetProportionProgress": {
+      "assetsList": [
+       {
+        "name": "日常开销",
+        "percent": "62%",
+        "amount": "182,173.94",
+        "color": "#FFB759",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": [
+         {
+          "name": "平安银行",
+          "amount": "82,173.94"
+         },
+         {
+          "name": "平安证券",
+          "amount": "100,000.00"
+         }
+        ]
+       },
+       {
+        "name": "稳健投资",
+        "percent": "13%",
+        "amount": "38,197.76",
+        "color": "#4872D6",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": [
+         {
+          "name": "平安银行",
+          "amount": "38,197.76"
+         }
+        ]
+       },
+       {
+        "name": "进取收益",
+        "percent": "25%",
+        "amount": "73,457.23",
+        "color": "#E51414",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": []
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "asset-list",
+    "component": {
+     "AssetListCard": {
+      "assetsList": [
+       {
+        "name": "日常开销",
+        "percent": "62%",
+        "amount": "182,173.94",
+        "color": "#FFB759",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": [
+         {
+          "name": "平安银行",
+          "amount": "82,173.94"
+         },
+         {
+          "name": "平安证券",
+          "amount": "100,000.00"
+         }
+        ]
+       },
+       {
+        "name": "稳健投资",
+        "percent": "13%",
+        "amount": "38,197.76",
+        "color": "#4872D6",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": [
+         {
+          "name": "平安银行",
+          "amount": "38,197.76"
+         }
+        ]
+       },
+       {
+        "name": "进取收益",
+        "percent": "25%",
+        "amount": "73,457.23",
+        "color": "#E51414",
+        "authorization": true,
+        "auth_url": "https://pama/auth",
+        "children": []
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "insurance-label",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "保险保障"
+      },
+      "fontSize": "14px",
+      "color": "#000000",
+      "fontWeight": 400
+     }
+    }
+   },
+   {
+    "id": "insurance-action-text-auth",
+    "component": {
+     "Button": {
+      "text": {
+       "literalString": "3份保单"
+      },
+      "fontSize": "14px",
+      "fontWeight": 500,
+      "backgroundColor": "transparent",
+      "color": "#000000",
+      "action": [
+       {
+        "name": "openLink",
+        "args": {
+         "url": "https://pama/policies"
+        }
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "insurance-action-arrow",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": ">"
+      },
+      "fontSize": "14px",
+      "color": "rgba(0, 0, 0, 0.4)"
+     }
+    }
+   },
+   {
+    "id": "insurance-action",
+    "component": {
+     "Row": {
+      "alignment": "middle",
+      "distribution": "end",
+      "gap": 4,
+      "children": {
+       "explicitList": [
+        "insurance-action-text-auth",
+        "insurance-action-arrow"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "insurance-row",
+    "component": {
+     "Row": {
+      "width": 100,
+      "alignment": "middle",
+      "distribution": "spaceBetween",
+      "children": {
+       "explicitList": [
+        "insurance-label",
+        "insurance-action"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "disclaimer",
+    "component": {
+     "Text": {
+      "text": {
+       "literalString": "数据基于你已授权账户聚合，未授权账户不计入，本图仅供参考"
+      },
+      "fontSize": "12px",
+      "color": "rgba(0, 0, 0, 0.4)",
+      "lineHeight": "18px"
+     }
+    }
+   },
+   {
+    "id": "diag-btn",
+    "component": {
+     "Button": {
+      "text": {
+       "literalString": "诊断一下，我的钱放对了吗"
+      },
+      "type": "primary",
+      "color": "#ffffff",
+      "backgroundColor": "#FA5900",
+      "fontSize": "16px",
+      "fontWeight": 500,
+      "height": 48,
+      "borderRadius": 24,
+      "block": true,
+      "action": {
+       "name": "query",
+       "args": {
+        "queryMsg": "诊断一下，我的钱放对了吗"
+       }
+      }
+     }
+    }
+   },
+   {
+    "id": "main-card",
+    "component": {
+     "Column": {
+      "width": 100,
+      "padding": 32,
+      "backgroundColor": "#ffffff",
+      "borderRadius": "middle",
+      "shadow": true,
+      "gap": 16,
+      "children": {
+       "explicitList": [
+        "asset-summary",
+        "asset-progress",
+        "asset-list",
+        "insurance-row",
+        "disclaimer",
+        "diag-btn"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "id": "root-container",
+    "component": {
+     "Column": {
+      "width": 100,
+      "alignment": "left",
+      "distribution": "start",
+      "gap": 32,
+      "children": {
+       "explicitList": [
+        "main-card"
+       ]
+      }
+     }
+    }
+   }
+  ],
+  "businessPayload": {
+   "assets_list": [
+    {
+     "name": "日常开销",
+     "percent": "62%",
+     "amount": "182,173.94",
+     "color": "#FFB759",
+     "authorization": true,
+     "auth_url": "https://pama/auth",
+     "children": [
+      {
+       "name": "平安银行",
+       "amount": "82,173.94"
+      },
+      {
+       "name": "平安证券",
+       "amount": "100,000.00"
+      }
+     ]
+    },
+    {
+     "name": "稳健投资",
+     "percent": "13%",
+     "amount": "38,197.76",
+     "color": "#4872D6",
+     "authorization": true,
+     "auth_url": "https://pama/auth",
+     "children": [
+      {
+       "name": "平安银行",
+       "amount": "38,197.76"
+      }
+     ]
+    },
+    {
+     "name": "进取收益",
+     "percent": "25%",
+     "amount": "73,457.23",
+     "color": "#E51414",
+     "authorization": true,
+     "auth_url": "https://pama/auth",
+     "children": []
+    }
+   ],
+   "auth_btn_hide": true,
+   "auth_tip_hide": true,
+   "diag_btn_hide": false,
+   "insurance_auth_hide": false,
+   "insurance_policy_text": "3份保单",
+   "insurance_sub_page_link": "https://pama/policies",
+   "insurance_unauth_hide": true,
+   "summary_label": "集团全景资产(元)",
+   "total_display": "293,828.93"
+  }
+ },
+ "warnings": [],
+ "digest": "[卡片:资产/full] 总额0.00元 · 保单3份 · 已授权3/3桶 · 卡后一句简短收尾（≤25字），不复述卡内数字",
+ "stateDelta": null,
+ "guard": {
+  "ok": true,
+  "errors": [],
+  "warnings": []
+ }
+}

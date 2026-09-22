@@ -1,0 +1,23 @@
+packages:
+  - apps/*
+  - packages/*
+  - agents/*
+
+# dsh's launcher links the installation closure into $DSH_HOME/profiles/node_modules by
+# walking require.resolve.paths() from each package's symlink path. Under pnpm's isolated
+# layout that walk only sees the launcher's direct dependencies, so every @deepseek-ai
+# package is hoisted to the root node_modules. All of them are pinned to one version by
+# .pnpmfile.cjs, so hoisting cannot produce a version conflict.
+publicHoistPattern:
+  - "@deepseek-ai/*"
+  - "@boat/*"
+
+# Install scripts are opt-in in pnpm 11. Only the node-pty helper chmod is needed on
+# Linux/macOS; the rest ship prebuilt binaries or are Windows-only.
+allowBuilds:
+  "@deepseek-ai/dsh-subprocess-local": true
+  esbuild: true
+  node-pty: false
+  koffi: false
+  "@google/genai": false
+  protobufjs: false
