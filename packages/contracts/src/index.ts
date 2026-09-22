@@ -12,6 +12,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
 import type { Scoped } from '@deepseek-ai/dsh-scope'
 import type {} from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-session-projection/types'
 
 /** Lossless JSON, the only shape session logs and projections may carry. */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
@@ -67,6 +68,9 @@ export interface IntakeReply {
 
 export type IntakeDecision = { kind: 'pass' } | IntakeReply
 
+/** The `boatState` projection value: tool state accumulated by dot-path deep merge of `boat/state` deltas. */
+export type BoatStateValue = { [key: string]: JsonValue }
+
 /** Payload of the boat driver's pre-assembly events. */
 export interface BoatStepPayload {
   agent: Agent
@@ -120,5 +124,16 @@ declare module '@deepseek-ai/dsh-session/types' {
     'boat/state': { callId: string; delta: JsonValue }
     /** External history rounds imported as this session's seed. */
     'boat/history-imported': { source: string; traceIds: string[]; rounds: number }
+  }
+}
+
+declare module '@deepseek-ai/dsh-session-projection/types' {
+  interface SessionProjectionStateMap {
+    /** Session tool state (host fold), owned by `@boat/tool-policy`. */
+    boatState: BoatStateValue
+  }
+  interface SessionProjectionMap {
+    /** Session tool state as the client sees it: the fold state itself. */
+    boatState: BoatStateValue
   }
 }

@@ -6,7 +6,7 @@ boat is an agent harness built as plugins on top of [DeepSeek Harness](https://g
 
 - M0 — runnable skeleton: `boat run` and `boat web` boot the official dsh bundles through boat's own launcher.
 - M1 — `@boat/runtime`, a fork of dsh-agent-loop, selectable with `--driver boat`; both drivers write identical session logs for the same scripted model.
-- M2 (in progress) — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`.
+- M2 (in progress) — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --preset <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`boat run --driver boat --plugin examples/tools/plugin.mjs "查一下资产"`).
 
 ## Requirements
 
@@ -36,6 +36,8 @@ Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSE
 |---|---|---|
 | `apps/cli` | `@boat/cli` | the `boat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `packages/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |
+| `packages/run` | `@boat/run` | the one-shot bundle behind `boat run`: task, `--preset`, `--agents`, `--history` |
+| `packages/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./preset` declares policy from a composition file |
 | `packages/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
 | `packages/runtime` | `@boat/runtime` | the boat agent driver (fork of dsh-agent-loop, see `packages/runtime/UPSTREAM.md`) |
 | `packages/runtime-testkit` | `@boat/runtime-testkit` | test harness for the driver (fork of agent-loop-testkit) |

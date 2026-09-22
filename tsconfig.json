@@ -2,12 +2,29 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "references": [
-    { "path": "./packages/cordis-compat" },
-    { "path": "./packages/contracts" },
-    { "path": "./packages/runtime" },
-    { "path": "./packages/runtime-testkit" },
-    { "path": "./packages/run" },
-    { "path": "./apps/cli" },
-    { "path": "./scripts" }
+    {
+      "path": "./packages/cordis-compat"
+    },
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/runtime"
+    },
+    {
+      "path": "./packages/runtime-testkit"
+    },
+    {
+      "path": "./packages/tool-policy"
+    },
+    {
+      "path": "./packages/run"
+    },
+    {
+      "path": "./apps/cli"
+    },
+    {
+      "path": "./scripts"
+    }
   ]
 }

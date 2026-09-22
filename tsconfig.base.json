@@ -21,15 +21,37 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "paths": {
-      "@boat/cordis-compat": ["./packages/cordis-compat/src/index.ts"],
-      "@boat/contracts": ["./packages/contracts/src/index.ts"],
-      "@boat/run": ["./packages/run/src/index.ts"],
-      "@boat/run/startup": ["./packages/run/src/startup.ts"],
-      "@boat/runtime": ["./packages/runtime/src/index.ts"],
-      "@boat/runtime/invariant": ["./packages/runtime/src/invariant.ts"],
-      "@boat/runtime-testkit": ["./packages/runtime-testkit/src/index.ts"]
+      "@boat/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
+      "@boat/cordis-compat": [
+        "./packages/cordis-compat/src/index.ts"
+      ],
+      "@boat/run": [
+        "./packages/run/src/index.ts"
+      ],
+      "@boat/run/startup": [
+        "./packages/run/src/startup.ts"
+      ],
+      "@boat/runtime": [
+        "./packages/runtime/src/index.ts"
+      ],
+      "@boat/runtime-testkit": [
+        "./packages/runtime-testkit/src/index.ts"
+      ],
+      "@boat/runtime/invariant": [
+        "./packages/runtime/src/invariant.ts"
+      ],
+      "@boat/tool-policy": [
+        "./packages/tool-policy/src/index.ts"
+      ],
+      "@boat/tool-policy/preset": [
+        "./packages/tool-policy/src/preset.ts"
+      ]
     }
   }
 }
