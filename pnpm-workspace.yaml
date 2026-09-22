@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - agents/*
 
 # dsh's launcher links the installation closure into $DSH_HOME/profiles/node_modules by
 # walking require.resolve.paths() from each package's symlink path. Under pnpm's isolated

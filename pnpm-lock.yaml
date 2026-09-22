@@ -26,6 +26,34 @@ importers:
         specifier: ^4.1.8
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  agents/demo:
+    dependencies:
+      '@boat/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-fs@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-brand@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-sandbox@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))))(@deepseek-ai/dsh-home-paths@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-skill@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(2b754afda902b21956a20e8a701ed6ef)
+    devDependencies:
+      '@boat/a2ui':
+        specifier: workspace:*
+        version: link:../../packages/a2ui
+      '@boat/tool-policy':
+        specifier: workspace:*
+        version: link:../../packages/tool-policy
+      '@deepseek-ai/cordis':
+        specifier: 4.0.2
+        version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
+      '@deepseek-ai/dsh-agent':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
+      '@deepseek-ai/dsh-session-projection':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
+
   apps/cli:
     dependencies:
       '@boat/cordis-compat':

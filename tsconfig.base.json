@@ -34,6 +34,9 @@
       "@boat/a2ui/preset": [
         "./packages/a2ui/src/preset.ts"
       ],
+      "@boat/agent-demo/assets": [
+        "./agents/demo/src/assets.ts"
+      ],
       "@boat/contracts": [
         "./packages/contracts/src/index.ts"
       ],
