@@ -14,13 +14,13 @@ import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
 import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@boat/runtime'
-import * as AgentLoopInvariant from '@boat/runtime/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
+import AgentLoop from '@boat/agentic-loop'
+import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
+import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
 import ToolPolicyService from '@boat/tool-policy'
 import A2uiService, { boatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@boat/a2ui'
 import type { BoatCard, JsonValue } from '@boat/contracts'
-import { MockAdapter, textResponse, toolCallResponse } from '../../runtime/tests/mock-adapter.ts'
+import { MockAdapter, textResponse, toolCallResponse } from '../../agentic-loop/tests/mock-adapter.ts'
 
 const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
 const VARIANTS = fileURLToPath(new URL('./fixtures/templates-variants', import.meta.url))

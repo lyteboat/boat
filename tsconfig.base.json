@@ -47,19 +47,19 @@
         "./packages/history-import/src/index.ts"
       ],
       "@boat/run": [
-        "./packages/run/src/index.ts"
+        "./packages/bundle/run/src/index.ts"
       ],
       "@boat/run/startup": [
-        "./packages/run/src/startup.ts"
+        "./packages/bundle/run/src/startup.ts"
       ],
-      "@boat/runtime": [
-        "./packages/runtime/src/index.ts"
+      "@boat/agentic-loop": [
+        "./packages/agentic-loop/src/index.ts"
       ],
-      "@boat/runtime-testkit": [
-        "./packages/runtime-testkit/src/index.ts"
+      "@boat/agentic-loop-testkit": [
+        "./packages/agentic-loop-testkit/src/index.ts"
       ],
-      "@boat/runtime/invariant": [
-        "./packages/runtime/src/invariant.ts"
+      "@boat/agentic-loop/invariant": [
+        "./packages/agentic-loop/src/invariant.ts"
       ],
       "@boat/skill-router": [
         "./packages/skill-router/src/index.ts"

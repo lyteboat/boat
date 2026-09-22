@@ -11,9 +11,11 @@
   "include": [
     "apps/*/tests/**/*.ts",
     "packages/*/tests/**/*.ts",
+    "packages/bundle/*/tests/**/*.ts",
     "scripts/**/*.ts",
     "apps/*/src/**/*.ts",
     "packages/*/src/**/*.ts",
+    "packages/bundle/*/src/**/*.ts",
     "agents/*/tests/**/*.ts",
     "agents/*/src/**/*.ts"
   ]

@@ -1,6 +1,10 @@
 packages:
+  # apps/* owns processes (the `boat` bin); packages/* are capability
+  # libraries; packages/bundle/* are composition recipes a profile includes
+  # by name, mirroring dsh's own packages/bundle tier.
   - apps/*
   - packages/*
+  - packages/bundle/*
   - agents/*
 
 # dsh's launcher links the installation closure into $DSH_HOME/profiles/node_modules by

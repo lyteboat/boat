@@ -13,12 +13,12 @@ import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@boat/runtime'
-import * as AgentLoopInvariant from '@boat/runtime/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/runtime-testkit'
+import AgentLoop from '@boat/agentic-loop'
+import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
+import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
 import ToolPolicyService from '@boat/tool-policy'
 import SkillRouterService, { type Config } from '@boat/skill-router'
-import { MockAdapter, textResponse, toolCallResponse } from '../../runtime/tests/mock-adapter.ts'
+import { MockAdapter, textResponse, toolCallResponse } from '../../agentic-loop/tests/mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
