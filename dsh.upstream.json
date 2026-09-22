@@ -1,0 +1,14 @@
+{
+  "dsh": "0.1.5-alpha.2",
+  "tag": "dsh-v0.1.5-alpha.2",
+  "commit": "b2e3b2a0125854567a4a5fcba75782e42fe84901",
+  "repository": "https://github.com/deepseek-ai/deepseek-harness",
+  "cordis": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/cordis-plugin-group": "1.0.2",
+    "@deepseek-ai/cordis-plugin-hmr": "1.0.17",
+    "@deepseek-ai/cordis-plugin-include": "1.0.7",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
+    "@deepseek-ai/cordis-plugin-timer": "1.1.4"
+  }
+}
