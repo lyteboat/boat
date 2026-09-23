@@ -34,16 +34,15 @@ const TARGETS: readonly ForkTarget[] = [
   {
     source: 'packages/core/agent-loop/tests',
     target: 'core/agentic-loop/tests',
-    keep: ['boat-intake.spec.ts', 'support/pi-context.ts'],
+    keep: ['boat-intake.spec.ts', 'support/live-config.ts', 'support/pi-context.ts', 'support/source-kinds.ts'],
   },
   { source: 'packages/test-support/agent-loop-testkit/src', target: 'tooling/dsh-agent-loop-testkit-fork/src' },
 ]
 
 /**
  * Identity rewrites, applied to every copied file. Package names and the
- * effect label are the only strings that change; `'agent-loop'` (the settings
- * namespace) and `agent-loop/config-start-failed` (an event name) are seams
- * other dsh packages depend on and must stay.
+ * effect label are the only strings that change; `agent-loop/config-start-failed`
+ * (an event name) is a seam other dsh packages depend on and must stay.
  */
 const REWRITES: readonly [RegExp, string][] = [
   [/@deepseek-ai\/dsh-agent-loop-testkit/gu, '@boat/dsh-agent-loop-testkit-fork'],
