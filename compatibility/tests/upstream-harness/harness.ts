@@ -17,6 +17,8 @@
  *   (`FiberState`, …): upstream compiles against cordis sources, where those
  *   enums exist at runtime; the published build erases them.
  * - Two imports of files no published package ships resolve to shims.
+ * - TypeScript sources with standard decorators are lowered before vite parses
+ *   them, as upstream's `standardDecoratorPlugin` (vitest.shared.ts) does.
  * - Tests of upstream's repository scripts are excluded.
  * @module compatibility/tests/upstream-harness/harness
  */
@@ -25,6 +27,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 import type { Plugin } from 'vitest/config'
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
@@ -44,6 +47,8 @@ const SHIMS: Readonly<Record<string, string>> = {
 }
 
 const CORDIS_SHIM = '\0boat-upstream-tests:cordis'
+
+const DECORATOR_SYNTAX = /^\s*@[A-Za-z_$][\w$]*/mu
 
 interface KernelEntry {
   name: string
@@ -106,6 +111,16 @@ export function upstreamTestsPlugin(): Plugin {
     load(id) {
       if (id !== CORDIS_SHIM) return null
       return [`export * from ${JSON.stringify(cordisEntry)}`, cordisConstEnums()].join('\n')
+    },
+    // dsh-llm's source uses standard decorators (`@Remote`), which vite's parser does not lower.
+    transform(code, id) {
+      const file = id.split('?', 1)[0] ?? id
+      if (!/\.[cm]?tsx?$/u.test(file) || !DECORATOR_SYNTAX.test(code)) return null
+      const result = ts.transpileModule(code, {
+        fileName: file,
+        compilerOptions: { target: ts.ScriptTarget.ES2024, module: ts.ModuleKind.ESNext, sourceMap: true },
+      })
+      return { code: result.outputText.replace(/\n?\/\/# sourceMappingURL=.*$/u, '\n'), map: result.sourceMapText ?? null }
     },
   }
 }

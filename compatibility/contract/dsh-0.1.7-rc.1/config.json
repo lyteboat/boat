@@ -470,6 +470,16 @@
       }
     }
   },
+  "@deepseek-ai/dsh-llm": {
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "llm-invariant"
+      }
+    }
+  },
   "@deepseek-ai/dsh-session": {
     "./invariant": {
       "$module": {
@@ -526,6 +536,48 @@
     }
   },
   "@deepseek-ai/dsh-session-projection": {},
+  "@deepseek-ai/dsh-skill": {
+    ".": {
+      "SkillRegistry": {
+        "Config": [
+          {
+            "dict": {
+              "collectCacheMaxEntries": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 128
+            },
+            "type": "number"
+          }
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "collectCacheMaxEntries": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 128
+            },
+            "type": "number"
+          }
+        ]
+      }
+    }
+  },
   "@deepseek-ai/dsh-system-prompt": {
     ".": {
       "SystemPrompt": {

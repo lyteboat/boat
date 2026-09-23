@@ -12,6 +12,9 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../llm/llm"
+    },
+    {
       "path": "../../core/system-prompt"
     },
     {

@@ -463,6 +463,923 @@
       }
     }
   },
+  "@deepseek-ai/dsh-llm": {
+    "augmentations": {
+      "@deepseek-ai/dsh-typert-protocol#RemoteErrorDetailsMap": {
+        "llm/model-discovery-rejected": "'llm/model-discovery-rejected': { readonly settingsNs: string; readonly baseURL?: string; };"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteMap": {
+        "llm/discoverModels": "'llm/discoverModels': (settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<RemoteResult<LlmDiscoveredModel[]>>;",
+        "llm/listConfigurableProviders": "'llm/listConfigurableProviders': () => Promise<RemoteResult<LlmConfigurableProvider[]>>;",
+        "llm/listProviders": "'llm/listProviders': () => Promise<RemoteResult<LlmProviderInfo[]>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespace$6c6c6d": {
+        "discoverModels": "discoverModels: (settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<RemoteResult<LlmDiscoveredModel[]>>;",
+        "listConfigurableProviders": "listConfigurableProviders: () => Promise<RemoteResult<LlmConfigurableProvider[]>>;",
+        "listProviders": "listProviders: () => Promise<RemoteResult<LlmProviderInfo[]>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespaceMap": {
+        "llm": "'llm': TypertRemoteNamespace$6c6c6d;"
+      }
+    },
+    "exports": {
+      ".": {
+        "APP_IDENTITY": "const APP_IDENTITY: AppIdentity;",
+        "AdapterRegistrationHandle": {
+          "$declaration": "interface AdapterRegistrationHandle { }",
+          "()": "(): void;",
+          "replace": "replace(providers: string[]): void;"
+        },
+        "AlwaysRetryPolicyConfig": {
+          "$declaration": "interface AlwaysRetryPolicyConfig { }",
+          "backoff": "backoff?: BackoffConfig;",
+          "mode": "mode: 'always';"
+        },
+        "ApiKeyCheck": "type ApiKeyCheck = { readonly ok: true; readonly value: string; } | { readonly ok: false; readonly reason: ApiKeyRejection; };",
+        "ApiKeyRejection": "type ApiKeyRejection = 'empty' | 'illegalCharacters';",
+        "AppIdentity": {
+          "$declaration": "interface AppIdentity { }",
+          "product": "product: string;",
+          "url": "url: string;",
+          "version": "version: string;"
+        },
+        "AssistantMessage": {
+          "$declaration": "interface AssistantMessage extends MessageBase { }",
+          "role": "readonly role: 'assistant';",
+          "source": "readonly source: ModelMessageSource;"
+        },
+        "AssistantProviderMetadata": {
+          "$declaration": "interface AssistantProviderMetadata { }",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "replayState": "replayState?: unknown;"
+        },
+        "AssistantStreamAccumulator": {
+          "$declaration": "class AssistantStreamAccumulator { }",
+          "push": "push(value: TimedStreamChunk): TimedStreamChunk;",
+          "snapshot": "snapshot(): readonly AssistantStreamRecord[];"
+        },
+        "AssistantStreamRecord": "type AssistantStreamRecord = { readonly type: 'text-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly texts: readonly string[]; } | { readonly type: 'reasoning-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly texts: readonly string[]; } | { readonly type: 'tool-call-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly id: ToolCallId; readonly name?: string; readonly args: readonly string[]; } | { readonly type: 'chunk'; readonly time: number; readonly chunk: StreamChunk; };",
+        "AssistantStreamRun": "type AssistantStreamRun = Exclude<AssistantStreamRecord, { type: 'chunk'; }>;",
+        "BackoffConfig": {
+          "$declaration": "interface BackoffConfig { }",
+          "initialDelayMs": "initialDelayMs?: number;",
+          "jitterRatio": "jitterRatio?: number;",
+          "maxDelayMs": "maxDelayMs?: number;"
+        },
+        "BlockAssembler": {
+          "$declaration": "class BlockAssembler { }",
+          "blocks": "blocks(): ContentBlock[];",
+          "finish": "get finish(): FinishReason;",
+          "interruptedBlocks": "interruptedBlocks(): ContentBlock[];",
+          "message": "message(source: Omit<ModelMessageSource, 'kind'>): AssistantMessage;",
+          "push": "push(chunk: StreamChunk): void;",
+          "replayState": "get replayState(): ReplayEnvelope | undefined;",
+          "usage": "get usage(): TokenUsage | undefined;"
+        },
+        "CONTEXT_SUMMARY_MAX_CHARS": "const CONTEXT_SUMMARY_MAX_CHARS = 120;",
+        "CONTEXT_WINDOW_EXCEEDED_CODE": "const CONTEXT_WINDOW_EXCEEDED_CODE = \"CONTEXT_WINDOW_EXCEEDED\";",
+        "ContentBlock": "type ContentBlock = ContentBlockMap[ContentBlockType];",
+        "ContentBlockMap": {
+          "$declaration": "interface ContentBlockMap { }",
+          "file": "'file': FileBlock;",
+          "image": "'image': ImageBlock;",
+          "reasoning": "'reasoning': ReasoningBlock;",
+          "text": "'text': TextBlock;",
+          "tool-addition": "'tool-addition': ToolAdditionBlock;",
+          "tool-call": "'tool-call': ToolCallBlock;",
+          "tool-removal": "'tool-removal': ToolRemovalBlock;"
+        },
+        "ContentBlockType": "type ContentBlockType = keyof ContentBlockMap;",
+        "ContextForm": "type ContextForm = 'instructions' | 'catalog' | 'snapshot' | 'notice' | 'relay' | 'recall';",
+        "ContextFormed": "type ContextFormed = { readonly form?: never; } | { readonly form: 'instructions'; } | { readonly form: 'catalog'; } | { readonly form: 'snapshot'; readonly sections: readonly ContextSnapshotSection[]; } | { readonly form: 'notice'; readonly summary: string; } | { readonly form: 'relay'; } | { readonly form: 'recall'; };",
+        "ContextSnapshotSection": {
+          "$declaration": "interface ContextSnapshotSection { }",
+          "name": "readonly name: string;",
+          "text": "readonly text: string;"
+        },
+        "DeveloperMessage": {
+          "$declaration": "interface DeveloperMessage extends MessageBase { }",
+          "role": "readonly role: 'developer';"
+        },
+        "DirectoryRegistrationHandle": {
+          "$declaration": "interface DirectoryRegistrationHandle { }",
+          "()": "(): void;",
+          "replace": "replace(entries: readonly LlmConfigurableProvider[]): void;"
+        },
+        "EMPTY_RESPONSE_CODE": "const EMPTY_RESPONSE_CODE = \"EMPTY_RESPONSE\";",
+        "FileBlock": {
+          "$declaration": "interface FileBlock { }",
+          "attachment": "attachment: FileAttachmentRef;",
+          "type": "type: 'file';"
+        },
+        "FinishReason": "type FinishReason = FinishReasonMap[keyof FinishReasonMap];",
+        "FinishReasonMap": {
+          "$declaration": "interface FinishReasonMap { }",
+          "aborted": "'aborted': { kind: 'aborted'; failure: LlmFailure; };",
+          "error": "'error': { kind: 'error'; failure: LlmFailure; };",
+          "max-tokens": "'max-tokens': { kind: 'max-tokens'; };",
+          "stop": "'stop': { kind: 'stop'; };",
+          "tool-calls": "'tool-calls': { kind: 'tool-calls'; };"
+        },
+        "GenerateOptions": {
+          "$declaration": "interface GenerateOptions { }",
+          "maxTokens": "maxTokens?: number;",
+          "messages": "messages: RequestMessage[];",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "purpose": "purpose?: 'compaction' | 'session-title';",
+          "reasoningEffort": "reasoningEffort?: ReasoningEffortId;",
+          "sessionId": "sessionId?: Branded<'SessionId'>;",
+          "signal": "signal?: AbortSignal;",
+          "stop": "stop?: string[];",
+          "system": "system?: string;",
+          "temperature": "temperature?: number;",
+          "tools": "tools?: ToolSchema[];"
+        },
+        "HarnessError": {
+          "$declaration": "class HarnessError extends Error { }",
+          "code": "readonly code: string;",
+          "constructor": "constructor(message: string, code: string, options?: ErrorOptions);"
+        },
+        "IMAGE_OFFLOAD_REQUIRED_CODE": "const IMAGE_OFFLOAD_REQUIRED_CODE = \"IMAGE_OFFLOAD_REQUIRED\";",
+        "INVALID_CREDENTIAL_CODE": "const INVALID_CREDENTIAL_CODE = \"INVALID_CREDENTIAL\";",
+        "ImageAttachmentAccess": {
+          "$declaration": "interface ImageAttachmentAccess { }",
+          "readonlyPath": "readonlyPath: string;"
+        },
+        "ImageAttachmentAccessResolver": "type ImageAttachmentAccessResolver = (ref: ImageAttachmentRef) => ImageAttachmentAccess | undefined;",
+        "ImageBlock": {
+          "$declaration": "interface ImageBlock { }",
+          "attachment": "attachment: ImageAttachmentRef;",
+          "offloaded": "offloaded?: true;",
+          "type": "type: 'image';"
+        },
+        "LlmAdapter": {
+          "$declaration": "abstract class LlmAdapter { }",
+          "imageRequestPricing": "imageRequestPricing(_provider: string, _model: string): LlmImageRequestPricing | undefined;",
+          "listModels": "listModels(_provider: string): Promise<readonly LlmModelInfo[]>;",
+          "prepareCall": "prepareCall(provider: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall>;",
+          "providerInfo": "providerInfo(provider: string): LlmProviderInfo;",
+          "providerRetryPolicy": "providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;",
+          "resolveModel": "resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;",
+          "stream": "abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;"
+        },
+        "LlmAttemptId": "function LlmAttemptId(id: string): LlmAttemptId;\ntype LlmAttemptId = Branded<'LlmAttemptId'>;",
+        "LlmCallConfig": {
+          "$declaration": "interface LlmCallConfig { }",
+          "maxTokens": "maxTokens?: number;",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "reasoningEffort": "reasoningEffort?: ReasoningEffortId;",
+          "stop": "stop?: string[];",
+          "temperature": "temperature?: number;"
+        },
+        "LlmCallConfigAdapterDefaults": {
+          "$declaration": "interface LlmCallConfigAdapterDefaults { }",
+          "maxTokens": "maxTokens?: true;",
+          "reasoningEffort": "reasoningEffort?: true;"
+        },
+        "LlmConfigurableProvider": {
+          "$declaration": "interface LlmConfigurableProvider { }",
+          "declared": "declared?: boolean;",
+          "displayName": "displayName: string;",
+          "error": "error?: string;",
+          "provider": "provider: string;",
+          "settingsNs": "settingsNs: string;",
+          "settingsPath": "settingsPath: readonly string[];"
+        },
+        "LlmDiscoveredModel": {
+          "$declaration": "interface LlmDiscoveredModel { }",
+          "contextWindow": "contextWindow?: number;",
+          "id": "id: string;",
+          "inputModalities": "inputModalities?: readonly ModelModality[];",
+          "maxTokens": "maxTokens?: number;",
+          "name": "name?: string;"
+        },
+        "LlmError": {
+          "$declaration": "class LlmError extends HarnessError { }",
+          "constructor": "constructor(message: string, code: string, options?: LlmErrorOptions);",
+          "failure": "readonly failure: LlmFailure;"
+        },
+        "LlmErrorOptions": {
+          "$declaration": "interface LlmErrorOptions extends ErrorOptions { }",
+          "offloadImages": "offloadImages?: number;",
+          "providerRetryAfterMs": "providerRetryAfterMs?: number;",
+          "requestId": "requestId?: ProviderRequestId;",
+          "status": "status?: number;"
+        },
+        "LlmFailure": {
+          "$declaration": "interface LlmFailure { }",
+          "code": "readonly code: string;",
+          "message": "readonly message: string;",
+          "offloadImages": "readonly offloadImages?: number;",
+          "providerRetryAfterMs": "readonly providerRetryAfterMs?: number;",
+          "requestId": "readonly requestId?: ProviderRequestId;",
+          "status": "readonly status?: number;"
+        },
+        "LlmImageRequestBudget": {
+          "$declaration": "interface LlmImageRequestBudget { }",
+          "byteQuantum": "byteQuantum?: number;",
+          "countQuantum": "countQuantum?: number;",
+          "maxBytes": "maxBytes?: number;",
+          "maxImages": "maxImages?: number;",
+          "representation": "representation: 'raw' | 'base64';"
+        },
+        "LlmImageRequestPrice": {
+          "$declaration": "interface LlmImageRequestPrice { }",
+          "text": "text: string;",
+          "visualTokens": "visualTokens: number;"
+        },
+        "LlmImageRequestPricing": {
+          "$declaration": "interface LlmImageRequestPricing { }",
+          "priceImages": "priceImages(images: readonly ImageBlock[]): readonly LlmImageRequestPrice[];"
+        },
+        "LlmModelContext": {
+          "$declaration": "interface LlmModelContext { }",
+          "contextWindow": "contextWindow: number;"
+        },
+        "LlmModelDiscoveryOperation": {
+          "$declaration": "interface LlmModelDiscoveryOperation extends LlmModelDiscoveryRequest { }",
+          "signal": "signal?: AbortSignal;"
+        },
+        "LlmModelDiscoveryRequest": {
+          "$declaration": "interface LlmModelDiscoveryRequest { }",
+          "api": "api?: string;",
+          "apiKey": "apiKey?: string;",
+          "baseURL": "baseURL?: string;",
+          "provider": "provider?: string;"
+        },
+        "LlmModelInfo": {
+          "$declaration": "interface LlmModelInfo { }",
+          "description": "description?: string;",
+          "id": "id: string;",
+          "inputModalities": "inputModalities?: readonly ModelModality[];",
+          "name": "name: string;",
+          "provider": "provider: string;"
+        },
+        "LlmModelReasoningInfo": {
+          "$declaration": "interface LlmModelReasoningInfo { }",
+          "defaultEffort": "defaultEffort?: ReasoningEffortId;",
+          "efforts": "efforts: readonly LlmReasoningEffortInfo[];"
+        },
+        "LlmProviderInfo": {
+          "$declaration": "interface LlmProviderInfo { }",
+          "id": "id: string;",
+          "name": "name: string;"
+        },
+        "LlmReasoningEffortInfo": {
+          "$declaration": "interface LlmReasoningEffortInfo { }",
+          "description": "description?: string;",
+          "id": "id: ReasoningEffortId;",
+          "name": "name: string;"
+        },
+        "LlmResolvedModelInfo": {
+          "$declaration": "interface LlmResolvedModelInfo extends LlmModelInfo { }",
+          "context": "context?: LlmModelContext;",
+          "defaultMaxTokens": "defaultMaxTokens?: number;",
+          "reasoning": "reasoning?: LlmModelReasoningInfo;",
+          "systemPromptUpdate": "systemPromptUpdate?: SystemPromptUpdate;"
+        },
+        "LlmRuntime": {
+          "$declaration": "class LlmRuntime extends TypertRemoteService { }",
+          "constructor": "constructor(ctx: Context);",
+          "discoverModels": "discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;",
+          "fileRequestText": "fileRequestText(ref: FileAttachmentRef): string;",
+          "imageRequestPricing": "imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;",
+          "listConfigurableProviders": "listConfigurableProviders(): LlmConfigurableProvider[];",
+          "listModels": "listModels(provider: string): Promise<LlmModelInfo[]>;",
+          "listProviders": "listProviders(): LlmProviderInfo[];",
+          "prepareCall": "prepareCall(config: LlmCallConfig, signal?: AbortSignal): Promise<PreparedLlmCall>;",
+          "providerRetryPolicy": "providerRetryPolicy(provider: string): ResolvedRetryPolicy;",
+          "registerAdapter": "registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;",
+          "registerConfigurableProviders": "registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;",
+          "registerModelDiscovery": "registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;",
+          "remoteDiscoverModels": "remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;",
+          "resolveCallConfig": "resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>;",
+          "resolveModelInfo": "resolveModelInfo(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo>;",
+          "stream": "stream(options: GenerateOptions): AsyncIterable<StreamChunk>;"
+        },
+        "Message": "type Message = MessageRoleMap[keyof MessageRoleMap];",
+        "MessageId": "function MessageId(id: string): MessageId;\ntype MessageId = Branded<'MessageId'>;",
+        "MessageRoleMap": {
+          "$declaration": "interface MessageRoleMap { }",
+          "assistant": "assistant: AssistantMessage;",
+          "developer": "developer: DeveloperMessage;",
+          "system": "system: SystemMessage;",
+          "tool": "tool: ToolResultMessage;",
+          "user": "user: UserMessage;"
+        },
+        "MessageSource": "type MessageSource = MessageSourceMap[keyof MessageSourceMap];",
+        "MessageSourceMap": {
+          "$declaration": "interface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }",
+          "compact-checkpoint": "'compact-checkpoint': CompactionCheckpointSource;",
+          "model": "model: ModelMessageSource;",
+          "model-selection": "'model-selection': { kind: 'model-selection'; } & ContextFormed;",
+          "ptc-mode": "'ptc-mode': { kind: 'ptc-mode'; };",
+          "skill-invocation": "'skill-invocation': SkillInvocationSource;",
+          "system-prompt": "'system-prompt': SystemPromptMessageSource;",
+          "tool": "tool: ToolMessageSource;",
+          "tool-registry": "'tool-registry': { kind: 'tool-registry'; };",
+          "user": "user: { kind: 'user'; };",
+          "user-approval": "'user-approval': { kind: 'user-approval'; } & ContextFormed;"
+        },
+        "ModelMessageSource": {
+          "$declaration": "interface ModelMessageSource extends AssistantProviderMetadata { }",
+          "kind": "kind: 'model';"
+        },
+        "ModelModality": "type ModelModality = ModelModalityMap[keyof ModelModalityMap];",
+        "ModelModalityMap": {
+          "$declaration": "interface ModelModalityMap { }",
+          "image": "image: 'image';",
+          "text": "text: 'text';"
+        },
+        "NormalRetryPolicyConfig": {
+          "$declaration": "interface NormalRetryPolicyConfig { }",
+          "backoff": "backoff?: BackoffConfig;",
+          "maxRetries": "maxRetries?: number;",
+          "mode": "mode: 'normal';",
+          "retryableCodes": "retryableCodes?: string[];"
+        },
+        "PreparedAdapterCall": {
+          "$declaration": "interface PreparedAdapterCall { }",
+          "model": "readonly model: LlmResolvedModelInfo;",
+          "stream": "stream(options: GenerateOptions): AsyncIterable<StreamChunk>;"
+        },
+        "PreparedLlmCall": {
+          "$declaration": "interface PreparedLlmCall { }",
+          "adapterDefaults": "readonly adapterDefaults: LlmCallConfigAdapterDefaults;",
+          "config": "readonly config: LlmCallConfig;",
+          "context": "readonly context?: LlmModelContext;",
+          "inputModalities": "readonly inputModalities?: readonly ModelModality[];",
+          "retryPolicy": "readonly retryPolicy: ResolvedRetryPolicy;",
+          "stream": "stream(options: GenerateOptions): AsyncIterable<StreamChunk>;",
+          "systemPromptUpdate": "readonly systemPromptUpdate?: SystemPromptUpdate;"
+        },
+        "ProviderRequestId": "function ProviderRequestId(id: string): ProviderRequestId;\ntype ProviderRequestId = Branded<'ProviderRequestId'>;",
+        "QUOTA_EXCEEDED_CODE": "const QUOTA_EXCEEDED_CODE = \"QUOTA\";",
+        "RawStreamChunkType": "type RawStreamChunkType = Exclude<StreamChunk['type'], 'text-delta' | 'reasoning-delta' | 'tool-call-delta'>;",
+        "ReasoningBlock": {
+          "$declaration": "interface ReasoningBlock { }",
+          "text": "text: string;",
+          "type": "type: 'reasoning';"
+        },
+        "ReasoningEffortId": "function ReasoningEffortId(id: string): ReasoningEffortId;\ntype ReasoningEffortId = Branded<'ReasoningEffortId'>;",
+        "ReplayEnvelope": {
+          "$declaration": "interface ReplayEnvelope { }",
+          "blocks": "blocks?: readonly unknown[];",
+          "response": "response: unknown;"
+        },
+        "RequestMessage": "type RequestMessage = Message | RequestUserInput;",
+        "RequestUserInput": {
+          "$declaration": "interface RequestUserInput { }",
+          "content": "readonly content: UserMessage['content'];",
+          "id": "readonly id?: never;",
+          "role": "readonly role: 'user';",
+          "source": "readonly source?: never;"
+        },
+        "ResolvedAlwaysRetryPolicy": {
+          "$declaration": "interface ResolvedAlwaysRetryPolicy extends ResolvedRetryBackoff { }",
+          "mode": "readonly mode: 'always';"
+        },
+        "ResolvedNormalRetryPolicy": {
+          "$declaration": "interface ResolvedNormalRetryPolicy extends ResolvedRetryBackoff { }",
+          "maxRetries": "readonly maxRetries: number;",
+          "mode": "readonly mode: 'normal';",
+          "retryableCodes": "readonly retryableCodes: readonly string[];"
+        },
+        "ResolvedRetryBackoff": {
+          "$declaration": "interface ResolvedRetryBackoff { }",
+          "initialDelayMs": "readonly initialDelayMs: number;",
+          "jitterRatio": "readonly jitterRatio: number;",
+          "maxDelayMs": "readonly maxDelayMs: number;"
+        },
+        "ResolvedRetryPolicy": "type ResolvedRetryPolicy = ResolvedNormalRetryPolicy | ResolvedAlwaysRetryPolicy;",
+        "RetryPolicyConfig": "type RetryPolicyConfig = NormalRetryPolicyConfig | AlwaysRetryPolicyConfig;",
+        "RetryPolicySchema": "const RetryPolicySchema: z<RetryPolicyConfig>;",
+        "StreamChunk": "type StreamChunk = { type: 'block-start'; index: number; blockType: ContentBlockType; } | { type: 'text-delta'; index: number; text: string; } | { type: 'reasoning-delta'; index: number; text: string; } | { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string; } | { type: 'block-end'; index: number; block: ContentBlock; } | { type: 'usage'; usage: TokenUsage; } | { type: 'finish'; reason: FinishReason; replayState?: ReplayEnvelope; };",
+        "SystemMessage": {
+          "$declaration": "interface SystemMessage extends MessageBase { }",
+          "role": "readonly role: 'system';",
+          "source": "readonly source: MessageSourceMap['system-prompt'];"
+        },
+        "SystemPromptMessageSource": {
+          "$declaration": "interface SystemPromptMessageSource { }",
+          "kind": "kind: 'system-prompt';"
+        },
+        "SystemPromptUpdate": "type SystemPromptUpdate = 'in-history';",
+        "TextBlock": {
+          "$declaration": "interface TextBlock { }",
+          "text": "text: string;",
+          "type": "type: 'text';"
+        },
+        "TimedStreamChunk": {
+          "$declaration": "interface TimedStreamChunk { }",
+          "chunk": "readonly chunk: StreamChunk;",
+          "time": "readonly time: number;"
+        },
+        "TokenUsage": {
+          "$declaration": "interface TokenUsage { }",
+          "cacheReadTokens": "cacheReadTokens?: number;",
+          "cacheWriteTokens": "cacheWriteTokens?: number;",
+          "inputTokens": "inputTokens: number;",
+          "outputTokens": "outputTokens: number;",
+          "reasoningTokens": "reasoningTokens?: number;",
+          "totalTokens": "totalTokens?: number;"
+        },
+        "ToolAdditionBlock": {
+          "$declaration": "interface ToolAdditionBlock { }",
+          "tool": "tool?: never;",
+          "toolName": "toolName: string;",
+          "type": "type: 'tool-addition';"
+        },
+        "ToolCallBlock": {
+          "$declaration": "interface ToolCallBlock { }",
+          "arguments": "arguments: string;",
+          "id": "id: ToolCallId;",
+          "name": "name: string;",
+          "type": "type: 'tool-call';"
+        },
+        "ToolCallId": "function ToolCallId(id: string): ToolCallId;\ntype ToolCallId = Branded<'ToolCallId'>;",
+        "ToolMessageSource": {
+          "$declaration": "interface ToolMessageSource { }",
+          "callId": "callId: ToolCallId;",
+          "kind": "kind: 'tool';"
+        },
+        "ToolRemovalBlock": {
+          "$declaration": "interface ToolRemovalBlock { }",
+          "toolName": "toolName: string;",
+          "type": "type: 'tool-removal';"
+        },
+        "ToolResultMessage": {
+          "$declaration": "interface ToolResultMessage extends MessageBase { }",
+          "isError": "readonly isError?: boolean;",
+          "role": "readonly role: 'tool';",
+          "source": "readonly source: ToolMessageSource;",
+          "toolCallId": "readonly toolCallId: ToolCallId;"
+        },
+        "ToolResultMessageInput": {
+          "$declaration": "interface ToolResultMessageInput { }",
+          "callId": "readonly callId: ToolCallId;",
+          "content": "readonly content: readonly ContentBlock[];",
+          "isError": "readonly isError: boolean;"
+        },
+        "ToolSchema": {
+          "$declaration": "interface ToolSchema { }",
+          "deferLoading": "deferLoading?: true;",
+          "description": "description: string;",
+          "name": "name: string;",
+          "parameters": "parameters: Record<string, unknown>;"
+        },
+        "UserMessage": {
+          "$declaration": "interface UserMessage extends MessageBase { }",
+          "role": "readonly role: 'user';"
+        },
+        "assembleAssistantStream": "function assembleAssistantStream(stream: readonly AssistantStreamRecord[], assembler?: BlockAssembler): BlockAssembler;",
+        "assertUsableApiKey": "function assertUsableApiKey(raw: string, pkg: string, ref: string): string;",
+        "assistantStreamChunks": "function assistantStreamChunks<T extends RawStreamChunkType>(stream: readonly AssistantStreamRecord[], type: T): readonly Extract<StreamChunk, { type: T; }>[];",
+        "assistantStreamFirstTokenTime": "function assistantStreamFirstTokenTime(stream: readonly AssistantStreamRecord[]): number | undefined;",
+        "assistantStreamHasVisibleContent": "function assistantStreamHasVisibleContent(stream: readonly AssistantStreamRecord[]): boolean;",
+        "assistantStreamHasVisibleText": "function assistantStreamHasVisibleText(stream: readonly AssistantStreamRecord[]): boolean;",
+        "attributionHeaders": "function attributionHeaders(identity?: AppIdentity): Record<string, string>;",
+        "boundContextSummary": "function boundContextSummary(summary: string): string;",
+        "callConfigEquals": "function callConfigEquals(a: LlmCallConfig, b: LlmCallConfig): boolean;",
+        "chunkHasVisibleText": "function chunkHasVisibleText(chunk: StreamChunk): boolean;",
+        "contentHasFile": "function contentHasFile(content: readonly ContentBlock[]): boolean;",
+        "contentHasImage": "function contentHasImage(content: readonly ContentBlock[]): boolean;",
+        "createAssistantMessage": "function createAssistantMessage(input: NewAssistantMessage & { readonly id?: never; readonly role?: never; }): AssistantMessage;",
+        "createDeveloperMessage": "function createDeveloperMessage<T extends NewDeveloperMessage>(input: T & { readonly id?: never; readonly role?: never; }): T & Pick<DeveloperMessage, 'id' | 'role'>;",
+        "createMessage": "function createMessage<T extends NewMessage>(input: T & { readonly id?: never; }): T & Pick<Message, 'id'>;",
+        "createSystemMessage": "function createSystemMessage(text: string): SystemMessage;",
+        "createToolResultMessage": "function createToolResultMessage(input: ToolResultMessageInput): ToolResultMessage;",
+        "createUserMessage": "function createUserMessage<T extends NewUserMessage>(input: T & { readonly id?: never; readonly role?: never; }): T & Pick<UserMessage, 'id' | 'role'>;",
+        "default": {
+          "$declaration": "class LlmRuntime extends TypertRemoteService { }",
+          "constructor": "constructor(ctx: Context);",
+          "discoverModels": "discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal?: AbortSignal): Promise<LlmDiscoveredModel[]>;",
+          "fileRequestText": "fileRequestText(ref: FileAttachmentRef): string;",
+          "imageRequestPricing": "imageRequestPricing(provider: string, model: string): LlmImageRequestPricing | undefined;",
+          "listConfigurableProviders": "listConfigurableProviders(): LlmConfigurableProvider[];",
+          "listModels": "listModels(provider: string): Promise<LlmModelInfo[]>;",
+          "listProviders": "listProviders(): LlmProviderInfo[];",
+          "prepareCall": "prepareCall(config: LlmCallConfig, signal?: AbortSignal): Promise<PreparedLlmCall>;",
+          "providerRetryPolicy": "providerRetryPolicy(provider: string): ResolvedRetryPolicy;",
+          "registerAdapter": "registerAdapter(providers: string[], adapter: LlmAdapter): AdapterRegistrationHandle;",
+          "registerConfigurableProviders": "registerConfigurableProviders(entries: readonly LlmConfigurableProvider[]): DirectoryRegistrationHandle;",
+          "registerModelDiscovery": "registerModelDiscovery(settingsNs: string, discover: (request: LlmModelDiscoveryRequest, signal?: AbortSignal) => Promise<readonly LlmDiscoveredModel[]>): () => void;",
+          "remoteDiscoverModels": "remoteDiscoverModels(settingsNs: string, request: LlmModelDiscoveryRequest, signal: AbortSignal): Promise<LlmDiscoveredModel[]>;",
+          "resolveCallConfig": "resolveCallConfig(config: LlmCallConfig, signal?: AbortSignal): Promise<LlmCallConfig>;",
+          "resolveModelInfo": "resolveModelInfo(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo>;",
+          "stream": "stream(options: GenerateOptions): AsyncIterable<StreamChunk>;"
+        },
+        "errorChain": "function errorChain(value: unknown): string;",
+        "expandAssistantStream": "function expandAssistantStream(stream: readonly AssistantStreamRecord[]): readonly TimedStreamChunk[];",
+        "fileHandleText": "function fileHandleText(ref: FileAttachmentRef, readonlyPath: string | undefined): string;",
+        "freezeMessage": "function freezeMessage<T extends Message>(message: T): T;",
+        "isAgentLoopRequest": "function isAgentLoopRequest(request: GenerateOptions): boolean;",
+        "isContextWindowExceededError": "function isContextWindowExceededError(detail: string): boolean;",
+        "isHarnessError": "function isHarnessError(value: unknown): value is HarnessError;",
+        "isQuotaExceededError": "function isQuotaExceededError(detail: string): boolean;",
+        "isTokenDelta": "function isTokenDelta(chunk: StreamChunk): boolean;",
+        "isVisibleChunk": "function isVisibleChunk(chunk: StreamChunk): boolean;",
+        "joinAssistantStreamText": "function joinAssistantStreamText(stream: readonly AssistantStreamRecord[]): string;",
+        "lastAssistantStreamChunk": "function lastAssistantStreamChunk<T extends RawStreamChunkType>(stream: readonly AssistantStreamRecord[], type: T): Extract<StreamChunk, { type: T; }> | undefined;",
+        "markAgentLoopRequest": "function markAgentLoopRequest<T extends GenerateOptions>(request: T): T;",
+        "normalizeApiKey": "function normalizeApiKey(raw: string): ApiKeyCheck;",
+        "offloadedImageText": "function offloadedImageText(ref: ImageAttachmentRef, access?: ImageAttachmentAccess): string;",
+        "projectFilesToText": "function projectFilesToText(messages: readonly Message[], resolvePath: (ref: FileAttachmentRef) => string | undefined): readonly Message[];\nfunction projectFilesToText(messages: readonly RequestMessage[], resolvePath: (ref: FileAttachmentRef) => string | undefined): readonly RequestMessage[];",
+        "projectImagesForTextModel": "function projectImagesForTextModel(messages: readonly Message[]): readonly Message[];\nfunction projectImagesForTextModel(messages: readonly RequestMessage[]): readonly RequestMessage[];",
+        "projectOffloadedImages": "function projectOffloadedImages(messages: readonly Message[], placeholder: (ref: ImageAttachmentRef) => string): readonly Message[];\nfunction projectOffloadedImages(messages: readonly RequestMessage[], placeholder: (ref: ImageAttachmentRef) => string): readonly RequestMessage[];",
+        "requestImageHandleText": "function requestImageHandleText(ref: ImageAttachmentRef, version: Pick<RequestImageAttachment, 'width' | 'height'>, access?: ImageAttachmentAccess): string;",
+        "requiredImageOffload": "function requiredImageOffload(messages: readonly RequestMessage[], budget: Pick<LlmImageRequestBudget, 'representation' | 'maxBytes' | 'maxImages' | 'byteQuantum' | 'countQuantum'>, versionBytes: (block: ImageBlock) => number): number;",
+        "resolveImageAttachmentAccess": "function resolveImageAttachmentAccess(attachments: AttachmentStore, mapHostPath: (hostPath: string) => string | undefined, ref: ImageAttachmentRef): ImageAttachmentAccess | undefined;",
+        "resolveRetryPolicy": "function resolveRetryPolicy(config: RetryPolicyConfig | undefined, path: string): ResolvedRetryPolicy;",
+        "runFirstTokenTime": "function runFirstTokenTime(run: AssistantStreamRun): number | undefined;",
+        "runFirstVisibleTime": "function runFirstVisibleTime(run: AssistantStreamRun): number | undefined;",
+        "textOnlyImageText": "function textOnlyImageText(ref: ImageAttachmentRef): string;",
+        "userAgent": "function userAgent(identity?: AppIdentity): string;"
+      },
+      "./assistant-stream": {
+        "AssistantStreamAccumulator": {
+          "$declaration": "class AssistantStreamAccumulator { }",
+          "push": "push(value: TimedStreamChunk): TimedStreamChunk;",
+          "snapshot": "snapshot(): readonly AssistantStreamRecord[];"
+        },
+        "AssistantStreamRecord": "type AssistantStreamRecord = { readonly type: 'text-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly texts: readonly string[]; } | { readonly type: 'reasoning-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly texts: readonly string[]; } | { readonly type: 'tool-call-chunks'; readonly time0: number; readonly index: number; readonly dt: readonly number[]; readonly id: ToolCallId; readonly name?: string; readonly args: readonly string[]; } | { readonly type: 'chunk'; readonly time: number; readonly chunk: StreamChunk; };",
+        "AssistantStreamRun": "type AssistantStreamRun = Exclude<AssistantStreamRecord, { type: 'chunk'; }>;",
+        "RawStreamChunkType": "type RawStreamChunkType = Exclude<StreamChunk['type'], 'text-delta' | 'reasoning-delta' | 'tool-call-delta'>;",
+        "TimedStreamChunk": {
+          "$declaration": "interface TimedStreamChunk { }",
+          "chunk": "readonly chunk: StreamChunk;",
+          "time": "readonly time: number;"
+        },
+        "assembleAssistantStream": "function assembleAssistantStream(stream: readonly AssistantStreamRecord[], assembler?: BlockAssembler): BlockAssembler;",
+        "assistantStreamChunks": "function assistantStreamChunks<T extends RawStreamChunkType>(stream: readonly AssistantStreamRecord[], type: T): readonly Extract<StreamChunk, { type: T; }>[];",
+        "assistantStreamFirstTokenTime": "function assistantStreamFirstTokenTime(stream: readonly AssistantStreamRecord[]): number | undefined;",
+        "assistantStreamHasVisibleContent": "function assistantStreamHasVisibleContent(stream: readonly AssistantStreamRecord[]): boolean;",
+        "assistantStreamHasVisibleText": "function assistantStreamHasVisibleText(stream: readonly AssistantStreamRecord[]): boolean;",
+        "chunkHasVisibleText": "function chunkHasVisibleText(chunk: StreamChunk): boolean;",
+        "expandAssistantStream": "function expandAssistantStream(stream: readonly AssistantStreamRecord[]): readonly TimedStreamChunk[];",
+        "isTokenDelta": "function isTokenDelta(chunk: StreamChunk): boolean;",
+        "isVisibleChunk": "function isVisibleChunk(chunk: StreamChunk): boolean;",
+        "joinAssistantStreamText": "function joinAssistantStreamText(stream: readonly AssistantStreamRecord[]): string;",
+        "lastAssistantStreamChunk": "function lastAssistantStreamChunk<T extends RawStreamChunkType>(stream: readonly AssistantStreamRecord[], type: T): Extract<StreamChunk, { type: T; }> | undefined;",
+        "runFirstTokenTime": "function runFirstTokenTime(run: AssistantStreamRun): number | undefined;",
+        "runFirstVisibleTime": "function runFirstVisibleTime(run: AssistantStreamRun): number | undefined;"
+      },
+      "./brand": {
+        "LlmAttemptId": "function LlmAttemptId(id: string): LlmAttemptId;\ntype LlmAttemptId = Branded<'LlmAttemptId'>;",
+        "MessageId": "function MessageId(id: string): MessageId;\ntype MessageId = Branded<'MessageId'>;",
+        "ProviderRequestId": "function ProviderRequestId(id: string): ProviderRequestId;\ntype ProviderRequestId = Branded<'ProviderRequestId'>;",
+        "ReasoningEffortId": "function ReasoningEffortId(id: string): ReasoningEffortId;\ntype ReasoningEffortId = Branded<'ReasoningEffortId'>;",
+        "ToolCallId": "function ToolCallId(id: string): ToolCallId;\ntype ToolCallId = Branded<'ToolCallId'>;"
+      },
+      "./invariant": {
+        "apply": "const apply: (ctx: Context) => Promise<() => void>;",
+        "inject": "const inject: string[];",
+        "name": "const name = \"llm-invariant\";"
+      },
+      "./message": {
+        "AssistantMessage": {
+          "$declaration": "interface AssistantMessage extends MessageBase { }",
+          "role": "readonly role: 'assistant';",
+          "source": "readonly source: ModelMessageSource;"
+        },
+        "AssistantProviderMetadata": {
+          "$declaration": "interface AssistantProviderMetadata { }",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "replayState": "replayState?: unknown;"
+        },
+        "CONTEXT_SUMMARY_MAX_CHARS": "const CONTEXT_SUMMARY_MAX_CHARS = 120;",
+        "ContextForm": "type ContextForm = 'instructions' | 'catalog' | 'snapshot' | 'notice' | 'relay' | 'recall';",
+        "ContextFormed": "type ContextFormed = { readonly form?: never; } | { readonly form: 'instructions'; } | { readonly form: 'catalog'; } | { readonly form: 'snapshot'; readonly sections: readonly ContextSnapshotSection[]; } | { readonly form: 'notice'; readonly summary: string; } | { readonly form: 'relay'; } | { readonly form: 'recall'; };",
+        "ContextSnapshotSection": {
+          "$declaration": "interface ContextSnapshotSection { }",
+          "name": "readonly name: string;",
+          "text": "readonly text: string;"
+        },
+        "DeveloperMessage": {
+          "$declaration": "interface DeveloperMessage extends MessageBase { }",
+          "role": "readonly role: 'developer';"
+        },
+        "Message": "type Message = MessageRoleMap[keyof MessageRoleMap];",
+        "MessageRoleMap": {
+          "$declaration": "interface MessageRoleMap { }",
+          "assistant": "assistant: AssistantMessage;",
+          "developer": "developer: DeveloperMessage;",
+          "system": "system: SystemMessage;",
+          "tool": "tool: ToolResultMessage;",
+          "user": "user: UserMessage;"
+        },
+        "MessageSource": "type MessageSource = MessageSourceMap[keyof MessageSourceMap];",
+        "MessageSourceMap": {
+          "$declaration": "interface MessageSourceMap { }",
+          "model": "model: ModelMessageSource;",
+          "system-prompt": "'system-prompt': SystemPromptMessageSource;",
+          "tool": "tool: ToolMessageSource;",
+          "user": "user: { kind: 'user'; };"
+        },
+        "ModelMessageSource": {
+          "$declaration": "interface ModelMessageSource extends AssistantProviderMetadata { }",
+          "kind": "kind: 'model';"
+        },
+        "SystemMessage": {
+          "$declaration": "interface SystemMessage extends MessageBase { }",
+          "role": "readonly role: 'system';",
+          "source": "readonly source: MessageSourceMap['system-prompt'];"
+        },
+        "SystemPromptMessageSource": {
+          "$declaration": "interface SystemPromptMessageSource { }",
+          "kind": "kind: 'system-prompt';"
+        },
+        "ToolMessageSource": {
+          "$declaration": "interface ToolMessageSource { }",
+          "callId": "callId: ToolCallId;",
+          "kind": "kind: 'tool';"
+        },
+        "ToolResultMessage": {
+          "$declaration": "interface ToolResultMessage extends MessageBase { }",
+          "isError": "readonly isError?: boolean;",
+          "role": "readonly role: 'tool';",
+          "source": "readonly source: ToolMessageSource;",
+          "toolCallId": "readonly toolCallId: ToolCallId;"
+        },
+        "ToolResultMessageInput": {
+          "$declaration": "interface ToolResultMessageInput { }",
+          "callId": "readonly callId: ToolCallId;",
+          "content": "readonly content: readonly ContentBlock[];",
+          "isError": "readonly isError: boolean;"
+        },
+        "UserMessage": {
+          "$declaration": "interface UserMessage extends MessageBase { }",
+          "role": "readonly role: 'user';"
+        },
+        "boundContextSummary": "function boundContextSummary(summary: string): string;",
+        "createAssistantMessage": "function createAssistantMessage(input: NewAssistantMessage & { readonly id?: never; readonly role?: never; }): AssistantMessage;",
+        "createDeveloperMessage": "function createDeveloperMessage<T extends NewDeveloperMessage>(input: T & { readonly id?: never; readonly role?: never; }): T & Pick<DeveloperMessage, 'id' | 'role'>;",
+        "createMessage": "function createMessage<T extends NewMessage>(input: T & { readonly id?: never; }): T & Pick<Message, 'id'>;",
+        "createSystemMessage": "function createSystemMessage(text: string): SystemMessage;",
+        "createToolResultMessage": "function createToolResultMessage(input: ToolResultMessageInput): ToolResultMessage;",
+        "createUserMessage": "function createUserMessage<T extends NewUserMessage>(input: T & { readonly id?: never; readonly role?: never; }): T & Pick<UserMessage, 'id' | 'role'>;",
+        "freezeMessage": "function freezeMessage<T extends Message>(message: T): T;"
+      },
+      "./remote": {
+        "TYPERT_REMOTE": "const TYPERT_REMOTE: TypertRemoteContribution;",
+        "default": "const TYPERT_REMOTE: TypertRemoteContribution;"
+      },
+      "./typert": {
+        "TYPERT": "const TYPERT: unknown;"
+      },
+      "./types": {
+        "AssistantMessage": {
+          "$declaration": "interface AssistantMessage extends MessageBase { }",
+          "role": "readonly role: 'assistant';",
+          "source": "readonly source: ModelMessageSource;"
+        },
+        "AssistantProviderMetadata": {
+          "$declaration": "interface AssistantProviderMetadata { }",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "replayState": "replayState?: unknown;"
+        },
+        "ContentBlock": "type ContentBlock = ContentBlockMap[ContentBlockType];",
+        "ContentBlockMap": {
+          "$declaration": "interface ContentBlockMap { }",
+          "file": "'file': FileBlock;",
+          "image": "'image': ImageBlock;",
+          "reasoning": "'reasoning': ReasoningBlock;",
+          "text": "'text': TextBlock;",
+          "tool-addition": "'tool-addition': ToolAdditionBlock;",
+          "tool-call": "'tool-call': ToolCallBlock;",
+          "tool-removal": "'tool-removal': ToolRemovalBlock;"
+        },
+        "ContentBlockType": "type ContentBlockType = keyof ContentBlockMap;",
+        "DeveloperMessage": {
+          "$declaration": "interface DeveloperMessage extends MessageBase { }",
+          "role": "readonly role: 'developer';"
+        },
+        "FileBlock": {
+          "$declaration": "interface FileBlock { }",
+          "attachment": "attachment: FileAttachmentRef;",
+          "type": "type: 'file';"
+        },
+        "FinishReason": "type FinishReason = FinishReasonMap[keyof FinishReasonMap];",
+        "FinishReasonMap": {
+          "$declaration": "interface FinishReasonMap { }",
+          "aborted": "'aborted': { kind: 'aborted'; failure: LlmFailure; };",
+          "error": "'error': { kind: 'error'; failure: LlmFailure; };",
+          "max-tokens": "'max-tokens': { kind: 'max-tokens'; };",
+          "stop": "'stop': { kind: 'stop'; };",
+          "tool-calls": "'tool-calls': { kind: 'tool-calls'; };"
+        },
+        "GenerateOptions": {
+          "$declaration": "interface GenerateOptions { }",
+          "maxTokens": "maxTokens?: number;",
+          "messages": "messages: RequestMessage[];",
+          "model": "model: string;",
+          "provider": "provider: string;",
+          "purpose": "purpose?: 'compaction' | 'session-title';",
+          "reasoningEffort": "reasoningEffort?: ReasoningEffortId;",
+          "sessionId": "sessionId?: Branded<'SessionId'>;",
+          "signal": "signal?: AbortSignal;",
+          "stop": "stop?: string[];",
+          "system": "system?: string;",
+          "temperature": "temperature?: number;",
+          "tools": "tools?: ToolSchema[];"
+        },
+        "ImageBlock": {
+          "$declaration": "interface ImageBlock { }",
+          "attachment": "attachment: ImageAttachmentRef;",
+          "offloaded": "offloaded?: true;",
+          "type": "type: 'image';"
+        },
+        "LlmConfigurableProvider": {
+          "$declaration": "interface LlmConfigurableProvider { }",
+          "declared": "declared?: boolean;",
+          "displayName": "displayName: string;",
+          "error": "error?: string;",
+          "provider": "provider: string;",
+          "settingsNs": "settingsNs: string;",
+          "settingsPath": "settingsPath: readonly string[];"
+        },
+        "LlmDiscoveredModel": {
+          "$declaration": "interface LlmDiscoveredModel { }",
+          "contextWindow": "contextWindow?: number;",
+          "id": "id: string;",
+          "inputModalities": "inputModalities?: readonly ModelModality[];",
+          "maxTokens": "maxTokens?: number;",
+          "name": "name?: string;"
+        },
+        "LlmFailure": {
+          "$declaration": "interface LlmFailure { }",
+          "code": "readonly code: string;",
+          "message": "readonly message: string;",
+          "offloadImages": "readonly offloadImages?: number;",
+          "providerRetryAfterMs": "readonly providerRetryAfterMs?: number;",
+          "requestId": "readonly requestId?: ProviderRequestId;",
+          "status": "readonly status?: number;"
+        },
+        "LlmImageRequestBudget": {
+          "$declaration": "interface LlmImageRequestBudget { }",
+          "byteQuantum": "byteQuantum?: number;",
+          "countQuantum": "countQuantum?: number;",
+          "maxBytes": "maxBytes?: number;",
+          "maxImages": "maxImages?: number;",
+          "representation": "representation: 'raw' | 'base64';"
+        },
+        "LlmImageRequestPrice": {
+          "$declaration": "interface LlmImageRequestPrice { }",
+          "text": "text: string;",
+          "visualTokens": "visualTokens: number;"
+        },
+        "LlmImageRequestPricing": {
+          "$declaration": "interface LlmImageRequestPricing { }",
+          "priceImages": "priceImages(images: readonly ImageBlock[]): readonly LlmImageRequestPrice[];"
+        },
+        "LlmModelContext": {
+          "$declaration": "interface LlmModelContext { }",
+          "contextWindow": "contextWindow: number;"
+        },
+        "LlmModelDiscoveryOperation": {
+          "$declaration": "interface LlmModelDiscoveryOperation extends LlmModelDiscoveryRequest { }",
+          "signal": "signal?: AbortSignal;"
+        },
+        "LlmModelDiscoveryRequest": {
+          "$declaration": "interface LlmModelDiscoveryRequest { }",
+          "api": "api?: string;",
+          "apiKey": "apiKey?: string;",
+          "baseURL": "baseURL?: string;",
+          "provider": "provider?: string;"
+        },
+        "LlmModelInfo": {
+          "$declaration": "interface LlmModelInfo { }",
+          "description": "description?: string;",
+          "id": "id: string;",
+          "inputModalities": "inputModalities?: readonly ModelModality[];",
+          "name": "name: string;",
+          "provider": "provider: string;"
+        },
+        "LlmModelReasoningInfo": {
+          "$declaration": "interface LlmModelReasoningInfo { }",
+          "defaultEffort": "defaultEffort?: ReasoningEffortId;",
+          "efforts": "efforts: readonly LlmReasoningEffortInfo[];"
+        },
+        "LlmProviderInfo": {
+          "$declaration": "interface LlmProviderInfo { }",
+          "id": "id: string;",
+          "name": "name: string;"
+        },
+        "LlmReasoningEffortInfo": {
+          "$declaration": "interface LlmReasoningEffortInfo { }",
+          "description": "description?: string;",
+          "id": "id: ReasoningEffortId;",
+          "name": "name: string;"
+        },
+        "LlmResolvedModelInfo": {
+          "$declaration": "interface LlmResolvedModelInfo extends LlmModelInfo { }",
+          "context": "context?: LlmModelContext;",
+          "defaultMaxTokens": "defaultMaxTokens?: number;",
+          "reasoning": "reasoning?: LlmModelReasoningInfo;",
+          "systemPromptUpdate": "systemPromptUpdate?: SystemPromptUpdate;"
+        },
+        "Message": "type Message = MessageRoleMap[keyof MessageRoleMap];",
+        "MessageSource": "type MessageSource = MessageSourceMap[keyof MessageSourceMap];",
+        "MessageSourceMap": {
+          "$declaration": "interface MessageSourceMap { }",
+          "model": "model: ModelMessageSource;",
+          "system-prompt": "'system-prompt': SystemPromptMessageSource;",
+          "tool": "tool: ToolMessageSource;",
+          "user": "user: { kind: 'user'; };"
+        },
+        "ModelMessageSource": {
+          "$declaration": "interface ModelMessageSource extends AssistantProviderMetadata { }",
+          "kind": "kind: 'model';"
+        },
+        "ModelModality": "type ModelModality = ModelModalityMap[keyof ModelModalityMap];",
+        "ModelModalityMap": {
+          "$declaration": "interface ModelModalityMap { }",
+          "image": "image: 'image';",
+          "text": "text: 'text';"
+        },
+        "ReasoningBlock": {
+          "$declaration": "interface ReasoningBlock { }",
+          "text": "text: string;",
+          "type": "type: 'reasoning';"
+        },
+        "ReplayEnvelope": {
+          "$declaration": "interface ReplayEnvelope { }",
+          "blocks": "blocks?: readonly unknown[];",
+          "response": "response: unknown;"
+        },
+        "RequestMessage": "type RequestMessage = Message | RequestUserInput;",
+        "RequestUserInput": {
+          "$declaration": "interface RequestUserInput { }",
+          "content": "readonly content: UserMessage['content'];",
+          "id": "readonly id?: never;",
+          "role": "readonly role: 'user';",
+          "source": "readonly source?: never;"
+        },
+        "StreamChunk": "type StreamChunk = { type: 'block-start'; index: number; blockType: ContentBlockType; } | { type: 'text-delta'; index: number; text: string; } | { type: 'reasoning-delta'; index: number; text: string; } | { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string; } | { type: 'block-end'; index: number; block: ContentBlock; } | { type: 'usage'; usage: TokenUsage; } | { type: 'finish'; reason: FinishReason; replayState?: ReplayEnvelope; };",
+        "SystemPromptUpdate": "type SystemPromptUpdate = 'in-history';",
+        "TextBlock": {
+          "$declaration": "interface TextBlock { }",
+          "text": "text: string;",
+          "type": "type: 'text';"
+        },
+        "TokenUsage": {
+          "$declaration": "interface TokenUsage { }",
+          "cacheReadTokens": "cacheReadTokens?: number;",
+          "cacheWriteTokens": "cacheWriteTokens?: number;",
+          "inputTokens": "inputTokens: number;",
+          "outputTokens": "outputTokens: number;",
+          "reasoningTokens": "reasoningTokens?: number;",
+          "totalTokens": "totalTokens?: number;"
+        },
+        "ToolAdditionBlock": {
+          "$declaration": "interface ToolAdditionBlock { }",
+          "tool": "tool?: never;",
+          "toolName": "toolName: string;",
+          "type": "type: 'tool-addition';"
+        },
+        "ToolCallBlock": {
+          "$declaration": "interface ToolCallBlock { }",
+          "arguments": "arguments: string;",
+          "id": "id: ToolCallId;",
+          "name": "name: string;",
+          "type": "type: 'tool-call';"
+        },
+        "ToolMessageSource": {
+          "$declaration": "interface ToolMessageSource { }",
+          "callId": "callId: ToolCallId;",
+          "kind": "kind: 'tool';"
+        },
+        "ToolRemovalBlock": {
+          "$declaration": "interface ToolRemovalBlock { }",
+          "toolName": "toolName: string;",
+          "type": "type: 'tool-removal';"
+        },
+        "ToolResultMessage": {
+          "$declaration": "interface ToolResultMessage extends MessageBase { }",
+          "isError": "readonly isError?: boolean;",
+          "role": "readonly role: 'tool';",
+          "source": "readonly source: ToolMessageSource;",
+          "toolCallId": "readonly toolCallId: ToolCallId;"
+        },
+        "ToolSchema": {
+          "$declaration": "interface ToolSchema { }",
+          "deferLoading": "deferLoading?: true;",
+          "description": "description: string;",
+          "name": "name: string;",
+          "parameters": "parameters: Record<string, unknown>;"
+        },
+        "UserMessage": {
+          "$declaration": "interface UserMessage extends MessageBase { }",
+          "role": "readonly role: 'user';"
+        }
+      }
+    }
+  },
   "@deepseek-ai/dsh-session": {
     "augmentations": {
       "@deepseek-ai/dsh-typert-protocol#RemoteErrorDetailsMap": {
@@ -1126,6 +2043,113 @@
           "inbox": "inbox: InboxState;",
           "turnBoundary": "turnBoundary: TurnBoundaryProjection;"
         }
+      }
+    }
+  },
+  "@deepseek-ai/dsh-skill": {
+    "augmentations": {
+      "@deepseek-ai/dsh-llm#MessageSourceMap": {
+        "skill-invocation": "'skill-invocation': SkillInvocationSource;"
+      }
+    },
+    "exports": {
+      ".": {
+        "BUNDLED_SKILL_RANK": "const BUNDLED_SKILL_RANK = 600;",
+        "Config": {
+          "$declaration": "interface Config { }",
+          "collectCacheMaxEntries": "readonly collectCacheMaxEntries?: number;"
+        },
+        "SkillCandidate": {
+          "$declaration": "interface SkillCandidate extends SkillSummary { }",
+          "locator": "readonly locator: unknown;",
+          "metadata": "readonly metadata?: Readonly<Record<string, unknown>>;",
+          "rank": "readonly rank: number;"
+        },
+        "SkillCatalogSnapshot": {
+          "$declaration": "interface SkillCatalogSnapshot { }",
+          "complete": "readonly complete: boolean;",
+          "skills": "readonly skills: SkillSummary[];"
+        },
+        "SkillDefinition": {
+          "$declaration": "interface SkillDefinition extends SkillSummary { }",
+          "content": "readonly content: string;",
+          "metadata": "readonly metadata?: Readonly<Record<string, unknown>>;"
+        },
+        "SkillInvocationPolicy": {
+          "$declaration": "interface SkillInvocationPolicy { }",
+          "modelInvocable": "readonly modelInvocable: boolean;",
+          "userInvocable": "readonly userInvocable: boolean;"
+        },
+        "SkillInvocationSource": {
+          "$declaration": "interface SkillInvocationSource { }",
+          "form": "readonly form: 'instructions';",
+          "kind": "readonly kind: 'skill-invocation';",
+          "name": "readonly name: string;"
+        },
+        "SkillLookupOptions": {
+          "$declaration": "interface SkillLookupOptions { }",
+          "cwd": "readonly cwd?: string | undefined;",
+          "signal": "readonly signal?: AbortSignal | undefined;"
+        },
+        "SkillProvider": {
+          "$declaration": "interface SkillProvider { }",
+          "get": "readonly get: (candidate: SkillCandidate, options: SkillLookupOptions) => Promise<SkillDefinition | undefined>;",
+          "list": "readonly list: (options: SkillLookupOptions) => Promise<readonly SkillCandidate[] | SkillProviderObservation>;",
+          "name": "readonly name: string;"
+        },
+        "SkillProviderControl": {
+          "$declaration": "interface SkillProviderControl { }",
+          "invalidate": "readonly invalidate: () => void;",
+          "signal": "readonly signal: AbortSignal;"
+        },
+        "SkillProviderObservation": {
+          "$declaration": "interface SkillProviderObservation { }",
+          "candidates": "readonly candidates: readonly SkillCandidate[];",
+          "complete": "readonly complete: boolean;"
+        },
+        "SkillRegistration": "type SkillRegistration = Omit<SkillDefinition, 'invocation' | 'provider'> & { readonly invocation?: SkillInvocationPolicy; readonly provider?: string; };",
+        "SkillRegistry": {
+          "$declaration": "class SkillRegistry extends Service { }",
+          "Config": "static Config: Schema<Config>;",
+          "constructor": "constructor(ctx: Context, config?: Config);",
+          "get": "get(name: string, options?: SkillViewOptions): Promise<SkillDefinition | undefined>;",
+          "list": "list(options?: SkillViewOptions): Promise<SkillSummary[]>;",
+          "register": "register(skill: SkillRegistration): () => void;",
+          "registerProvider": "registerProvider(create: (control: SkillProviderControl) => SkillProvider): () => void;",
+          "snapshot": "snapshot(options?: SkillViewOptions): Promise<SkillCatalogSnapshot>;"
+        },
+        "SkillResourceBase": "type SkillResourceBase = { readonly kind: 'directory'; readonly path: string; } | { readonly kind: 'url'; readonly url: string; } | { readonly kind: 'opaque'; readonly description: string; };",
+        "SkillSource": "type SkillSource = 'project-dsh' | 'project-agents' | 'runtime' | 'user-dsh' | 'user-agents' | 'custom' | 'bundled' | (string & {});",
+        "SkillSummary": {
+          "$declaration": "interface SkillSummary { }",
+          "description": "readonly description: string;",
+          "invocation": "readonly invocation: SkillInvocationPolicy;",
+          "name": "readonly name: string;",
+          "path": "readonly path?: string;",
+          "provider": "readonly provider: string;",
+          "resourceBase": "readonly resourceBase?: SkillResourceBase;",
+          "source": "readonly source: SkillSource;",
+          "whenToUse": "readonly whenToUse?: string;"
+        },
+        "SkillViewOptions": {
+          "$declaration": "interface SkillViewOptions extends SkillLookupOptions { }",
+          "scope": "readonly scope?: ScopeKey | undefined;"
+        },
+        "default": {
+          "$declaration": "class SkillRegistry extends Service { }",
+          "Config": "static Config: Schema<Config>;",
+          "constructor": "constructor(ctx: Context, config?: Config);",
+          "get": "get(name: string, options?: SkillViewOptions): Promise<SkillDefinition | undefined>;",
+          "list": "list(options?: SkillViewOptions): Promise<SkillSummary[]>;",
+          "register": "register(skill: SkillRegistration): () => void;",
+          "registerProvider": "registerProvider(create: (control: SkillProviderControl) => SkillProvider): () => void;",
+          "snapshot": "snapshot(options?: SkillViewOptions): Promise<SkillCatalogSnapshot>;"
+        },
+        "escapeText": "function escapeText(value: string): string;",
+        "isModelInvocable": "function isModelInvocable(skill: Pick<SkillSummary, 'invocation'>): boolean;",
+        "isSkillName": "function isSkillName(name: string): boolean;",
+        "isUserInvocable": "function isUserInvocable(skill: Pick<SkillSummary, 'invocation'>): boolean;",
+        "renderSkillContent": "function renderSkillContent(skill: Pick<SkillDefinition, 'name' | 'provider' | 'resourceBase' | 'content'>): string;"
       }
     }
   },

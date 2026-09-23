@@ -11,6 +11,7 @@ Upstream runs these tests inside its monorepo, with a resolution facade that map
 | `@deepseek-ai/cordis` resolves to the published build plus runtime objects for its `declare const enum`s (`FiberState`, `LoggerLevel`), read from its `.d.ts` | The kernel sources read `FiberState.*`; upstream compiles against cordis sources, where the enum exists at runtime; the published build erases it. |
 | `../../../settings/settings/tests/live-config.ts` → `shims/live-config.ts` | `agent-loop/tests/settings.spec.ts` imports a helper from another package's tests; the file is copied here (MIT, same tag). |
 | `@deepseek-ai/dsh-llm-pi-ai/src/context.ts` → `shims/pi-context.ts` | `agent-loop/tests/system-prompt-admission.spec.ts` imports an unexported source file of a package boat installs from npm; the shim derives the two facts the test reads. |
+| TypeScript sources with standard decorators are lowered with `ts.transpileModule` before vite parses them | `dsh-llm`'s source uses standard decorators (`@Remote`), which vite's parser leaves in place; upstream's vitest runs the same lowering (`standardDecoratorPlugin` in its `vitest.shared.ts`). |
 | Each test file runs from a directory whose `packages/` links to `dsh/` (`setup.ts`) | Upstream's tests address fixtures from the repository root as `packages/<group>/<package>/…`. |
 | `fast-check` is a root devDependency | Upstream's property tests import it from the root manifest. |
 | `test-invariants.ts` globs companions under `dsh/` | Upstream's invariant host, otherwise unchanged (see below). |

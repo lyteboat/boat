@@ -61,6 +61,16 @@
       "signature": "'compaction/summary-error'(payload: { session: Session; sourceEventSeqs: readonly SessionSeq[]; error: unknown; signal?: AbortSignal; }, next: () => boolean): boolean;"
     }
   },
+  "@deepseek-ai/dsh-llm": {
+    "llm/adapters-updated": {
+      "mode": "emit",
+      "signature": "'llm/adapters-updated'(): void;"
+    },
+    "llm/stream": {
+      "mode": "waterfall",
+      "signature": "'llm/stream'(this: LlmRuntime, options: GenerateOptions, next: () => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>;"
+    }
+  },
   "@deepseek-ai/dsh-session": {
     "session/created": {
       "mode": "emit",
@@ -77,6 +87,12 @@
     "session/flush": {
       "mode": "parallel",
       "signature": "'session/flush'(this: Scoped<Session>, session: Session): Promise<void> | void;"
+    }
+  },
+  "@deepseek-ai/dsh-skill": {
+    "skills/change": {
+      "mode": "emit",
+      "signature": "'skills/change'(): void;"
     }
   },
   "@deepseek-ai/dsh-system-prompt": {

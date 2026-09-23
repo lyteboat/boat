@@ -60,7 +60,7 @@
     "@deepseek-ai/dsh-sdk-minimal": "catalog:dsh",
     "@deepseek-ai/dsh-session-projection": "workspace:*",
     "@deepseek-ai/dsh-session-reference": "catalog:dsh",
-    "@deepseek-ai/dsh-skill": "catalog:dsh",
+    "@deepseek-ai/dsh-skill": "workspace:*",
     "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
     "@deepseek-ai/dsh-skill-office": "catalog:dsh",
     "@deepseek-ai/dsh-terminal": "catalog:dsh",

@@ -10,6 +10,7 @@
     { "path": "../../../dsh/core/session" },
     { "path": "../../../dsh/core/system-prompt" },
     { "path": "../../../dsh/core/tools" },
+    { "path": "../../../dsh/llm/llm" },
     { "path": "../../../dsh/session/session-projection" }
   ]
 }

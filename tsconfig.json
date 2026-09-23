@@ -3,6 +3,9 @@
   "files": [],
   "references": [
     {
+      "path": "./dsh/llm/llm"
+    },
+    {
       "path": "./dsh/core/session"
     },
     {
@@ -10,6 +13,9 @@
     },
     {
       "path": "./dsh/core/tools"
+    },
+    {
+      "path": "./dsh/skill/skill"
     },
     {
       "path": "./dsh/core/agent"

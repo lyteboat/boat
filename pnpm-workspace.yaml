@@ -14,9 +14,11 @@ packages:
 # plugin), so the whole graph shares one instance: boat's. scripts/upstream-pins.spec.ts
 # keeps this list equal to dsh/kernel.json.
 overrides:
+  "@deepseek-ai/dsh-llm": "workspace:*"
   "@deepseek-ai/dsh-session": "workspace:*"
   "@deepseek-ai/dsh-system-prompt": "workspace:*"
   "@deepseek-ai/dsh-tools": "workspace:*"
+  "@deepseek-ai/dsh-skill": "workspace:*"
   "@deepseek-ai/dsh-agent": "workspace:*"
   "@deepseek-ai/dsh-agent-loop": "workspace:*"
   "@deepseek-ai/dsh-session-projection": "workspace:*"
@@ -93,7 +95,6 @@ catalogs:
     "@deepseek-ai/dsh-invariants": "0.1.7-rc.1"
     "@deepseek-ai/dsh-jobs-local": "0.1.7-rc.1"
     "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.1"
-    "@deepseek-ai/dsh-llm": "0.1.7-rc.1"
     "@deepseek-ai/dsh-llm-deepseek": "0.1.7-rc.1"
     "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.1"
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.1"
@@ -110,7 +111,6 @@ catalogs:
     "@deepseek-ai/dsh-sdk-app": "0.1.7-rc.1"
     "@deepseek-ai/dsh-sdk-minimal": "0.1.7-rc.1"
     "@deepseek-ai/dsh-session-reference": "0.1.7-rc.1"
-    "@deepseek-ai/dsh-skill": "0.1.7-rc.1"
     "@deepseek-ai/dsh-skill-filesystem": "0.1.7-rc.1"
     "@deepseek-ai/dsh-skill-office": "0.1.7-rc.1"
     "@deepseek-ai/dsh-subagent": "0.1.7-rc.1"
@@ -141,6 +141,7 @@ catalogs:
     "@deepseek-ai/dsh-tool-web": "0.1.7-rc.1"
     "@deepseek-ai/dsh-tool-workflow": "0.1.7-rc.1"
     "@deepseek-ai/dsh-tool-workspace-dependencies": "0.1.7-rc.1"
+    "@deepseek-ai/dsh-typert-generator": "0.1.7-rc.1"
     "@deepseek-ai/dsh-util-values": "0.1.7-rc.1"
     "@deepseek-ai/dsh-web-app": "0.1.7-rc.1"
     "@deepseek-ai/dsh-webhook": "0.1.7-rc.1"
@@ -408,6 +409,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-tool-workflow@0.1.7-rc.1'
   - '@deepseek-ai/dsh-tool-workspace-dependencies@0.1.7-rc.1'
   - '@deepseek-ai/dsh-tools@0.1.7-rc.1'
+  - '@deepseek-ai/dsh-typert-generator@0.1.7-rc.1'
   - '@deepseek-ai/dsh-typert-loader@0.1.7-rc.1'
   - '@deepseek-ai/dsh-typert-protocol@0.1.7-rc.1'
   - '@deepseek-ai/dsh-typert-registry@0.1.7-rc.1'

@@ -18,6 +18,7 @@ AI 的未来是 Model + Harness。模型提供通用智能，Harness 把它落�
 - D0 — distribution tooling (`scripts/dist`): the contract snapshot of the tracked dsh release (`compatibility/contract/`), the per-tag import, the delta report, the overlay gates.
 - D1 — the kernel: 11 dsh packages imported under `dsh/` and resolved by name for the whole dependency graph; their builds match the published bundles; G1 (contract) and G2 (upstream's kernel tests, unmodified) run in `pnpm run test`; boat's step hooks are two registered extensions of the kernel's agent loop; `@boat/distro` marks a boat build.
 - D2 — compatibility tests against the official release: G4 (same session log for the same scripted run), G5 (23 pinned community plugins installed with `dsh plugin add`), G6 (sessions cross both ways) in `pnpm run compatibility`; G3 and the persistence gate in the sync pipeline.
+- Kernel promotion: `llm/llm` (`@deepseek-ai/dsh-llm`) and `skill/skill` (`@deepseek-ai/dsh-skill`) joined the kernel, so the capabilities every composition needs to start (model access, tools, skills, sessions) are boat's own source; 13 packages, under the same gates.
 - Tracked release: dsh 0.1.7-rc.1 (`dsh.upstream.json`). The kernel is its import plus boat's two extensions, and every gate above passes against it.
 
 ## Requirements

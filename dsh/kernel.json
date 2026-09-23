@@ -1,9 +1,11 @@
 {
   "$comment": "The dsh packages boat takes over. Keys are package names (kept as upstream publishes them); values are the directory under upstream packages/ and under dsh/ here. Promotion adds a row; nothing else in the repository lists the kernel.",
   "packages": {
+    "@deepseek-ai/dsh-llm": "llm/llm",
     "@deepseek-ai/dsh-session": "core/session",
     "@deepseek-ai/dsh-system-prompt": "core/system-prompt",
     "@deepseek-ai/dsh-tools": "core/tools",
+    "@deepseek-ai/dsh-skill": "skill/skill",
     "@deepseek-ai/dsh-agent": "core/agent",
     "@deepseek-ai/dsh-agent-loop": "core/agent-loop",
     "@deepseek-ai/dsh-session-projection": "session/session-projection",

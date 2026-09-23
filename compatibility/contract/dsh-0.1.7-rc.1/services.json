@@ -9,6 +9,9 @@
   "@deepseek-ai/dsh-compaction": {
     "compaction": "compaction: CompactionEngine;"
   },
+  "@deepseek-ai/dsh-llm": {
+    "llm": "llm: LlmRuntime;"
+  },
   "@deepseek-ai/dsh-session": {
     "sessions": "sessions: SessionStore;"
   },
@@ -17,6 +20,9 @@
   },
   "@deepseek-ai/dsh-session-projection": {
     "sessionProjections": "sessionProjections: SessionProjectionRegistry;"
+  },
+  "@deepseek-ai/dsh-skill": {
+    "skills": "skills: SkillRegistry;"
   },
   "@deepseek-ai/dsh-system-prompt": {
     "systemPrompt": "systemPrompt: SystemPrompt;"

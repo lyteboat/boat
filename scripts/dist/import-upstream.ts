@@ -19,6 +19,13 @@
  * - `tsconfig.json` keeps only the `references` that point at other kernel
  *   packages (the rest are dsh packages boat installs from npm).
  *
+ * A package that exports a Typert Host face (`./typert`) or Remote client
+ * (`./remote`) also gets those published files (`lib/typert.*`): upstream's
+ * generator emits them from a whole-workspace analysis that cannot run inside
+ * boat, so the build uses the published ones while the package's source equals
+ * the import (scripts/dist/bundle-kernel.ts) and `dist:overlay … typert`
+ * regenerates them from boat's source in an upstream checkout.
+ *
  *   node --import tsx scripts/dist/import-upstream.ts <dsh checkout at a tag> [--trailer "Key: value"]…
  * @module scripts/dist/import-upstream
  */
@@ -33,6 +40,7 @@ import ts from 'typescript'
 import { git, kernelPackages, repoRoot } from './kernel.ts'
 import type { KernelPackage } from './kernel.ts'
 import { releaseOfCheckout, vanillaTree } from './trees.ts'
+import { publishedTypertFiles } from './typert.ts'
 
 /** Trailer naming the tag an import commit holds; the next import finds its parent by it. */
 export const IMPORT_TRAILER = 'Dist-Import'
@@ -59,6 +67,12 @@ function stage(checkout: string, staging: string, publishedRoot: string): void {
   const kernelDirs = new Set(packages.map(pkg => pkg.dir))
   const require = createRequire(join(publishedRoot, 'package.json'))
   for (const pkg of packages) {
+    const publishedDir = dirname(realpathSync(require.resolve(`${pkg.name}/package.json`)))
+    for (const file of publishedTypertFiles(JSON.parse(readFileSync(join(publishedDir, 'package.json'), 'utf8')) as { exports?: Record<string, unknown>; files?: string[] })) {
+      const destination = join(staging, 'dsh', pkg.dir, file)
+      mkdirSync(dirname(destination), { recursive: true })
+      copyFileSync(join(publishedDir, file), destination)
+    }
     const source = `packages/${pkg.dir}`
     const files = git(checkout, ['ls-files', '-z', '--', source]).split('\0').filter(file => file !== '')
     if (files.length === 0) throw new Error(`${pkg.name}: ${source} does not exist at this tag`)
@@ -116,7 +130,8 @@ function main(): void {
       `The ${String(kernelPackages().length)} kernel packages of deepseek-ai/deepseek-harness at ${tag}, as`,
       'scripts/dist/import-upstream.ts writes them: every file byte for byte, except',
       'package.json (the manifest npm publishes for this version) and tsconfig.json',
-      '(references limited to kernel packages).',
+      '(references limited to kernel packages); a package with a Typert Host face or',
+      'Remote client also carries its published lib/typert.* files.',
       '',
       `${IMPORT_TRAILER}: ${tag}`,
       `Dist-Upstream-Commit: ${upstreamCommit}`,

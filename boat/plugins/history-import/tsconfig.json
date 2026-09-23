@@ -9,6 +9,7 @@
   ],
   "references": [
     { "path": "../../../dsh/core/session" },
+    { "path": "../../../dsh/llm/llm" },
     {
       "path": "../../core/contracts"
     }

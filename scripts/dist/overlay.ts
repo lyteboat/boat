@@ -11,9 +11,14 @@
  *   depends on a kernel package run on the pristine checkout (the baseline,
  *   cached per tag) and on the overlay; a test that passes on the baseline and
  *   fails on the overlay fails the gate.
+ * - `typert`: upstream's Typert generator emits, from boat's sources, the
+ *   `lib/typert.*` files of every kernel package that publishes them; they must
+ *   equal the files boat builds with. `--write` replaces boat's files and records
+ *   the source digest in `dsh/typert.json` (scripts/dist/typert.ts).
  *
  *   node --import tsx scripts/dist/overlay.ts <upstream checkout> persistence
  *   node --import tsx scripts/dist/overlay.ts <upstream checkout> g3 [--match <regex on package dir>]
+ *   node --import tsx scripts/dist/overlay.ts <upstream checkout> typert [--write]
  *
  * The overlay copies every file boat has under `dsh/<dir>/` onto
  * `packages/<dir>/` and removes the upstream files boat deleted; `package.json`
@@ -28,8 +33,10 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import { dirname, join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { KEY_SEPARATOR, compareContract, flatten, readExtensions } from './contract-check.ts'
+import { WorkspaceTypertGenerator, type WorkspaceEmitResult } from '@deepseek-ai/dsh-typert-generator'
 import { git, kernelPackages, readUpstreamPin, repoRoot, stableJson } from './kernel.ts'
 import { distCache } from './trees.ts'
+import { kernelTypertFiles, publishedTypertFiles, typertSourceDigest, writeTypertStamp } from './typert.ts'
 
 const NORMALIZED = new Set(['package.json', 'tsconfig.json'])
 
@@ -191,12 +198,71 @@ function g3(checkout: string, match: RegExp): number {
   return regressions
 }
 
+/** The files upstream's tsdown plugin writes for one package's artifacts (its `emitArtifacts`), by path under the package. */
+function typertArtifactFiles(artifacts: readonly WorkspaceEmitResult[]): Map<string, string> {
+  const files = new Map<string, string>()
+  for (const artifact of artifacts) {
+    files.set(`lib/typert.${artifact.face}.js`, artifact.js)
+    files.set(`lib/typert.${artifact.face}.d.ts`, artifact.dts)
+    if (artifact.remote === undefined) continue
+    files.set('lib/typert.remote-client.js', artifact.remote.js)
+    files.set('lib/typert.remote-client.d.ts', artifact.remote.dts)
+  }
+  return files
+}
+
+function typert(checkout: string, write: boolean): number {
+  const { dsh } = readUpstreamPin()
+  const packages = kernelPackages().filter(({ dir }) => kernelTypertFiles(dir).length > 0)
+  if (packages.length === 0) {
+    console.log(`typert vs dsh ${dsh}: no kernel package publishes Typert files`)
+    return 0
+  }
+  applyOverlay(checkout)
+  try {
+    // As upstream's tsdown plugin does in workspace mode: one analysis of every package that
+    // publishes Typert files, because a package's Host face also reflects the declarations
+    // other packages merge into its types (a MessageSourceMap entry from subagent, …).
+    const generator = new WorkspaceTypertGenerator(checkout, { checkDiagnostics: false })
+    const contributors = generator.discover(['host'])
+      .filter(candidate => publishedTypertFiles(JSON.parse(readFileSync(join(checkout, candidate.root, 'package.json'), 'utf8')) as { exports?: Record<string, unknown>; files?: string[] }).length > 0)
+      .map(candidate => candidate.package)
+    const artifacts = generator.generate(contributors, ['host'])
+    let failures = 0
+    for (const { name, dir } of packages) {
+      const generated = typertArtifactFiles(artifacts.filter(artifact => artifact.package === name))
+      for (const file of kernelTypertFiles(dir)) {
+        const text = generated.get(file)
+        const path = join(repoRoot, 'dsh', dir, file)
+        if (text === undefined) {
+          console.error(`typert: ${name} publishes ${file}, but upstream's generator emits none from boat's source`)
+          failures += 1
+        } else if (!existsSync(path) || readFileSync(path, 'utf8') !== text) {
+          if (write) {
+            writeFileSync(path, text)
+          } else {
+            console.error(`typert: dsh/${dir}/${file} differs from what upstream's generator emits from boat's source`)
+            failures += 1
+          }
+        }
+      }
+      if (write && failures === 0) writeTypertStamp(name, typertSourceDigest(dir))
+    }
+    console.log(`typert vs dsh ${dsh}: ${packages.map(({ name }) => name).join(', ')}; ${String(failures)} failure(s)${write ? ', files written' : ''}`)
+    return failures
+  } finally {
+    reset(checkout)
+  }
+}
+
 function main(): void {
   const [checkout, mode, ...rest] = process.argv.slice(2)
-  if (checkout === undefined || (mode !== 'persistence' && mode !== 'g3')) throw new Error('usage: overlay.ts <upstream checkout> persistence|g3 [--match <regex>]')
+  if (checkout === undefined || (mode !== 'persistence' && mode !== 'g3' && mode !== 'typert')) {
+    throw new Error('usage: overlay.ts <upstream checkout> persistence | g3 [--match <regex>] | typert [--write]')
+  }
   const matchIndex = rest.indexOf('--match')
   const match = new RegExp(matchIndex === -1 ? '' : rest[matchIndex + 1] ?? '', 'u')
-  const failures = mode === 'persistence' ? persistence(checkout) : g3(checkout, match)
+  const failures = mode === 'persistence' ? persistence(checkout) : mode === 'g3' ? g3(checkout, match) : typert(checkout, rest.includes('--write'))
   if (failures > 0) process.exitCode = 1
 }
 
