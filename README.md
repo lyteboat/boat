@@ -36,21 +36,24 @@ Everything boat records rides an envelope dsh already knows: a card and a state 
 
 ## Layout
 
+One top-level directory per layer; dependencies point down only (`apps` → `bundles` → `plugins` → `core`; `agents` → `plugins`, `core`; `tooling` is for tests), and `pnpm run lint` checks it.
+
 | Path | Package | Role |
 |---|---|---|
 | `apps/cli` | `@boat/cli` | the `boat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
-| `packages/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |
-| `packages/bundle/run` | `@boat/run` | the one-shot bundle behind `boat run`: task, `--preset`, `--agents`, `--history` |
-| `packages/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./preset` declares policy from a composition file |
-| `packages/skill-router` | `@boat/skill-router` | skill load modes and LLM routing over the dsh skill registry; `./preset` declares the mode from a composition file |
-| `packages/a2ui` | `@boat/a2ui` | the A2UI template engine (ark's template mode), `render_a2ui`, and the `boatCards` projection; `./preset` composes the tool from a composition file |
-| `packages/history-import` | `@boat/history-import` | SA history parsing and the session seed behind `boat run --history` |
+| `bundles/run` | `@boat/run` | the one-shot bundle behind `boat run`: task, `--preset`, `--agents`, `--history` |
+| `plugins/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./preset` declares policy from a composition file |
+| `plugins/skill-router` | `@boat/skill-router` | skill load modes and LLM routing over the dsh skill registry; `./preset` declares the mode from a composition file |
+| `plugins/a2ui` | `@boat/a2ui` | the A2UI template engine (ark's template mode), `render_a2ui`, and the `boatCards` projection; `./preset` composes the tool from a composition file |
+| `plugins/history-import` | `@boat/history-import` | SA history parsing and the session seed behind `boat run --history` |
+| `core/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
+| `core/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |
+| `core/agentic-loop` | `@boat/agentic-loop` | the boat agent driver (fork of dsh-agent-loop, see `core/agentic-loop/UPSTREAM.md`) |
 | `agents/demo` | `@boat/agent-demo` | the demo agent preset: `preset.yml`, `agent.cordis.yml`, `skills/`, `a2ui/`, `fixtures/personas/`, `src/` compiled to `lib/` |
-| `packages/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
-| `packages/agentic-loop` | `@boat/agentic-loop` | the boat agent driver (fork of dsh-agent-loop, see `packages/agentic-loop/UPSTREAM.md`) |
 | `tooling/testing` | `@boat/testing` | boat's test harness: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher spawning |
 | `tooling/dsh-agent-loop-testkit-fork` | `@boat/dsh-agent-loop-testkit-fork` | verbatim fork of agent-loop-testkit, used only by the driver's synced upstream tests |
 | `examples/*` | — | runnable plugin files for `--plugin` |
+| `scripts/` | — | `sync-upstream.ts` (re-fork from the pinned dsh tag), `check-layers.ts` |
 | `dsh.upstream.json` | — | the pinned dsh release; `.pnpmfile.cjs` pins every dsh and cordis package to it |
 
 ## Why the pnpm settings look unusual

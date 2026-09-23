@@ -6,8 +6,8 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../packages/cordis-compat" },
-    { "path": "../../packages/agentic-loop" },
-    { "path": "../../packages/bundle/run" }
+    { "path": "../../core/cordis-compat" },
+    { "path": "../../core/agentic-loop" },
+    { "path": "../../bundles/run" }
   ]
 }

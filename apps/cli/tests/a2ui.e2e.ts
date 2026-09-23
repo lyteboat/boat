@@ -8,7 +8,7 @@ import { runBoat } from './support/boat-process.ts'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
 const PLUGIN = fileURLToPath(new URL('../../../examples/a2ui/plugin.mjs', import.meta.url))
-const BASELINE = JSON.parse(readFileSync(fileURLToPath(new URL('../../../packages/a2ui/tests/fixtures/baseline/asset_overview-full.json', import.meta.url)), 'utf8')) as {
+const BASELINE = JSON.parse(readFileSync(fileURLToPath(new URL('../../../plugins/a2ui/tests/fixtures/baseline/asset_overview-full.json', import.meta.url)), 'utf8')) as {
   payload: Record<string, unknown>; digest: string
 }
 const ANSWER = 'A2UI-OK'

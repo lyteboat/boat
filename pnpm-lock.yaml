@@ -107,7 +107,7 @@ importers:
     dependencies:
       '@boat/contracts':
         specifier: workspace:*
-        version: link:../../packages/contracts
+        version: link:../../core/contracts
       '@deepseek-ai/dsh-skill-filesystem':
         specifier: 0.1.5-alpha.2
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-fs@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-brand@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-sandbox@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))))(@deepseek-ai/dsh-home-paths@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-skill@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
@@ -117,10 +117,10 @@ importers:
     devDependencies:
       '@boat/a2ui':
         specifier: workspace:*
-        version: link:../../packages/a2ui
+        version: link:../../plugins/a2ui
       '@boat/tool-policy':
         specifier: workspace:*
-        version: link:../../packages/tool-policy
+        version: link:../../plugins/tool-policy
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
@@ -135,13 +135,13 @@ importers:
     dependencies:
       '@boat/agentic-loop':
         specifier: workspace:*
-        version: link:../../packages/agentic-loop
+        version: link:../../core/agentic-loop
       '@boat/cordis-compat':
         specifier: workspace:*
-        version: link:../../packages/cordis-compat
+        version: link:../../core/cordis-compat
       '@boat/run':
         specifier: workspace:*
-        version: link:../../packages/bundle/run
+        version: link:../../bundles/run
       '@deepseek-ai/cordis':
         specifier: 4.0.2
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
@@ -381,59 +381,62 @@ importers:
         specifier: ^4.0.9
         version: 4.0.9
 
-  packages/a2ui:
+  bundles/run:
     dependencies:
-      '@boat/contracts':
+      '@boat/a2ui':
         specifier: workspace:*
-        version: link:../contracts
+        version: link:../../plugins/a2ui
+      '@boat/history-import':
+        specifier: workspace:*
+        version: link:../../plugins/history-import
+      '@boat/skill-router':
+        specifier: workspace:*
+        version: link:../../plugins/skill-router
       '@boat/tool-policy':
         specifier: workspace:*
-        version: link:../tool-policy
-      '@deepseek-ai/dsh-scope':
+        version: link:../../plugins/tool-policy
+      '@deepseek-ai/dsh-agent-presets':
         specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
+        version: 0.1.5-alpha.2(607bbbf1a838d1cd9e9e6c40a5e86b0e)
+      '@deepseek-ai/dsh-brand':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-cmdline':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis-plugin-loader@1.0.3)(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-code-runtime-worker-thread':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-code-runtime@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))(@deepseek-ai/dsh-timeout@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
+      '@deepseek-ai/dsh-util-values':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
       '@deepseek-ai/schemastery':
         specifier: 'catalog:'
         version: 3.18.2
-      yaml:
-        specifier: ^2.4.2
-        version: 2.9.1
-      zod:
+      commander:
         specifier: 'catalog:'
-        version: 4.6.5
+        version: 15.0.0
     devDependencies:
-      '@boat/agentic-loop':
-        specifier: workspace:*
-        version: link:../agentic-loop
-      '@boat/testing':
-        specifier: workspace:*
-        version: link:../../tooling/testing
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: catalog:cordis
+        version: 1.0.3(@deepseek-ai/cordis@4.0.2)(node-addon-require-builtin@0.1.6)
       '@deepseek-ai/dsh-agent':
         specifier: catalog:dsh
         version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
-      '@deepseek-ai/dsh-invariants':
+      '@deepseek-ai/dsh-agent-default-model':
         specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-agent@0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-settings@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-brand@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))(@deepseek-ai/schemastery@3.18.2))
       '@deepseek-ai/dsh-llm':
         specifier: catalog:dsh
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
       '@deepseek-ai/dsh-session':
         specifier: catalog:dsh
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
-      '@deepseek-ai/dsh-session-projection':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
-      '@deepseek-ai/dsh-system-prompt':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
-      '@deepseek-ai/dsh-tools':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(2b754afda902b21956a20e8a701ed6ef)
 
-  packages/agentic-loop:
+  core/agentic-loop:
     dependencies:
       '@boat/contracts':
         specifier: workspace:*
@@ -506,62 +509,7 @@ importers:
         specifier: ^4.5.0
         version: 4.10.2
 
-  packages/bundle/run:
-    dependencies:
-      '@boat/a2ui':
-        specifier: workspace:*
-        version: link:../../a2ui
-      '@boat/history-import':
-        specifier: workspace:*
-        version: link:../../history-import
-      '@boat/skill-router':
-        specifier: workspace:*
-        version: link:../../skill-router
-      '@boat/tool-policy':
-        specifier: workspace:*
-        version: link:../../tool-policy
-      '@deepseek-ai/dsh-agent-presets':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(607bbbf1a838d1cd9e9e6c40a5e86b0e)
-      '@deepseek-ai/dsh-brand':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-cmdline':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis-plugin-loader@1.0.3)(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-code-runtime-worker-thread':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-code-runtime@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))(@deepseek-ai/dsh-timeout@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
-      '@deepseek-ai/dsh-util-values':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/schemastery':
-        specifier: 'catalog:'
-        version: 3.18.2
-      commander:
-        specifier: 'catalog:'
-        version: 15.0.0
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: catalog:cordis
-        version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
-      '@deepseek-ai/cordis-plugin-loader':
-        specifier: catalog:cordis
-        version: 1.0.3(@deepseek-ai/cordis@4.0.2)(node-addon-require-builtin@0.1.6)
-      '@deepseek-ai/dsh-agent':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
-      '@deepseek-ai/dsh-agent-default-model':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-agent@0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-settings@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-brand@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))(@deepseek-ai/schemastery@3.18.2))
-      '@deepseek-ai/dsh-llm':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-session':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
-
-  packages/contracts:
+  core/contracts:
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
@@ -582,70 +530,36 @@ importers:
         specifier: catalog:dsh
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
 
-  packages/cordis-compat:
+  core/cordis-compat:
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
 
-  packages/history-import:
+  plugins/a2ui:
     dependencies:
       '@boat/contracts':
         specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      '@boat/agentic-loop':
-        specifier: workspace:*
-        version: link:../agentic-loop
-      '@boat/testing':
-        specifier: workspace:*
-        version: link:../../tooling/testing
-      '@deepseek-ai/cordis':
-        specifier: catalog:cordis
-        version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
-      '@deepseek-ai/dsh-agent':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
-      '@deepseek-ai/dsh-invariants':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-llm':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-session':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
-      '@deepseek-ai/dsh-session-projection':
-        specifier: catalog:dsh
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
-
-  packages/skill-router:
-    dependencies:
-      '@boat/contracts':
-        specifier: workspace:*
-        version: link:../contracts
+        version: link:../../core/contracts
       '@boat/tool-policy':
         specifier: workspace:*
         version: link:../tool-policy
       '@deepseek-ai/dsh-scope':
         specifier: 0.1.5-alpha.2
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
-      '@deepseek-ai/dsh-skill':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
-      '@deepseek-ai/dsh-timeout':
-        specifier: 0.1.5-alpha.2
-        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
       '@deepseek-ai/schemastery':
         specifier: 'catalog:'
         version: 3.18.2
+      yaml:
+        specifier: ^2.4.2
+        version: 2.9.1
       zod:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       '@boat/agentic-loop':
         specifier: workspace:*
-        version: link:../agentic-loop
+        version: link:../../core/agentic-loop
       '@boat/testing':
         specifier: workspace:*
         version: link:../../tooling/testing
@@ -674,11 +588,97 @@ importers:
         specifier: catalog:dsh
         version: 0.1.5-alpha.2(2b754afda902b21956a20e8a701ed6ef)
 
-  packages/tool-policy:
+  plugins/history-import:
     dependencies:
       '@boat/contracts':
         specifier: workspace:*
-        version: link:../contracts
+        version: link:../../core/contracts
+    devDependencies:
+      '@boat/agentic-loop':
+        specifier: workspace:*
+        version: link:../../core/agentic-loop
+      '@boat/testing':
+        specifier: workspace:*
+        version: link:../../tooling/testing
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
+      '@deepseek-ai/dsh-agent':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
+      '@deepseek-ai/dsh-invariants':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-llm':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-session':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
+      '@deepseek-ai/dsh-session-projection':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
+
+  plugins/skill-router:
+    dependencies:
+      '@boat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
+      '@boat/tool-policy':
+        specifier: workspace:*
+        version: link:../tool-policy
+      '@deepseek-ai/dsh-scope':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
+      '@deepseek-ai/dsh-skill':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
+      '@deepseek-ai/dsh-timeout':
+        specifier: 0.1.5-alpha.2
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/schemastery':
+        specifier: 'catalog:'
+        version: 3.18.2
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@boat/agentic-loop':
+        specifier: workspace:*
+        version: link:../../core/agentic-loop
+      '@boat/testing':
+        specifier: workspace:*
+        version: link:../../tooling/testing
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
+      '@deepseek-ai/dsh-agent':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(cfc1690176e5c008b05d52ad11161b75)
+      '@deepseek-ai/dsh-invariants':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-llm':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)
+      '@deepseek-ai/dsh-session':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
+      '@deepseek-ai/dsh-session-projection':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-session@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))))
+      '@deepseek-ai/dsh-system-prompt':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-llm@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))(@deepseek-ai/dsh-scope@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)))
+      '@deepseek-ai/dsh-tools':
+        specifier: catalog:dsh
+        version: 0.1.5-alpha.2(2b754afda902b21956a20e8a701ed6ef)
+
+  plugins/tool-policy:
+    dependencies:
+      '@boat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
       '@deepseek-ai/dsh-scope':
         specifier: 0.1.5-alpha.2
         version: 0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2)(@deepseek-ai/dsh-invariants@0.1.5-alpha.2(@deepseek-ai/cordis@4.0.2))
@@ -691,7 +691,7 @@ importers:
     devDependencies:
       '@boat/agentic-loop':
         specifier: workspace:*
-        version: link:../agentic-loop
+        version: link:../../core/agentic-loop
       '@boat/testing':
         specifier: workspace:*
         version: link:../../tooling/testing
@@ -724,7 +724,7 @@ importers:
     devDependencies:
       '@boat/agentic-loop':
         specifier: workspace:*
-        version: link:../../packages/agentic-loop
+        version: link:../../core/agentic-loop
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)

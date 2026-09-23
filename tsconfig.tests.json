@@ -10,15 +10,17 @@
   },
   "include": [
     "apps/*/tests/**/*.ts",
-    "packages/*/tests/**/*.ts",
-    "packages/bundle/*/tests/**/*.ts",
-    "scripts/**/*.ts",
     "apps/*/src/**/*.ts",
-    "packages/*/src/**/*.ts",
-    "packages/bundle/*/src/**/*.ts",
+    "bundles/*/tests/**/*.ts",
+    "bundles/*/src/**/*.ts",
+    "plugins/*/tests/**/*.ts",
+    "plugins/*/src/**/*.ts",
+    "core/*/tests/**/*.ts",
+    "core/*/src/**/*.ts",
     "agents/*/tests/**/*.ts",
     "agents/*/src/**/*.ts",
     "tooling/*/tests/**/*.ts",
-    "tooling/*/src/**/*.ts"
+    "tooling/*/src/**/*.ts",
+    "scripts/**/*.ts"
   ]
 }

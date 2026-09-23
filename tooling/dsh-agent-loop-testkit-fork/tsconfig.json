@@ -9,7 +9,7 @@
   ],
   "references": [
     {
-      "path": "../../packages/agentic-loop"
+      "path": "../../core/agentic-loop"
     }
   ]
 }

@@ -3,28 +3,28 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/cordis-compat"
+      "path": "./core/cordis-compat"
     },
     {
-      "path": "./packages/contracts"
+      "path": "./core/contracts"
     },
     {
-      "path": "./packages/agentic-loop"
+      "path": "./core/agentic-loop"
     },
     {
-      "path": "./packages/tool-policy"
+      "path": "./plugins/tool-policy"
     },
     {
-      "path": "./packages/skill-router"
+      "path": "./plugins/skill-router"
     },
     {
-      "path": "./packages/a2ui"
+      "path": "./plugins/a2ui"
     },
     {
-      "path": "./packages/history-import"
+      "path": "./plugins/history-import"
     },
     {
-      "path": "./packages/bundle/run"
+      "path": "./bundles/run"
     },
     {
       "path": "./apps/cli"

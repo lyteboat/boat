@@ -39,7 +39,7 @@
     },
     {
       "files": [
-        "packages/agentic-loop/**/*.ts",
+        "core/agentic-loop/**/*.ts",
         "tooling/dsh-agent-loop-testkit-fork/**/*.ts"
       ],
       "rules": {

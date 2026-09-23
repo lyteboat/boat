@@ -1,10 +1,13 @@
 packages:
-  # apps/* owns processes (the `boat` bin); packages/* are capability
-  # libraries; packages/bundle/* are composition recipes a profile includes
-  # by name, mirroring dsh's own packages/bundle tier.
+  # One top-level directory per architecture layer; dependencies point down only
+  # (scripts/check-layers.ts enforces it): apps/* own processes (the `boat` bin),
+  # bundles/* are compositions a profile includes by name, plugins/* are capabilities
+  # on the dsh seams, core/* are declarations and the driver fork, agents/* are the
+  # business agents, tooling/* is test infrastructure.
   - apps/*
-  - packages/*
-  - packages/bundle/*
+  - bundles/*
+  - plugins/*
+  - core/*
   - agents/*
   - tooling/*
 

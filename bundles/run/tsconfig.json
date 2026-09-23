@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib"
@@ -9,7 +9,7 @@
   ],
   "references": [
     {
-      "path": "../../history-import"
+      "path": "../../plugins/history-import"
     }
   ]
 }

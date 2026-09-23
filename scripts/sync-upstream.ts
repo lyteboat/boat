@@ -30,10 +30,10 @@ interface ForkTarget {
 }
 
 const TARGETS: readonly ForkTarget[] = [
-  { source: 'packages/core/agent-loop/src', target: 'packages/agentic-loop/src' },
+  { source: 'packages/core/agent-loop/src', target: 'core/agentic-loop/src' },
   {
     source: 'packages/core/agent-loop/tests',
-    target: 'packages/agentic-loop/tests',
+    target: 'core/agentic-loop/tests',
     keep: ['boat-intake.spec.ts', 'support/pi-context.ts'],
   },
   { source: 'packages/test-support/agent-loop-testkit/src', target: 'tooling/dsh-agent-loop-testkit-fork/src' },

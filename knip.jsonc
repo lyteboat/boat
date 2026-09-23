@@ -13,19 +13,24 @@
       "entry": ["tests/**/*.{spec,e2e}.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"]
     },
-    "packages/*": {
+    "bundles/*": {
       "entry": ["tests/**/*.{spec,e2e}.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"]
     },
-    "packages/agentic-loop": {
+    "plugins/*": {
+      "entry": ["tests/**/*.{spec,e2e}.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "core/*": {
+      "entry": ["tests/**/*.{spec,e2e}.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "core/agentic-loop": {
       "entry": ["tests/**/*.{spec,e2e}.ts"],
       "project": ["src/**/*.ts", "tests/**/*.ts"],
       // The synced upstream tests import the testkit fork, which itself mounts this
       // driver; declaring it here would make a pnpm workspace cycle.
       "ignoreDependencies": ["@boat/dsh-agent-loop-testkit-fork"]
-    },
-    "packages/bundle/*": {
-      "project": ["src/**/*.ts"]
     },
     "agents/*": {
       "entry": ["src/*.ts", "tests/**/*.spec.ts"],
