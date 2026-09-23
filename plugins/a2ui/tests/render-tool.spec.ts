@@ -137,7 +137,7 @@ describe('render_a2ui', () => {
     await send(agent, 'x')
     const [first] = results(agent)
     // The registry validated the enum before execution; either way the model sees an error, no card.
-    expect(JSON.stringify(first!.data.message.content[0])).toContain('"isError":true')
+    expect(first!.data.message.isError).toBe(true)
     expect(ctx.a2ui.cardsOf(agent)).toEqual([])
   })
 })
@@ -194,9 +194,8 @@ describe('render_a2ui over cards with arguments and hierarchies', () => {
     const meta = warned!.data.meta as unknown as { a2ui: { warnings: string[] } }
     expect(meta.a2ui.warnings).toEqual([expect.stringContaining("[A2UI_BINDING_XOR] Component 'empty-text' field 'text'")])
     expect(ctx.a2ui.cardsOf(agent)).toHaveLength(1)
-    const failure = JSON.stringify(enforced!.data.message.content[0])
-    expect(failure).toContain('"isError":true')
-    expect(failure).toContain('A2UI contract invalid: [A2UI_BINDING_XOR]')
+    expect(enforced!.data.message.isError).toBe(true)
+    expect(JSON.stringify(enforced!.data.message.content[0])).toContain('A2UI contract invalid: [A2UI_BINDING_XOR]')
   })
 })
 

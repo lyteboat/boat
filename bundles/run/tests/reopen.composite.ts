@@ -27,16 +27,11 @@ ASSET-OVERVIEW-BODY
 
 interface StoredRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean }
 
-function calledTools(request: RecordedRequest): string {
-  return JSON.stringify(request.body.messages.filter(message => message.role === 'assistant').map(message => message.tool_calls))
-}
-
 /** The loop calls each named tool once, in order, then answers; the router always picks the first candidate. */
 function script(tools: string[]) {
   return withTitle((request: RecordedRequest) => {
     if (request.purpose === 'router') return { text: JSON.stringify({ skill_id: 'asset-overview', reason: 'test' }) }
-    const called = calledTools(request)
-    const next = tools.find(name => !called.includes(name))
+    const next = tools.find(name => !request.calledTools.includes(name))
     return next === undefined ? { text: 'REOPEN-OK' } : { toolCall: { name: next, arguments: {}, id: `call-${next}` } }
   })
 }

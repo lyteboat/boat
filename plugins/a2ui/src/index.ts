@@ -106,9 +106,7 @@ export const boatCardsProjectionDefinition = {
     if (event.type !== 'tool/result') return state
     const card = cardOfMeta(event.data.meta)
     if (card === undefined) return state
-    const block = event.data.message.content.find(candidate => candidate.type === 'tool-result')
-    if (block === undefined) return state
-    return appendCard(state, { callId: block.toolCallId, ...card })
+    return appendCard(state, { callId: event.data.message.toolCallId, ...card })
   },
   wire: { viewSchema: boatCardsSchema, view: (state: BoatCard[]) => state },
   stateVersion: 1,

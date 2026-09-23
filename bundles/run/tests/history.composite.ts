@@ -47,7 +47,7 @@ describe('boat run --history (in process, scripted model)', () => {
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(1)
     const roles = loop[0]!.body.messages.map(message => message.role)
-    expect(roles.slice(0, 5)).toEqual(['system', 'user', 'assistant', 'user', 'assistant'])
+    expect(roles.slice(0, 4)).toEqual(['user', 'assistant', 'user', 'assistant'])
     const text = JSON.stringify(loop[0]!.body.messages)
     expect(text).toContain('帮我看看我的资产分布')
     expect(text).toContain('建议把稳健提高到 25% 左右')

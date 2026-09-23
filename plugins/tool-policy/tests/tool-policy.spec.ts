@@ -148,10 +148,8 @@ describe('confirmation', () => {
     await send(agent, 'go')
     expect(executed).toBe(false)
     const result = agent.session.snapshotEvents().find((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')!
-    const block = result.data.message.content[0]!
-    expect(block.type).toBe('tool-result')
-    expect(JSON.stringify(block)).toContain('requires confirmation')
-    expect(JSON.stringify(block)).toContain('"isError":true')
+    expect(result.data.message.isError).toBe(true)
+    expect(JSON.stringify(result.data.message.content)).toContain('requires confirmation')
   })
 })
 

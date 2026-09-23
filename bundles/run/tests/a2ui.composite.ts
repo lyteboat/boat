@@ -13,10 +13,6 @@ const ANSWER = 'A2UI-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown> }
 
-function toolCalls(request: RecordedRequest): string {
-  return JSON.stringify(request.body.messages.filter(message => message.role === 'assistant').map(message => message.tool_calls))
-}
-
 describe('@boat/a2ui in the run composition (in process, scripted model)', () => {
   let root: string
 
@@ -42,7 +38,7 @@ describe('@boat/a2ui in the run composition (in process, scripted model)', () =>
 
   it('renders a card from the state a tool folded in, puts it on tool/result.meta, and shows only the digest to the model', async () => {
     const model = await startScriptedModel(withTitle((request: RecordedRequest) => {
-      const calls = toolCalls(request)
+      const calls = request.calledTools
       if (!calls.includes('query_profile')) return { toolCall: { name: 'query_profile', arguments: {}, id: 'call-query' } }
       if (!calls.includes('render_a2ui')) return { toolCall: { name: 'render_a2ui', arguments: { template: 'summary' }, id: 'call-render' } }
       return { text: ANSWER }
@@ -54,7 +50,7 @@ describe('@boat/a2ui in the run composition (in process, scripted model)', () =>
       expect(result.stdout).toContain(ANSWER)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(3)
-      expect((loop[0]?.body.tools ?? []).map(tool => tool.function?.name)).toEqual(expect.arrayContaining(['query_profile', 'render_a2ui']))
+      expect(loop[0]?.toolNames).toEqual(expect.arrayContaining(['query_profile', 'render_a2ui']))
       const shown = JSON.stringify(loop[2]?.body.messages)
       expect(shown).toContain('[card:summary] profile summary shown')
       expect(shown).not.toContain('rootComponentId')

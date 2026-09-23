@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createUserMessage, ToolCallId, type Message } from '@deepseek-ai/dsh-llm'
+import { createToolResultMessage, createUserMessage, ToolCallId, type Message } from '@deepseek-ai/dsh-llm'
 import { buildRoutePrompt, renderHistory, resolveRouteDecision, SKILL_ROUTER_SYSTEM_PROMPT } from '@boat/skill-router'
 
 describe('resolveRouteDecision', () => {
@@ -54,7 +54,7 @@ describe('buildRoutePrompt', () => {
 
 describe('renderHistory', () => {
   const user = (text: string): Message => createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } })
-  const plugin = (text: string): Message => createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'p' } })
+  const plugin = (text: string): Message => createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'model-selection' } })
   const assistant = (content: Message['content']): Message => ({ role: 'assistant', content, source: { kind: 'model', provider: 'mock', model: 'mock' } } as unknown as Message)
 
   it('renders user text, assistant text or tool calls, and tool results; skips plugin messages', () => {
@@ -62,7 +62,7 @@ describe('renderHistory', () => {
       plugin('snapshot'),
       user('你好'),
       assistant([{ type: 'tool-call', id: ToolCallId('c1'), name: 'lookup', arguments: '{}' }]),
-      createUserMessage({ content: [{ type: 'tool-result', toolCallId: ToolCallId('c1'), content: [{ type: 'text', text: 'total 5' }], isError: false }], source: { kind: 'user' } }),
+      createToolResultMessage({ callId: ToolCallId('c1'), content: [{ type: 'text', text: 'total 5' }], isError: false }),
       assistant([{ type: 'text', text: '总资产 5' }]),
     ]
     expect(renderHistory(messages, 6)).toEqual(['user: 你好', 'assistant: [calling tools: lookup]', 'tool: total 5', 'assistant: 总资产 5'])

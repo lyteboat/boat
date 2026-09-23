@@ -83,8 +83,7 @@ export const boatStateProjectionDefinition = {
     // dsh computes presentation meta for top-level calls only, so a subagent's
     // tool never reaches here; an errored result carries no delta worth folding.
     if (event.type !== 'tool/result') return state
-    const block = event.data.message.content.find(candidate => candidate.type === 'tool-result')
-    if (block?.isError === true) return state
+    if (event.data.message.isError === true) return state
     const delta = stateDeltaOfMeta(event.data.meta)
     if (delta === undefined) return state
     if (!isJsonObject(delta)) throw new Error(`tool result at session seq ${String(event.seq)} carries a non-object state delta`)

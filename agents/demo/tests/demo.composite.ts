@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { bootComposition } from '@boat/testing/composition'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
+import { startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
 /** The agents/ root this package lives in, as `--agents ./agents` names it. */
 const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
@@ -21,17 +21,10 @@ const ANSWER = 'DEMO-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown> }
 
-function toolNames(request: RecordedRequest): string[] {
-  return (request.body.tools ?? []).map(tool => tool.function?.name ?? '')
-}
-
-function calledTools(request: RecordedRequest): string {
-  return JSON.stringify(request.body.messages.filter(message => message.role === 'assistant').map(message => message.tool_calls))
-}
-
-/** The raw text of every string-content message, unescaped (JSON.stringify would escape the quotes in skill tags). */
+/** The raw text of every message block, tool results included, unescaped (JSON.stringify would escape the quotes in skill tags). */
 function messageTexts(request: RecordedRequest): string {
-  return request.body.messages.map(message => typeof message.content === 'string' ? message.content : JSON.stringify(message.content)).join('\n')
+  const text = (block: ChatBlock): string => block.text ?? (Array.isArray(block.content) ? (block.content as ChatBlock[]).map(text).join('') : '')
+  return request.body.messages.flatMap(message => message.content.map(text)).join('\n')
 }
 
 /** The router prompt quotes the candidates' descriptions; only the latest input decides. */
@@ -45,8 +38,8 @@ function script(request: RecordedRequest) {
     const diagnosis = /合理|健康|诊断|优化/u.test(latestInput(request))
     return { text: JSON.stringify({ skill_id: diagnosis ? 'asset-diagnosis' : 'asset-overview', reason: diagnosis ? '评价类' : '观察类' }) }
   }
-  const tools = toolNames(request)
-  const called = calledTools(request)
+  const tools = request.toolNames
+  const called = request.calledTools
   if (tools.includes('asset_overview') && !called.includes('asset_overview')) return { toolCall: { name: 'asset_overview', arguments: {}, id: 'call-overview' } }
   if (tools.includes('diagnose_assets') && !called.includes('diagnose_assets')) return { toolCall: { name: 'diagnose_assets', arguments: {}, id: 'call-diagnose' } }
   return { text: ANSWER }
@@ -94,8 +87,8 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(2)
     expect(loop[0]!.systemText).toContain('DEMO-ASSET-PERSONA')
-    expect(toolNames(loop[0]!)).toContain('asset_overview')
-    expect(toolNames(loop[0]!)).not.toContain('diagnose_assets')
+    expect(loop[0]!.toolNames).toContain('asset_overview')
+    expect(loop[0]!.toolNames).not.toContain('diagnose_assets')
     expect(messageTexts(loop[0]!)).toContain('<skill_content name="asset-overview">')
     const digest = messageTexts(loop[1]!)
     expect(digest).toContain('status=ok')
@@ -117,8 +110,8 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     const { requests, records } = await run('diagnosis', '我的配置合理吗')
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(2)
-    expect(toolNames(loop[0]!)).toContain('diagnose_assets')
-    expect(toolNames(loop[0]!)).not.toContain('asset_overview')
+    expect(loop[0]!.toolNames).toContain('diagnose_assets')
+    expect(loop[0]!.toolNames).not.toContain('asset_overview')
     expect(messageTexts(loop[0]!)).toContain('<skill_content name="asset-diagnosis">')
     expect(records.find(record => record.type === 'boat/skill-routed')?.data).toMatchObject({ skill: 'asset-diagnosis' })
     expect(JSON.stringify(records.find(record => record.type === 'tool/result'))).toContain('请先查看资产')

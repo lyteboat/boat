@@ -34,6 +34,7 @@ import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@boat/tool-policy'
+import { BOAT_SKILL_ROUTER_SOURCE } from '@boat/contracts'
 import type { BoatSkillMeta, BoatStepPayload } from '@boat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
@@ -55,8 +56,6 @@ export const BOAT_SKILLS_SECTION_ORDER = 450
 export const SKILL_ROUTE_TIMEOUT_CODE = 'BOAT_SKILL_ROUTE_TIMEOUT'
 /** Output budget of one router call: strict JSON with a ≤30-character reason. */
 const ROUTE_MAX_TOKENS = 200
-/** Plugin name recorded on the router's own messages. */
-const PLUGIN = 'boat-skill-router'
 
 export type SkillLoadMode = 'off' | 'full' | 'dynamic'
 
@@ -355,7 +354,7 @@ export class SkillRouterService extends Service {
     const options: GenerateOptions = {
       provider: route.provider,
       model: route.model,
-      messages: [createUserMessage({ content: [{ type: 'text', text: prompt }], source: { kind: 'plugin', plugin: PLUGIN } })],
+      messages: [createUserMessage({ content: [{ type: 'text', text: prompt }], source: { kind: BOAT_SKILL_ROUTER_SOURCE } })],
       system: SKILL_ROUTER_SYSTEM_PROMPT,
       maxTokens: ROUTE_MAX_TOKENS,
       temperature: 0,

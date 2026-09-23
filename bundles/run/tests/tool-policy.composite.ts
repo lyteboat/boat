@@ -13,13 +13,9 @@ const ANSWER = 'TOOL-POLICY-OK'
 
 /** One tool call on the first loop request, the answer once a tool result is in the transcript. */
 function callThenAnswer(name: string, args: unknown) {
-  return withTitle((request: RecordedRequest) => request.body.messages.some(message => message.role === 'tool')
+  return withTitle((request: RecordedRequest) => request.body.messages.some(message => message.content.some(block => block.type === 'tool_result'))
     ? { text: ANSWER }
     : { toolCall: { name, arguments: args, id: `call-${name}` } })
-}
-
-function toolNames(request: RecordedRequest): string[] {
-  return (request.body.tools ?? []).map(tool => tool.function?.name ?? '')
 }
 
 describe('@boat/tool-policy in the run composition (in process, scripted model)', () => {
@@ -54,7 +50,7 @@ describe('@boat/tool-policy in the run composition (in process, scripted model)'
       expect(result.stdout).toContain(ANSWER)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
-      const first = toolNames(loop[0]!)
+      const first = loop[0]!.toolNames
       expect(first).toContain('lookup_assets')
       expect(first).toContain('bash')
       expect(first).not.toContain('rebalance')
@@ -81,7 +77,7 @@ describe('@boat/tool-policy in the run composition (in process, scripted model)'
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
-      expect(toolNames(loop[0]!)).toContain('rebalance')
+      expect(loop[0]!.toolNames).toContain('rebalance')
       const [log] = findSessionLogs(home)
       const records = readSessionLog(log!) as { type: string; data?: Record<string, unknown> }[]
       const types = records.map(record => record.type)
@@ -111,7 +107,7 @@ describe('@boat/tool-policy in the run composition (in process, scripted model)'
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
       expect(loop[0]!.systemText).toContain('POLICY-PRESET-PERSONA')
-      const first = toolNames(loop[0]!)
+      const first = loop[0]!.toolNames
       expect(first).toContain('bash')
       expect(first).not.toContain('todo_write')
       const [log] = findSessionLogs(home)

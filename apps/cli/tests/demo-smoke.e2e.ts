@@ -17,9 +17,8 @@ const AGENTS = fileURLToPath(new URL('../../../agents', import.meta.url))
 
 function script(request: RecordedRequest) {
   if (request.purpose === 'router') return { text: JSON.stringify({ skill_id: 'asset-overview', reason: '观察类' }) }
-  const called = JSON.stringify(request.body.messages.map(message => message.tool_calls))
-  const offered = (request.body.tools ?? []).some(tool => tool.function?.name === 'asset_overview')
-  return offered && !called.includes('asset_overview') ? { toolCall: { name: 'asset_overview', arguments: {}, id: 'call-overview' } } : { text: 'DEMO-SMOKE-OK' }
+  const offered = request.toolNames.includes('asset_overview')
+  return offered && !request.calledTools.includes('asset_overview') ? { toolCall: { name: 'asset_overview', arguments: {}, id: 'call-overview' } } : { text: 'DEMO-SMOKE-OK' }
 }
 
 describe('boat run --agents ./agents --agent demo (built bin, scripted model)', () => {

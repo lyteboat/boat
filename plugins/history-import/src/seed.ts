@@ -12,14 +12,11 @@
 import { createAssistantMessage, createSystemMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent, SessionEventMap, SessionEventType } from '@deepseek-ai/dsh-session'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
-import { BOAT_ASSISTANT_PROVIDER, BOAT_HISTORY_IMPORT_PLUGIN } from '@boat/contracts'
+import { BOAT_ASSISTANT_PROVIDER, BOAT_HISTORY_IMPORT_SOURCE } from '@boat/contracts'
 import type { HistoryRound } from './sa-history.ts'
 
 /** The model recorded on imported assistant messages. */
 export const HISTORY_IMPORT_MODEL = 'history-import'
-
-/** The plugin the empty system head is attributed to: the one the driver replaces on the first real prompt. */
-const SYSTEM_PROMPT_SOURCE = '@deepseek-ai/dsh-system-prompt'
 
 export interface SeedOptions {
   /** Event time; defaults to now. */
@@ -57,12 +54,12 @@ export function seedFromRounds(rounds: readonly HistoryRound[], options: SeedOpt
     push('turn/start', { turn })
     push('step/start', { turn, step })
     if (!hasSystemNode) {
-      push('system/message', { turn, step, message: createSystemMessage('', SYSTEM_PROMPT_SOURCE) }, 'append')
+      push('system/message', { turn, step, message: createSystemMessage('') }, 'append')
       hasSystemNode = true
     }
     push('user/message', createUserMessage({
       content: [{ type: 'text', text: round.user.text }],
-      source: { kind: 'plugin', plugin: BOAT_HISTORY_IMPORT_PLUGIN },
+      source: { kind: BOAT_HISTORY_IMPORT_SOURCE },
     }), 'append')
     push('assistant/message', {
       turn,

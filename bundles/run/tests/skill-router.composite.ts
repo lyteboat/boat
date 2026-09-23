@@ -25,10 +25,6 @@ description: 市场行情与新闻解读。
 MARKET-NEWS-BODY: 只解读公开行情。
 `
 
-function toolNames(request: RecordedRequest): string[] {
-  return (request.body.tools ?? []).map(tool => tool.function?.name ?? '')
-}
-
 describe('@boat/skill-router in the run composition (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
@@ -80,7 +76,7 @@ describe('@boat/skill-router in the run composition (in process, scripted model)
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(1)
     expect(loop[0]!.systemText).toContain('ROUTED-PRESET-PERSONA')
-    expect(toolNames(loop[0]!)).toContain('todo_write')
+    expect(loop[0]!.toolNames).toContain('todo_write')
     const messages = JSON.stringify(loop[0]!.body.messages)
     expect(messages).toContain('ASSET-OVERVIEW-BODY')
     expect(messages).not.toContain('MARKET-NEWS-BODY')

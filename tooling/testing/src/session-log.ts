@@ -1,5 +1,5 @@
 /**
- * Read dsh session logs (`session.v3.jsonl`, plain or Zstandard) outside the
+ * Read dsh session logs (`session.v4.jsonl`, plain or Zstandard) outside the
  * running harness: smoke tests, the M1 driver-equivalence diff, and later the
  * evaluation replay all decode logs through this one module.
  *
@@ -107,7 +107,7 @@ export function decodeSessionLog(bytes: Buffer, compressed: boolean): SessionLog
 
 /**
  * Read one session artifact by path.
- * @param path - a `session.v3.jsonl` or `session.v3.jsonl.zstd` file.
+ * @param path - a `session.v4.jsonl` or `session.v4.jsonl.zstd` file.
  * @returns records in file order.
  */
 export function readSessionLog(path: string): SessionLogRecord[] {
@@ -128,7 +128,7 @@ export function findSessionLogs(home: string): string[] {
     return []
   }
   return entries
-    .filter(entry => /session\.v3\.jsonl(?:\.zstd)?$/u.test(entry))
+    .filter(entry => /session\.v4\.jsonl(?:\.zstd)?$/u.test(entry))
     .map(entry => join(root, entry))
     .sort()
 }

@@ -29,8 +29,15 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /** `provider` of every assistant message boat writes without a model call (intake replies, imported history). */
 export const BOAT_ASSISTANT_PROVIDER = 'boat'
 
-/** `plugin` of the user messages imported history writes; consumers treat them as conversation, not as context. */
-export const BOAT_HISTORY_IMPORT_PLUGIN = 'boat-history-import'
+/**
+ * `source.kind` of the user messages imported history writes; consumers treat
+ * them as conversation, not as context. dsh's V3→V4 session migration turns a
+ * V3 `{ kind: 'plugin', plugin: 'boat-history-import' }` into this same kind.
+ */
+export const BOAT_HISTORY_IMPORT_SOURCE = 'plugin:boat-history-import'
+
+/** `source.kind` of the skill router's own request message (a side model call, never logged). */
+export const BOAT_SKILL_ROUTER_SOURCE = 'plugin:boat-skill-router'
 
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type BoatToolVisibility = 'always' | 'auto'
@@ -117,6 +124,15 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'boat/pre-assemble'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<void>): Promise<void>
+  }
+}
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** Imported history rounds, written by `@boat/history-import` into a session seed. */
+    'plugin:boat-history-import': { kind: typeof BOAT_HISTORY_IMPORT_SOURCE }
+    /** The skill router's request to its route model, owned by `@boat/skill-router`. */
+    'plugin:boat-skill-router': { kind: typeof BOAT_SKILL_ROUTER_SOURCE }
   }
 }
 
