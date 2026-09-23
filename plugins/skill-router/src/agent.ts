@@ -1,6 +1,6 @@
 /**
  * The agent row: declares the skill router's settings for one agent (its
- * standing scope, mounted by dsh-agent-presets), overriding the host row's
+ * standing scope, mounted by dsh-agent-preset-registry), overriding the host row's
  * defaults for every session of that agent. An agent that wants ark's dynamic routing turns it on
  * here; the host default is `off`.
  *
@@ -39,7 +39,7 @@ export const Config: z<Config> = z.object({
 
 /**
  * Declare the configured settings in the calling scope.
- * @param ctx - the row's context (the agent's standing scope when dsh-agent-presets mounts it).
+ * @param ctx - the row's context (the agent's standing scope when dsh-agent-preset-registry mounts it).
  * @param config - validated partial settings.
  */
 export function apply(ctx: Context, config: Config): void {

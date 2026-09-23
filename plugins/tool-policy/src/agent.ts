@@ -1,6 +1,6 @@
 /**
  * The agent row: declares boat tool metadata from an agent's composition
- * file, in the agent's standing scope (dsh-agent-presets mounts it), for
+ * file, in the agent's standing scope (dsh-agent-preset-registry mounts it), for
  * tools other rows register (an official dsh tool made `auto`, or one that
  * must be confirmed). Code-only metadata (`stateDelta`) belongs to
  * `ctx.toolPolicy.register` in a plugin.
@@ -51,7 +51,7 @@ const POLICY_KEYS = new Set(['visibility', 'group', 'requiresConfirmation'])
 
 /**
  * Declare every configured policy in the calling scope.
- * @param ctx - the row's context (the agent's standing scope when dsh-agent-presets mounts it).
+ * @param ctx - the row's context (the agent's standing scope when dsh-agent-preset-registry mounts it).
  * @param config - validated tool policies.
  * @throws on a key no policy has: schemastery passes unknown keys through, and a misspelt one must not silently declare nothing.
  */

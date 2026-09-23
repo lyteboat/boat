@@ -1,7 +1,7 @@
 /**
  * The agent row: composes a `render_a2ui` tool over the agent's own
  * templates directory, in the agent's standing scope (mounted by
- * dsh-agent-presets). A relative `templates` path resolves against the
+ * dsh-agent-preset-registry). A relative `templates` path resolves against the
  * composition file's directory.
  *
  * ```yaml
@@ -63,7 +63,7 @@ function compositionDir(ctx: Context): string | undefined {
 
 /**
  * Compose the tool from the row's config.
- * @param ctx - the row's context (the agent's standing scope when dsh-agent-presets mounts it).
+ * @param ctx - the row's context (the agent's standing scope when dsh-agent-preset-registry mounts it).
  * @param config - validated options.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {

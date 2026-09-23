@@ -6,22 +6,17 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * Every package a shipped agent preset names must resolve from the boat
- * installation: agent-presets resolves rows against the harness base and only
- * reports an unresolvable package on the roster card, so a missing dependency
- * surfaces as a session-creation failure, not a boot failure.
+ * installation: the web bundle declares its presets as agent-preset rows in
+ * `presets/*.patch.yml`, and the preset registry only reports an unresolvable
+ * package as a broken preset, so a missing dependency surfaces as a
+ * session-creation failure, not a boot failure.
  */
 function presetPackageNames(): Map<string, string[]> {
   const require = createRequire(import.meta.url)
-  const presetsDir = join(dirname(require.resolve('@deepseek-ai/dsh-agent-presets/package.json')), 'presets')
+  const presetsDir = join(dirname(require.resolve('@deepseek-ai/dsh-web-app/package.json')), 'presets')
   const names = new Map<string, string[]>()
-  for (const preset of readdirSync(presetsDir)) {
-    const file = join(presetsDir, preset, 'agent.cordis.yml')
-    let text: string
-    try {
-      text = readFileSync(file, 'utf8')
-    } catch {
-      continue
-    }
+  for (const preset of readdirSync(presetsDir).filter(file => file.endsWith('.patch.yml'))) {
+    const text = readFileSync(join(presetsDir, preset), 'utf8')
     const found = new Set<string>()
     const visit = (node: unknown): void => {
       if (Array.isArray(node)) { for (const item of node) visit(item); return }

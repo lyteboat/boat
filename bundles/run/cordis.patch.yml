@@ -1,12 +1,11 @@
 # The @boat/run bundle patch: one-shot task mode over dsh-base and @boat/host,
 # boat's replacement for dsh-headless. The startup row parses the task and the
-# `--agent` / `--agents` / `--history` flags from the inner arguments and
-# publishes them as the `boatRunStartup` service; the agent-presets roster
-# reads its roots from that service (no roots without `--agents`, so the
-# roster's "every agent joins a preset" rule stays off); the runner row creates
-# one agent — composed from the named agent directory — drives the task to
-# quiescence, prints the final answer, and exits. boat's service rows and the
-# driver come from @boat/host, listed before this bundle in the run profile.
+# `--agent` / `--agents` / `--history` flags from the inner arguments, resolves
+# the agent to its directory, and publishes them as the `boatRunStartup`
+# service; the runner row declares that directory to the agent preset registry,
+# creates one agent composed from it, drives the task to quiescence, prints the
+# final answer, and exits. boat's service rows and the driver come from
+# @boat/host, listed before this bundle in the run profile.
 
 - id: system-prompt
   config:
@@ -19,20 +18,14 @@
     mode: !!js process.env.DSH_TOOLS_MODE
 
 - insert:
-    - id: code-runtime
-      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
-
     - id: boat-run-startup
       name: '@boat/run/startup'
 
-    - id: agent-presets
-      name: '@deepseek-ai/dsh-agent-presets'
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
       inject: [boatRunStartup]
       config:
         default: !!js ctx.boatRunStartup.preset ?? 'none'
-        roots: !!js "ctx.boatRunStartup.agentRoots.map(path => ({ path, trust: 'user' }))"
-        includeShippedRoot: false
-        includeUserRoot: false
 
     - id: boat-run
       name: '@boat/run'
@@ -40,4 +33,9 @@
       config:
         task: !!js ctx.boatRunStartup.task
         preset: !!js ctx.boatRunStartup.preset
+        agentDir: !!js ctx.boatRunStartup.agentDir
         history: !!js ctx.boatRunStartup.history
+
+# A one-shot run applies the user layers at startup only, as dsh-headless does.
+- id: hmr
+  disabled: true

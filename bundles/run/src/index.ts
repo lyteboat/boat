@@ -7,19 +7,22 @@
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
  * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Differences:
- * preset composition through `agentPresets.mount` in the setup window, and the
- * `boat:` diagnostic prefix.
+ * preset composition (the selected agent directory declared to the preset
+ * registry, then joined through `agentPresets.mount` in the setup window), and
+ * the `boat:` diagnostic prefix.
  * @module @boat/run
  */
 
 import { randomUUID } from 'node:crypto'
+import { join, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentSetup, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
-import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@boat/history-import'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
@@ -28,6 +31,7 @@ import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { SeedResult } from '@boat/history-import'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
+import { readAgentDefinition } from './agent-directory.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'boat-run'
@@ -41,6 +45,8 @@ export interface Config {
   task: string
   /** The preset to compose the agent from; absent runs the host composition alone. */
   preset?: string
+  /** The agent directory the preset is declared from; absent resolves `preset` among the declared presets. */
+  agentDir?: string
   /** An external history file (SA entries) seeded into the session as closed turns before the task. */
   history?: string
 }
@@ -48,6 +54,7 @@ export interface Config {
 export const Config: z<Config> = z.object({
   task: z.string().required(),
   preset: z.string(),
+  agentDir: z.string(),
   history: z.string(),
 })
 
@@ -147,6 +154,22 @@ function streamReasoning(ctx: Context, agent: Agent, stderr: RunIo['stderr']): (
   }
 }
 
+/**
+ * Declare one agent directory as a preset for as long as the runner row lives.
+ * The directory is the declaration's base URL, so `./lib/x.js` rows and
+ * relative paths in row config resolve against it.
+ * @param ctx - the runner's context, which owns the declaration.
+ * @param id - the agent id.
+ * @param dir - the agent directory.
+ */
+async function declareAgent(ctx: Context, id: string, dir: string): Promise<void> {
+  const definition = readAgentDefinition(id, dir)
+  // The registry takes the declaration's base URL from its caller's context.
+  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).get('agentPresets')
+  if (presets === undefined) throw new Error(`agent ${JSON.stringify(id)} requested but no preset registry is composed`)
+  await ctx.effect(() => presets.register(definition), 'boat-run.declareAgent()')
+}
+
 function fail(io: RunIo, error: unknown): void {
   io.stderr.write(`boat: ${error instanceof Error ? error.message : String(error)}\n`)
   io.exit(1)
@@ -170,7 +193,8 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const presets = ctx.get('agentPresets')
   let agentPreset: string | undefined
   if (config.preset !== undefined) {
-    if (presets === undefined) throw new Error(`preset ${JSON.stringify(config.preset)} requested but no preset roster is composed`)
+    if (presets === undefined) throw new Error(`preset ${JSON.stringify(config.preset)} requested but no preset registry is composed`)
+    if (config.agentDir !== undefined) await declareAgent(ctx, config.preset, config.agentDir)
     agentPreset = (await presets.resolve(config.preset)).id
   }
   const setup: AgentSetup = async (agentCtx) => {
