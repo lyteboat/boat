@@ -1,6 +1,14 @@
 # boat
 
+> **轻舟已过万重山.** A light harness for every industry, built on DeepSeek Harness.
+
 boat is an agent harness built as plugins on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) and its Cordis plugin system. The design document tracks the plan; this repository is its implementation, delivered one runnable milestone at a time.
+
+## Vision
+
+AI in production is **Model + Harness**: the model brings general intelligence, the harness turns it into dependable work in one domain, with its tools, skills, state, and rules. boat builds on the DeepSeek Harness community to give every industry such a harness, a light boat that carries vertical teams across the ten thousand mountains between a capable model and a product that ships.
+
+AI 的未来是 Model + Harness。模型提供通用智能，Harness 把它落到具体行业的工具、技能、状态与规则之中。boat 依托 DeepSeek Harness 社区，为各行各业打造 Harness 轻舟，助力垂域轻舟过万重山。
 
 ## Status
 
