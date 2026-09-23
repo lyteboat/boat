@@ -15,7 +15,6 @@
     "conformance": "pnpm run build && vitest run --project conformance",
     "test:unit": "vitest run --project source --project dsh --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
     "check": "pnpm run lint && pnpm run test && pnpm run conformance",
-    "smoke:equivalence": "pnpm run build && vitest run boat/apps/cli/tests/driver-equivalence.e2e.ts",
     "dist:snapshot": "node --import tsx scripts/dist/snapshot.ts",
     "dist:import": "node --import tsx scripts/dist/import-upstream.ts",
     "dist:delta": "node --import tsx scripts/dist/delta-report.ts",
