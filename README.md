@@ -30,6 +30,7 @@ Written in Chinese, each one walks a running example end to end against this rep
 | [`docs/01-architecture.md`](docs/01-architecture.md) | C4 layers from the system down to the kernel's seams, what happens at startup (sequence diagram), the Lifecycle of every row, how boat and dsh inject and override each other, the flow of one request through the harness, and the order of the session log |
 | [`docs/02-distribution.md`](docs/02-distribution.md) | the distribution's conventions and rules: the kernel and the upstream line, a sync step by step, change classes and the extension registry, promotion into the kernel, the gates G1–G6 and how to run them, channels and branches, versions and pins |
 | [`docs/03-agent-development.md`](docs/03-agent-development.md) | building a business agent on boat, step by step, with a complete example agent (`policy-desk`): directory, composition file, skills, tools, policy, tests, running it, and what to watch for |
+| [`docs/04-ark-alignment.md`](docs/04-ark-alignment.md) | analysis: which ark-agentic capabilities boat should take in, and how to redesign boat's core toward ark while keeping dsh's capabilities and practices |
 
 ## Requirements
 
