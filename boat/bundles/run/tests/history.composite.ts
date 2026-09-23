@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { FIXTURES, OFFICIAL_DRIVER, runComposition } from './support/run-composition.ts'
+import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type ScriptedModel } from '@boat/testing/scripted-model'
 
 const HISTORY = join(FIXTURES, 'history', 'sa.json')
@@ -37,10 +37,10 @@ describe('boat run --history (in process, scripted model)', () => {
     return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
-  it.each(['boat', 'dsh'])('seeds the session from the file under the %s driver: two complete rounds, the task as turn 3, the rounds in the first request', async (driver) => {
-    const { home, workspace } = fresh(driver)
+  it('seeds the session from the file: two complete rounds, the task as turn 3, the rounds in the first request', async () => {
+    const { home, workspace } = fresh('seed')
     const before = model.requests.length
-    const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: env() }, driver === 'dsh' ? OFFICIAL_DRIVER : [])
+    const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     expect(result.stderr).toContain('imported 2 history round(s) from sa.json')

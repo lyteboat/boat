@@ -34,10 +34,10 @@
     "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
-    "@boat/agentic-loop": "workspace:*",
     "@boat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
     "@deepseek-ai/dsh-invariants": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-session": "workspace:*",

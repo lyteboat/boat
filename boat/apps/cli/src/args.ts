@@ -15,7 +15,6 @@
  */
 
 import { Command, CommanderError } from 'commander'
-import { DEFAULT_DRIVER, DRIVERS, isDriver, type Driver } from './drivers.ts'
 import { pluginFilesProblem } from './plugins.ts'
 import { DEFAULT_RUN_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
@@ -23,8 +22,6 @@ import { DEFAULT_RUN_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 export interface ProfileInvocation {
   mode: 'profile'
   profile: string
-  /** The agent driver to mount. */
-  driver: Driver
   /** Extra patch-list overlays applied after the profile's own layer, in argv order. */
   patches: string[]
   /** Local plugin files inserted as rows, in argv order. */
@@ -37,8 +34,6 @@ export interface ProfileInvocation {
 export interface DumpConfigInvocation {
   mode: 'dump-config'
   profile: string
-  /** The agent driver whose overlay to include. */
-  driver: Driver
   /** Omit the profile's user layer and --patch overlays; print bundle layers only. */
   defaultOnly: boolean
   patches: string[]
@@ -57,7 +52,6 @@ export interface BoatVersions {
 interface BootOptions {
   profile?: string
   patch?: string[]
-  driver?: string
   plugin?: string[]
 }
 
@@ -68,7 +62,6 @@ const HELP_EXAMPLES = `
 Examples:
   boat run "summarize this workspace"         answer one task, print the result, and exit
   boat run --patch ./extra.yml "task"         boot the run profile with one extra overlay
-  boat run --driver dsh "task"                mount dsh's official agent driver instead of boat's
   boat run --plugin ./my-plugin.mjs "task"    insert a local plugin file into the tree
   boat run -h                                  the one-shot app's own flags and help
   boat web                                     serve the browser UI (boat web --help for its flags)
@@ -76,7 +69,7 @@ Examples:
   boat config dump --profile run               print the composed plugin tree and exit
 `
 
-function validateBoot(program: Command, options: BootOptions): { profile: string; patches: string[]; plugins: string[]; driver: Driver } {
+function validateBoot(program: Command, options: BootOptions): { profile: string; patches: string[]; plugins: string[] } {
   const patches = options.patch ?? []
   if (patches.includes('')) program.error('error: --patch needs a path')
   const plugins = options.plugin ?? []
@@ -84,9 +77,7 @@ function validateBoot(program: Command, options: BootOptions): { profile: string
   const pluginProblem = pluginFilesProblem(plugins)
   if (pluginProblem !== undefined) program.error(`error: ${pluginProblem}`)
   if (options.profile === '') program.error('error: --profile needs a name')
-  const driver = options.driver ?? DEFAULT_DRIVER
-  if (!isDriver(driver)) program.error(`error: --driver must be one of ${DRIVERS.join(', ')}, got ${JSON.stringify(driver)}`)
-  return { profile: options.profile ?? '', patches, plugins, driver }
+  return { profile: options.profile ?? '', patches, plugins }
 }
 
 /** Configure a subcommand that hands its unknown tokens to the booted app. */
@@ -120,11 +111,10 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .argument('[task...]', 'the task text and any flags of the one-shot app')
     .option('--profile <name>', 'the profile under $BOAT_HOME/profiles to boot', DEFAULT_RUN_PROFILE)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
-    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((args: string[], options: BootOptions) => {
-      const { profile, patches, plugins, driver } = validateBoot(run, options)
-      resolved = { mode: 'profile', profile, driver, patches, plugins, args }
+      const { profile, patches, plugins } = validateBoot(run, options)
+      resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 
   const web = passThrough(program.command('web'))
@@ -132,11 +122,10 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .argument('[args...]', 'arguments for the web app (see: boat web --help)')
     .option('--profile <name>', 'the profile under $BOAT_HOME/profiles to boot', DEFAULT_WEB_PROFILE)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
-    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((args: string[], options: BootOptions) => {
-      const { profile, patches, plugins, driver } = validateBoot(web, options)
-      resolved = { mode: 'profile', profile, driver, patches, plugins, args }
+      const { profile, patches, plugins } = validateBoot(web, options)
+      resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 
   const config = program.command('config').description('inspect profile composition without booting')
@@ -145,13 +134,12 @@ export function parseBoatArgs(argv: readonly string[], versions: BoatVersions): 
     .option('--profile <name>', 'the profile to compose', DEFAULT_RUN_PROFILE)
     .option('--default', 'print the bundle layers only, without the user layer or --patch overlays')
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
-    .option('--driver <name>', `the agent driver to mount: ${DRIVERS.join(' | ')}`, DEFAULT_DRIVER)
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((options: BootOptions & { default?: boolean }) => {
-      const { profile, patches, plugins, driver } = validateBoot(dump, options)
+      const { profile, patches, plugins } = validateBoot(dump, options)
       const defaultOnly = options.default === true
       if (defaultOnly && (patches.length > 0 || plugins.length > 0)) dump.error('error: --default prints the bundle layers and takes no --patch or --plugin')
-      resolved = { mode: 'dump-config', profile, driver, defaultOnly, patches, plugins }
+      resolved = { mode: 'dump-config', profile, defaultOnly, patches, plugins }
     })
 
   try {

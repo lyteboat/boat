@@ -1,6 +1,6 @@
 /**
  * Turn history rounds into a session seed: one closed turn per round, the
- * same node shapes the boat driver writes for a reply step (an empty system
+ * same node shapes boat's agent loop writes for an intake reply (an empty system
  * head on node 0, `user/message` and `assistant/message` with `surfaceOp:
  * 'append'`, provider `boat`, model `history-import`, empty stream). Seq is
  * contiguous from 0, so the result satisfies `CreateAgentOptions.seed`. The

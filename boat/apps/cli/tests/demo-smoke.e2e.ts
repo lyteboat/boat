@@ -35,7 +35,7 @@ describe('boat run --agents ./agents --agent demo (built bin, scripted model)', 
     rmSync(root, { recursive: true, force: true })
   })
 
-  it('routes, calls the demo tool, renders its card, and answers under the default driver', async () => {
+  it('routes, calls the demo tool, renders its card, and answers', async () => {
     const home = join(root, 'home')
     const workspace = mkdtempSync(join(root, 'workspace-'))
     writeFileSync(join(workspace, 'README.md'), '# demo smoke\n')

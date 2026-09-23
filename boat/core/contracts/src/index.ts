@@ -1,8 +1,8 @@
 /**
  * boat's contract extensions over the dsh seams. Types and constants only:
- * the tool and skill metadata boat plugins consume, the `boat/*` events the
- * boat driver dispatches, the log nodes boat plugins append, and the
- * projection keys they publish. Declared here, by declaration merging onto
+ * the tool and skill metadata boat plugins consume, the `boat/*` step events
+ * (declared by boat's kernel agent loop, re-exported here), the log nodes boat
+ * plugins append, and the projection keys they publish. Declared here, by declaration merging onto
  * the dsh maps, so that providers and consumers depend on this package and
  * never on each other — the same rule dsh applies to its own seams.
  *
@@ -17,17 +17,27 @@
  * @module @boat/contracts
  */
 
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
-import type { Scoped } from '@deepseek-ai/dsh-scope'
+import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 
 /** Lossless JSON, the only shape session logs and projections may carry. */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
-/** `provider` of every assistant message boat writes without a model call (intake replies, imported history). */
-export const BOAT_ASSISTANT_PROVIDER = 'boat'
+/**
+ * The kernel's pre-assembly step events (`boat/intake`, `boat/pre-assemble`)
+ * and their payloads are declared by boat's agent loop
+ * (dsh/core/agent-loop/src/boat/step-hooks.ts, contract/extensions.yml), which
+ * cannot import this package; plugins read them from here.
+ * `BOAT_ASSISTANT_PROVIDER` is the provider of every assistant message boat
+ * writes without a model call (intake replies, imported history).
+ */
+export { BOAT_ASSISTANT_PROVIDER } from '@deepseek-ai/dsh-agent-loop'
+export type {
+  BoatIntakeDecision as IntakeDecision,
+  BoatIntakeReply as IntakeReply,
+  BoatStepPayload,
+} from '@deepseek-ai/dsh-agent-loop'
 
 /**
  * `source.kind` of the user messages imported history writes; consumers treat
@@ -75,57 +85,8 @@ export interface BoatCard {
   payload: JsonValue
 }
 
-/**
- * An intake listener's verdict: let the step proceed, or answer without a
- * model call. The reply is logged as an ordinary assistant message whose
- * `source` is `{ provider: 'boat', model: plugin }`; no other node records it.
- */
-export interface IntakeReply {
-  kind: 'reply'
-  /** The deciding plugin; recorded as the assistant message's `model`. */
-  plugin: string
-  /** The reply's blocks. A tool call cannot be replied: nothing would execute it. */
-  content: Exclude<ContentBlock, { type: 'tool-call' }>[]
-}
-
-export type IntakeDecision = { kind: 'pass' } | IntakeReply
-
 /** The `boatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.boat.stateDelta`. */
 export type BoatStateValue = { [key: string]: JsonValue }
-
-/** Payload of the boat driver's pre-assembly events. */
-export interface BoatStepPayload {
-  agent: Agent
-  /** The messages claimed for this step, before admission. */
-  messages: UserMessage[]
-  turn: number
-  step: number
-  signal: AbortSignal
-}
-
-declare module '@deepseek-ai/cordis' {
-  interface Events {
-    /**
-     * Intake gate, dispatched by the boat driver after the inbox claim and
-     * before prompt assembly, so before (and, on a reply, instead of)
-     * `agent/pre-step`. A `reply` answers the claimed messages with a fixed
-     * assistant message inside one step without a model request; the turn
-     * then ends unless next-step input is already queued. The default
-     * `next()` passes. Scope-filtered: agent-scoped listeners receive only
-     * their agent. Never dispatched by the official driver.
-     * @mode waterfall
-     */
-    'boat/intake'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<IntakeDecision>): Promise<IntakeDecision>
-    /**
-     * Pre-assembly hook, dispatched after `boat/intake` passed and before the
-     * system prompt is assembled: skill routing and tool activation done here
-     * shape the request of this very step. Scope-filtered. Never dispatched by
-     * the official driver.
-     * @mode waterfall
-     */
-    'boat/pre-assemble'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<void>): Promise<void>
-  }
-}
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {

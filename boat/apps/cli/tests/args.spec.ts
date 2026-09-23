@@ -28,45 +28,35 @@ afterEach(() => { vi.restoreAllMocks() })
 describe('parseBoatArgs', () => {
   it('boots the run profile with the task handed to the app verbatim', () => {
     expect(parse(['run', 'summarize', 'this', 'workspace']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [], patches: [], args: ['summarize', 'this', 'workspace'] })
+      .toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: [], args: ['summarize', 'this', 'workspace'] })
     expect(parse(['run', '--patch', 'a.yml', '--patch', 'b.yml', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [], patches: ['a.yml', 'b.yml'], args: ['hello'] })
+      .toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: ['a.yml', 'b.yml'], args: ['hello'] })
     expect(parse(['run', '--profile', 'custom', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'custom', driver: 'boat', plugins: [], patches: [], args: ['hello'] })
+      .toEqual({ mode: 'profile', profile: 'custom', plugins: [], patches: [], args: ['hello'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
-    expect(parse(['run', '-h'])).toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [], patches: [], args: ['-h'] })
+    expect(parse(['run', '-h'])).toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: [], args: ['-h'] })
     expect(parse(['web', '--no-open', '--port', '0']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'boat', plugins: [], patches: [], args: ['--no-open', '--port', '0'] })
+      .toEqual({ mode: 'profile', profile: 'web', plugins: [], patches: [], args: ['--no-open', '--port', '0'] })
     expect(parse(['web', '--patch', 'w.yml', '--host', '127.0.0.1', '--patch', 'late.yml']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'boat', plugins: [], patches: ['w.yml'], args: ['--host', '127.0.0.1', '--patch', 'late.yml'] })
+      .toEqual({ mode: 'profile', profile: 'web', plugins: [], patches: ['w.yml'], args: ['--host', '127.0.0.1', '--patch', 'late.yml'] })
   })
 
   it('inserts local plugin files that exist, each once', () => {
     expect(parse(['run', '--plugin', INTAKE_PLUGIN, '--plugin', NOOP_PLUGIN, 'hi']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [INTAKE_PLUGIN, NOOP_PLUGIN], patches: [], args: ['hi'] })
+      .toEqual({ mode: 'profile', profile: 'run', plugins: [INTAKE_PLUGIN, NOOP_PLUGIN], patches: [], args: ['hi'] })
     expect(exitCode(['run', '--plugin', '', 'hi'])).toBe(1)
     expect(exitCode(['run', '--plugin', 'missing.mjs', 'hi'])).toBe(1)
     expect(exitCode(['run', '--plugin', INTAKE_PLUGIN, '--plugin', INTAKE_PLUGIN, 'hi'])).toBe(1)
   })
 
-  it('selects the agent driver', () => {
-    expect(parse(['run', '--driver', 'dsh', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'dsh', plugins: [], patches: [], args: ['hello'] })
-    expect(parse(['web', '--driver', 'dsh', '--no-open']))
-      .toEqual({ mode: 'profile', profile: 'web', driver: 'dsh', plugins: [], patches: [], args: ['--no-open'] })
-    expect(parse(['config', 'dump', '--driver', 'dsh']))
-      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'dsh', defaultOnly: false, patches: [], plugins: [] })
-    expect(exitCode(['run', '--driver', 'other', 'hello'])).toBe(1)
-  })
-
   it('resolves config dumps', () => {
-    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'run', driver: 'boat', defaultOnly: false, patches: [], plugins: [] })
+    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'run', defaultOnly: false, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--profile', 'web', '--default']))
-      .toEqual({ mode: 'dump-config', profile: 'web', driver: 'boat', defaultOnly: true, patches: [], plugins: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--patch', 'x.yml']))
-      .toEqual({ mode: 'dump-config', profile: 'run', driver: 'boat', defaultOnly: false, patches: ['x.yml'], plugins: [] })
+      .toEqual({ mode: 'dump-config', profile: 'run', defaultOnly: false, patches: ['x.yml'], plugins: [] })
   })
 
   it('exits on usage errors, help, and version', () => {

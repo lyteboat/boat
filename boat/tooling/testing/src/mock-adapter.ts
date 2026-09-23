@@ -1,7 +1,7 @@
 /**
  * A scripted in-process LlmAdapter and chunk builders for unit tests that mount
- * the real driver. boat's own copy: the driver's upstream tests keep theirs in
- * core/agentic-loop/tests, which every sync-upstream run overwrites.
+ * the real driver. boat's own copy: the kernel's upstream tests keep theirs in
+ * dsh/core/agent-loop/tests, which every import overwrites.
  *
  * Adapted from deepseek-ai/deepseek-harness packages/core/agent-loop/tests/mock-adapter.ts
  * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.

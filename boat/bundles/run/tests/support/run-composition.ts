@@ -7,12 +7,6 @@ export const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run']
 /** This package's test fixtures: agent directories, plugin files, history files. */
 export const FIXTURES = fileURLToPath(new URL('../fixtures', import.meta.url))
 
-/** `--driver dsh`: the reverse of @boat/host's driver swap, as apps/cli/src/drivers.ts writes it. */
-export const OFFICIAL_DRIVER: readonly PatchOptions[] = [
-  { id: 'boat-agentic-loop', disabled: true },
-  { id: 'agent-loop', disabled: false },
-]
-
 /** Where a run happens and what it talks to. */
 export interface RunTarget {
   cwd: string
@@ -25,7 +19,7 @@ export interface RunTarget {
  * app's arguments, as `boat run <args>` would.
  * @param args - the arguments after `boat run`.
  * @param target - working directory, harness home, and environment.
- * @param patches - layers above the bundles (plugin-file rows, driver swap).
+ * @param patches - layers above the bundles (plugin-file rows).
  * @returns the exit code and captured output.
  */
 export function runComposition(args: readonly string[], target: RunTarget, patches: readonly PatchOptions[] = []): Promise<CompositionRun> {

@@ -42,9 +42,6 @@
       "path": "./boat/core/contracts"
     },
     {
-      "path": "./boat/core/agentic-loop"
-    },
-    {
       "path": "./boat/plugins/tool-policy"
     },
     {
@@ -67,9 +64,6 @@
     },
     {
       "path": "./boat/tooling/testing"
-    },
-    {
-      "path": "./boat/tooling/dsh-agent-loop-testkit-fork"
     }
   ]
 }

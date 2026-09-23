@@ -17,7 +17,7 @@
  * @ dsh-v0.1.7-alpha.2 (00102833), MIT — see THIRD_PARTY_NOTICES.md. Changes:
  * boat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
- * dropped, the launcher's own overlays (`--driver`, `--plugin`) sit above the
+ * dropped, the launcher's own overlays (`--plugin`) sit above the
  * `--patch` overlays, and `FiberState` reads go through `@boat/cordis-compat`.
  * @module @boat/cli/profile-boot
  */
@@ -165,7 +165,7 @@ async function composeProfile(
 ): Promise<ComposedProfile> {
   const profile = prepareProfile(name, true)
   const resolution = await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile })
-  // Launcher-generated layers (the driver switch) sit above every file overlay so a
+  // Launcher-generated layers (`--plugin` rows) sit above every file overlay so a
   // user file can never displace them.
   const overlays = [...patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file))), ...launcherOverlays]
   return { profile, resolution, overlays }

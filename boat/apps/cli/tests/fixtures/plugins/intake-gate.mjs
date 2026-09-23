@@ -1,5 +1,5 @@
 // An intake gate: answers out-of-scope requests with a fixed reply and no model
-// call. Only the boat driver dispatches `boat/intake`; tests insert it the way
+// call. Only boat's kernel agent loop dispatches `boat/intake`; tests insert it the way
 // `boat run --plugin <this file>` would.
 export const name = 'example-intake-gate'
 

@@ -43,17 +43,6 @@
       "rules": {
         "typescript/no-non-null-assertion": "off"
       }
-    },
-    {
-      "files": [
-        "boat/core/agentic-loop/**/*.ts",
-        "boat/tooling/dsh-agent-loop-testkit-fork/**/*.ts"
-      ],
-      "rules": {
-        "no-shadow": "off",
-        "no-underscore-dangle": "off",
-        "preserve-caught-error": "off"
-      }
     }
   ]
 }

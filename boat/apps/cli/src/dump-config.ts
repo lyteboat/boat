@@ -25,7 +25,7 @@ import { homePatchPath, NAME, prepareProfile, PROFILE_ROOT_FILENAME } from './pr
  * @param profile - the profile name.
  * @param defaultOnly - omit the profile's user layer and `--patch` overlays.
  * @param patches - `--patch` overlay paths, in argv order.
- * @param launcherOverlays - in-memory layers derived from launcher flags (the driver switch).
+ * @param launcherOverlays - in-memory layers derived from launcher flags (`--plugin` rows).
  */
 export function runDumpConfig(
   profile: string,
@@ -51,7 +51,7 @@ export function runDumpConfig(
       const absolute = resolve(file)
       layers.push({ label: absolute, patches: loadOverlayPatches(NAME, absolute) })
     }
-    if (launcherOverlays.length > 0) layers.push({ label: 'launcher: --driver / --plugin', patches: [...launcherOverlays] })
+    if (launcherOverlays.length > 0) layers.push({ label: 'launcher: --plugin', patches: [...launcherOverlays] })
   }
   process.stdout.write(renderConfigDump(NAME, join(loaded.dir, PROFILE_ROOT_FILENAME), layers))
 }

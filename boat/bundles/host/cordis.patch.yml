@@ -1,13 +1,8 @@
 # The @boat/host bundle patch: what every boat profile shares, applied right
-# after dsh-base. The boat driver replaces dsh's agent-loop row — the agent
-# registry accepts one factory, so the swap is a boot-time layer, and the fork
-# keeps upstream's companion names, so the two drivers never mount together.
-# boat's service rows sit on the host plane, where agent rows inject them.
-# `boat run --driver dsh` re-enables agent-loop and disables boat-agentic-loop
-# above every file layer (apps/cli/src/drivers.ts).
-
-- id: agent-loop
-  disabled: true
+# after dsh-base. dsh-base's own agent-loop row stays: its package resolves to
+# boat's kernel (dsh/core/agent-loop), which dispatches boat/intake and
+# boat/pre-assemble. boat's service rows sit on the host plane, where agent
+# rows inject them.
 
 # dsh-base's session-log-deepseek row attaches each session's canonical log
 # (`dsh_session_log`) to every official DeepSeek request unless told not to;
@@ -17,11 +12,6 @@
     enabled: false
 
 - insert:
-    - id: boat-agentic-loop
-      name: '@boat/agentic-loop'
-      config:
-        agents: []
-
     - id: boat-tool-policy
       name: '@boat/tool-policy'
 

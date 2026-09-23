@@ -2,7 +2,7 @@
   "name": "@boat/contracts",
   "version": "0.0.1",
   "private": true,
-  "description": "boat's contract extensions over the dsh seams: tool and skill metadata, boat/* events, log nodes, and projection keys",
+  "description": "boat's contract extensions over the dsh seams: tool and skill metadata, the kernel's boat/* step events, log nodes, and projection keys",
   "type": "module",
   "exports": {
     ".": {
@@ -15,18 +15,14 @@
     "lib"
   ],
   "peerDependencies": {
-    "@deepseek-ai/cordis": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
-    "@deepseek-ai/dsh-scope": "catalog:dsh",
     "@deepseek-ai/dsh-session": "workspace:*",
     "@deepseek-ai/dsh-session-projection": "workspace:*"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
-    "@deepseek-ai/dsh-scope": "catalog:dsh",
     "@deepseek-ai/dsh-session": "workspace:*",
     "@deepseek-ai/dsh-session-projection": "workspace:*"
   }
