@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { eventTypes, findSessionLogs, readSessionLog } from '../../../scripts/session-log.ts'
+import { eventTypes, findSessionLogs, readSessionLog } from '@boat/testing/session-log'
 import { runBoat } from './support/boat-process.ts'
-import { startScriptedModel, withTitle, type ScriptedModel } from './support/scripted-model.ts'
+import { startScriptedModel, withTitle, type ScriptedModel } from '@boat/testing/scripted-model'
 
 const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
 const ANSWER = 'PRESET-RUN-OK'

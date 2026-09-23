@@ -8,7 +8,7 @@
  * (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. The jsonl backend writes one
  * Zstandard frame per flushed batch; Node's `zstdDecompressSync` stops after
  * the first frame, so frames must be located structurally and decoded one by one.
- * @module scripts/session-log
+ * @module @boat/testing/session-log
  */
 
 import { readdirSync, readFileSync } from 'node:fs'

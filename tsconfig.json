@@ -12,9 +12,6 @@
       "path": "./packages/agentic-loop"
     },
     {
-      "path": "./packages/agentic-loop-testkit"
-    },
-    {
       "path": "./packages/tool-policy"
     },
     {
@@ -34,6 +31,12 @@
     },
     {
       "path": "./agents/demo"
+    },
+    {
+      "path": "./tooling/testing"
+    },
+    {
+      "path": "./tooling/dsh-agent-loop-testkit-fork"
     }
   ]
 }

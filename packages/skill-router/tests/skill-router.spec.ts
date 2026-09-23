@@ -15,10 +15,9 @@ import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import AgentLoop from '@boat/agentic-loop'
 import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
+import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@boat/testing'
 import ToolPolicyService from '@boat/tool-policy'
 import SkillRouterService, { type Config } from '@boat/skill-router'
-import { MockAdapter, textResponse, toolCallResponse } from '../../agentic-loop/tests/mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -33,7 +32,7 @@ async function harness(adapter: MockAdapter, config: Config): Promise<Context> {
   await ctx.plugin(SessionInvariant)
   await ctx.plugin(AgentInvariant)
   await ctx.plugin(AgentLoopInvariant)
-  await mountAgentLoopTestDependencies(ctx)
+  await mountDshTestServices(ctx)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(ToolPolicyService)

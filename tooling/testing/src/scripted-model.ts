@@ -4,6 +4,7 @@
  * text), the reply is chosen per request from the request itself, so one
  * server can answer the loop's requests, the session-title request, and the
  * skill router's request differently. SSE frames follow the official mock.
+ * @module @boat/testing/scripted-model
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 

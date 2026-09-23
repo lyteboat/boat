@@ -40,7 +40,7 @@
     {
       "files": [
         "packages/agentic-loop/**/*.ts",
-        "packages/agentic-loop-testkit/**/*.ts"
+        "tooling/dsh-agent-loop-testkit-fork/**/*.ts"
       ],
       "rules": {
         "no-shadow": "off",

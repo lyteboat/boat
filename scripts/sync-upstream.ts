@@ -36,7 +36,7 @@ const TARGETS: readonly ForkTarget[] = [
     target: 'packages/agentic-loop/tests',
     keep: ['boat-intake.spec.ts', 'support/pi-context.ts'],
   },
-  { source: 'packages/test-support/agent-loop-testkit/src', target: 'packages/agentic-loop-testkit/src' },
+  { source: 'packages/test-support/agent-loop-testkit/src', target: 'tooling/dsh-agent-loop-testkit-fork/src' },
 ]
 
 /**
@@ -46,7 +46,7 @@ const TARGETS: readonly ForkTarget[] = [
  * other dsh packages depend on and must stay.
  */
 const REWRITES: readonly [RegExp, string][] = [
-  [/@deepseek-ai\/dsh-agent-loop-testkit/gu, '@boat/agentic-loop-testkit'],
+  [/@deepseek-ai\/dsh-agent-loop-testkit/gu, '@boat/dsh-agent-loop-testkit-fork'],
   [/@deepseek-ai\/dsh-agent-loop/gu, '@boat/agentic-loop'],
   [/'agentLoop\.setFactory\(\)'/gu, "'boatAgenticLoop.setFactory()'"],
   // The published cordis build erases the FiberState const enum; boat reads the values

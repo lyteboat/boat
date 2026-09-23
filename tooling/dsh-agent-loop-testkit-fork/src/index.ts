@@ -2,7 +2,7 @@
  * Shared service mounting, real AgentLoop drivers, and structural Inbox stubs
  * for agent-loop tests. Callers retain ownership of their contexts, adapters,
  * optional plugins, agents, and teardown.
- * @module @boat/agentic-loop-testkit
+ * @module @boat/dsh-agent-loop-testkit-fork
  */
 
 import type { Context } from '@deepseek-ai/cordis'

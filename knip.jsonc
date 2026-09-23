@@ -1,0 +1,41 @@
+// knip runs in `pnpm run lint` with --include unlisted,unresolved: every import a package
+// makes (src and tests) must resolve through a dependency that package declares. Unused
+// dependencies are not checked: apps/cli declares the dsh installation closure the
+// launcher resolves rows from, which no source file imports.
+{
+  "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts"],
+      "project": ["scripts/**/*.ts"]
+    },
+    "apps/*": {
+      "entry": ["tests/**/*.{spec,e2e}.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "packages/*": {
+      "entry": ["tests/**/*.{spec,e2e}.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "packages/agentic-loop": {
+      "entry": ["tests/**/*.{spec,e2e}.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"],
+      // The synced upstream tests import the testkit fork, which itself mounts this
+      // driver; declaring it here would make a pnpm workspace cycle.
+      "ignoreDependencies": ["@boat/dsh-agent-loop-testkit-fork"]
+    },
+    "packages/bundle/*": {
+      "project": ["src/**/*.ts"]
+    },
+    "agents/*": {
+      "entry": ["src/*.ts", "tests/**/*.spec.ts"],
+      "project": ["src/**/*.ts", "tests/**/*.ts"]
+    },
+    "tooling/*": {
+      "project": ["src/**/*.ts"]
+    }
+  },
+  // Plugin files for `boat run --plugin`, outside the workspace; they move under the
+  // tests that use them as fixtures.
+  "ignore": ["examples/**"]
+}

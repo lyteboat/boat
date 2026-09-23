@@ -1,19 +1,33 @@
 {
-  "name": "@boat/agentic-loop-testkit",
+  "name": "@boat/testing",
   "version": "0.0.1",
   "private": true,
-  "description": "Shared service mounting and real driver harness for @boat/agentic-loop tests (fork of @deepseek-ai/dsh-agent-loop-testkit)",
+  "description": "boat's test harness: dsh service mounting and the in-process MockAdapter for unit tests, the session-log reader, the scripted OpenAI-compatible model, and launcher spawning for e2e tests",
   "type": "module",
   "exports": {
     ".": {
       "@boat/source": "./src/index.ts",
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
+    },
+    "./session-log": {
+      "@boat/source": "./src/session-log.ts",
+      "types": "./lib/session-log.d.ts",
+      "default": "./lib/session-log.js"
+    },
+    "./scripted-model": {
+      "@boat/source": "./src/scripted-model.ts",
+      "types": "./lib/scripted-model.d.ts",
+      "default": "./lib/scripted-model.js"
+    },
+    "./process": {
+      "@boat/source": "./src/process.ts",
+      "types": "./lib/process.d.ts",
+      "default": "./lib/process.js"
     }
   },
   "files": ["lib"],
   "peerDependencies": {
-    "@boat/agentic-loop": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
@@ -23,7 +37,6 @@
     "@deepseek-ai/dsh-tools": "catalog:dsh"
   },
   "devDependencies": {
-    "@boat/agentic-loop": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",

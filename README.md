@@ -48,9 +48,9 @@ Everything boat records rides an envelope dsh already knows: a card and a state 
 | `agents/demo` | `@boat/agent-demo` | the demo agent preset: `preset.yml`, `agent.cordis.yml`, `skills/`, `a2ui/`, `fixtures/personas/`, `src/` compiled to `lib/` |
 | `packages/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
 | `packages/agentic-loop` | `@boat/agentic-loop` | the boat agent driver (fork of dsh-agent-loop, see `packages/agentic-loop/UPSTREAM.md`) |
-| `packages/agentic-loop-testkit` | `@boat/agentic-loop-testkit` | test harness for the driver (fork of agent-loop-testkit) |
+| `tooling/testing` | `@boat/testing` | boat's test harness: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher spawning |
+| `tooling/dsh-agent-loop-testkit-fork` | `@boat/dsh-agent-loop-testkit-fork` | verbatim fork of agent-loop-testkit, used only by the driver's synced upstream tests |
 | `examples/*` | — | runnable plugin files for `--plugin` |
-| `scripts/session-log.ts` | — | session log reader (multi-frame zstd) shared by tests and tooling |
 | `dsh.upstream.json` | — | the pinned dsh release; `.pnpmfile.cjs` pins every dsh and cordis package to it |
 
 ## Why the pnpm settings look unusual

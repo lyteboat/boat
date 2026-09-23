@@ -12,9 +12,8 @@ import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import AgentLoop from '@boat/agentic-loop'
 import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
+import { MockAdapter, mountDshTestServices, textResponse } from '@boat/testing'
 import { BOAT_ASSISTANT_PROVIDER, type IntakeDecision } from '@boat/contracts'
-import { MockAdapter, textResponse } from './mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -29,7 +28,7 @@ async function harness(adapter: MockAdapter): Promise<{ ctx: Context }> {
   await ctx.plugin(SessionInvariant)
   await ctx.plugin(AgentInvariant)
   await ctx.plugin(AgentLoopInvariant)
-  await mountAgentLoopTestDependencies(ctx)
+  await mountDshTestServices(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return { ctx }

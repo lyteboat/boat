@@ -90,6 +90,7 @@
     "node-addon-require-builtin": "^0.1.4"
   },
   "devDependencies": {
+    "@boat/testing": "workspace:*",
     "@deepseek-ai/dsh-agent-presets": "catalog:dsh",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session": "catalog:dsh",

@@ -4,8 +4,12 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../agentic-loop" }
+    {
+      "path": "../../packages/agentic-loop"
+    }
   ]
 }

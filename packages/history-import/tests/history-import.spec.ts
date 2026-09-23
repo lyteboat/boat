@@ -12,10 +12,9 @@ import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh-session'
 import AgentLoop from '@boat/agentic-loop'
 import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
-import { mountAgentLoopTestDependencies } from '@boat/agentic-loop-testkit'
+import { MockAdapter, mountDshTestServices, textResponse } from '@boat/testing'
 import HistoryImportService, { saHistoryOf } from '@boat/history-import'
 import type { HistoryRound } from '@boat/history-import'
-import { MockAdapter, textResponse } from '../../agentic-loop/tests/mock-adapter.ts'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -30,7 +29,7 @@ async function harness(adapter: MockAdapter): Promise<Context> {
   await ctx.plugin(SessionInvariant)
   await ctx.plugin(AgentInvariant)
   await ctx.plugin(AgentLoopInvariant)
-  await mountAgentLoopTestDependencies(ctx)
+  await mountDshTestServices(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(HistoryImportService)
   ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))

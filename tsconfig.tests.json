@@ -17,6 +17,8 @@
     "packages/*/src/**/*.ts",
     "packages/bundle/*/src/**/*.ts",
     "agents/*/tests/**/*.ts",
-    "agents/*/src/**/*.ts"
+    "agents/*/src/**/*.ts",
+    "tooling/*/tests/**/*.ts",
+    "tooling/*/src/**/*.ts"
   ]
 }

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { eventTypes, findSessionLogs, normalizeSessionLog, readSessionLog } from '../../../scripts/session-log.ts'
+import { eventTypes, findSessionLogs, normalizeSessionLog, readSessionLog } from '@boat/testing/session-log'
 import { runBoat } from './support/boat-process.ts'
 
 const SUCCESS_TEXT = 'BOAT-M1-EQUIVALENCE-OK'

@@ -1,32 +1,19 @@
 {
-  "name": "@boat/skill-router",
+  "name": "@boat/dsh-agent-loop-testkit-fork",
   "version": "0.0.1",
   "private": true,
-  "description": "boat's skill router over the dsh skill registry: full / dynamic load modes, LLM routing per user input (ark's LLMSkillRouter), the boatActiveSkill projection, and required-tool activation through @boat/tool-policy",
+  "description": "Verbatim fork of @deepseek-ai/dsh-agent-loop-testkit for the driver's synced upstream tests only; boat's own tests use @boat/testing",
   "type": "module",
   "exports": {
     ".": {
       "@boat/source": "./src/index.ts",
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
-    },
-    "./preset": {
-      "@boat/source": "./src/preset.ts",
-      "types": "./lib/preset.d.ts",
-      "default": "./lib/preset.js"
     }
   },
   "files": ["lib"],
-  "dependencies": {
-    "@boat/contracts": "workspace:*",
-    "@boat/tool-policy": "workspace:*",
-    "@deepseek-ai/dsh-scope": "catalog:dsh",
-    "@deepseek-ai/dsh-skill": "catalog:dsh",
-    "@deepseek-ai/dsh-timeout": "catalog:dsh",
-    "@deepseek-ai/schemastery": "catalog:",
-    "zod": "catalog:"
-  },
   "peerDependencies": {
+    "@boat/agentic-loop": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
@@ -37,10 +24,8 @@
   },
   "devDependencies": {
     "@boat/agentic-loop": "workspace:*",
-    "@boat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
-    "@deepseek-ai/dsh-invariants": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-session": "catalog:dsh",
     "@deepseek-ai/dsh-session-projection": "catalog:dsh",
