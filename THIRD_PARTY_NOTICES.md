@@ -2,11 +2,13 @@
 
 ## deepseek-ai/deepseek-harness (MIT)
 
-Files marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their header are
-derived from https://github.com/deepseek-ai/deepseek-harness at the tag their header names:
-dsh-v0.1.5-alpha.2 (commit b2e3b2a0) or dsh-v0.1.7-alpha.2 (commit 00102833). The driver fork
-(`boat/core/agentic-loop`) and the testkit fork (`boat/tooling/dsh-agent-loop-testkit-fork`) follow the tag
-`dsh.upstream.json` pins, recorded in their `UPSTREAM.md`.
+Everything under `dsh/<group>/<package>` (the packages `dsh/kernel.json` lists) is imported from
+https://github.com/deepseek-ai/deepseek-harness by `scripts/dist/import-upstream.ts`, at the tag
+the most recent `Dist-Import` commit names (today dsh-v0.1.7-alpha.2, commit 00102833), and carries
+boat's changes as commits on top; `src/boat/` and `tests/boat/` inside those packages are boat's
+own. Files elsewhere marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their
+header are derived from the same repository at the tag their header names: dsh-v0.1.5-alpha.2
+(commit b2e3b2a0) or dsh-v0.1.7-alpha.2 (commit 00102833).
 
 ```
 MIT License
