@@ -68,7 +68,7 @@ const HELP_EXAMPLES = `
 Examples:
   boat run "summarize this workspace"         answer one task, print the result, and exit
   boat run --patch ./extra.yml "task"         boot the run profile with one extra overlay
-  boat run --driver boat "task"               mount boat's own agent driver instead of dsh's
+  boat run --driver dsh "task"                mount dsh's official agent driver instead of boat's
   boat run --plugin ./my-plugin.mjs "task"    insert a local plugin file into the tree
   boat run -h                                  the one-shot app's own flags and help
   boat web                                     serve the browser UI (boat web --help for its flags)

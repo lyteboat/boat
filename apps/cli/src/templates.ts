@@ -17,11 +17,11 @@ export interface BoatProfileTemplate {
 /** Templates by profile name. */
 export const BOAT_PROFILE_TEMPLATES: Readonly<Record<string, BoatProfileTemplate>> = {
   run: {
-    bundles: ['@deepseek-ai/dsh-base', '@boat/run'],
+    bundles: ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run'],
     patchReload: 'startup',
   },
   web: {
-    bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'],
+    bundles: ['@deepseek-ai/dsh-base', '@boat/host', '@deepseek-ai/dsh-web-app'],
     patchReload: 'live',
   },
 }

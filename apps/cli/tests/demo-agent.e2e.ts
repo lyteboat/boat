@@ -78,7 +78,7 @@ describe('demo preset under boat run --driver boat (built bin, scripted model)',
   async function run(label: string, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; stderr: string }> {
     const { home, workspace } = fresh(label)
     const before = model.requests.length
-    const result = await runBoat(['run', '--driver', 'boat', '--agents', AGENTS, '--preset', 'demo', task], { cwd: workspace, env: env(home) })
+    const result = await runBoat(['run', '--agents', AGENTS, '--preset', 'demo', task], { cwd: workspace, env: env(home) })
     expect(result.code, result.stderr).toBe(0)
     const [log] = findSessionLogs(home)
     return { requests: model.requests.slice(before), records: readSessionLog(log!) as unknown as LogRecord[], stdout: result.stdout, stderr: result.stderr }

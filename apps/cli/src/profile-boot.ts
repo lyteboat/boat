@@ -33,6 +33,7 @@ import {
   loadOverlayPatches,
   loadProfile,
   PROFILE_PATCH_FILENAME,
+  readProfileManifest,
   resolveProfileDir,
   watchUserPatches,
   type Profile,
@@ -99,18 +100,29 @@ export const PROFILE_ROOT_FILENAME = 'cordis.yml'
 
 /**
  * Initialize a profile directory from boat's template when it does not exist
- * yet. An existing directory is left untouched; a name without a boat template
- * is handed to dsh's loader, which knows dsh's own shipped templates and
- * rejects anything else.
+ * yet. An existing directory is never rewritten, so one created by an earlier
+ * boat whose bundle list differs from today's template fails loud with the fix
+ * instead of booting without the bundles this boat relies on; a user's own
+ * changes belong in the profile's `cordis.patch.yml`, not in its bundle list.
+ * A name without a boat template is handed to dsh's loader, which knows dsh's
+ * own shipped templates and rejects anything else.
  * @param name - the profile name.
  * @param home - the harness home.
  */
 export function ensureProfileInitialized(name: string, home: string = resolveDshHome()): void {
   const dir = resolveProfileDir(name, home)
-  if (existsSync(join(dir, 'package.json'))) return
   const template = BOAT_PROFILE_TEMPLATES[name]
+  if (!existsSync(join(dir, 'package.json'))) {
+    if (template !== undefined) initProfile(dir, template.bundles, template.patchReload)
+    return
+  }
   if (template === undefined) return
-  initProfile(dir, template.bundles, template.patchReload)
+  const bundles = readProfileManifest(NAME, dir).dsh?.profile?.bundles ?? []
+  if (bundles.length === template.bundles.length && bundles.every((bundle, index) => bundle === template.bundles[index])) return
+  throw new Error(
+    `${NAME}: profile "${name}" at ${dir} lists bundles [${bundles.join(', ')}], but this boat's "${name}" template is [${template.bundles.join(', ')}]. `
+    + `Set dsh.profile.bundles in ${join(dir, 'package.json')} to the template's list, or move the directory away to have it recreated (keep your cordis.patch.yml).`,
+  )
 }
 
 /**

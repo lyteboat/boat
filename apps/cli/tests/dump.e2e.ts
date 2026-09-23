@@ -19,10 +19,11 @@ describe('boat config dump (built bin)', () => {
     const result = await runBoat(['config', 'dump', '--profile', 'run'], { env: { BOAT_HOME: home } })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain('@deepseek-ai/dsh-base')
+    expect(result.stdout).toContain('@boat/host')
     expect(result.stdout).toContain('@boat/run')
     expect(result.stdout).toContain('id: agent-loop')
     const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'run', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[]; patchReload: string } } }
-    expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@boat/run'], patchReload: 'startup' })
+    expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run'], patchReload: 'startup' })
   })
 
   it('prints the version pair', async () => {

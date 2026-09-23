@@ -1,0 +1,28 @@
+# The @boat/host bundle patch: what every boat profile shares, applied right
+# after dsh-base. The boat driver replaces dsh's agent-loop row — the agent
+# registry accepts one factory, so the swap is a boot-time layer, and the fork
+# keeps upstream's companion names, so the two drivers never mount together.
+# boat's service rows sit on the host plane, where agent rows inject them.
+# `boat run --driver dsh` re-enables agent-loop and disables boat-agentic-loop
+# above every file layer (apps/cli/src/drivers.ts).
+
+- id: agent-loop
+  disabled: true
+
+- insert:
+    - id: boat-agentic-loop
+      name: '@boat/agentic-loop'
+      config:
+        agents: []
+
+    - id: boat-tool-policy
+      name: '@boat/tool-policy'
+
+    - id: boat-skill-router
+      name: '@boat/skill-router'
+
+    - id: boat-a2ui
+      name: '@boat/a2ui'
+
+    - id: boat-history-import
+      name: '@boat/history-import'

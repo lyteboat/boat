@@ -35,4 +35,4 @@ boat-owned (never overwritten by the sync script)
 - `tests/boat-intake.spec.ts`: the intake gate, the pre-assembly hook, the in-history head placement.
 - `tests/support/pi-context.ts`: a stand-in for upstream's `toPiContext`.
 
-Never mount both drivers in one tree: the fork keeps upstream's companion names (`agent-loop-invariant`, the `turnBoundary` projection), and `apps/cli/src/drivers.ts` swaps the row instead.
+Never mount both drivers in one tree: the fork keeps upstream's companion names (`agent-loop-invariant`, the `turnBoundary` projection), and `bundles/host/cordis.patch.yml` swaps the row instead (`apps/cli/src/drivers.ts` swaps it back for `--driver dsh`).

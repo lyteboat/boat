@@ -13,6 +13,7 @@ TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`
 ```
 apps/cli/                 @boat/cli — the `boat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI)
 bundles/
+  host/                   @boat/host — the host bundle every profile lists: boat driver in place of agent-loop, boat's service rows
   run/                    @boat/run — the one-shot bundle behind `boat run` (cordis.patch.yml, startup flags, the runner)
 plugins/
   tool-policy/            @boat/tool-policy — visibility always/auto + activation, confirmation, state deltas → boatState projection
@@ -59,7 +60,7 @@ Hard rules:
 - **contracts is the only shared declaration home.** A new event, log node, projection key, or metadata field is declared once in `@boat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
 - **Plugins sit on dsh seams; they do not re-implement them.** Tools go through `ctx.tools`, skills through `ctx.skills`, model calls through `ctx.llm`, state through `ctx.sessionProjections`, prompt text through `ctx.systemPrompt`, confirmation through the approval seam. If a seam is missing, first check whether dsh already has one under a different name.
 - **The driver fork carries exactly the boat changes `core/agentic-loop/UPSTREAM.md` lists** (in `src/agent.ts`: the `boat/intake` waterfall after the inbox claim, the `boat/pre-assemble` waterfall before assembly, `replyStep`, and the first-request series start). Everything else in `core/agentic-loop` and `tooling/dsh-agent-loop-testkit-fork` is upstream verbatim after the identity rewrites in `scripts/sync-upstream.ts`. New behavior is a plugin on those two events or on a dsh event; another change to the fork is a design decision, not a code change: it needs the design document updated first and its line in UPSTREAM.md in the same commit.
-- **Composition is data.** `bundles/run/cordis.patch.yml` is the host composition; `agents/<id>/agent.cordis.yml` is the per-preset composition. Host rows publish services (`@boat/tool-policy`, `@boat/skill-router`, `@boat/a2ui`, `@boat/history-import`); preset rows declare policy against them (`@boat/tool-policy/preset`, `@boat/skill-router/preset`, `@boat/a2ui/preset`, `./lib/x.js`). A preset row must never publish a service into the root realm.
+- **Composition is data.** `bundles/host/cordis.patch.yml` is the host composition every boat profile lists (the driver swap and boat's service rows), `bundles/run/cordis.patch.yml` adds the one-shot mode; `agents/<id>/agent.cordis.yml` is the per-preset composition. Host rows publish services (`@boat/tool-policy`, `@boat/skill-router`, `@boat/a2ui`, `@boat/history-import`); preset rows declare policy against them (`@boat/tool-policy/preset`, `@boat/skill-router/preset`, `@boat/a2ui/preset`, `./lib/x.js`). A preset row must never publish a service into the root realm.
 - **Framework packages stay domain-neutral.** `bundles/*`, `plugins/*`, and `core/*` know no business vocabulary; asset buckets, personas, and Chinese product copy live under `agents/*`. Strings ported from ark for golden fidelity (error messages, digest formats) are allowed inside `a2ui` and say so in a comment.
 - **Model-visible ⟺ logged** (dsh rule, boat inherits it). Anything that reaches a model request is reconstructable from the session log. boat's facts ride dsh envelopes (`tool/result.meta.boat.{card,stateDelta}`, the assistant `source` of a reply); only the skill router's `boat/skill-routed` and `boat/route-request` are boat's own nodes, and a new model-visible input needs the same treatment: an existing envelope first, a new node in contracts only with the persist-and-reopen proof below.
 - **A new session event type is proven reopenable before it ships.** dsh's persistence layer refuses a stored log that carries an event type outside its compiled catalog unless the event is marked `ignorable`, and `Session.append` offers no way to set that mark today, so every `boat/*` node currently makes its session unreadable by `boat web` and by resume. Prefer folding a fact into an existing envelope (`tool/result.meta`, the assistant message `source`) over a new node; a new node needs a persist-and-reopen test and an upstream path for the mark, and the design document records both.
@@ -199,8 +200,9 @@ Read `docs/agent_design_principles.md` in ark-agentic before designing, reviewin
 | Driver equivalence smoke | `pnpm run smoke:equivalence` |
 | Show one test's console output | `npx vitest run <file> --silent=false --reporter=verbose` |
 | One-shot task | `node apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
-| boat driver + a plugin file | `node apps/cli/lib/bin.js run --driver boat --plugin examples/tools/plugin.mjs "查一下资产"` |
-| A preset | `node apps/cli/lib/bin.js run --driver boat --agents ./agents --preset demo "看看资产"` |
+| A plugin file (boat driver is the default) | `node apps/cli/lib/bin.js run --plugin examples/tools/plugin.mjs "查一下资产"` |
+| A preset | `node apps/cli/lib/bin.js run --agents ./agents --preset demo "看看资产"` |
+| dsh's official driver instead | `node apps/cli/lib/bin.js run --driver dsh "task"` |
 | Imported history | `node apps/cli/lib/bin.js run --history examples/history/sa.json "继续刚才的话题"` |
 | Browser UI | `node apps/cli/lib/bin.js web --no-open` |
 | Composed plugin tree | `node apps/cli/lib/bin.js config dump --profile run` |

@@ -133,12 +133,12 @@ importers:
 
   apps/cli:
     dependencies:
-      '@boat/agentic-loop':
-        specifier: workspace:*
-        version: link:../../core/agentic-loop
       '@boat/cordis-compat':
         specifier: workspace:*
         version: link:../../core/cordis-compat
+      '@boat/host':
+        specifier: workspace:*
+        version: link:../../bundles/host
       '@boat/run':
         specifier: workspace:*
         version: link:../../bundles/run
@@ -381,11 +381,14 @@ importers:
         specifier: ^4.0.9
         version: 4.0.9
 
-  bundles/run:
+  bundles/host:
     dependencies:
       '@boat/a2ui':
         specifier: workspace:*
         version: link:../../plugins/a2ui
+      '@boat/agentic-loop':
+        specifier: workspace:*
+        version: link:../../core/agentic-loop
       '@boat/history-import':
         specifier: workspace:*
         version: link:../../plugins/history-import
@@ -395,6 +398,12 @@ importers:
       '@boat/tool-policy':
         specifier: workspace:*
         version: link:../../plugins/tool-policy
+
+  bundles/run:
+    dependencies:
+      '@boat/history-import':
+        specifier: workspace:*
+        version: link:../../plugins/history-import
       '@deepseek-ai/dsh-agent-presets':
         specifier: 0.1.5-alpha.2
         version: 0.1.5-alpha.2(607bbbf1a838d1cd9e9e6c40a5e86b0e)

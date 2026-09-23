@@ -5,7 +5,7 @@ boat is an agent harness built as plugins on top of [DeepSeek Harness](https://g
 ## Status
 
 - M0 — runnable skeleton: `boat run` and `boat web` boot the official dsh bundles through boat's own launcher.
-- M1 — `@boat/agentic-loop`, a fork of dsh-agent-loop, selectable with `--driver boat`; both drivers write identical session logs for the same scripted model.
+- M1 — `@boat/agentic-loop`, a fork of dsh-agent-loop, the default driver since the layering refactor (`--driver dsh` mounts dsh's official one); both drivers write identical session logs for the same scripted model.
 - M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --preset <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`boat run --driver boat --plugin examples/tools/plugin.mjs "查一下资产"`). Step 4: `@boat/skill-router`, ark's skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (ark's router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, ark's A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads ark produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`boat run --driver boat --plugin examples/a2ui/plugin.mjs "看看我的资产"`). Step 6: `@boat/history-import`, external conversation history (ark's SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history examples/history/sa.json "继续刚才的话题"`, either driver). Step 7: `agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --driver boat --agents ./agents --preset demo "看看资产"`).
 
 ## Requirements
@@ -21,12 +21,12 @@ pnpm run build
 node apps/cli/lib/bin.js run "summarize this workspace"   # one-shot task
 node apps/cli/lib/bin.js web --no-open                    # browser UI
 node apps/cli/lib/bin.js config dump --profile run        # composed plugin tree
-node apps/cli/lib/bin.js run --driver boat --plugin examples/intake-gate/plugin.mjs "帮我炒股"
+node apps/cli/lib/bin.js run --plugin examples/intake-gate/plugin.mjs "帮我炒股"
                                                           # boat driver + a local plugin file: fixed reply, no model call
 pnpm run check                                            # lint + build + tests
 ```
 
-`--driver boat` mounts `@boat/agentic-loop` instead of dsh's agent-loop. `--plugin <file>` inserts a local ESM plugin file as a row of the tree (the file's own imports resolve from its directory, so it works for files inside this checkout). Under the boat driver two extra waterfall events run after the inbox claim and before prompt assembly: `boat/intake` (answer the step with a fixed reply and no model request) and `boat/pre-assemble` (route skills and activate tools for this very step).
+Every boat profile lists `@boat/host`, which mounts `@boat/agentic-loop` in place of dsh's agent-loop and publishes boat's host services, so `boat run` and `boat web` both carry them; `--driver dsh` swaps the official driver back in. `--plugin <file>` inserts a local ESM plugin file as a row of the tree (the file's own imports resolve from its directory, so it works for files inside this checkout). Under the boat driver two extra waterfall events run after the inbox claim and before prompt assembly: `boat/intake` (answer the step with a fixed reply and no model request) and `boat/pre-assemble` (route skills and activate tools for this very step).
 
 Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSEEK_BASE_URL`) in the environment or in `$BOAT_HOME/.env`. All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports that directory as `DSH_HOME` to the dsh packages before any of them load, so a user's own `~/.dsh` is never touched.
 
@@ -41,6 +41,7 @@ One top-level directory per layer; dependencies point down only (`apps` → `bun
 | Path | Package | Role |
 |---|---|---|
 | `apps/cli` | `@boat/cli` | the `boat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
+| `bundles/host` | `@boat/host` | the host bundle every boat profile lists: the boat driver in place of dsh's agent-loop, and the tool-policy, skill-router, a2ui, and history-import service rows |
 | `bundles/run` | `@boat/run` | the one-shot bundle behind `boat run`: task, `--preset`, `--agents`, `--history` |
 | `plugins/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./preset` declares policy from a composition file |
 | `plugins/skill-router` | `@boat/skill-router` | skill load modes and LLM routing over the dsh skill registry; `./preset` declares the mode from a composition file |

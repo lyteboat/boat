@@ -28,10 +28,7 @@
     }
   },
   "dependencies": {
-    "@boat/a2ui": "workspace:*",
     "@boat/history-import": "workspace:*",
-    "@boat/skill-router": "workspace:*",
-    "@boat/tool-policy": "workspace:*",
     "@deepseek-ai/dsh-agent-presets": "catalog:dsh",
     "@deepseek-ai/dsh-brand": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
