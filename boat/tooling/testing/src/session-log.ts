@@ -147,12 +147,17 @@ export interface NormalizeOptions {
 }
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/giu
-const TIMING_KEYS = new Set(['time', 'time0', 'dt', 'createdAt'])
+const TIMING_KEYS = new Set(['time', 'time0', 'dt', 'createdAt', 'delayMs'])
 const DROPPED_EVENT_TYPES = /^session\/title/u
+/** Integers in this range read as epoch milliseconds (2001–2103): a plugin's own timestamp, whatever its key. */
+const EPOCH_MS_MIN = 1e12
+const EPOCH_MS_MAX = 4.2e12
 
 /**
- * Normalize a session log for comparison across runs: timing fields go, every
- * UUID becomes a placeholder numbered by first appearance, workspace and home
+ * Normalize a session log for comparison across runs: timing fields (a retry's
+ * jittered `delayMs` among them) go, integers that read as epoch milliseconds
+ * (a plugin's own timestamps, under any key) become `<epoch-ms>`, every UUID
+ * becomes a placeholder numbered by first appearance, workspace and home
  * paths become `<cwd>` and `<home>`, and the title provider's events (which
  * land at timing-dependent positions) are dropped. `seq` is kept: two runs of
  * the same scenario must agree on event order.
@@ -177,6 +182,7 @@ export function normalizeSessionLog(records: readonly SessionLogRecord[], option
     .replace(UUID, placeholder)
   const visit = (node: unknown): unknown => {
     if (typeof node === 'string') return scrubString(node)
+    if (typeof node === 'number' && Number.isInteger(node) && node >= EPOCH_MS_MIN && node < EPOCH_MS_MAX) return '<epoch-ms>'
     if (Array.isArray(node)) return node.map(visit)
     if (node !== null && typeof node === 'object') {
       const out: Record<string, unknown> = {}

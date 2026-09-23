@@ -165,7 +165,9 @@ export function packKernel(): Record<string, string> {
     manifest.version = `${manifest.version}+boat.${commit}`
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
     const target = join(out, `${name.replace('@', '').replace('/', '-')}.tgz`)
-    execFileSync('tar', ['-czf', target, 'package'], { cwd: scratch })
+    // A reproducible archive (fixed order, times, and owners; gzip without a timestamp), so
+    // an unchanged kernel packs to the same bytes and the trees built from it stay installed.
+    execFileSync('sh', ['-c', `tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -cf - package | gzip -n > '${target}'`], { cwd: scratch })
     rmSync(scratch, { recursive: true, force: true })
     packs[name] = target
   }

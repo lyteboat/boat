@@ -74,6 +74,9 @@ importers:
 
   .:
     devDependencies:
+      '@boat/testing':
+        specifier: workspace:*
+        version: link:boat/tooling/testing
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
         version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
@@ -84,6 +87,9 @@ importers:
         specifier: catalog:dsh
         version: 0.1.7-alpha.2(@deepseek-ai/cordis@4.0.4)
       '@deepseek-ai/dsh-llm':
+        specifier: catalog:dsh
+        version: 0.1.7-alpha.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-llm-mock-server':
         specifier: catalog:dsh
         version: 0.1.7-alpha.2(@deepseek-ai/cordis@4.0.4)
       '@types/node':

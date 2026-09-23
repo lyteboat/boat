@@ -17,6 +17,7 @@ AI 的未来是 Model + Harness。模型提供通用智能，Harness 把它落�
 - M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./boat/agents --agent <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`boat/bundles/run/tests/tool-policy.composite.ts`). Step 4: `@boat/skill-router`, ark's skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (ark's router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, ark's A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads ark produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`boat/bundles/run/tests/a2ui.composite.ts`). Step 6: `@boat/history-import`, external conversation history (ark's SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history <file>`). Step 7: `boat/agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --agents ./boat/agents --agent demo "看看资产"`).
 - D0 — distribution tooling (`scripts/dist`): the contract snapshot of dsh 0.1.7-alpha.2 (`contract/`), the per-tag import, the delta report, the overlay gates.
 - D1 — the kernel: 11 dsh packages imported under `dsh/` and resolved by name for the whole dependency graph; their builds match the published bundles; G1 (contract) and G2 (upstream's kernel tests, unmodified) run in `pnpm run test`; boat's step hooks are two registered extensions of the kernel's agent loop; `@boat/distro` marks a boat build.
+- D2 — conformance against the official release: G4 (same session log for the same scripted run), G5 (24 pinned community plugins installed with `dsh plugin add`), G6 (sessions cross both ways) in `pnpm run conformance`; G3 and the persistence gate in the sync pipeline; a sync rehearsed from 0.1.7-alpha.1 to 0.1.7-alpha.2.
 
 ## Requirements
 
@@ -33,7 +34,9 @@ node boat/apps/cli/lib/bin.js web --no-open                    # browser UI
 node boat/apps/cli/lib/bin.js config dump --profile run        # composed plugin tree
 node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent demo "看看资产"
                                                           # the demo agent: routed skill, asset tool, card
-pnpm run check                                            # lint + build + G1 + tests (boat's and upstream's kernel tests)
+pnpm run test                                             # build + G1 + boat's tests + upstream's kernel tests (G2); what CI runs
+pnpm run conformance                                      # G4–G6 against the official release (installs two trees outside the repo)
+pnpm run check                                            # lint + test + conformance
 pnpm run dist:delta                                       # what boat carries on top of the imported dsh tag
 ```
 
@@ -54,7 +57,7 @@ The repository root separates what boat owns from what it takes over and what it
 | `dsh/<group>/<package>` | the kernel: the dsh packages listed in `dsh/kernel.json`, under their published `@deepseek-ai/*` names, imported per tag by `scripts/dist/import-upstream.ts`. Upstream files plus boat's commits, each classified by a `Dist-Change` trailer; boat-owned modules sit in `src/boat/` and `tests/boat/` |
 | `boat/<layer>/<package>` | boat's own packages (`@boat/*`), one directory per layer; dependencies point down only (`apps` → `bundles` → `plugins` → `core`; `agents` → `plugins`, `core`; `tooling` is for tests), and `pnpm run lint` checks it |
 | `contract/` | what boat promises: `COMPAT.md`, the contract snapshot of each tracked release (`dsh-<version>/`), and `extensions.yml`, the registry of what boat adds |
-| `conformance/` | the proof: `upstream-tests/` runs upstream's kernel tests unmodified (G2); G4–G6 land here in D2 |
+| `conformance/` | the proof: `upstream-tests/` (G2 harness), `scenarios/` (G4), `canaries/` (G5), `roundtrip/` (G6); `conformance/README.md` lists every gate |
 | `scripts/dist/` | the distribution tooling: import, snapshot, contract check (G1), delta report, overlay gates (persistence, G3), kernel bundling, packing and install trees |
 
 | Path | Package | Role |

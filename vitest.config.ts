@@ -41,6 +41,16 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          // G4–G6: the official release against boat's kernel, in install trees outside the
+          // repository (scripts/dist/trees.ts); `pnpm run conformance`, not `pnpm run test`.
+          name: 'conformance',
+          include: ['conformance/{scenarios,roundtrip,canaries}/**/*.spec.ts'],
+          testTimeout: 300_000,
+        },
+      },
+      {
+        extends: true,
+        test: {
           name: 'composite',
           include: [`${layers}/*/tests/**/*.composite.ts`],
         },

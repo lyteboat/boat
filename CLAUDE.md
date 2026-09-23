@@ -32,7 +32,7 @@ boat/
   agents/demo/            @boat/agent-demo — an agent directory: agent.cordis.yml, preset.yml (display name, optional), skills/, a2ui/, fixtures/, src/ → lib/
   tooling/testing/        @boat/testing — the test harness boat's packages use: mountDshTestServices + MockAdapter, session-log, scripted-model, process
 contract/                 what boat promises: COMPAT.md, dsh-<version>/ snapshots (api, services, events, config, persistence), extensions.yml
-conformance/              the proof: upstream-tests/ (G2 harness); G4–G6 suites
+conformance/              the proof: upstream-tests/ (G2 harness), scenarios/ (G4), canaries/ (G5), roundtrip/ (G6); README.md lists the gates
 scripts/                  check-layers.ts, upstream-pins.spec.ts; dist/ (import, snapshot, G1, delta, overlay gates, bundling, trees)
 dsh.upstream.json         the tracked dsh release; .pnpmfile.cjs pins every non-kernel dsh and cordis package to it
 ```
@@ -139,11 +139,11 @@ boat is delivered one runnable milestone at a time (§9 of the design document),
 
 Run only the gates the change can affect, and report only the commands you ran.
 
-1. Touched `src/` or `tests/`? `pnpm run check` (lint + build + full vitest run: spec, composite, and e2e) passes. `pnpm run test:unit` is the fast loop while iterating.
+1. Touched `src/` or `tests/`? `pnpm run lint` and `pnpm run test` (build, G1, spec, composite, e2e, and G2) pass; `pnpm run check` adds the conformance gates. `pnpm run test:unit` is the fast loop while iterating (the kernel must have been built once).
 2. Touched types or a `tsconfig.json`? `pnpm run typecheck` (sources and tests) introduces no new errors.
 3. Tests for the new code match the [test table](#testing).
 4. Touched anything a user runs (CLI flags, `cordis.patch.yml`, an agent)? Run it once from the built binary (`node boat/apps/cli/lib/bin.js …`) with the scripted model or a real key, and paste the command in the commit or PR.
-5. Touched `dsh/`? `pnpm run test` runs G1 and G2; `pnpm run dist:delta -- --check` passes; `pnpm run dist:overlay <upstream checkout> persistence` passes when the change can reach a persisted type; the extension, if any, is in `contract/extensions.yml` and `pnpm run lint` regenerated nothing stale.
+5. Touched `dsh/`? `pnpm run test` runs G1 and G2, `pnpm run conformance` runs G4–G6; `pnpm run dist:delta -- --check` passes; `pnpm run dist:overlay <upstream checkout> persistence` passes when the change can reach a persisted type; the extension, if any, is in `contract/extensions.yml` and `pnpm run lint` regenerated nothing stale.
 6. Diff is in scope; `README.md` and the design document are current.
 
 ## Testing
@@ -211,7 +211,9 @@ Read `docs/agent_design_principles.md` in ark-agentic before designing, reviewin
 | Typecheck sources and tests | `pnpm run typecheck` |
 | Unit tests (fast loop, no build, no composite or e2e) | `pnpm run test:unit` |
 | All tests (spec + composite + e2e, builds first) | `pnpm run test` |
-| Everything CI runs | `pnpm run check` |
+| What CI runs (build, G1, boat's tests, G2) | `pnpm run test` (after `pnpm run lint` and `pnpm run typecheck`) |
+| G4–G6 against the official release | `pnpm run conformance` |
+| Everything | `pnpm run check` (lint + test + conformance) |
 | Show one test's console output | `npx vitest run <file> --silent=false --reporter=verbose` |
 | One-shot task | `node boat/apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
 | A plugin file | `node boat/apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
