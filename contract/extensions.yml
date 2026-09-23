@@ -12,4 +12,25 @@
 # Fields: id, package, kind (event | api | api-option | service | config),
 # surface (what a plugin sees), contract (keys), since, exit (the upstream
 # change that retires the entry), tests.
-extensions: []
+extensions:
+  - id: agent-loop-intake
+    package: '@deepseek-ai/dsh-agent-loop'
+    kind: event
+    surface: >-
+      The `boat/intake` waterfall, dispatched after the inbox claim and before prompt assembly; a
+      `reply` answers the claimed messages with an assistant message (source provider `boat`) inside
+      one step and no model request. A session's first request starts a new request series on every
+      route, so the empty head a reply or a history seed leaves is replaced. Exports
+      BOAT_ASSISTANT_PROVIDER, BoatIntakeDecision, BoatIntakeReply, BoatStepPayload.
+    contract:
+      - events › @deepseek-ai/dsh-agent-loop › boat/intake
+      - api › @deepseek-ai/dsh-agent-loop › exports › . › BOAT_ASSISTANT_PROVIDER
+      - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatIntakeDecision
+      - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatIntakeReply
+      - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatStepPayload
+    since: boat on dsh 0.1.7-alpha.2 (carried from the boat driver fork since M2)
+    exit: >-
+      Upstream dispatches a pre-assembly waterfall that can answer a step without a model request
+      (agent/pre-step fires after assembly and cannot); then @boat plugins listen to it instead.
+    tests:
+      - dsh/core/agent-loop/tests/boat/intake.spec.ts
