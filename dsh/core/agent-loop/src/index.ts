@@ -240,7 +240,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 export { DEFAULT_MAX_PARALLEL_TOOL_CALLS }
-// boat: the intake gate's declarations (contract/extensions.yml, agent-loop-intake).
+// boat: the pre-assembly hooks' declarations (contract/extensions.yml, agent-loop-*).
 export { BOAT_ASSISTANT_PROVIDER } from './boat/step-hooks.ts'
 export type { BoatIntakeDecision, BoatIntakeReply, BoatStepPayload } from './boat/step-hooks.ts'
 

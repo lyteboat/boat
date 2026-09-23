@@ -273,14 +273,20 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
-    // boat: the intake gate runs before the prompt is assembled, so a reply
-    // spends no assembly. The official driver has no such event.
+    // boat: the intake gate and the pre-assembly hook run before the prompt is
+    // assembled, so a reply spends no assembly and routing done here shapes
+    // this very step's request. The official driver has neither event.
     const intake = await this.dispatch.waterfall(
       'boat/intake', { messages: claimed, ...position, signal },
       (): Promise<BoatIntakeDecision> => Promise.resolve<BoatIntakeDecision>({ kind: 'pass' }),
     )
     signal.throwIfAborted()
     if (intake.kind === 'reply') return { kind: 'reply', messages: claimed, reply: intake }
+    await this.dispatch.waterfall(
+      'boat/pre-assemble', { messages: claimed, ...position, signal },
+      (): Promise<void> => Promise.resolve(),
+    )
+    signal.throwIfAborted()
     const assembly = await this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))
     signal.throwIfAborted()
     const sections = renderContextSections(assembly)

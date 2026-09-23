@@ -1,9 +1,10 @@
 /**
- * boat's extension of the agent loop (contract/extensions.yml:
- * `agent-loop-intake`): the declarations of the intake gate the loop
- * dispatches after the inbox claim and before prompt assembly, and of the
- * decision an intake listener returns. The official driver has no such event;
- * a plugin that listens to it declares `inject: ['boatDistro']`.
+ * boat's extensions of the agent loop (contract/extensions.yml:
+ * `agent-loop-intake`, `agent-loop-pre-assemble`): the declarations of the two
+ * waterfalls the loop dispatches after the inbox claim and before prompt
+ * assembly, and of the decision an intake listener returns. The official
+ * driver has neither event; a plugin that listens to them declares
+ * `inject: ['boatDistro']`.
  * @module @deepseek-ai/dsh-agent-loop/boat/step-hooks
  */
 
@@ -52,5 +53,12 @@ declare module '@deepseek-ai/cordis' {
      * @mode waterfall
      */
     'boat/intake'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<BoatIntakeDecision>): Promise<BoatIntakeDecision>
+    /**
+     * Pre-assembly hook, dispatched after `boat/intake` passed and before the
+     * system prompt is assembled: skill routing and tool activation done here
+     * shape the request of this very step. Scope-filtered.
+     * @mode waterfall
+     */
+    'boat/pre-assemble'(this: Scoped<Agent>, payload: BoatStepPayload, next: () => Promise<void>): Promise<void>
   }
 }
