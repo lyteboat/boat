@@ -4,24 +4,34 @@
   "private": true,
   "description": "boat's demo agent preset: a persona, two routed skills, an asset tool that fills the session state and renders the asset card, a diagnosis tool, and an intake gate",
   "type": "module",
+  "exports": {
+    "./assets": {
+      "@boat/source": "./src/assets.ts",
+      "types": "./lib/assets.d.ts",
+      "default": "./lib/assets.js"
+    }
+  },
   "files": ["lib", "preset.yml", "agent.cordis.yml", "skills", "a2ui", "fixtures"],
   "dependencies": {
     "@boat/contracts": "workspace:*",
-    "@deepseek-ai/dsh-skill-filesystem": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-tools": "0.1.5-alpha.2"
+    "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
+    "@deepseek-ai/dsh-tools": "catalog:dsh"
   },
   "peerDependencies": {
     "@boat/a2ui": "workspace:*",
     "@boat/tool-policy": "workspace:*",
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-agent": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-session-projection": "0.1.5-alpha.2"
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
   },
   "devDependencies": {
     "@boat/a2ui": "workspace:*",
+    "@boat/host": "workspace:*",
+    "@boat/run": "workspace:*",
+    "@boat/testing": "workspace:*",
     "@boat/tool-policy": "workspace:*",
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-agent": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-session-projection": "0.1.5-alpha.2"
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
   }
 }

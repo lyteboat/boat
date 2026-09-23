@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { eventTypes, findSessionLogs, normalizeSessionLog, readSessionLog } from '../../../scripts/session-log.ts'
+import { eventTypes, findSessionLogs, normalizeSessionLog, readSessionLog } from '@boat/testing/session-log'
 import { runBoat } from './support/boat-process.ts'
 
 const SUCCESS_TEXT = 'BOAT-M1-EQUIVALENCE-OK'
@@ -14,6 +14,13 @@ const TITLE_LLM_OVERLAY = '- id: session-title-llm\n  disabled: true\n'
  * model, must write the same session log event for event once run-specific
  * values are normalized away.
  */
+/** One top-level row of a config dump: its `- id:` line and the indented lines under it. */
+function row(dump: string, id: string): string {
+  const match = new RegExp(`^- id: ${id}\\n(?: {2}.*\\n)*`, 'mu').exec(dump)
+  if (match === null) throw new Error(`no row ${id} in the dump`)
+  return match[0]
+}
+
 describe('driver equivalence (built bin, mock model)', () => {
   let root: string
 
@@ -76,10 +83,12 @@ describe('driver equivalence (built bin, mock model)', () => {
     expect(boat.types).toEqual(dsh.types)
     expect(boat.types).toContain('tool/call')
     expect(boat.normalized).toEqual(dsh.normalized)
-    // The switch is visible in the composed tree: dsh's row disabled, boat's row inserted.
-    expect(boat.dump).toMatch(/id: agent-loop[\s\S]*?disabled: true/u)
-    expect(boat.dump).toContain('@boat/agentic-loop')
-    expect(dsh.dump).not.toContain('@boat/agentic-loop')
+    // The switch is visible in the composed tree: @boat/host disables dsh's row for boat's,
+    // and --driver dsh reverses both.
+    expect(row(boat.dump, 'agent-loop')).toContain('disabled: true')
+    expect(row(boat.dump, 'boat-agentic-loop')).not.toContain('disabled: true')
+    expect(row(dsh.dump, 'agent-loop')).toContain('disabled: false')
+    expect(row(dsh.dump, 'boat-agentic-loop')).toContain('disabled: true')
     // Both drivers mounted through the same profile directory contents.
     expect(readFileSync(join(root, 'home-boat', 'profiles', 'run', 'package.json'), 'utf8'))
       .toBe(readFileSync(join(root, 'home-dsh', 'profiles', 'run', 'package.json'), 'utf8'))

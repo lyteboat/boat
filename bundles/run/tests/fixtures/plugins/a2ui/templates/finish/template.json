@@ -1,0 +1,10 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finish",
+  "rootComponentId": "root",
+  "components": [
+    { "id": "root", "component": { "Column": { "children": { "explicitList": ["bye"] } } } },
+    { "id": "bye", "component": { "Text": { "text": { "literalString": "All done." } } } }
+  ]
+}

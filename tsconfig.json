@@ -3,40 +3,40 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/cordis-compat"
+      "path": "./core/cordis-compat"
     },
     {
-      "path": "./packages/contracts"
+      "path": "./core/contracts"
     },
     {
-      "path": "./packages/agentic-loop"
+      "path": "./core/agentic-loop"
     },
     {
-      "path": "./packages/agentic-loop-testkit"
+      "path": "./plugins/tool-policy"
     },
     {
-      "path": "./packages/tool-policy"
+      "path": "./plugins/skill-router"
     },
     {
-      "path": "./packages/skill-router"
+      "path": "./plugins/a2ui"
     },
     {
-      "path": "./packages/a2ui"
+      "path": "./plugins/history-import"
     },
     {
-      "path": "./packages/history-import"
-    },
-    {
-      "path": "./packages/bundle/run"
+      "path": "./bundles/run"
     },
     {
       "path": "./apps/cli"
     },
     {
-      "path": "./scripts"
+      "path": "./agents/demo"
     },
     {
-      "path": "./agents/demo"
+      "path": "./tooling/testing"
+    },
+    {
+      "path": "./tooling/dsh-agent-loop-testkit-fork"
     }
   ]
 }

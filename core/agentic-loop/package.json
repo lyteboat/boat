@@ -1,0 +1,62 @@
+{
+  "name": "@boat/agentic-loop",
+  "version": "0.0.1",
+  "private": true,
+  "description": "boat's agent driver: a fork of @deepseek-ai/dsh-agent-loop that registers as the AgentFactory on ctx.agents",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@boat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "@boat/source": "./src/invariant.ts",
+      "types": "./lib/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "dependencies": {
+    "@boat/contracts": "workspace:*",
+    "@boat/cordis-compat": "workspace:*",
+    "@deepseek-ai/dsh-brand": "catalog:dsh",
+    "@deepseek-ai/dsh-util-values": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh",
+    "@deepseek-ai/dsh-session-persistence": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh",
+    "@deepseek-ai/dsh-settings": "catalog:dsh",
+    "@deepseek-ai/dsh-system-prompt": "catalog:dsh",
+    "@deepseek-ai/dsh-tools": "catalog:dsh"
+  },
+  "devDependencies": {
+    "@boat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-code-runtime": "catalog:dsh",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-llm-deepseek": "catalog:dsh",
+    "@deepseek-ai/dsh-llm-pi-ai": "catalog:dsh",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh",
+    "@deepseek-ai/dsh-session-persistence": "catalog:dsh",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh",
+    "@deepseek-ai/dsh-settings": "catalog:dsh",
+    "@deepseek-ai/dsh-system-prompt": "catalog:dsh",
+    "@deepseek-ai/dsh-tools": "catalog:dsh",
+    "fast-check": "^4.5.0"
+  }
+}

@@ -24,55 +24,8 @@
     "types": [
       "node"
     ],
-    "paths": {
-      "@boat/a2ui": [
-        "./packages/a2ui/src/index.ts"
-      ],
-      "@boat/a2ui/engine": [
-        "./packages/a2ui/src/engine.ts"
-      ],
-      "@boat/a2ui/preset": [
-        "./packages/a2ui/src/preset.ts"
-      ],
-      "@boat/agent-demo/assets": [
-        "./agents/demo/src/assets.ts"
-      ],
-      "@boat/contracts": [
-        "./packages/contracts/src/index.ts"
-      ],
-      "@boat/cordis-compat": [
-        "./packages/cordis-compat/src/index.ts"
-      ],
-      "@boat/history-import": [
-        "./packages/history-import/src/index.ts"
-      ],
-      "@boat/run": [
-        "./packages/bundle/run/src/index.ts"
-      ],
-      "@boat/run/startup": [
-        "./packages/bundle/run/src/startup.ts"
-      ],
-      "@boat/agentic-loop": [
-        "./packages/agentic-loop/src/index.ts"
-      ],
-      "@boat/agentic-loop-testkit": [
-        "./packages/agentic-loop-testkit/src/index.ts"
-      ],
-      "@boat/agentic-loop/invariant": [
-        "./packages/agentic-loop/src/invariant.ts"
-      ],
-      "@boat/skill-router": [
-        "./packages/skill-router/src/index.ts"
-      ],
-      "@boat/skill-router/preset": [
-        "./packages/skill-router/src/preset.ts"
-      ],
-      "@boat/tool-policy": [
-        "./packages/tool-policy/src/index.ts"
-      ],
-      "@boat/tool-policy/preset": [
-        "./packages/tool-policy/src/preset.ts"
-      ]
-    }
+    "customConditions": [
+      "@boat/source"
+    ]
   }
 }

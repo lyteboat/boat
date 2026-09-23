@@ -1,7 +1,0 @@
-{
-  "name": "boat-example-a2ui",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "description": "Example A2UI cards: a data tool that fills the session state, and render_a2ui over two ark templates (asset_overview, unauthorized)"
-}

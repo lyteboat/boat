@@ -1,0 +1,33 @@
+{
+  "name": "@boat/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "description": "boat's contract extensions over the dsh seams: tool and skill metadata, boat/* events, log nodes, and projection keys",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@boat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
+  }
+}

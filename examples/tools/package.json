@@ -1,7 +1,0 @@
-{
-  "name": "boat-example-tools",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "description": "Example boat tools: an always-visible lookup with a state delta, and an auto tool that needs confirmation"
-}
