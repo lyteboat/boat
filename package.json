@@ -14,7 +14,12 @@
     "test": "pnpm run build && vitest run",
     "test:unit": "vitest run --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
     "check": "pnpm run lint && pnpm run test",
-    "smoke:equivalence": "pnpm run build && vitest run apps/cli/tests/driver-equivalence.e2e.ts"
+    "smoke:equivalence": "pnpm run build && vitest run apps/cli/tests/driver-equivalence.e2e.ts",
+    "dist:snapshot": "node --import tsx scripts/dist/snapshot.ts",
+    "dist:import": "node --import tsx scripts/dist/import-upstream.ts",
+    "dist:delta": "node --import tsx scripts/dist/delta-report.ts",
+    "dist:overlay": "node --import tsx scripts/dist/overlay.ts",
+    "contract:check": "node --import tsx scripts/dist/contract-check.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",

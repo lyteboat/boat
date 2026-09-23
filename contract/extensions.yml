@@ -1,0 +1,15 @@
+# boat's additions to the kernel contract, one entry per extension (COMPAT.md §4).
+#
+# G1 (scripts/dist/contract-check.ts) accepts a difference from the upstream
+# snapshot only when its key starts with one of an entry's `contract` keys; a
+# listed key that no longer differs fails as stale. Keys are the snapshot paths
+# joined by ' › ', e.g. `events › @deepseek-ai/dsh-agent-loop › boat/intake` or
+# `api › @deepseek-ai/dsh-agent-loop › exports › . › IntakeDecision`. Every entry
+# is named by at least one `Dist-Change: extend` commit's `Dist-Extension`
+# trailer (scripts/dist/delta-report.ts checks it), and the @boat/distro service
+# lists the ids at runtime.
+#
+# Fields: id, package, kind (event | api | api-option | service | config),
+# surface (what a plugin sees), contract (keys), since, exit (the upstream
+# change that retires the entry), tests.
+extensions: []
