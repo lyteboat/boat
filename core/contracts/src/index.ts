@@ -35,7 +35,7 @@ export const BOAT_HISTORY_IMPORT_PLUGIN = 'boat-history-import'
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type BoatToolVisibility = 'always' | 'auto'
 
-/** boat-side metadata registered beside a dsh ToolDefinition (ark's AgentTool fields). */
+/** boat-side metadata registered beside a dsh ToolDefinition (the reference AgentTool fields). */
 export interface BoatToolMeta {
   /** Defaults to `always`. */
   visibility?: BoatToolVisibility

@@ -1,6 +1,6 @@
 /**
- * Field-by-field fidelity against payloads ark's engine produced for the same
- * templates and raw data (fixtures/baseline, generated from ark at fa43a58
+ * Field-by-field fidelity against payloads the reference engine produced for the same
+ * templates and raw data (fixtures/baseline, generated from the reference implementation at fa43a58
  * with the fixture of tests/unit/core/test_template_engine.py).
  */
 import { readdirSync, readFileSync } from 'node:fs'
@@ -28,7 +28,7 @@ interface Baseline {
 const baselines = readdirSync(BASELINE).filter(name => name.endsWith('.json')).sort()
   .map(name => [name.replace(/\.json$/u, ''), JSON.parse(readFileSync(join(BASELINE, name), 'utf8')) as Baseline] as const)
 
-describe('TemplateEngine against ark baselines', () => {
+describe('TemplateEngine against reference baselines', () => {
   it.each(baselines)('%s renders the same payload, digest and warnings', async (_name, baseline) => {
     const engine = new TemplateEngine(ROOT)
     const result = await engine.render(baseline.card, baseline.raw, {
@@ -39,7 +39,7 @@ describe('TemplateEngine against ark baselines', () => {
     const expected = { ...baseline.payload }
     const actual = { ...result.payload }
     if (baseline.surfaceId === '') {
-      // A fresh surface carries a random suffix on both sides; the shape is ark's `<card>-<session[:8]>-<hex6>`.
+      // A fresh surface carries a random suffix on both sides; the shape is the reference `<card>-<session[:8]>-<hex6>`.
       expect(actual['surfaceId']).toMatch(new RegExp(`^${baseline.card}-sess-123-[0-9a-f]{6}$`, 'u'))
       delete expected['surfaceId']
       delete actual['surfaceId']
@@ -68,7 +68,7 @@ describe('TemplateEngine against ark baselines', () => {
     await expect(engine.render('missing', {})).rejects.toThrow(/template 卡目录不存在/u)
   })
 
-  it('mints ark-shaped surface ids', () => {
+  it('mints reference-shaped surface ids', () => {
     expect(mintSurfaceId('asset_overview', 'session-abcdef12345')).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
   })
 })

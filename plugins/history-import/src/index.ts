@@ -1,8 +1,8 @@
 /**
  * @boat/history-import — external conversation history as a session seed.
  * dsh derives every model request from the log, so history a caller brings
- * (ark's `context.sa_history`) has to become log nodes: this service parses
- * it with ark's rules and builds the seed of closed turns a new session
+ * (the reference `context.sa_history`) has to become log nodes: this service parses
+ * it with the reference rules and builds the seed of closed turns a new session
  * starts from. Importing into a live session is not offered: the driver
  * counts turns from its own phase, and dsh's persistence would refuse a
  * boat-specific audit node.
@@ -34,7 +34,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * The SA entry list inside a history document: a bare array, or an object
- * carrying it under `sa_history` (or `context.sa_history`, ark's envelope).
+ * carrying it under `sa_history` (or `context.sa_history`, the reference envelope).
  */
 export function saHistoryOf(document: unknown): unknown {
   if (Array.isArray(document)) return document
@@ -52,7 +52,7 @@ export class HistoryImportService extends Service {
     super(ctx, 'historyImport')
   }
 
-  /** ark's SA history rules over a raw entry list. */
+  /** The reference SA history rules over a raw entry list. */
   parse(raw: unknown): SaHistoryParse {
     return parseSaHistory(raw)
   }

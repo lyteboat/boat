@@ -36,7 +36,7 @@ export interface Config {
   visibility?: 'always' | 'auto'
   group?: string
   validation?: 'warn' | 'enforce'
-  /** The client's component catalog (types, and binding fields per type); ark's reference client when absent. */
+  /** The client's component catalog (types, and binding fields per type); the reference client when absent. */
   components?: { types: string[]; bindingFields: Record<string, string[]> }
 }
 
