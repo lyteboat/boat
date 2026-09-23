@@ -25,13 +25,13 @@ packages/
 agents/
   demo/                   @boat/agent-demo — a preset directory: preset.yml, agent.cordis.yml, skills/, a2ui/, fixtures/, src/ → lib/
 examples/                 runnable plugin files for `boat run --plugin <file>`; each directory is its own private package
-scripts/                  sync-upstream.ts (re-fork from the pinned tag), session-log.ts (log reader shared by tests)
+scripts/                  sync-upstream.ts (re-fork from the pinned tag), session-log.ts (log reader shared by tests), upstream-pins.spec.ts; type-checked by tsconfig.tests.json, not built
 dsh.upstream.json         the pinned dsh release; .pnpmfile.cjs pins every dsh and cordis package to it
 ```
 
 Three tiers, following dsh's own split (`apps/*` beside `packages/bundle/*`): `apps/*` owns a process — `apps/cli` owns the `boat` bin and nothing else does; `packages/bundle/*` are compositions, a `cordis.patch.yml` a profile includes by name, with no bin of their own; `packages/*` are the capability libraries those compositions wire together. A new runnable mode (`boat web`, an SDK entry) is a new `packages/bundle/<name>`, not a second app and not a branch inside `@boat/run`.
 
-Each package has `src/` (compiled to `lib/`, gitignored), `tests/`, its own `tsconfig.json` with `references` to every workspace package it imports, and an entry in the root `tsconfig.json` and in `tsconfig.base.json` `paths` (one path per public entry: `@boat/x`, `@boat/x/preset`, …). Tests and vitest resolve `@boat/*` to `src` through those paths; only the built CLI (`apps/cli/lib/bin.js`) and cordis compositions load `lib/`.
+Each package has `src/` (compiled to `lib/`, gitignored), `tests/`, its own `tsconfig.json` with `references` to every workspace package it imports, an entry in the root `tsconfig.json`, and a package.json `exports` entry per public subpath (`@boat/x`, `@boat/x/preset`, …) whose first key is the `@boat/source` condition pointing at `src/*.ts`. `exports` is the only resolution table: `tsconfig.base.json` sets `customConditions: ['@boat/source']` and `vitest.config.ts` sets the same resolve condition, so typecheck and tests read `src`; Node, the built CLI (`apps/cli/lib/bin.js`), and cordis compositions use the default conditions and load `lib/`. There is no `paths` table.
 
 ## Architecture boundaries
 
@@ -61,7 +61,7 @@ Hard rules:
 
 ## Coding conventions
 
-- **Tooling**: `pnpm` only (never `npm install`/`yarn`). New dependencies are added to the owning package; dsh packages are `peerDependencies` (+ `devDependencies`) pinned to the exact version in `dsh.upstream.json`, never a caret. Workspace packages use `workspace:*`.
+- **Tooling**: `pnpm` only (never `npm install`/`yarn`). New dependencies are added to the owning package; dsh and cordis packages are `peerDependencies` (+ `devDependencies`) written as `catalog:dsh` / `catalog:cordis`, never a literal version; the catalogs in `pnpm-workspace.yaml` mirror `dsh.upstream.json` (`scripts/upstream-pins.spec.ts` enforces it). Third-party packages used by more than one workspace package go through the default `catalog:`. Workspace packages use `workspace:*`.
 - **ESM everywhere.** Package names across packages, `.ts` extensions in local relative imports (`rewriteRelativeImportExtensions` turns them into `.js` in `lib/`). No CJS-only exports; `.pnpmfile.cjs` is the one CommonJS file and pnpm requires it.
 - **Names carry their owner.** `BoatToolMeta` not `Meta`, `boatActiveSkill` not `activeSkill`, `SkillRouterSettings` not `Settings`. Files are named for what they define (`business-payload.ts`, `sa-history.ts`), never `utils.ts` / `helpers.ts` / `types.ts`. Services publish under an unambiguous key (`toolPolicy`, `skillRouter`, `a2ui`, `historyImport`); log nodes and events are `boat/<noun>`; projection keys are `boat<Noun>`.
 - **No capability probing.** Never test `'x' in obj` or `typeof obj.x === 'function'` to discover what a value can do. Declare the dependency (`static inject`) or narrow on a discriminant field (`block.type === 'tool_result'`, `decision.kind === 'reply'`). Closed unions end in `assertNever`; merge-extensible unions fall through a documented default.
@@ -162,7 +162,7 @@ Conventions:
 ## Upstream (dsh) pinning
 
 - `dsh.upstream.json` names the dsh version, tag, commit, and the cordis versions; `.pnpmfile.cjs` rewrites every `@deepseek-ai/*` dependency to those versions at install; `pnpm-workspace.yaml` hoists `@deepseek-ai/*` and `@boat/*` because dsh's launcher walks `require.resolve.paths()` from the profile directory.
-- **Bumping dsh**: update `dsh.upstream.json`, check out the new tag beside the repository, run `node --import tsx scripts/sync-upstream.ts <checkout>`, re-apply the three boat hunks from the diff, update `packages/agentic-loop/UPSTREAM.md` and `THIRD_PARTY_NOTICES.md`, run `pnpm run check`, and run `pnpm run smoke:equivalence` (both drivers must still write identical logs for the same scripted model).
+- **Bumping dsh**: update `dsh.upstream.json` and the `dsh` / `cordis` catalogs in `pnpm-workspace.yaml`, check out the new tag beside the repository, run `node --import tsx scripts/sync-upstream.ts <checkout>`, re-apply the three boat hunks from the diff, update `packages/agentic-loop/UPSTREAM.md` and `THIRD_PARTY_NOTICES.md`, run `pnpm run check`, and run `pnpm run smoke:equivalence` (both drivers must still write identical logs for the same scripted model).
 - Files adapted from dsh keep the header `Adapted from deepseek-ai/deepseek-harness` and are listed by that header in `THIRD_PARTY_NOTICES.md`.
 - dsh's public APIs are pre-stable: a bump may rename a seam. Update every consumer in the same commit; never keep a compatibility shim.
 

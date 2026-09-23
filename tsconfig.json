@@ -33,9 +33,6 @@
       "path": "./apps/cli"
     },
     {
-      "path": "./scripts"
-    },
-    {
       "path": "./agents/demo"
     }
   ]

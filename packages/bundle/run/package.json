@@ -6,10 +6,12 @@
   "type": "module",
   "exports": {
     ".": {
+      "@boat/source": "./src/index.ts",
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./startup": {
+      "@boat/source": "./src/startup.ts",
       "types": "./lib/startup.d.ts",
       "default": "./lib/startup.js"
     },
@@ -30,28 +32,28 @@
     "@boat/history-import": "workspace:*",
     "@boat/skill-router": "workspace:*",
     "@boat/tool-policy": "workspace:*",
-    "@deepseek-ai/dsh-agent-presets": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-brand": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-cmdline": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-code-runtime-worker-thread": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-util-values": "0.1.5-alpha.2",
-    "@deepseek-ai/schemastery": "^3.18.2",
-    "commander": "^15.0.0"
+    "@deepseek-ai/dsh-agent-presets": "catalog:dsh",
+    "@deepseek-ai/dsh-brand": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-code-runtime-worker-thread": "catalog:dsh",
+    "@deepseek-ai/dsh-util-values": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "commander": "catalog:"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
-    "@deepseek-ai/dsh-agent": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-agent-default-model": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-session": "0.1.5-alpha.2"
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/cordis-plugin-loader": "1.0.3",
-    "@deepseek-ai/dsh-agent": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-agent-default-model": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-alpha.2",
-    "@deepseek-ai/dsh-session": "0.1.5-alpha.2"
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "catalog:dsh"
   }
 }
