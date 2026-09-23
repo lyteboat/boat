@@ -54,6 +54,9 @@
       "path": "./boat/plugins/history-import"
     },
     {
+      "path": "./boat/plugins/distro"
+    },
+    {
       "path": "./boat/bundles/run"
     },
     {

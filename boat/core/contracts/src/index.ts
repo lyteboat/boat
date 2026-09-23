@@ -17,6 +17,7 @@
  * @module @boat/contracts
  */
 
+import type {} from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
@@ -38,6 +39,38 @@ export type {
   BoatIntakeReply as IntakeReply,
   BoatStepPayload,
 } from '@deepseek-ai/dsh-agent-loop'
+
+/** One extension of the kernel contract that this boat build carries, as contract/extensions.yml registers it. */
+export interface BoatDistroExtension {
+  /** The registry id (`agent-loop-intake`, …). */
+  id: string
+  /** The kernel package the extension lives in. */
+  package: string
+  /** `event`, `api`, `api-option`, `service`, or `config`. */
+  kind: string
+  /** The boat and dsh versions that introduced it. */
+  since: string
+}
+
+/**
+ * The `boatDistro` service (@boat/distro): present only on boat, so a plugin
+ * that uses a kernel extension declares `inject: ['boatDistro']` and does not
+ * load on the official release, where the extension does not exist.
+ */
+export interface BoatDistro {
+  /** The dsh release the kernel was imported from. */
+  readonly dsh: string
+  /** Every kernel extension this build carries. */
+  readonly extensions: readonly BoatDistroExtension[]
+  /** Whether this build carries the extension registered under `id`. */
+  has(id: string): boolean
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    boatDistro: BoatDistro
+  }
+}
 
 /**
  * `source.kind` of the user messages imported history writes; consumers treat

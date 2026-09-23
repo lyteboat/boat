@@ -427,6 +427,9 @@ importers:
       '@boat/a2ui':
         specifier: workspace:*
         version: link:../../plugins/a2ui
+      '@boat/distro':
+        specifier: workspace:*
+        version: link:../../plugins/distro
       '@boat/history-import':
         specifier: workspace:*
         version: link:../../plugins/history-import
@@ -506,6 +509,9 @@ importers:
 
   boat/core/contracts:
     devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
       '@deepseek-ai/dsh-agent-loop':
         specifier: workspace:*
         version: link:../../../dsh/core/agent-loop
@@ -576,6 +582,16 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:*
         version: link:../../../dsh/core/tools
+
+  boat/plugins/distro:
+    dependencies:
+      '@boat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
 
   boat/plugins/history-import:
     dependencies:

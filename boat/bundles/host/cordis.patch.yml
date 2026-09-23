@@ -12,6 +12,10 @@
     enabled: false
 
 - insert:
+    # Marks the tree as boat's: plugins that use a kernel extension inject it.
+    - id: boat-distro
+      name: '@boat/distro'
+
     - id: boat-tool-policy
       name: '@boat/tool-policy'
 

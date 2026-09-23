@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc -b && node --import tsx scripts/dist/bundle-kernel.ts",
     "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
-    "lint": "oxlint . && knip --include unlisted,unresolved --no-progress && node --import tsx scripts/check-layers.ts",
+    "lint": "oxlint . && knip --include unlisted,unresolved --no-progress && node --import tsx scripts/check-layers.ts && node --import tsx scripts/dist/gen-distro-manifest.ts --check",
     "test": "pnpm run build && pnpm run contract:check && vitest run",
     "test:unit": "vitest run --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
     "check": "pnpm run lint && pnpm run test",
