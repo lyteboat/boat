@@ -26,9 +26,9 @@ node apps/cli/lib/bin.js run --agents ./agents --agent demo "看看资产"
 pnpm run check                                            # lint + build + tests
 ```
 
-Every boat profile lists `@boat/host`, which mounts `@boat/agentic-loop` in place of dsh's agent-loop and publishes boat's host services, so `boat run` and `boat web` both carry them; `--driver dsh` swaps the official driver back in. `--plugin <file>` inserts a local ESM plugin file as a row of the tree (the file's own imports resolve from its directory, so it works for files inside this checkout). Under the boat driver two extra waterfall events run after the inbox claim and before prompt assembly: `boat/intake` (answer the step with a fixed reply and no model request) and `boat/pre-assemble` (route skills and activate tools for this very step).
+Every boat profile lists `@boat/host`, which mounts `@boat/agentic-loop` in place of dsh's agent-loop and publishes boat's host services, so `boat run` and `boat web` both carry them; `--driver dsh` swaps the official driver back in. `@boat/host` also keeps dsh-base's session-log upload (`session-log-deepseek`) off, so the model provider receives the request and nothing else. `boat run --agents <dir> --agent <id>` reads the agent directory (`agent.cordis.yml`, optional `preset.yml`) and declares it to dsh's agent preset registry for that run. `--plugin <file>` inserts a local ESM plugin file as a row of the tree (the file's own imports resolve from its directory, so it works for files inside this checkout). Under the boat driver two extra waterfall events run after the inbox claim and before prompt assembly: `boat/intake` (answer the step with a fixed reply and no model request) and `boat/pre-assemble` (route skills and activate tools for this very step).
 
-Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSEEK_BASE_URL`) in the environment or in `$BOAT_HOME/.env`. All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports that directory as `DSH_HOME` to the dsh packages before any of them load, so a user's own `~/.dsh` is never touched.
+Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSEEK_BASE_URL`, an endpoint that speaks DeepSeek's Anthropic-compatible Messages API) in the environment or in `$BOAT_HOME/.env`. All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports that directory as `DSH_HOME` to the dsh packages before any of them load, so a user's own `~/.dsh` is never touched.
 
 ## Session logs
 
@@ -58,6 +58,7 @@ One top-level directory per layer; dependencies point down only (`apps` → `bun
 
 ## Why the pnpm settings look unusual
 
-- `publicHoistPattern: ['@deepseek-ai/*']` — dsh's launcher links the installation closure into `$DSH_HOME/profiles/node_modules` by walking `require.resolve.paths()` from each package's symlink path; under pnpm's isolated layout that walk only reaches the launcher's direct dependencies.
+- `publicHoistPattern: ['@deepseek-ai/*', '@boat/*']` — an agent directory names its rows by bare package name and they resolve from the agent directory upward, and the composition tests resolve rows from the workspace root; under pnpm's isolated layout both reach the dsh and boat packages only at the root `node_modules`. The launcher itself resolves rows through dsh's runtime resolution of `apps/cli`'s dependency graph.
+- `minimumReleaseAgeExclude` — pnpm 11 refuses packages younger than a day; a dsh release pinned on its first day is listed there by exact version, and the list can go once the release has aged.
 - `.pnpmfile.cjs` — published dsh packages depend on each other with caret ranges, so an unpinned install drifts to a newer prerelease than the tag boat was developed against.
 - `allowBuilds` — pnpm 11 blocks install scripts unless listed; only the node-pty helper chmod is needed on Linux/macOS.

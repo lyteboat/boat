@@ -2,8 +2,11 @@
 
 ## deepseek-ai/deepseek-harness (MIT)
 
-Files marked "Adapted from deepseek-ai/deepseek-harness" in their header are derived from
-https://github.com/deepseek-ai/deepseek-harness at tag dsh-v0.1.5-alpha.2 (commit b2e3b2a0).
+Files marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their header are
+derived from https://github.com/deepseek-ai/deepseek-harness at the tag their header names:
+dsh-v0.1.5-alpha.2 (commit b2e3b2a0) or dsh-v0.1.7-alpha.2 (commit 00102833). The driver fork
+(`core/agentic-loop`) and the testkit fork (`tooling/dsh-agent-loop-testkit-fork`) follow the tag
+`dsh.upstream.json` pins, recorded in their `UPSTREAM.md`.
 
 ```
 MIT License
