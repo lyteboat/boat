@@ -5,7 +5,7 @@
  *
  * - `persistence`: upstream's `gen-persistence-catalog` regenerates the
  *   durable-record schema from the overlaid sources; its fingerprint must equal
- *   `contract/dsh-<version>/persistence.json` except for keys an extension
+ *   `compatibility/contract/dsh-<version>/persistence.json` except for keys an extension
  *   registers, and the regenerated `known-event-types.ts` must equal boat's.
  * - `g3`: G3, the cross-package gate. The tests of every upstream package that
  *   depends on a kernel package run on the pristine checkout (the baseline,
@@ -90,7 +90,7 @@ function persistence(checkout: string): number {
     execFileSync(join(checkout, 'node_modules/.bin/tsx'), ['scripts/gen-persistence-catalog.ts'], { cwd: checkout, stdio: ['ignore', 'inherit', 'inherit'] })
     const regenerated = persistenceFingerprint(readFileSync(join(checkout, 'docs/persistence-schema.json'), 'utf8'))
     const { dsh } = readUpstreamPin()
-    const snapshot = JSON.parse(readFileSync(join(repoRoot, 'contract', `dsh-${dsh}`, 'persistence.json'), 'utf8')) as PersistenceFingerprint
+    const snapshot = JSON.parse(readFileSync(join(repoRoot, 'compatibility/contract', `dsh-${dsh}`, 'persistence.json'), 'utf8')) as PersistenceFingerprint
     const comparison = compareContract(
       flatten(comparable(snapshot), ['persistence']),
       flatten(comparable(regenerated), ['persistence']),

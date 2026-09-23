@@ -6,7 +6,7 @@
  */
 import { rmSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { boatTree, packKernel, vanillaTree } from '../../scripts/dist/trees.ts'
+import { boatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
 import { cloneRun, freshRun, runScenario, suiteRoot, type OfficialScenario } from '../support/official-cli.ts'
 
 const FILES = { 'README.md': '# roundtrip workspace\n' }
@@ -24,8 +24,8 @@ describe('G6: sessions cross between the official release and boat', () => {
   let root: string
 
   beforeAll(() => {
-    trees.vanilla = vanillaTree('conformance')
-    trees.boat = boatTree('conformance', packKernel())
+    trees.vanilla = vanillaTree('compatibility')
+    trees.boat = boatTree('compatibility', packKernel())
     root = suiteRoot('g6')
   }, 600_000)
 

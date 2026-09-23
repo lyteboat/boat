@@ -3,7 +3,7 @@
  * (scripts/dist/trees.ts) against upstream's scripted model server, and reads
  * the session it wrote. G4, G5, and G6 compare what two trees write for the
  * same run: the official release, and the same release with boat's kernel.
- * @module conformance/support/official-cli
+ * @module compatibility/tests/support/official-cli
  */
 
 import { spawn } from 'node:child_process'
@@ -85,7 +85,7 @@ export function freshRun(root: string, label: string, files: Record<string, stri
  * first run's script), then read the session log the run left.
  */
 export async function runScenario(tree: string, scenario: OfficialScenario, place: { home: string; cwd: string }, extraArgs: readonly string[] = []): Promise<OfficialRun> {
-  const patchFile = join(place.home, 'conformance.patch.yml')
+  const patchFile = join(place.home, 'compatibility.patch.yml')
   writeFileSync(patchFile, `${QUIET_PATCH}${scenario.patch ?? ''}`)
   const mock = await startMockLlmServer({ ...scenario.mock, sequence: scenario.sequence, port: 0, apiKey: 'mock-key' })
   let result
@@ -118,5 +118,5 @@ export function cloneRun(run: Pick<OfficialRun, 'home' | 'cwd'>, root: string, l
 
 /** A per-suite scratch root. */
 export function suiteRoot(name: string): string {
-  return mkdtempSync(join(tmpdir(), `boat-conformance-${name}-`))
+  return mkdtempSync(join(tmpdir(), `boat-compatibility-${name}-`))
 }

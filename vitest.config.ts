@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config'
-import { UPSTREAM_TEST_EXCLUDES, upstreamTestsPlugin } from './conformance/upstream-tests/harness.ts'
+import { UPSTREAM_TEST_EXCLUDES, upstreamTestsPlugin } from './compatibility/tests/upstream-harness/harness.ts'
 
 // Workspace packages resolve to src through the `@boat/source` export condition, never
 // through their default export to built lib/, so a stale artifact can never load a second
@@ -28,13 +28,13 @@ export default defineConfig({
       {
         extends: true,
         // G2: upstream's own tests of the kernel packages, unmodified; the harness
-        // rebuilds upstream's source-resolution environment (conformance/upstream-tests).
+        // rebuilds upstream's source-resolution environment (compatibility/tests/upstream-harness).
         plugins: [upstreamTestsPlugin()],
         test: {
           name: 'dsh',
           include: ['dsh/*/*/tests/**/*.spec.ts'],
           exclude: UPSTREAM_TEST_EXCLUDES.map(entry => entry.file),
-          setupFiles: ['conformance/upstream-tests/setup.ts', 'conformance/upstream-tests/test-invariants.ts'],
+          setupFiles: ['compatibility/tests/upstream-harness/setup.ts', 'compatibility/tests/upstream-harness/test-invariants.ts'],
           server: { deps: { inline: [/@deepseek-ai\//u] } },
         },
       },
@@ -42,9 +42,9 @@ export default defineConfig({
         extends: true,
         test: {
           // G4–G6: the official release against boat's kernel, in install trees outside the
-          // repository (scripts/dist/trees.ts); `pnpm run conformance`, not `pnpm run test`.
-          name: 'conformance',
-          include: ['conformance/{scenarios,roundtrip,canaries}/**/*.spec.ts'],
+          // repository (scripts/dist/trees.ts); `pnpm run compatibility`, not `pnpm run test`.
+          name: 'compatibility',
+          include: ['compatibility/tests/{scenarios,roundtrip,canaries}/**/*.spec.ts'],
           testTimeout: 300_000,
           // Every file packs the kernel and installs the same trees; run in parallel, a stale
           // tree is removed and reinstalled under another file's running pnpm.

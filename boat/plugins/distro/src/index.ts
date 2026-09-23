@@ -2,7 +2,7 @@
  * @boat/distro — the `boatDistro` marker service. Its presence tells a plugin
  * that it runs on boat's kernel; its content names the dsh release the kernel
  * was imported from and the kernel extensions this build carries
- * (contract/extensions.yml, compiled into `distro-manifest.ts`). A plugin that
+ * (compatibility/contract/extensions.yml, compiled into `distro-manifest.ts`). A plugin that
  * uses an extension declares `inject: ['boatDistro']`: the official release
  * has no such service, so there the plugin waits instead of calling an
  * extension that is not there.

@@ -1,5 +1,5 @@
 /**
- * Write `contract/dsh-<version>/` for a dsh checkout at a tag: the contract
+ * Write `compatibility/contract/dsh-<version>/` for a dsh checkout at a tag: the contract
  * the release publishes (`contract-gen` over a vanilla tree of that release)
  * and the fingerprint of the tag's `docs/persistence-schema.json`. When the
  * pinned release already has a snapshot, print the contract difference between
@@ -21,7 +21,7 @@ function printDifference(from: string, to: string): void {
   const before = readSnapshot(from)
   const after = readSnapshot(to)
   const persistence = (version: string): Map<string, string> => {
-    const { roots } = JSON.parse(readFileSync(join(repoRoot, 'contract', `dsh-${version}`, 'persistence.json'), 'utf8')) as { roots: unknown }
+    const { roots } = JSON.parse(readFileSync(join(repoRoot, 'compatibility/contract', `dsh-${version}`, 'persistence.json'), 'utf8')) as { roots: unknown }
     return flatten(roots, ['persistence', 'roots'])
   }
   for (const [key, value] of persistence(from)) before.set(key, value)
@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   const checkout = process.argv[2]
   if (checkout === undefined) throw new Error('usage: snapshot.ts <dsh checkout at a tag>')
   const release = releaseOfCheckout(checkout)
-  const out = join(repoRoot, 'contract', `dsh-${release.dsh}`)
+  const out = join(repoRoot, 'compatibility/contract', `dsh-${release.dsh}`)
   writeContract(await generateContract(vanillaTree('contract', {}, release)), out)
   const fingerprint = persistenceFingerprint(readFileSync(join(checkout, 'docs/persistence-schema.json'), 'utf8'))
   writeFileSync(join(out, 'persistence.json'), stableJson({
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
   }))
   console.log(`snapshot of dsh ${release.dsh} written to ${out}`)
   const pinned = readUpstreamPin().dsh
-  if (pinned !== release.dsh && existsSync(join(repoRoot, 'contract', `dsh-${pinned}`))) printDifference(pinned, release.dsh)
+  if (pinned !== release.dsh && existsSync(join(repoRoot, 'compatibility/contract', `dsh-${pinned}`))) printDifference(pinned, release.dsh)
 }
 
 await main()
