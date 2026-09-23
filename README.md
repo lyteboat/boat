@@ -13,33 +13,6 @@
 
 轻舟把这最后一公里做成一套可复用的垂域智能体底座。行业团队只需装上自己的割台，也就是业务技能、业务工具和卡片模板，就能得到一个上得了生产的智能体。
 
-### 为什么基于 DeepSeek Harness
-
-- **不重造轮子。** 会话日志、工具与技能注册、审批、持久化、Web UI 由 dsh 提供，轻舟只做业务场景真正缺的那一层。
-- **兼容生态。** 轻舟的每项能力都是 dsh 扩展点上的 Cordis 插件，dsh 社区的插件可以直接组合进来，轻舟的插件也能回馈社区。
-- **升级可控。** 锁定一个 dsh 发布版本（`dsh.upstream.json`）；驱动 fork 只保留 `core/agentic-loop/UPSTREAM.md` 列出的改动，`--driver dsh` 随时切回官方驱动，两者对同一脚本化模型写出相同的会话日志。
-- **经验延续。** 技能路由、工具可见性、A2UI 卡片、会话状态与外部历史都来自已在业务场景中验证过的参考实现，以插件形式在 dsh 上重新表达，并以参考实现的产出作为黄金基线校验。
-
-### 开箱即用
-
-一个业务智能体就是一个目录：
-
-```text
-agents/<id>/
-  agent.cordis.yml   组合：人设、技能模式、工具与闸门
-  preset.yml         展示名称（可选）
-  skills/            业务技能，每个技能一个 SKILL.md
-  a2ui/              卡片模板
-  src/               业务逻辑：工具、状态、闸门
-```
-
-构建后一条命令即可运行随仓库提供的示例智能体 `agents/demo`：
-
-```sh
-pnpm install && pnpm run build
-node apps/cli/lib/bin.js run --agents ./agents --agent demo "看看资产"
-```
-
 当前交付进度见下方 [Status](#status)。
 
 ## Vision (English)
