@@ -8,10 +8,10 @@
     "node": "^22.19.0 || >=24.0.0"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && node --import tsx scripts/dist/bundle-kernel.ts",
     "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
     "lint": "oxlint . && knip --include unlisted,unresolved --no-progress && node --import tsx scripts/check-layers.ts",
-    "test": "pnpm run build && vitest run",
+    "test": "pnpm run build && pnpm run contract:check && vitest run",
     "test:unit": "vitest run --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
     "check": "pnpm run lint && pnpm run test",
     "smoke:equivalence": "pnpm run build && vitest run boat/apps/cli/tests/driver-equivalence.e2e.ts",
@@ -22,9 +22,15 @@
     "contract:check": "node --import tsx scripts/dist/contract-check.ts"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@types/node": "^22.20.0",
+    "fast-check": "^4.5.0",
     "knip": "^5.88.1",
     "oxlint": "1.76.0",
+    "tsdown": "0.22.2",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8",

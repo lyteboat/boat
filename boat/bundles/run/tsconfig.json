@@ -8,6 +8,8 @@
     "src"
   ],
   "references": [
+    { "path": "../../../dsh/core/agent" },
+    { "path": "../../../dsh/core/session" },
     {
       "path": "../../plugins/history-import"
     }

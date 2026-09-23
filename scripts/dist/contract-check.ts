@@ -22,7 +22,7 @@ import { pathToFileURL } from 'node:url'
 import { parse } from 'yaml'
 import { CONTRACT_FILES, generateContract } from './contract-gen.ts'
 import type { Contract } from './contract-gen.ts'
-import { readUpstreamPin, repoRoot } from './kernel.ts'
+import { canonicalJson, readUpstreamPin, repoRoot } from './kernel.ts'
 
 /** Separator of the path segments in a contract key; event names and subpaths contain `/`. */
 export const KEY_SEPARATOR = ' › '
@@ -60,7 +60,7 @@ export function flatten(value: unknown, prefix: string[] = [], out = new Map<str
     for (const [key, inner] of Object.entries(value as Record<string, unknown>)) flatten(inner, [...prefix, key], out)
     return out
   }
-  out.set(prefix.join(KEY_SEPARATOR), JSON.stringify(value))
+  out.set(prefix.join(KEY_SEPARATOR), canonicalJson(value))
   return out
 }
 

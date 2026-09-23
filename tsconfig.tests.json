@@ -21,6 +21,13 @@
     "boat/agents/*/src/**/*.ts",
     "boat/tooling/*/tests/**/*.ts",
     "boat/tooling/*/src/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "conformance/**/*.ts"
+  ],
+  // Upstream code carried by the G2 harness (it reads cordis const enums, which
+  // isolatedModules rejects); upstream type-checks it, boat runs it.
+  "exclude": [
+    "conformance/upstream-tests/test-invariants.ts",
+    "conformance/upstream-tests/shims/*.ts"
   ]
 }

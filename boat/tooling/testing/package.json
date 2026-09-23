@@ -35,27 +35,27 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-app-boot": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
     "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-projection": "catalog:dsh",
-    "@deepseek-ai/dsh-system-prompt": "catalog:dsh",
-    "@deepseek-ai/dsh-tools": "catalog:dsh"
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-app-boot": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
     "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-projection": "catalog:dsh",
-    "@deepseek-ai/dsh-system-prompt": "catalog:dsh",
-    "@deepseek-ai/dsh-tools": "catalog:dsh"
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
   }
 }

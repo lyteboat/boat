@@ -4,10 +4,14 @@
 // launcher resolves rows from, which no source file imports.
 {
   "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
+  // The kernel's manifests are upstream's (as npm publishes them) and its tests import
+  // through upstream's repository-wide facade; boat does not lint either.
+  "ignoreWorkspaces": ["dsh/**"],
+  "ignore": ["dsh/**"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.ts", "scripts/dist/*.ts"],
-      "project": ["scripts/**/*.ts"]
+      "entry": ["scripts/*.ts", "scripts/dist/*.ts", "conformance/*/*.ts"],
+      "project": ["scripts/**/*.ts", "conformance/**/*.ts"]
     },
     "boat/apps/*": {
       "entry": ["tests/**/*.{spec,composite,e2e}.ts"],

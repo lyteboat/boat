@@ -8,6 +8,7 @@
     "src"
   ],
   "references": [
+    { "path": "../../../dsh/core/session" },
     {
       "path": "../../core/contracts"
     }

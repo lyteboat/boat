@@ -6,6 +6,10 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../../../dsh/core/agent" },
+    { "path": "../../../dsh/core/system-prompt" },
+    { "path": "../../../dsh/core/tools" },
+    { "path": "../../../dsh/session/session-projection" },
     { "path": "../../core/contracts" },
     { "path": "../tool-policy" }
   ]

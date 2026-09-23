@@ -16,18 +16,18 @@
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-scope": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-scope": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-projection": "catalog:dsh"
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
   }
 }

@@ -46,6 +46,11 @@ export function stableJson(value: unknown): string {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`
 }
 
+/** One-line stable JSON, for comparing values whose key order carries no meaning. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(sortKeys(value))
+}
+
 function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeys)
   if (value === null || typeof value !== 'object') return value

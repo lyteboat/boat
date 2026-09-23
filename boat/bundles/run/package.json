@@ -41,10 +41,10 @@
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh"
+    "@deepseek-ai/dsh-session": "workspace:*"
   },
   "devDependencies": {
     "@boat/host": "workspace:*",
@@ -52,13 +52,13 @@
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-persistence": "catalog:dsh",
-    "@deepseek-ai/dsh-tools": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*",
     "@types/js-yaml": "catalog:"
   }
 }

@@ -6,6 +6,12 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../../../dsh/core/agent" },
+    { "path": "../../../dsh/core/session" },
+    { "path": "../../../dsh/core/system-prompt" },
+    { "path": "../../../dsh/core/tools" },
+    { "path": "../../../dsh/session/session-persistence" },
+    { "path": "../../../dsh/session/session-projection" },
     { "path": "../cordis-compat" },
     { "path": "../contracts" }
   ]

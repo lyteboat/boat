@@ -3,6 +3,39 @@
   "files": [],
   "references": [
     {
+      "path": "./dsh/core/session"
+    },
+    {
+      "path": "./dsh/core/system-prompt"
+    },
+    {
+      "path": "./dsh/core/tools"
+    },
+    {
+      "path": "./dsh/core/agent"
+    },
+    {
+      "path": "./dsh/core/agent-loop"
+    },
+    {
+      "path": "./dsh/session/session-projection"
+    },
+    {
+      "path": "./dsh/session/session-persistence"
+    },
+    {
+      "path": "./dsh/session/session-persistence-jsonl"
+    },
+    {
+      "path": "./dsh/compaction/compaction"
+    },
+    {
+      "path": "./dsh/compaction/compaction-basic"
+    },
+    {
+      "path": "./dsh/test-support/agent-loop-testkit"
+    },
+    {
       "path": "./boat/core/cordis-compat"
     },
     {

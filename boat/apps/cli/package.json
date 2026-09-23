@@ -31,7 +31,8 @@
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
     "@deepseek-ai/dsh-command-compact": "catalog:dsh",
     "@deepseek-ai/dsh-command-goal": "catalog:dsh",
-    "@deepseek-ai/dsh-compaction-basic": "catalog:dsh",
+    "@deepseek-ai/dsh-compaction": "workspace:*",
+    "@deepseek-ai/dsh-compaction-basic": "workspace:*",
     "@deepseek-ai/dsh-compaction-tool-result-pruner": "catalog:dsh",
     "@deepseek-ai/dsh-cordis-client-runner": "catalog:dsh",
     "@deepseek-ai/dsh-experimental-agent-team-profile": "catalog:dsh",
@@ -57,7 +58,7 @@
     "@deepseek-ai/dsh-schedule": "catalog:dsh",
     "@deepseek-ai/dsh-sdk-app": "catalog:dsh",
     "@deepseek-ai/dsh-sdk-minimal": "catalog:dsh",
-    "@deepseek-ai/dsh-session-projection": "catalog:dsh",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
     "@deepseek-ai/dsh-session-reference": "catalog:dsh",
     "@deepseek-ai/dsh-skill": "catalog:dsh",
     "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
@@ -99,8 +100,8 @@
   "devDependencies": {
     "@boat/testing": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "catalog:dsh",
-    "@deepseek-ai/dsh-session-persistence": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
     "@types/js-yaml": "catalog:"
   }
 }

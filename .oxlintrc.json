@@ -12,7 +12,13 @@
     "**/node_modules/**",
     "**/*.js",
     "**/*.cjs",
-    "**/*.config.ts"
+    "**/*.config.ts",
+    "dsh/*/*/src/*.ts",
+    "dsh/*/*/src/*/**",
+    "!dsh/*/*/src/boat/**",
+    "dsh/*/*/tests/*.ts",
+    "dsh/*/*/tests/*/**",
+    "!dsh/*/*/tests/boat/**"
   ],
   "rules": {
     "no-var": "error",
@@ -31,7 +37,8 @@
   "overrides": [
     {
       "files": [
-        "**/tests/**/*.ts"
+        "**/tests/**/*.ts",
+        "conformance/**/*.ts"
       ],
       "rules": {
         "typescript/no-non-null-assertion": "off"

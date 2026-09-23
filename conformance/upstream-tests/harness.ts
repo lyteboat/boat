@@ -1,0 +1,111 @@
+/**
+ * G2 harness: runs upstream's own tests of the kernel packages
+ * (`dsh/<group>/<package>/tests`) unmodified, outside upstream's monorepo.
+ * Upstream runs them with a resolution facade that maps every `@deepseek-ai/*`
+ * package to its TypeScript source and with the vendored cordis sources; this
+ * module rebuilds exactly that environment for the kernel and states every
+ * difference (README.md beside it lists them with their reasons).
+ *
+ * - Kernel package names and export subpaths resolve to the kernel's `src/`,
+ *   so a test's relative `../src/x.ts` import and a package-name import of the
+ *   same module are one module instance, as in upstream.
+ * - Every other `@deepseek-ai/*` package is inlined (processed by vite, not
+ *   loaded natively), so its own imports of kernel packages take the same
+ *   route instead of loading the published bundles beside the sources.
+ * - `@deepseek-ai/cordis` resolves to a module that re-exports the published
+ *   build and adds the runtime values of its `declare const enum`s
+ *   (`FiberState`, …): upstream compiles against cordis sources, where those
+ *   enums exist at runtime; the published build erases them.
+ * - Two imports of files no published package ships resolve to shims.
+ * - Tests of upstream's repository scripts are excluded.
+ * @module conformance/upstream-tests/harness
+ */
+
+import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import type { Plugin } from 'vitest/config'
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+const require = createRequire(join(repoRoot, 'package.json'))
+
+/** Test files that exercise upstream's repository tooling (`scripts/`), not the package. */
+export const UPSTREAM_TEST_EXCLUDES: readonly { file: string; reason: string }[] = [
+  { file: 'dsh/core/tools/tests/gen-tool-catalog.spec.ts', reason: 'tests upstream scripts/gen-tool-catalog.ts, which boat does not carry' },
+  { file: 'dsh/core/session/tests/gen-persistence-catalog.spec.ts', reason: 'tests upstream scripts/gen-persistence-catalog.ts; the overlay persistence gate runs that script on boat\'s sources' },
+  { file: 'dsh/core/agent/tests/verify-export-jsdoc.spec.ts', reason: 'tests upstream scripts/verify-export-jsdoc.ts, a repository lint' },
+]
+
+/** Imports of files no published package ships, by the importer-relative or bare specifier upstream writes. */
+const SHIMS: Readonly<Record<string, string>> = {
+  '../../../settings/settings/tests/live-config.ts': 'shims/live-config.ts',
+  '@deepseek-ai/dsh-llm-pi-ai/src/context.ts': 'shims/pi-context.ts',
+}
+
+const CORDIS_SHIM = '\0boat-upstream-tests:cordis'
+
+interface KernelEntry {
+  name: string
+  dir: string
+  /** export subpath (`.`, `./invariant`, …) → source file */
+  subpaths: Map<string, string>
+}
+
+function kernelEntries(): KernelEntry[] {
+  const kernel = (JSON.parse(readFileSync(join(repoRoot, 'dsh/kernel.json'), 'utf8')) as { packages: Record<string, string> }).packages
+  return Object.entries(kernel).map(([name, dir]) => {
+    const packageDir = join(repoRoot, 'dsh', dir)
+    const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as { exports: Record<string, unknown> }
+    const subpaths = new Map<string, string>()
+    for (const [subpath, target] of Object.entries(manifest.exports)) {
+      if (typeof target !== 'object' || target === null) continue
+      const types = (target as { types?: string }).types
+      // Upstream emits src/X.ts to lib/types/X.d.ts, so the declaration path names the source.
+      const match = types === undefined ? null : /^\.\/lib\/types\/(.+)\.d\.ts$/u.exec(types)
+      if (match?.[1] !== undefined) subpaths.set(subpath, join(packageDir, 'src', `${match[1]}.ts`))
+    }
+    return { name, dir: packageDir, subpaths }
+  })
+}
+
+/** The members of every `declare const enum` in the published cordis declarations, as runtime objects. */
+function cordisConstEnums(): string {
+  const typesDir = join(dirname(require.resolve('@deepseek-ai/cordis')), 'types')
+  const out: string[] = []
+  for (const file of ['fiber.d.ts', 'logger.d.ts']) {
+    const text = readFileSync(join(typesDir, file), 'utf8')
+    for (const match of text.matchAll(/export declare const enum (\w+) \{([^}]*)\}/gu)) {
+      const members = [...(match[2] ?? '').matchAll(/(\w+)\s*=\s*(-?\d+)/gu)].map(([, key, value]) => `${String(key)}: ${String(value)}`)
+      out.push(`export const ${String(match[1])} = Object.freeze({ ${members.join(', ')} })`)
+    }
+  }
+  return out.join('\n')
+}
+
+/** The resolution facade and the cordis module described above. */
+export function upstreamTestsPlugin(): Plugin {
+  const kernel = kernelEntries()
+  const cordisEntry = require.resolve('@deepseek-ai/cordis')
+  const shimDir = fileURLToPath(new URL('.', import.meta.url))
+  return {
+    name: 'boat-upstream-tests',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (source === '@deepseek-ai/cordis') return importer === CORDIS_SHIM ? null : CORDIS_SHIM
+      const shim = SHIMS[source]
+      if (shim !== undefined) return join(shimDir, shim)
+      for (const entry of kernel) {
+        if (source !== entry.name && !source.startsWith(`${entry.name}/`)) continue
+        const subpath = source === entry.name ? '.' : `.${source.slice(entry.name.length)}`
+        const file = entry.subpaths.get(subpath) ?? (subpath.startsWith('./src/') ? join(entry.dir, subpath) : undefined)
+        if (file !== undefined && existsSync(file)) return file
+      }
+      return null
+    },
+    load(id) {
+      if (id !== CORDIS_SHIM) return null
+      return [`export * from ${JSON.stringify(cordisEntry)}`, cordisConstEnums()].join('\n')
+    },
+  }
+}

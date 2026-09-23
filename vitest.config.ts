@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import { UPSTREAM_TEST_EXCLUDES, upstreamTestsPlugin } from './conformance/upstream-tests/harness.ts'
 
 // Workspace packages resolve to src through the `@boat/source` export condition, never
 // through their default export to built lib/, so a stale artifact can never load a second
@@ -22,6 +23,19 @@ export default defineConfig({
         test: {
           name: 'source',
           include: [`${layers}/*/tests/**/*.{spec,e2e}.ts`, 'scripts/**/*.spec.ts'],
+        },
+      },
+      {
+        extends: true,
+        // G2: upstream's own tests of the kernel packages, unmodified; the harness
+        // rebuilds upstream's source-resolution environment (conformance/upstream-tests).
+        plugins: [upstreamTestsPlugin()],
+        test: {
+          name: 'dsh',
+          include: ['dsh/*/*/tests/**/*.spec.ts'],
+          exclude: UPSTREAM_TEST_EXCLUDES.map(entry => entry.file),
+          setupFiles: ['conformance/upstream-tests/setup.ts', 'conformance/upstream-tests/test-invariants.ts'],
+          server: { deps: { inline: [/@deepseek-ai\//u] } },
         },
       },
       {
