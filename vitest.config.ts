@@ -46,6 +46,9 @@ export default defineConfig({
           name: 'conformance',
           include: ['conformance/{scenarios,roundtrip,canaries}/**/*.spec.ts'],
           testTimeout: 300_000,
+          // Every file packs the kernel and installs the same trees; run in parallel, a stale
+          // tree is removed and reinstalled under another file's running pnpm.
+          fileParallelism: false,
         },
       },
       {
