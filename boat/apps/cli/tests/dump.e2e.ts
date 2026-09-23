@@ -29,6 +29,8 @@ describe('boat config dump (built bin)', () => {
   it('prints the version pair', async () => {
     const result = await runBoat(['--version'], { env: { BOAT_HOME: home } })
     expect(result.code).toBe(0)
-    expect(result.stdout).toMatch(/^boat \d+\.\d+\.\d+ \(dsh 0\.1\.7-alpha\.2\)/u)
+    const { dsh } = JSON.parse(readFileSync(new URL('../../../../dsh.upstream.json', import.meta.url), 'utf8')) as { dsh: string }
+    expect(result.stdout).toMatch(/^boat \d+\.\d+\.\d+ \(dsh [^)]+\)\n$/u)
+    expect(result.stdout).toContain(`(dsh ${dsh})`)
   })
 })

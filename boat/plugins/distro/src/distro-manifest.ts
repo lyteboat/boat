@@ -3,10 +3,10 @@
 import type { BoatDistroExtension } from '@boat/contracts'
 
 /** The dsh release the kernel was imported from. */
-export const DSH_BASE = '0.1.7-alpha.2'
+export const DSH_BASE = '0.1.7-rc.1'
 
 /** Every kernel extension this build carries. */
 export const DISTRO_EXTENSIONS: readonly BoatDistroExtension[] = Object.freeze([
-  { id: 'agent-loop-intake', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'boat on dsh 0.1.7-alpha.2 (carried from the boat driver fork since M2)' },
-  { id: 'agent-loop-pre-assemble', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'boat on dsh 0.1.7-alpha.2 (carried from the boat driver fork since M2)' },
+  { id: 'agent-loop-intake', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'boat on dsh 0.1.7-rc.1 (carried from the boat driver fork since M2)' },
+  { id: 'agent-loop-pre-assemble', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'boat on dsh 0.1.7-rc.1 (carried from the boat driver fork since M2)' },
 ])

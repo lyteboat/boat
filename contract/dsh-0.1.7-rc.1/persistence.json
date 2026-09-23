@@ -251,7 +251,7 @@
       "kind": "event"
     }
   },
-  "sha256": "679cb279008ef2bb4fb74b460591df7d8a4e1c190e03cb0c8b967571b2a038c8",
+  "sha256": "eb2f08f97f8ee4eea2b06b9339a9435c89d46ccec663641f314cdd1446c63525",
   "source": "docs/persistence-schema.json",
   "typeDigests": [
     "0116b1f89c05221d56b0ba35c83d302bf4857bc7277d247e9bbaf74b27d2c66e",

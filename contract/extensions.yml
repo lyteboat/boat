@@ -28,7 +28,7 @@ extensions:
       - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatIntakeDecision
       - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatIntakeReply
       - api › @deepseek-ai/dsh-agent-loop › exports › . › BoatStepPayload
-    since: boat on dsh 0.1.7-alpha.2 (carried from the boat driver fork since M2)
+    since: boat on dsh 0.1.7-rc.1 (carried from the boat driver fork since M2)
     exit: >-
       Upstream dispatches a pre-assembly waterfall that can answer a step without a model request
       (agent/pre-step fires after assembly and cannot); then @boat plugins listen to it instead.
@@ -42,7 +42,7 @@ extensions:
       prompt is assembled, so skill routing and tool activation shape the same step's request.
     contract:
       - events › @deepseek-ai/dsh-agent-loop › boat/pre-assemble
-    since: boat on dsh 0.1.7-alpha.2 (carried from the boat driver fork since M2)
+    since: boat on dsh 0.1.7-rc.1 (carried from the boat driver fork since M2)
     exit: >-
       Upstream dispatches an event before systemPrompt.assemble that can still change the step's
       prompt and tool set (agent/pre-step fires after assembly).

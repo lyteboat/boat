@@ -29,7 +29,7 @@ describe('@boat/distro in the run composition (in process, mock model)', () => {
       env: { DEEPSEEK_BASE_URL: `${mock.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
     }, [{ id: 'session-title-llm', disabled: true }, PLUGIN])
     expect(result.code, result.stderr).toBe(0)
-    expect(result.stdout).toContain('boat on dsh 0.1.7-alpha.2: agent-loop-intake, agent-loop-pre-assemble')
+    expect(result.stdout).toContain('boat on dsh 0.1.7-rc.1: agent-loop-intake, agent-loop-pre-assemble')
     expect(mock.requests).toHaveLength(0)
   })
 })

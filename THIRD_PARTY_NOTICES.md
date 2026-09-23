@@ -4,11 +4,11 @@
 
 Everything under `dsh/<group>/<package>` (the packages `dsh/kernel.json` lists) is imported from
 https://github.com/deepseek-ai/deepseek-harness by `scripts/dist/import-upstream.ts`, at the tag
-the most recent `Dist-Import` commit names (today dsh-v0.1.7-alpha.2, commit 00102833), and carries
+the most recent `Dist-Import` commit names (today dsh-v0.1.7-rc.1, commit 46a7f68b), and carries
 boat's changes as commits on top; `src/boat/` and `tests/boat/` inside those packages are boat's
 own. Files elsewhere marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their
 header are derived from the same repository at the tag their header names: dsh-v0.1.5-alpha.2
-(commit b2e3b2a0) or dsh-v0.1.7-alpha.2 (commit 00102833).
+(commit b2e3b2a0) or dsh-v0.1.7-rc.1 (commit 46a7f68b).
 
 ```
 MIT License

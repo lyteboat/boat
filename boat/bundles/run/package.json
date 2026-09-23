@@ -42,8 +42,8 @@
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",
-    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
-    "@deepseek-ai/dsh-llm": "catalog:dsh",
+    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
     "@deepseek-ai/dsh-session": "workspace:*"
   },
   "devDependencies": {

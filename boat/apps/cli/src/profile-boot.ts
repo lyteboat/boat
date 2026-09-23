@@ -14,7 +14,7 @@
  * are provided to the tree through `ctx.cmdlineArgs`.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/profile-boot.ts
- * @ dsh-v0.1.7-alpha.2 (00102833), MIT — see THIRD_PARTY_NOTICES.md. Changes:
+ * @ dsh-v0.1.7-rc.1 (46a7f68b), MIT — see THIRD_PARTY_NOTICES.md. Changes:
  * boat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
  * dropped, the launcher's own overlays (`--plugin`) sit above the

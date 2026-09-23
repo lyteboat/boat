@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import { expect, test } from 'vitest'
 
@@ -35,4 +35,20 @@ test('the overrides route exactly the kernel packages to the workspace', () => {
 
 test('the dsh catalog lists no kernel package', () => {
   expect(Object.keys(workspace.catalogs.dsh).filter(name => kernel.includes(name))).toEqual([])
+})
+
+// dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm leaves
+// `catalog:` unresolved, so a boat package writes them as the exact version a publish would.
+test('every dsh peer of a boat package is the dsh.upstream.json release, or the workspace kernel', () => {
+  const manifests = readdirSync(new URL('../boat', import.meta.url), { withFileTypes: true })
+    .filter(layer => layer.isDirectory())
+    .flatMap(layer => readdirSync(new URL(`../boat/${layer.name}`, import.meta.url)).map(name => new URL(`../boat/${layer.name}/${name}/package.json`, import.meta.url)))
+    .filter(url => existsSync(url))
+  for (const url of manifests) {
+    const { name, peerDependencies = {} } = JSON.parse(readFileSync(url, 'utf8')) as { name: string; peerDependencies?: Record<string, string> }
+    for (const [peer, spec] of Object.entries(peerDependencies)) {
+      if (peer !== '@deepseek-ai/dsh' && !peer.startsWith('@deepseek-ai/dsh-')) continue
+      expect({ name, peer, spec }).toEqual({ name, peer, spec: kernel.includes(peer) ? 'workspace:*' : upstream.dsh })
+    }
+  }
 })
