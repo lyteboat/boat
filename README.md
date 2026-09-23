@@ -21,6 +21,16 @@ AI 的未来是 Model + Harness。模型提供通用智能，Harness 把它落�
 - Kernel promotion: `llm/llm` (`@deepseek-ai/dsh-llm`) and `skill/skill` (`@deepseek-ai/dsh-skill`) joined the kernel, so the capabilities every composition needs to start (model access, tools, skills, sessions) are boat's own source; 13 packages, under the same gates.
 - Tracked release: dsh 0.1.7-rc.1 (`dsh.upstream.json`). The kernel is its import plus boat's two extensions, and every gate above passes against it.
 
+## Docs
+
+Written in Chinese, each one walks a running example end to end against this repository:
+
+| Doc | What it covers |
+|---|---|
+| [`docs/01-architecture.md`](docs/01-architecture.md) | C4 layers from the system down to the kernel's seams, what happens at startup (sequence diagram), the Lifecycle of every row, how boat and dsh inject and override each other, the flow of one request through the harness, and the order of the session log |
+| [`docs/02-distribution.md`](docs/02-distribution.md) | the distribution's conventions and rules: the kernel and the upstream line, a sync step by step, change classes and the extension registry, promotion into the kernel, the gates G1–G6 and how to run them, channels and branches, versions and pins |
+| [`docs/03-agent-development.md`](docs/03-agent-development.md) | building a business agent on boat, step by step, with a complete example agent (`policy-desk`): directory, composition file, skills, tools, policy, tests, running it, and what to watch for |
+
 ## Requirements
 
 - Node 22.19+ (or 24)
@@ -59,6 +69,7 @@ The repository root separates what boat owns from what it takes over and what it
 | `dsh/<group>/<package>` | the kernel: the dsh packages listed in `dsh/kernel.json`, under their published `@deepseek-ai/*` names, imported per tag by `scripts/dist/import-upstream.ts`. Upstream files plus boat's commits, each classified by a `Dist-Change` trailer; boat-owned modules sit in `src/boat/` and `tests/boat/` |
 | `boat/<layer>/<package>` | boat's own packages (`@boat/*`), one directory per layer; dependencies point down only (`apps` → `bundles` → `plugins` → `core`; `agents` → `plugins`, `core`; `tooling` is for tests), and `pnpm run lint` checks it |
 | `compatibility/` | what boat promises and the proof that it keeps it, no runtime code: `COMPAT.md` (the promise for people), `contract/` (the contract snapshot of each tracked release, `dsh-<version>/`, and `extensions.yml`, the registry of what boat adds), `tests/` (`upstream-harness/` for G2, `scenarios/` G4, `canaries/` G5, `roundtrip/` G6); `compatibility/README.md` lists every gate |
+| `docs/` | the guides listed under [Docs](#docs) |
 | `scripts/dist/` | the distribution tooling: import, snapshot, contract check (G1), delta report, overlay gates (persistence, G3), kernel bundling, packing and install trees |
 
 | Path | Package | Role |
