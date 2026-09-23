@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
@@ -61,9 +61,9 @@ describe('boat run (built bin, mock model)', () => {
     // The world, not the self-report: the persisted log carries the tool round trip.
     const logs = findSessionLogs(home)
     expect(logs).toHaveLength(1)
-    expect(logs[0]).toMatch(/session\.v3\.jsonl\.zstd$/u)
+    expect(logs[0]).toMatch(/session\.v4\.jsonl\.zstd$/u)
     const records = readSessionLog(logs[0]!)
-    expect(records[0]).toMatchObject({ type: 'session', version: 3 })
+    expect(records[0]).toMatchObject({ type: 'session', version: 4 })
     const types = eventTypes(records)
     expect(types[0]).toBe('permission/preset')
     expect(types).toContain('turn/start')
@@ -73,8 +73,8 @@ describe('boat run (built bin, mock model)', () => {
     expect(types.at(-1)).toBe('turn/end')
     const toolCall = records.find(record => record['type'] === 'tool/call') as { data: { name: string; arguments: string } } | undefined
     expect(toolCall?.data).toMatchObject({ name: 'read', arguments: JSON.stringify({ file_path: 'README.md' }) })
-    const toolResult = records.find(record => record['type'] === 'tool/result') as { data: { message: { content: { isError: boolean; content: { text: string }[] }[] } } } | undefined
-    expect(toolResult?.data.message.content[0]).toMatchObject({ isError: false })
+    const toolResult = records.find(record => record['type'] === 'tool/result') as { data: { message: { role: string; isError: boolean } } } | undefined
+    expect(toolResult?.data.message).toMatchObject({ role: 'tool', isError: false })
     expect(JSON.stringify(toolResult)).toContain('smoke workspace')
     const turnEnd = records.at(-1) as { data: { reason: { kind: string } } }
     expect(turnEnd.data.reason.kind).toBe('completed')
@@ -82,8 +82,7 @@ describe('boat run (built bin, mock model)', () => {
     // Two model requests reached the mock: the tool-call step and the final answer.
     expect(mock.requests).toHaveLength(2)
 
-    // The installation closure was linked for the profile's plugin resolution.
-    const linked = readdirSync(join(home, 'profiles', 'node_modules', '@deepseek-ai'))
-    expect(linked.length).toBeGreaterThanOrEqual(200)
+    // The profile's plugins resolved through the installation's runtime resolution; nothing is linked into the profiles tree.
+    expect(existsSync(join(home, 'profiles', 'node_modules'))).toBe(false)
   })
 })

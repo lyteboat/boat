@@ -22,13 +22,13 @@ describe('boat config dump (built bin)', () => {
     expect(result.stdout).toContain('@boat/host')
     expect(result.stdout).toContain('@boat/run')
     expect(result.stdout).toContain('id: agent-loop')
-    const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'run', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[]; patchReload: string } } }
-    expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run'], patchReload: 'startup' })
+    const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'run', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
+    expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run'] })
   })
 
   it('prints the version pair', async () => {
     const result = await runBoat(['--version'], { env: { BOAT_HOME: home } })
     expect(result.code).toBe(0)
-    expect(result.stdout).toMatch(/^boat \d+\.\d+\.\d+ \(dsh 0\.1\.5-alpha\.2\)/u)
+    expect(result.stdout).toMatch(/^boat \d+\.\d+\.\d+ \(dsh 0\.1\.7-alpha\.2\)/u)
   })
 })

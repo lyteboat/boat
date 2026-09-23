@@ -1,19 +1,24 @@
 /**
  * Shared profile boot for every `boat` surface: initialize the profile from
- * boat's template on first use, resolve it, stack its patch layers (bundle
- * layers in `dsh.profile.bundles` order, the profile's own `cordis.patch.yml`,
- * the home-level layer, `--patch` overlays, the telemetry switch), mount the
- * tree over the profile's empty root config, apply its patch-reload lifecycle,
- * and wire fail-loud plus bounded shutdown.
+ * boat's template on first use, resolve it and the installation's runtime
+ * package resolution, stack its patch layers (bundle layers in
+ * `dsh.profile.bundles` order, the profile's own `cordis.patch.yml`, the
+ * home-level layer, `--patch` and launcher overlays, the telemetry switch),
+ * mount the tree over the profile's empty root config with the profile's
+ * facts provided as `ctx.profileContext`, and wire fail-loud plus bounded
+ * shutdown. Live reload of the user layers is dsh-base's `hmr` row, which
+ * recomposes from those facts; a bundle that applies patches only at startup
+ * disables that row.
  *
  * App flags are not the launcher's business: the invocation's inner arguments
  * are provided to the tree through `ctx.cmdlineArgs`.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/profile-boot.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Changes:
+ * @ dsh-v0.1.7-alpha.2 (00102833), MIT — see THIRD_PARTY_NOTICES.md. Changes:
  * boat's own template table replaces dsh's shipped-profile initialization,
- * `--from-default-profile` is dropped, and `FiberState` reads go through
- * `@boat/cordis-compat`.
+ * `--from-default-profile` and the application-owned profile runtime are
+ * dropped, the launcher's own overlays (`--driver`, `--plugin`) sit above the
+ * `--patch` overlays, and `FiberState` reads go through `@boat/cordis-compat`.
  * @module @boat/cli/profile-boot
  */
 
@@ -22,21 +27,21 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import {
   boot,
-  composeEntries,
-  healProfilesModuleFallback,
+  createRuntimeResolution,
   initProfile,
   installFailLoud,
-  loadOptionalPatches,
   loadOverlayPatches,
   loadProfile,
+  PluginPackages,
   PROFILE_PATCH_FILENAME,
   readProfileManifest,
+  readProfilePatches,
   resolveProfileDir,
-  watchUserPatches,
   type Profile,
+  type ProfileContext,
+  type RuntimeResolution,
 } from '@deepseek-ai/dsh-app-boot'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
@@ -85,9 +90,6 @@ export function homePatchPath(): string {
 /** Absolute path of this boat installation's package.json (src/ and lib/ both sit one level under apps/cli). */
 export const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
 
-/** The session-telemetry row id the DSH_TELEMETRY_DISABLED switch targets. */
-const TELEMETRY_ROW_ID = 'session-telemetry-otel'
-
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# boat profile root — an empty entry list. The tree is composed as patches:
 # each bundle in package.json's dsh.profile.bundles, then cordis.patch.yml, then any
@@ -113,7 +115,7 @@ export function ensureProfileInitialized(name: string, home: string = resolveDsh
   const dir = resolveProfileDir(name, home)
   const template = BOAT_PROFILE_TEMPLATES[name]
   if (!existsSync(join(dir, 'package.json'))) {
-    if (template !== undefined) initProfile(dir, template.bundles, template.patchReload)
+    if (template !== undefined) initProfile(dir, template.bundles)
     return
   }
   if (template === undefined) return
@@ -123,19 +125,6 @@ export function ensureProfileInitialized(name: string, home: string = resolveDsh
     `${NAME}: profile "${name}" at ${dir} lists bundles [${bundles.join(', ')}], but this boat's "${name}" template is [${template.bundles.join(', ')}]. `
     + `Set dsh.profile.bundles in ${join(dir, 'package.json')} to the template's list, or move the directory away to have it recreated (keep your cordis.patch.yml).`,
   )
-}
-
-/**
- * Resolve the telemetry opt-out switch into its boot patch. ANY non-empty
- * value (including `'0'`/`'false'`) disables: a privacy switch prefers
- * off-by-mistake over on-by-mistake.
- * @param disabledEnv - the raw `DSH_TELEMETRY_DISABLED` value (`undefined` when unset).
- * @param hasRow - whether the composition carries the telemetry row.
- * @returns the disable patch, or `undefined` when no hard-disable patch is required.
- */
-export function resolveTelemetryPatch(disabledEnv: string | undefined, hasRow: boolean): PatchOptions | undefined {
-  if ((disabledEnv ?? '') === '' || !hasRow) return undefined
-  return { id: TELEMETRY_ROW_ID, disabled: true }
 }
 
 /**
@@ -153,33 +142,21 @@ export function prepareProfile(name: string, userLayer = true): Profile {
   return profile
 }
 
-/** One profile's patch layers, in application order. */
+/** One profile's boot inputs. */
 interface ComposedProfile {
   profile: Profile
-  /** Bundle layers concatenated — the part below the user layers on a live reload. */
-  bundlePatches: PatchOptions[]
-  /** The home-level user layer, applied after the profile's own. */
-  homePatches: PatchOptions[]
-  /** Layers above the user layers on a live reload: `--patch` overlays and the telemetry switch. */
+  /** The installation's package resolution, computed before any plugin imports. */
+  resolution: RuntimeResolution
+  /** Layers above the user layers: `--patch` overlays, then the launcher's own. */
   overlays: PatchOptions[]
 }
 
-/** The full patch stack of one composed profile, in application order. */
-function allPatches(composed: ComposedProfile): PatchOptions[] {
-  return [
-    ...composed.bundlePatches,
-    ...composed.profile.patches,
-    ...composed.homePatches,
-    ...composed.overlays,
-  ]
-}
-
 /**
- * Load `name` and compose its effective patch stack.
+ * Load `name`, resolve the installation's packages for it, and read its overlays.
  * @param name - the profile name.
  * @param patchFiles - `--patch` overlay paths, in argv order.
  * @param launcherOverlays - in-memory layers the launcher derives from its own flags.
- * @returns the profile and its patch layers.
+ * @returns the profile, its package resolution, and its overlays.
  */
 async function composeProfile(
   name: string,
@@ -187,20 +164,11 @@ async function composeProfile(
   launcherOverlays: readonly PatchOptions[],
 ): Promise<ComposedProfile> {
   const profile = prepareProfile(name, true)
-  await healProfilesModuleFallback({ installAnchor: INSTALL_ANCHOR, profile })
-  const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
+  const resolution = await createRuntimeResolution({ installAnchor: INSTALL_ANCHOR, profile })
   // Launcher-generated layers (the driver switch) sit above every file overlay so a
   // user file can never displace them.
   const overlays = [...patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file))), ...launcherOverlays]
-  const bundlePatches = profile.layers.flatMap(layer => layer.patches)
-  const rows = new Map<string, EntryOptions>()
-  for (const row of composeEntries([bundlePatches, profile.patches, homePatches, overlays])) {
-    if (typeof row.id === 'string') rows.set(row.id, row)
-  }
-  const composedOverlays = [...overlays]
-  const telemetryPatch = resolveTelemetryPatch(process.env['DSH_TELEMETRY_DISABLED'], rows.has(TELEMETRY_ROW_ID))
-  if (telemetryPatch !== undefined) composedOverlays.push(telemetryPatch)
-  return { profile, bundlePatches, homePatches, overlays: composedOverlays }
+  return { profile, resolution, overlays }
 }
 
 /** Options for {@link runProfile}. */
@@ -215,18 +183,6 @@ export interface RunProfileOptions {
   launcherOverlays?: readonly PatchOptions[]
   /** The invocation's inner arguments, handed to the tree through `ctx.cmdlineArgs`. */
   args: readonly string[]
-}
-
-/**
- * Re-throw a watcher-setup failure unless a shutdown already owns the tree.
- * @param ctx - the booted root context.
- * @param signal - this invocation's signal-shutdown fact.
- * @param error - the setup failure.
- */
-function suppressShutdownError(ctx: Context, signal: AbortSignal, error: unknown): void {
-  if (signal.aborted) return
-  if (ctx.fiber.state !== FIBER_STATE.ACTIVE || ctx.get('loader') === undefined) return
-  throw error
 }
 
 /**
@@ -262,18 +218,25 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   })
 
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
-  // Recomposition for the live user layers: bundle layers below, overlays above.
-  // Fresh clones per generation: the include pushes `insert` rows into the mounted
-  // tree by reference and later id-targeted patches mutate those objects in place.
-  const composeLive = (): PatchOptions[] => structuredClone([
-    ...composed.bundlePatches,
-    ...loadOptionalPatches(NAME, composed.profile.patchPath) ?? [],
-    ...loadOptionalPatches(NAME, homePatchPath()) ?? [],
-    ...composed.overlays,
-  ])
-  const ctx = await boot(NAME, rootConfig, structuredClone(allPatches(composed)), (hostCtx) => {
+  // The facts dsh-base's `hmr` row recomposes the live user layers from:
+  // bundle layers below, the profile and home layers, overlays above.
+  const profileContext: ProfileContext = {
+    name: options.profile,
+    dir: composed.profile.dir,
+    patchPath: composed.profile.patchPath,
+    installAnchor: INSTALL_ANCHOR,
+    startedBundles: composed.profile.layers.map(layer => layer.packageName),
+    cwd: process.cwd(),
+    home: resolveDshHome(),
+    overlays: composed.overlays,
+    telemetryDisabledEnv: process.env['DSH_TELEMETRY_DISABLED'],
+  }
+  const ctx = await boot(NAME, rootConfig, readProfilePatches(NAME, profileContext, composed.profile), async (hostCtx) => {
     app.current = hostCtx
+    hostCtx.provide('profileContext', profileContext)
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment)
+    // Bare row names resolve through the installation's dependency graph.
+    await hostCtx.plugin(PluginPackages, { resolution: composed.resolution })
     provideCmdline(hostCtx, {
       args: options.args,
       exit: code => void shutdown.shutdown(code),
@@ -281,33 +244,6 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     })
   })
   app.current = ctx
-  if (composed.profile.patchReload === 'live'
-    && !signalShutdown.signal.aborted
-    && ctx.fiber.state === FIBER_STATE.ACTIVE
-    && ctx.get('loader') !== undefined) {
-    try {
-      // Config-only HMR for the live profile patch layer: dsh-base disables module
-      // reload by default, so mount a watch-only instance with no module roots.
-      if (ctx.get('hmr') === undefined) {
-        if (ctx.get('timer') === undefined) {
-          await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
-        }
-        await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
-      }
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: composed.profile.patchPath,
-        compose: composeLive,
-      })
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: homePatchPath(),
-        compose: composeLive,
-      })
-    } catch (error) {
-      suppressShutdownError(ctx, signalShutdown.signal, error)
-    }
-  }
   if (!signalShutdown.signal.aborted
     && ctx.fiber.state === FIBER_STATE.ACTIVE
     && ctx.get('loader') !== undefined) {

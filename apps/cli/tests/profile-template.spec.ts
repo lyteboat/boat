@@ -30,7 +30,7 @@ describe('boat profile templates', () => {
 
   test('an existing profile whose bundle list predates the template fails loud with the fix', () => {
     const dir = home()
-    initProfile(resolveProfileDir('run', dir), ['@deepseek-ai/dsh-base', '@boat/run'], 'startup')
+    initProfile(resolveProfileDir('run', dir), ['@deepseek-ai/dsh-base', '@boat/run'])
     expect(() => { ensureProfileInitialized('run', dir) }).toThrow(/profile "run" .* lists bundles \[@deepseek-ai\/dsh-base, @boat\/run\].*\[@deepseek-ai\/dsh-base, @boat\/host, @boat\/run\]/su)
   })
 

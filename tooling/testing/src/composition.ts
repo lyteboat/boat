@@ -12,13 +12,13 @@
  * @module @boat/testing/composition
  */
 
-import { existsSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import { boot, initProfile, loadLayeredEnv, loadProfile, PROFILES_DIR, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { boot, initProfile, loadLayeredEnv, loadProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 
@@ -135,12 +135,8 @@ function readiness(): { service: AppReady; commit(): void } {
 
 function composedPatches(home: string, options: CompositionOptions): { root: string; patches: PatchOptions[] } {
   const dir = resolveProfileDir(PROFILE, home)
-  initProfile(dir, options.bundles, 'startup')
+  initProfile(dir, options.bundles)
   const profile = loadProfile(BIN_NAME, PROFILE, WORKSPACE_ANCHOR, home)
-  // The launcher links its installation closure here; the workspace's hoisted
-  // node_modules is that closure, and agent-presets resolves agent rows from it.
-  const closure = join(home, PROFILES_DIR, 'node_modules')
-  if (!existsSync(closure)) symlinkSync(join(dirname(WORKSPACE_ANCHOR), 'node_modules'), closure, 'dir')
   const root = join(dir, 'cordis.yml')
   writeFileSync(root, '[]\n')
   const patches = [...profile.layers.flatMap(layer => layer.patches), ...QUIET, ...options.patches ?? []]
