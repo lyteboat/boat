@@ -52,6 +52,23 @@ describe('@boat/run composition (in process, mock model)', () => {
     rmSync(result.home, { recursive: true, force: true })
   })
 
+  it('sends the model no session log: @boat/host keeps dsh-base\'s session-log upload off', async () => {
+    const before = mock.requests.length
+    const result = await bootComposition({
+      bundles: RUN,
+      patches: [{ id: 'session-title-llm', disabled: true }],
+      args: ['read the readme and report'],
+      cwd: workspace,
+      env: { DEEPSEEK_BASE_URL: `${mock.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
+    })
+    expect(result.code, result.stderr).toBe(0)
+    const sent = mock.requests.slice(before)
+    expect(sent.length).toBeGreaterThan(0)
+    for (const request of sent) expect(request.body).not.toHaveProperty('dsh_session_log')
+    expect(eventTypes(readSessionLog(findSessionLogs(result.home)[0] ?? ''))).not.toContain('session-log-deepseek/delivery-accepted')
+    rmSync(result.home, { recursive: true, force: true })
+  })
+
   it('rejects a missing task as a usage error without a model request', async () => {
     const before = mock.requests.length
     const result = await bootComposition({

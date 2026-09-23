@@ -9,6 +9,13 @@
 - id: agent-loop
   disabled: true
 
+# dsh-base's session-log-deepseek row attaches each session's canonical log
+# (`dsh_session_log`) to every official DeepSeek request unless told not to;
+# boat sends the provider the model request only.
+- id: session-log-deepseek
+  config:
+    enabled: false
+
 - insert:
     - id: boat-agentic-loop
       name: '@boat/agentic-loop'
