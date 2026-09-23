@@ -1,6 +1,6 @@
 // An intake gate: answers out-of-scope requests with a fixed reply and no model
-// call. Run it with the boat driver, which dispatches `boat/intake`:
-//   boat run --driver boat --plugin examples/intake-gate/plugin.mjs "帮我炒股"
+// call. Only the boat driver dispatches `boat/intake`; tests insert it the way
+// `boat run --plugin <this file>` would.
 export const name = 'example-intake-gate'
 
 const OUT_OF_SCOPE = /炒股|股票|买卖|涨停/u

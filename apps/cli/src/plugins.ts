@@ -14,8 +14,7 @@ import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 /**
  * The row id a plugin file is inserted under: its path relative to the
  * working directory (absolute when outside it), without the extension, so two
- * files that share a basename (`examples/tools/plugin.mjs`,
- * `examples/a2ui/plugin.mjs`) get distinct rows.
+ * files that share a basename (`a/plugin.mjs`, `b/plugin.mjs`) get distinct rows.
  * @param file - the plugin file path.
  * @param cwd - the working directory the path is relative to.
  */

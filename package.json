@@ -12,7 +12,7 @@
     "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
     "lint": "oxlint . && knip --include unlisted,unresolved --no-progress && node --import tsx scripts/check-layers.ts",
     "test": "pnpm run build && vitest run",
-    "test:unit": "vitest run --exclude '**/*.e2e.ts'",
+    "test:unit": "vitest run --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
     "check": "pnpm run lint && pnpm run test",
     "smoke:equivalence": "pnpm run build && vitest run apps/cli/tests/driver-equivalence.e2e.ts"
   },

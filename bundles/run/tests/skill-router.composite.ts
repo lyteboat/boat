@@ -1,13 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
+import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
+const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'SKILL-ROUTER-OK'
 
 const ASSET_SKILL = `---
@@ -30,7 +29,7 @@ function toolNames(request: RecordedRequest): string[] {
   return (request.body.tools ?? []).map(tool => tool.function?.name ?? '')
 }
 
-describe('@boat/skill-router under boat run --driver boat (built bin, scripted model)', () => {
+describe('@boat/skill-router in the run composition (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -58,16 +57,16 @@ describe('@boat/skill-router under boat run --driver boat (built bin, scripted m
     return { home, workspace }
   }
 
-  function env(home: string): Record<string, string> {
-    return { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+  function env(): Record<string, string> {
+    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
   it('routes the task through the router model and puts the skill body and its tool into the same request', async () => {
     const { home, workspace } = fresh('dynamic')
     const before = model.requests.length
-    const result = await runBoat(
-      ['run', '--driver', 'boat', '--agents', AGENTS, '--preset', 'routed', '看看我的资产'],
-      { cwd: workspace, env: env(home) },
+    const result = await runComposition(
+      ['--agents', AGENTS, '--preset', 'routed', '看看我的资产'],
+      { cwd: workspace, home, env: env() },
     )
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
@@ -98,7 +97,7 @@ describe('@boat/skill-router under boat run --driver boat (built bin, scripted m
   it('leaves the host composition alone without the preset: no router call, no boat nodes', async () => {
     const { home, workspace } = fresh('off')
     const before = model.requests.length
-    const result = await runBoat(['run', '--driver', 'boat', '看看我的资产'], { cwd: workspace, env: env(home) })
+    const result = await runComposition(['看看我的资产'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     const requests = model.requests.slice(before)
     expect(requests.filter(request => request.purpose === 'router')).toHaveLength(0)

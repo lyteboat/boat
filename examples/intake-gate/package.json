@@ -1,7 +1,0 @@
-{
-  "name": "boat-example-intake-gate",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "description": "Example boat/intake listener: answers out-of-scope requests without a model call"
-}

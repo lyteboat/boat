@@ -1,0 +1,11 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "summary",
+  "rootComponentId": "root",
+  "components": [
+    { "id": "root", "component": { "Column": { "children": { "explicitList": ["title", "total"] } } } },
+    { "id": "title", "component": { "Text": { "text": { "path": "title" } } } },
+    { "id": "total", "component": { "Text": { "text": { "path": "total" } } } }
+  ]
+}

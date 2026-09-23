@@ -9,11 +9,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { bootComposition } from '@boat/testing/composition'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const AGENTS = fileURLToPath(new URL('../../../agents', import.meta.url))
+/** The agents/ root this package lives in, as `--agents ./agents` names it. */
+const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
+/** The run profile's bundle layers, in the order apps/cli's template lists them. */
+const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@boat/host', '@boat/run']
 const ANSWER = 'DEMO-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown> }
@@ -49,7 +52,7 @@ function script(request: RecordedRequest) {
   return { text: ANSWER }
 }
 
-describe('demo preset under boat run --driver boat (built bin, scripted model)', () => {
+describe('demo agent in the run composition (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -71,14 +74,14 @@ describe('demo preset under boat run --driver boat (built bin, scripted model)',
     return { home, workspace }
   }
 
-  function env(home: string): Record<string, string> {
-    return { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+  function env(): Record<string, string> {
+    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
   async function run(label: string, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; stderr: string }> {
     const { home, workspace } = fresh(label)
     const before = model.requests.length
-    const result = await runBoat(['run', '--agents', AGENTS, '--preset', 'demo', task], { cwd: workspace, env: env(home) })
+    const result = await bootComposition({ bundles: RUN_BUNDLES, args: ['--agents', AGENTS, '--preset', 'demo', task], cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     const [log] = findSessionLogs(home)
     return { requests: model.requests.slice(before), records: readSessionLog(log!) as unknown as LogRecord[], stdout: result.stdout, stderr: result.stderr }

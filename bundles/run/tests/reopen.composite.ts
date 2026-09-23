@@ -8,16 +8,16 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
 import { SessionFormatUnsupportedError, validateStoredEvents } from '@deepseek-ai/dsh-session-persistence'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { pluginFileRow, type PatchOptions } from '@boat/testing/composition'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
+import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const EXAMPLES = fileURLToPath(new URL('../../../examples', import.meta.url))
-const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
+const PLUGINS = join(FIXTURES, 'plugins')
+const AGENTS = join(FIXTURES, 'agents')
 const ASSET_SKILL = `---
 name: asset-overview
 description: 资产总览。
@@ -60,13 +60,13 @@ function reopen(home: string): { types: string[]; refusal: string | undefined } 
   }
 }
 
-describe('boat sessions reopen under dsh session persistence (built bin, scripted model)', () => {
+describe('boat sessions reopen under dsh session persistence (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
   beforeAll(async () => {
     root = mkdtempSync(join(tmpdir(), 'boat-reopen-'))
-    model = await startScriptedModel(script(['lookup_assets', 'query_assets']), { apiKey: 'mock-key' })
+    model = await startScriptedModel(script(['lookup_assets', 'query_profile']), { apiKey: 'mock-key' })
   })
 
   afterAll(async () => {
@@ -74,37 +74,38 @@ describe('boat sessions reopen under dsh session persistence (built bin, scripte
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function run(label: string, args: string[]): Promise<{ types: string[]; refusal: string | undefined }> {
+  async function run(label: string, args: string[], patches: PatchOptions[] = []): Promise<{ types: string[]; refusal: string | undefined }> {
     const home = join(root, `home-${label}`)
     const workspace = join(root, `workspace-${label}`)
     for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
     writeFileSync(join(workspace, 'README.md'), '# reopen\n')
     mkdirSync(join(workspace, '.dsh/skills/asset-overview'), { recursive: true })
     writeFileSync(join(workspace, '.dsh/skills/asset-overview/SKILL.md'), ASSET_SKILL)
-    const result = await runBoat(['run', '--driver', 'boat', ...args], {
+    const result = await runComposition(args, {
       cwd: workspace,
-      env: { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
-    })
+      home,
+      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
+    }, patches)
     expect(result.code, result.stderr).toBe(0)
     return reopen(home)
   }
 
   it('an intake reply: the reply is an assistant message and nothing else', async () => {
-    const { types, refusal } = await run('intake', ['--plugin', join(EXAMPLES, 'intake-gate', 'plugin.mjs'), '帮我炒股'])
+    const { types, refusal } = await run('intake', ['帮我炒股'], [pluginFileRow(join(PLUGINS, 'intake-gate.mjs'))])
     expect(refusal).toBeUndefined()
     expect(types).toContain('assistant/message')
     expect(types.filter(type => type.startsWith('boat/'))).toEqual([])
   })
 
   it('a state delta and a card: both ride tool/result.meta', async () => {
-    const { types, refusal } = await run('tools', ['--plugin', join(EXAMPLES, 'tools', 'plugin.mjs'), '--plugin', join(EXAMPLES, 'a2ui', 'plugin.mjs'), '看看我的资产'])
+    const { types, refusal } = await run('tools', ['看看我的资产'], [pluginFileRow(join(PLUGINS, 'tools.mjs')), pluginFileRow(join(PLUGINS, 'a2ui', 'plugin.mjs'))])
     expect(refusal).toBeUndefined()
     expect(types.filter(type => type === 'tool/result').length).toBeGreaterThanOrEqual(1)
     expect(types.filter(type => type.startsWith('boat/'))).toEqual([])
   })
 
   it('an imported history: the seed is closed turns of dsh nodes', async () => {
-    const { types, refusal } = await run('history', ['--history', join(EXAMPLES, 'history', 'sa.json'), '继续刚才的话题'])
+    const { types, refusal } = await run('history', ['--history', join(FIXTURES, 'history', 'sa.json'), '继续刚才的话题'])
     expect(refusal).toBeUndefined()
     expect(types).toContain('session/end-seed')
     expect(types.filter(type => type.startsWith('boat/'))).toEqual([])

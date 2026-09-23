@@ -2,7 +2,7 @@
   "name": "@boat/testing",
   "version": "0.0.1",
   "private": true,
-  "description": "boat's test harness: dsh service mounting and the in-process MockAdapter for unit tests, the session-log reader, the scripted OpenAI-compatible model, and launcher spawning for e2e tests",
+  "description": "boat's test harness: dsh service mounting and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, the session-log reader, the scripted OpenAI-compatible model, and launcher spawning for e2e tests",
   "type": "module",
   "exports": {
     ".": {
@@ -24,12 +24,21 @@
       "@boat/source": "./src/process.ts",
       "types": "./lib/process.d.ts",
       "default": "./lib/process.js"
+    },
+    "./composition": {
+      "@boat/source": "./src/composition.ts",
+      "types": "./lib/composition.d.ts",
+      "default": "./lib/composition.js"
     }
   },
   "files": ["lib"],
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-app-boot": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-session": "catalog:dsh",
     "@deepseek-ai/dsh-session-projection": "catalog:dsh",
@@ -38,7 +47,11 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
+    "@deepseek-ai/dsh-app-boot": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "catalog:dsh",
     "@deepseek-ai/dsh-session": "catalog:dsh",
     "@deepseek-ai/dsh-session-projection": "catalog:dsh",

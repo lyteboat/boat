@@ -1,16 +1,15 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { eventTypes, findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
+import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
+const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'PRESET-RUN-OK'
 
-describe('boat run --agents --preset (built bin, scripted model)', () => {
+describe('boat run --agents --preset (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -32,14 +31,14 @@ describe('boat run --agents --preset (built bin, scripted model)', () => {
     return { home, workspace }
   }
 
-  function env(home: string): Record<string, string> {
-    return { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+  function env(): Record<string, string> {
+    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
   it('composes the agent from the named preset and records it in the session', async () => {
     const { home, workspace } = fresh('preset')
     const before = model.requests.length
-    const result = await runBoat(['run', '--agents', AGENTS, '--preset', 'minimal', 'hello'], { cwd: workspace, env: env(home) })
+    const result = await runComposition(['--agents', AGENTS, '--preset', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
@@ -58,7 +57,7 @@ describe('boat run --agents --preset (built bin, scripted model)', () => {
   it('runs the host composition alone without --agents', async () => {
     const { home, workspace } = fresh('plain')
     const before = model.requests.length
-    const result = await runBoat(['run', 'hello'], { cwd: workspace, env: env(home) })
+    const result = await runComposition(['hello'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
@@ -72,10 +71,10 @@ describe('boat run --agents --preset (built bin, scripted model)', () => {
 
   it('rejects an unknown preset and a preset without roots as usage errors', async () => {
     const { home, workspace } = fresh('errors')
-    const unknown = await runBoat(['run', '--agents', AGENTS, '--preset', 'nope', 'hello'], { cwd: workspace, env: env(home) })
+    const unknown = await runComposition(['--agents', AGENTS, '--preset', 'nope', 'hello'], { cwd: workspace, home, env: env() })
     expect(unknown.code).not.toBe(0)
     expect(unknown.stderr).toMatch(/nope/u)
-    const rootless = await runBoat(['run', '--preset', 'minimal', 'hello'], { cwd: workspace, env: env(home) })
+    const rootless = await runComposition(['--preset', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
     expect(rootless.code).not.toBe(0)
     expect(rootless.stderr).toContain('--agents')
   })

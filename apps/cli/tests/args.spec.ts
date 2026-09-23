@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseBoatArgs } from '../src/args.ts'
 import { pluginRowId } from '../src/plugins.ts'
 
-const TOOLS_PLUGIN = fileURLToPath(new URL('../../../examples/tools/plugin.mjs', import.meta.url))
-const A2UI_PLUGIN = fileURLToPath(new URL('../../../examples/a2ui/plugin.mjs', import.meta.url))
+const INTAKE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/intake-gate.mjs', import.meta.url))
+const NOOP_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/noop.mjs', import.meta.url))
 
 const parse = (argv: string[]) => parseBoatArgs(argv, { boat: '0.0.1', dsh: '0.1.5-alpha.2' })
 
@@ -44,11 +44,11 @@ describe('parseBoatArgs', () => {
   })
 
   it('inserts local plugin files that exist, each once', () => {
-    expect(parse(['run', '--plugin', TOOLS_PLUGIN, '--plugin', A2UI_PLUGIN, 'hi']))
-      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [TOOLS_PLUGIN, A2UI_PLUGIN], patches: [], args: ['hi'] })
+    expect(parse(['run', '--plugin', INTAKE_PLUGIN, '--plugin', NOOP_PLUGIN, 'hi']))
+      .toEqual({ mode: 'profile', profile: 'run', driver: 'boat', plugins: [INTAKE_PLUGIN, NOOP_PLUGIN], patches: [], args: ['hi'] })
     expect(exitCode(['run', '--plugin', '', 'hi'])).toBe(1)
     expect(exitCode(['run', '--plugin', 'missing.mjs', 'hi'])).toBe(1)
-    expect(exitCode(['run', '--plugin', TOOLS_PLUGIN, '--plugin', TOOLS_PLUGIN, 'hi'])).toBe(1)
+    expect(exitCode(['run', '--plugin', INTAKE_PLUGIN, '--plugin', INTAKE_PLUGIN, 'hi'])).toBe(1)
   })
 
   it('selects the agent driver', () => {
@@ -82,8 +82,8 @@ describe('parseBoatArgs', () => {
 
 describe('pluginRowId', () => {
   it('names the row after the path, so files sharing a basename get distinct rows', () => {
-    expect(pluginRowId('examples/tools/plugin.mjs', '/repo')).toBe('plugin:examples/tools/plugin')
-    expect(pluginRowId('/repo/examples/a2ui/plugin.mjs', '/repo')).toBe('plugin:examples/a2ui/plugin')
+    expect(pluginRowId('tests/fixtures/plugins/intake-gate.mjs', '/repo')).toBe('plugin:tests/fixtures/plugins/intake-gate')
+    expect(pluginRowId('/repo/tests/fixtures/plugins/noop.mjs', '/repo')).toBe('plugin:tests/fixtures/plugins/noop')
     expect(pluginRowId('/elsewhere/plugin.mjs', '/repo')).toBe('plugin:/elsewhere/plugin')
   })
 })

@@ -9,10 +9,10 @@ import { runBoat } from './support/boat-process.ts'
 
 const SUCCESS_TEXT = 'MODEL-ANSWERED'
 const TITLE_LLM_OVERLAY = '- id: session-title-llm\n  disabled: true\n'
-const PLUGIN = fileURLToPath(new URL('../../../examples/intake-gate/plugin.mjs', import.meta.url))
+const PLUGIN = fileURLToPath(new URL('./fixtures/plugins/intake-gate.mjs', import.meta.url))
 const FIXED_REPLY = '抱歉，我只负责资产配置相关的问题，不提供股票买卖建议。'
 
-describe('boat run --plugin examples/intake-gate (built bin, mock model)', () => {
+describe('boat run --plugin <intake gate file> (built bin, mock model)', () => {
   let root: string
 
   beforeAll(() => {

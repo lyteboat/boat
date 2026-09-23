@@ -1,14 +1,14 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { pluginFileRow } from '@boat/testing/composition'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
+import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const PLUGIN = fileURLToPath(new URL('../../../examples/tools/plugin.mjs', import.meta.url))
-const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
+const PLUGIN = join(FIXTURES, 'plugins', 'tools.mjs')
+const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'TOOL-POLICY-OK'
 
 /** One tool call on the first loop request, the answer once a tool result is in the transcript. */
@@ -22,7 +22,7 @@ function toolNames(request: RecordedRequest): string[] {
   return (request.body.tools ?? []).map(tool => tool.function?.name ?? '')
 }
 
-describe('@boat/tool-policy under boat run --driver boat (built bin, scripted model)', () => {
+describe('@boat/tool-policy in the run composition (in process, scripted model)', () => {
   let root: string
 
   beforeAll(() => {
@@ -41,15 +41,15 @@ describe('@boat/tool-policy under boat run --driver boat (built bin, scripted mo
     return { home, workspace }
   }
 
-  function env(home: string, model: ScriptedModel): Record<string, string> {
-    return { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+  function env(model: ScriptedModel): Record<string, string> {
+    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
   it('shows always tools, hides unactivated auto tools, and folds a state delta into the next request', async () => {
     const model = await startScriptedModel(callThenAnswer('lookup_assets', {}), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = fresh('state')
-      const result = await runBoat(['run', '--driver', 'boat', '--plugin', PLUGIN, '查一下资产'], { cwd: workspace, env: env(home, model) })
+      const result = await runComposition(['查一下资产'], { cwd: workspace, home, env: env(model) }, [pluginFileRow(PLUGIN)])
       expect(result.code, result.stderr).toBe(0)
       expect(result.stdout).toContain(ANSWER)
       const loop = model.loopRequests()
@@ -77,7 +77,7 @@ describe('@boat/tool-policy under boat run --driver boat (built bin, scripted mo
     const model = await startScriptedModel(callThenAnswer('rebalance', { target: '股债均衡' }), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = fresh('confirm')
-      const result = await runBoat(['run', '--driver', 'boat', '--plugin', PLUGIN, '帮我调仓'], { cwd: workspace, env: env(home, model) })
+      const result = await runComposition(['帮我调仓'], { cwd: workspace, home, env: env(model) }, [pluginFileRow(PLUGIN)])
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
@@ -103,9 +103,9 @@ describe('@boat/tool-policy under boat run --driver boat (built bin, scripted mo
     const model = await startScriptedModel(callThenAnswer('bash', { command: 'echo hi' }), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = fresh('preset')
-      const result = await runBoat(
-        ['run', '--driver', 'boat', '--agents', AGENTS, '--preset', 'policy', 'list the files'],
-        { cwd: workspace, env: env(home, model) },
+      const result = await runComposition(
+        ['--agents', AGENTS, '--preset', 'policy', 'list the files'],
+        { cwd: workspace, home, env: env(model) },
       )
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()

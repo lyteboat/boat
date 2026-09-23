@@ -1,9 +1,8 @@
 // Two boat tools over `ctx.toolPolicy`. `lookup_assets` is always visible and
 // folds its result into the session state; `rebalance` stays hidden until the
 // user talks about rebalancing, and then still needs confirmation (denied under
-// `boat run`, which composes no approval answerer). Run it with the boat driver:
-//   boat run --driver boat --plugin examples/tools/plugin.mjs "查一下资产"
-//   boat run --driver boat --plugin examples/tools/plugin.mjs "帮我调仓"
+// `boat run`, which composes no approval answerer). The tool-policy and reopen
+// composition tests insert it the way `boat run --plugin <this file>` would.
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 export const name = 'example-tools'

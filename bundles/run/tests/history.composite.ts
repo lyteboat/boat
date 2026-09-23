@@ -1,18 +1,17 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
-import { runBoat } from './support/boat-process.ts'
+import { FIXTURES, OFFICIAL_DRIVER, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type ScriptedModel } from '@boat/testing/scripted-model'
 
-const HISTORY = fileURLToPath(new URL('../../../examples/history/sa.json', import.meta.url))
+const HISTORY = join(FIXTURES, 'history', 'sa.json')
 const ANSWER = 'HISTORY-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown>; isSeeded?: boolean }
 
-describe('boat run --history (built bin, scripted model)', () => {
+describe('boat run --history (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -34,14 +33,14 @@ describe('boat run --history (built bin, scripted model)', () => {
     return { home, workspace }
   }
 
-  function env(home: string): Record<string, string> {
-    return { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+  function env(): Record<string, string> {
+    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
-  it.each(['boat', 'dsh'])('seeds the session from the file under --driver %s: two complete rounds, the task as turn 3, the rounds in the first request', async (driver) => {
+  it.each(['boat', 'dsh'])('seeds the session from the file under the %s driver: two complete rounds, the task as turn 3, the rounds in the first request', async (driver) => {
     const { home, workspace } = fresh(driver)
     const before = model.requests.length
-    const result = await runBoat(['run', '--driver', driver, '--history', HISTORY, '继续刚才的话题'], { cwd: workspace, env: env(home) })
+    const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: env() }, driver === 'dsh' ? OFFICIAL_DRIVER : [])
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     expect(result.stderr).toContain('imported 2 history round(s) from sa.json')
@@ -68,7 +67,7 @@ describe('boat run --history (built bin, scripted model)', () => {
 
   it('rejects a missing history file as a usage error', async () => {
     const { home, workspace } = fresh('missing')
-    const result = await runBoat(['run', '--history', join(workspace, 'nope.json'), 'hi'], { cwd: workspace, env: env(home) })
+    const result = await runComposition(['--history', join(workspace, 'nope.json'), 'hi'], { cwd: workspace, home, env: env() })
     expect(result.code).not.toBe(0)
     expect(result.stderr).toContain('--history file not found')
   })

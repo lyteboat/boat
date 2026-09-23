@@ -6,7 +6,7 @@ boat is an agent harness built as plugins on top of [DeepSeek Harness](https://g
 
 - M0 — runnable skeleton: `boat run` and `boat web` boot the official dsh bundles through boat's own launcher.
 - M1 — `@boat/agentic-loop`, a fork of dsh-agent-loop, the default driver since the layering refactor (`--driver dsh` mounts dsh's official one); both drivers write identical session logs for the same scripted model.
-- M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --preset <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`boat run --driver boat --plugin examples/tools/plugin.mjs "查一下资产"`). Step 4: `@boat/skill-router`, ark's skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (ark's router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, ark's A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads ark produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`boat run --driver boat --plugin examples/a2ui/plugin.mjs "看看我的资产"`). Step 6: `@boat/history-import`, external conversation history (ark's SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history examples/history/sa.json "继续刚才的话题"`, either driver). Step 7: `agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --driver boat --agents ./agents --preset demo "看看资产"`).
+- M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --preset <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`bundles/run/tests/tool-policy.composite.ts`). Step 4: `@boat/skill-router`, ark's skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (ark's router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, ark's A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads ark produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`bundles/run/tests/a2ui.composite.ts`). Step 6: `@boat/history-import`, external conversation history (ark's SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history <file>`, either driver). Step 7: `agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --agents ./agents --preset demo "看看资产"`).
 
 ## Requirements
 
@@ -21,8 +21,8 @@ pnpm run build
 node apps/cli/lib/bin.js run "summarize this workspace"   # one-shot task
 node apps/cli/lib/bin.js web --no-open                    # browser UI
 node apps/cli/lib/bin.js config dump --profile run        # composed plugin tree
-node apps/cli/lib/bin.js run --plugin examples/intake-gate/plugin.mjs "帮我炒股"
-                                                          # boat driver + a local plugin file: fixed reply, no model call
+node apps/cli/lib/bin.js run --agents ./agents --preset demo "看看资产"
+                                                          # the demo agent: routed skill, asset tool, card
 pnpm run check                                            # lint + build + tests
 ```
 
@@ -32,7 +32,7 @@ Model access uses dsh's own settings: `DEEPSEEK_API_KEY` (and optionally `DEEPSE
 
 ## Session logs
 
-Everything boat records rides an envelope dsh already knows: a card and a state delta sit on `tool/result.meta.boat`, an intake reply is an assistant message whose `source` is `{ provider: 'boat', model: <plugin> }`, and imported history is closed turns of ordinary nodes. Those sessions reopen under dsh's own persistence (`apps/cli/tests/reopen.e2e.ts` proves it). The skill router's `boat/skill-routed` and `boat/route-request` have no dsh envelope yet, so a session that routed a skill is refused by dsh's persistence until dsh offers a write path for the envelope's `ignorable` mark; the same test pins that limitation.
+Everything boat records rides an envelope dsh already knows: a card and a state delta sit on `tool/result.meta.boat`, an intake reply is an assistant message whose `source` is `{ provider: 'boat', model: <plugin> }`, and imported history is closed turns of ordinary nodes. Those sessions reopen under dsh's own persistence (`bundles/run/tests/reopen.composite.ts` proves it). The skill router's `boat/skill-routed` and `boat/route-request` have no dsh envelope yet, so a session that routed a skill is refused by dsh's persistence until dsh offers a write path for the envelope's `ignorable` mark; the same test pins that limitation.
 
 ## Layout
 
@@ -50,10 +50,9 @@ One top-level directory per layer; dependencies point down only (`apps` → `bun
 | `core/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
 | `core/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |
 | `core/agentic-loop` | `@boat/agentic-loop` | the boat agent driver (fork of dsh-agent-loop, see `core/agentic-loop/UPSTREAM.md`) |
-| `agents/demo` | `@boat/agent-demo` | the demo agent preset: `preset.yml`, `agent.cordis.yml`, `skills/`, `a2ui/`, `fixtures/personas/`, `src/` compiled to `lib/` |
+| `agents/demo` | `@boat/agent-demo` | the demo agent preset: `preset.yml`, `agent.cordis.yml`, `skills/`, `a2ui/`, `fixtures/` (personas, a sample SA history), `src/` compiled to `lib/` |
 | `tooling/testing` | `@boat/testing` | boat's test harness: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher spawning |
 | `tooling/dsh-agent-loop-testkit-fork` | `@boat/dsh-agent-loop-testkit-fork` | verbatim fork of agent-loop-testkit, used only by the driver's synced upstream tests |
-| `examples/*` | — | runnable plugin files for `--plugin` |
 | `scripts/` | — | `sync-upstream.ts` (re-fork from the pinned dsh tag), `check-layers.ts` |
 | `dsh.upstream.json` | — | the pinned dsh release; `.pnpmfile.cjs` pins every dsh and cordis package to it |
 

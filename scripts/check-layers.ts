@@ -30,7 +30,8 @@ const RUNTIME: Readonly<Record<Layer, readonly Layer[]>> = {
 /** Extra layers a package's tests may reach through devDependencies. */
 const DEV_ONLY: Readonly<Record<Layer, readonly Layer[]>> = {
   apps: ['tooling'],
-  bundles: ['tooling'],
+  // A bundle's composition test boots the bundles its profiles list beside it.
+  bundles: ['bundles', 'tooling'],
   plugins: ['tooling'],
   core: ['tooling'],
   // An agent's composition test boots the bundle that loads it; bundles never import agents.
