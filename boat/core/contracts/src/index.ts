@@ -28,7 +28,7 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /**
  * The kernel's pre-assembly step events (`boat/intake`, `boat/pre-assemble`)
  * and their payloads are declared by boat's agent loop
- * (dsh/core/agent-loop/src/boat/step-hooks.ts, contract/extensions.yml), which
+ * (dsh/core/agent-loop/src/boat/step-hooks.ts, compatibility/contract/extensions.yml), which
  * cannot import this package; plugins read them from here.
  * `BOAT_ASSISTANT_PROVIDER` is the provider of every assistant message boat
  * writes without a model call (intake replies, imported history).
@@ -40,7 +40,7 @@ export type {
   BoatStepPayload,
 } from '@deepseek-ai/dsh-agent-loop'
 
-/** One extension of the kernel contract that this boat build carries, as contract/extensions.yml registers it. */
+/** One extension of the kernel contract that this boat build carries, as compatibility/contract/extensions.yml registers it. */
 export interface BoatDistroExtension {
   /** The registry id (`agent-loop-intake`, …). */
   id: string

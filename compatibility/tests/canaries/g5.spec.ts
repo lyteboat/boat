@@ -11,8 +11,8 @@ import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { kernelPackages } from '../../scripts/dist/kernel.ts'
-import { boatTree, packKernel, vanillaTree } from '../../scripts/dist/trees.ts'
+import { kernelPackages } from '../../../scripts/dist/kernel.ts'
+import { boatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
 import { freshRun, runDsh, runScenario, suiteRoot, type OfficialRun } from '../support/official-cli.ts'
 
 interface Canary {
@@ -50,8 +50,8 @@ describe('G5: community canaries run the same on the official release and on boa
   let root: string
 
   beforeAll(() => {
-    vanilla = vanillaTree('conformance')
-    boat = boatTree('conformance', packKernel())
+    vanilla = vanillaTree('compatibility')
+    boat = boatTree('compatibility', packKernel())
     root = suiteRoot('g5')
   }, 600_000)
 

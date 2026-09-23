@@ -1,5 +1,5 @@
 /**
- * boat extension `agent-loop-intake` (contract/extensions.yml): the intake
+ * boat extension `agent-loop-intake` (compatibility/contract/extensions.yml): the intake
  * gate between the inbox claim and prompt assembly. Upstream's own suite runs
  * unchanged beside this file; these tests cover only what boat adds.
  */

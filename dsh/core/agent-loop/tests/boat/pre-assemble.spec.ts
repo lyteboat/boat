@@ -1,5 +1,5 @@
 /**
- * boat extension `agent-loop-pre-assemble` (contract/extensions.yml): the
+ * boat extension `agent-loop-pre-assemble` (compatibility/contract/extensions.yml): the
  * hook between a passed intake and prompt assembly.
  */
 import { expect, it } from 'vitest'

@@ -6,7 +6,7 @@
  */
 import { rmSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { boatTree, packKernel, vanillaTree } from '../../scripts/dist/trees.ts'
+import { boatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
 import { freshRun, runScenario, suiteRoot } from '../support/official-cli.ts'
 import { G4_SCENARIOS } from './scenarios.ts'
 
@@ -16,8 +16,8 @@ describe('G4: the official release and boat write the same session log', () => {
   let root: string
 
   beforeAll(() => {
-    vanilla = vanillaTree('conformance')
-    boat = boatTree('conformance', packKernel())
+    vanilla = vanillaTree('compatibility')
+    boat = boatTree('compatibility', packKernel())
     root = suiteRoot('g4')
   }, 600_000)
 

@@ -18,7 +18,7 @@
  *   enums exist at runtime; the published build erases them.
  * - Two imports of files no published package ships resolve to shims.
  * - Tests of upstream's repository scripts are excluded.
- * @module conformance/upstream-tests/harness
+ * @module compatibility/tests/upstream-harness/harness
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vitest/config'
 
-const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const require = createRequire(join(repoRoot, 'package.json'))
 
 /** Test files that exercise upstream's repository tooling (`scripts/`), not the package. */

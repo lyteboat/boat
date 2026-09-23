@@ -1,0 +1,27 @@
+# compatibility
+
+What boat promises the plugins written against dsh, and the proof that it keeps the promise. No runtime code lives here.
+
+- `COMPAT.md` states the promise for people: the stable surface, the behavior invariants, what boat adds, what it does not promise.
+- `contract/` states it for machines: the contract snapshot of each tracked release (`dsh-<version>/`) and `extensions.yml`, the registry of what boat adds.
+- `tests/` proves it, together with `scripts/dist`: `upstream-harness/` (G2), `scenarios/` (G4), `canaries/` (G5), `roundtrip/` (G6).
+
+| Gate | What it proves | Where | How to run | When |
+|---|---|---|---|---|
+| G1 | boat's kernel build has the release's contract; every difference is registered | `scripts/dist/contract-check.ts`, `contract/` | `pnpm run test` (after the build) | every change, CI |
+| G2 | upstream's own tests of the kernel pass on boat's sources, unmodified | `tests/upstream-harness/`, `dsh/*/*/tests` | `pnpm run test` (vitest project `dsh`) | every change, CI |
+| G3 | the official packages that depend on the kernel still pass their tests on boat's kernel | `scripts/dist/overlay.ts g3` | `pnpm run dist:overlay <installed upstream checkout at the tag> g3` | every sync |
+| persistence | the durable-record schema upstream derives from boat's sources equals the release's | `scripts/dist/overlay.ts persistence` | `pnpm run dist:overlay <checkout> persistence` | every sync, and any kernel change that can reach a persisted type |
+| G4 | the official release and boat write the same session log for the same scripted run | `tests/scenarios/` | `pnpm run compatibility` | before a merge to boat-next, every sync |
+| G5 | pinned community plugins run the same on both, installed with `dsh plugin add`, and bind to boat's kernel | `tests/canaries/` | `pnpm run compatibility` | before a merge to boat-next, every sync |
+| G6 | a session one side writes, the other continues exactly as the writer would | `tests/roundtrip/` | `pnpm run compatibility` | before a merge to boat-next, every sync |
+
+G4–G6 compare two install trees outside the repository (`scripts/dist/trees.ts`, under `$BOAT_DIST_CACHE`, default `~/.cache/boat-dist`): the release as npm publishes it, and the same manifest with every kernel package replaced by boat's packed build (`<version>+boat.<commit>`). The trees differ only in the kernel, so a difference is the kernel's. Both run the official CLI (`dsh headless`) against upstream's mock model server (`@deepseek-ai/dsh-llm-mock-server`); logs are compared after `@boat/testing`'s normalization, which drops timing values and replaces ids and paths. The trees need registry access on their first install; later runs reuse them while the kernel packs are unchanged.
+
+## Canaries
+
+`tests/canaries/canaries.yml` pins each canary by name and version and records how the list was chosen. A plugin becomes a canary only after it installs, activates every row, answers, and exits on the official release: a canary that fails there says nothing about boat. Re-select when the tracked release moves, from the same community sample, and keep at most three per risk category. A canary that starts failing on the official release after a sync is replaced. One that fails only on boat is a G5 failure.
+
+## Upstream tests
+
+`tests/upstream-harness/README.md` lists every adaptation that lets upstream's kernel tests run outside upstream's monorepo, and every exclusion. The test files themselves are never edited.

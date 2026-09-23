@@ -3,14 +3,14 @@
  * working directory and address fixtures as `packages/<group>/<package>/…`.
  * boat's kernel sits at `dsh/<group>/<package>`, so each test file runs from a
  * directory whose `packages` entry is a link to `dsh/`.
- * @module conformance/upstream-tests/setup
+ * @module compatibility/tests/upstream-harness/setup
  */
 
 import { mkdirSync, symlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const layout = join(repoRoot, 'node_modules/.cache/boat-upstream-layout')
 mkdirSync(layout, { recursive: true })
 try {

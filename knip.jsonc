@@ -10,8 +10,8 @@
   "ignore": ["dsh/**"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/*.ts", "scripts/dist/*.ts", "conformance/*/*.ts"],
-      "project": ["scripts/**/*.ts", "conformance/**/*.ts"]
+      "entry": ["scripts/*.ts", "scripts/dist/*.ts", "compatibility/tests/*/*.ts"],
+      "project": ["scripts/**/*.ts", "compatibility/**/*.ts"]
     },
     "boat/apps/*": {
       "entry": ["tests/**/*.{spec,composite,e2e}.ts"],

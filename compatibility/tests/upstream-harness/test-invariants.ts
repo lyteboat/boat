@@ -44,7 +44,7 @@ export const TEST_INVARIANT_READY_SERVICE = 'testInvariantReady'
  * transitive package sources.
  */
 export const testInvariantCompanions: Readonly<Record<string, () => Promise<TestInvariantCompanion>>> =
-  import.meta.glob<TestInvariantCompanion>('../../dsh/*/*/src/invariant.ts')
+  import.meta.glob<TestInvariantCompanion>('../../../dsh/*/*/src/invariant.ts')
 
 /** Manual-topology suites whose names cannot follow the focused invariant convention. */
 const MANUAL_INVARIANT_TEST_EXCEPTIONS: readonly string[] = []
@@ -123,7 +123,7 @@ export function testInvariantCompanionPaths(testPath: string): string[] {
 
   const owner = normalized.match(/\/dsh\/([^/]+)\/([^/]+)\/tests\//)
   if (owner === null) return []
-  const companionPath = `../../dsh/${owner[1]}/${owner[2]}/src/invariant.ts`
+  const companionPath = `../../../dsh/${owner[1]}/${owner[2]}/src/invariant.ts`
   return testInvariantCompanions[companionPath] === undefined ? [] : [companionPath]
 }
 
