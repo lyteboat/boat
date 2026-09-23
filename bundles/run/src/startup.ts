@@ -1,7 +1,7 @@
 /**
  * The one-shot app's command-line provider: it parses the task positional and
- * the `--preset`, `--agents`, and `--history` flags, then publishes
- * {@link BOAT_RUN_STARTUP_SERVICE}. The roster and runner rows inject that
+ * the `--agent` (alias `--preset`), `--agents`, and `--history` flags, then
+ * publishes {@link BOAT_RUN_STARTUP_SERVICE}. The roster and runner rows inject that
  * service and read it from lazy config.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/startup.ts
@@ -28,9 +28,9 @@ export const BOAT_RUN_STARTUP_SERVICE = 'boatRunStartup'
 export interface BoatRunStartupValues {
   /** The task text this invocation asked for. */
   task: string
-  /** The agent preset to compose the agent from; absent runs the host composition alone. */
+  /** The agent to compose from (its dsh-agent-presets id, `--agent`); absent runs the host composition alone. */
   preset: string | undefined
-  /** Absolute preset root directories; empty without `--agents`. */
+  /** Absolute agent root directories; empty without `--agents`. */
   agentRoots: string[]
   /** Absolute path of an external history file to seed the session from. */
   history: string | undefined
@@ -50,38 +50,41 @@ function command(): Command {
     .description('Answer one task, stream reasoning to stderr, print the final assistant message, and exit.')
     .helpOption('-h, --help', 'show this help')
     .argument('[task...]', 'the task text; multiple words are joined by spaces')
-    .option('--preset <id>', 'compose the agent from this preset (needs --agents)')
-    .option('--agents <dir>', 'a directory of agent presets (repeatable)', collect)
+    .option('--agent <id>', 'run this agent from the --agents directories')
+    .option('--preset <id>', 'deprecated alias of --agent')
+    .option('--agents <dir>', 'a directory of agents (repeatable)', collect)
     .option('--history <file>', 'seed the session from an external history file')
     .addHelpText('after', `
 Examples:
   boat run "run the tests"                              answer one task and exit
-  boat run --agents ./agents --preset demo "看看资产"   compose the agent from a preset directory
+  boat run --agents ./agents --agent demo "看看资产"    run the demo agent from ./agents
 `)
 }
 
 /**
  * Parse and provide the one-shot invocation as an ordinary Cordis service. A
- * missing task, an unknown directory, or a preset without roots is a usage
+ * missing task, an unknown directory, or an agent without roots is a usage
  * error, so on rejection (and on `--help`) nothing is provided.
  * @param ctx - plugin context carrying the command line.
  */
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ preset?: string; agents?: string[]; history?: string }>()
+    const options = program.opts<{ agent?: string; preset?: string; agents?: string[]; history?: string }>()
     const task = program.args.join(' ')
     if (task.trim() === '') program.error('error: a task is required, for example: boat run "run the tests"')
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
     for (const dir of agentRoots) {
       if (!existsSync(dir) || !statSync(dir).isDirectory()) program.error(`error: --agents directory not found: ${dir}`)
     }
-    if (options.preset !== undefined && agentRoots.length === 0) program.error('error: --preset needs at least one --agents directory')
-    if (agentRoots.length > 0 && options.preset === undefined) program.error('error: --agents needs --preset to choose the agent')
+    if (options.agent !== undefined && options.preset !== undefined) program.error('error: --preset is a deprecated alias of --agent; pass one of them')
+    const agent = options.agent ?? options.preset
+    if (agent !== undefined && agentRoots.length === 0) program.error('error: --agent needs at least one --agents directory')
+    if (agentRoots.length > 0 && agent === undefined) program.error('error: --agents needs --agent to choose the agent')
     const history = options.history === undefined ? undefined : resolve(options.history)
     if (history !== undefined && !existsSync(history)) program.error(`error: --history file not found: ${history}`)
     ctx.provide(BOAT_RUN_STARTUP_SERVICE, {
-      task, preset: options.preset, agentRoots, history,
+      task, preset: agent, agentRoots, history,
     } satisfies BoatRunStartupValues)
   })
   parseCmdline(ctx, program)

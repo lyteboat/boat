@@ -9,7 +9,7 @@
     suffix: Your working directory is {{cwd}}.
 
 - id: boat-tool-policy
-  name: '@boat/tool-policy/preset'
+  name: '@boat/tool-policy/agent'
   config:
     tools:
       bash:

@@ -104,7 +104,7 @@ describe('@boat/tool-policy in the run composition (in process, scripted model)'
     try {
       const { home, workspace } = fresh('preset')
       const result = await runComposition(
-        ['--agents', AGENTS, '--preset', 'policy', 'list the files'],
+        ['--agents', AGENTS, '--agent', 'policy', 'list the files'],
         { cwd: workspace, home, env: env(model) },
       )
       expect(result.code, result.stderr).toBe(0)

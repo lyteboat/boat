@@ -10,10 +10,10 @@
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
-    "./preset": {
-      "@boat/source": "./src/preset.ts",
-      "types": "./lib/preset.d.ts",
-      "default": "./lib/preset.js"
+    "./agent": {
+      "@boat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
     }
   },
   "files": ["lib"],

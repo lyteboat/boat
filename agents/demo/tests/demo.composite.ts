@@ -81,7 +81,7 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
   async function run(label: string, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; stderr: string }> {
     const { home, workspace } = fresh(label)
     const before = model.requests.length
-    const result = await bootComposition({ bundles: RUN_BUNDLES, args: ['--agents', AGENTS, '--preset', 'demo', task], cwd: workspace, home, env: env() })
+    const result = await bootComposition({ bundles: RUN_BUNDLES, args: ['--agents', AGENTS, '--agent', 'demo', task], cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     const [log] = findSessionLogs(home)
     return { requests: model.requests.slice(before), records: readSessionLog(log!) as unknown as LogRecord[], stdout: result.stdout, stderr: result.stderr }

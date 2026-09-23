@@ -65,7 +65,7 @@ describe('@boat/skill-router in the run composition (in process, scripted model)
     const { home, workspace } = fresh('dynamic')
     const before = model.requests.length
     const result = await runComposition(
-      ['--agents', AGENTS, '--preset', 'routed', '看看我的资产'],
+      ['--agents', AGENTS, '--agent', 'routed', '看看我的资产'],
       { cwd: workspace, home, env: env() },
     )
     expect(result.code, result.stderr).toBe(0)

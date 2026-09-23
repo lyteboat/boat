@@ -1,18 +1,18 @@
 /**
- * The preset registrar row: declares the skill router's settings for one
- * preset (its standing scope), overriding the host row's defaults for every
- * agent joined to it. A preset that wants ark's dynamic routing turns it on
+ * The agent row: declares the skill router's settings for one agent (its
+ * standing scope, mounted by dsh-agent-presets), overriding the host row's
+ * defaults for every session of that agent. An agent that wants ark's dynamic routing turns it on
  * here; the host default is `off`.
  *
  * ```yaml
  * - id: boat-skill-router
- *   name: '@boat/skill-router/preset'
+ *   name: '@boat/skill-router/agent'
  *   config:
  *     mode: dynamic
  *     historyWindow: 6
  *     timeoutMs: 10000
  * ```
- * @module @boat/skill-router/preset
+ * @module @boat/skill-router/agent
  */
 
 import type { Context } from '@deepseek-ai/cordis'
@@ -21,7 +21,7 @@ import type { SkillRouterSettings } from './index.ts'
 import type {} from './index.ts'
 
 /** Stable Cordis plugin name. */
-export const name = 'boat-skill-router-preset'
+export const name = 'boat-skill-router-agent'
 
 /** The host service the declaration goes to. */
 export const inject = ['skillRouter']
@@ -39,7 +39,7 @@ export const Config: z<Config> = z.object({
 
 /**
  * Declare the configured settings in the calling scope.
- * @param ctx - the row's context (the preset's standing scope when mounted by agent-presets).
+ * @param ctx - the row's context (the agent's standing scope when dsh-agent-presets mounts it).
  * @param config - validated partial settings.
  */
 export function apply(ctx: Context, config: Config): void {

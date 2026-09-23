@@ -9,7 +9,7 @@ import { startScriptedModel, withTitle, type ScriptedModel } from '@boat/testing
 const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'PRESET-RUN-OK'
 
-describe('boat run --agents --preset (in process, scripted model)', () => {
+describe('boat run --agents --agent (in process, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -35,10 +35,10 @@ describe('boat run --agents --preset (in process, scripted model)', () => {
     return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
   }
 
-  it('composes the agent from the named preset and records it in the session', async () => {
+  it('composes the named agent and records it in the session header', async () => {
     const { home, workspace } = fresh('preset')
     const before = model.requests.length
-    const result = await runComposition(['--agents', AGENTS, '--preset', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
+    const result = await runComposition(['--agents', AGENTS, '--agent', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
@@ -69,12 +69,23 @@ describe('boat run --agents --preset (in process, scripted model)', () => {
     expect(eventTypes(records)).not.toContain('agent-preset/selected')
   })
 
-  it('rejects an unknown preset and a preset without roots as usage errors', async () => {
+  it('still accepts --preset as a deprecated alias of --agent, but not both at once', async () => {
+    const { home, workspace } = fresh('alias')
+    const before = model.requests.length
+    const result = await runComposition(['--agents', AGENTS, '--preset', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
+    expect(result.code, result.stderr).toBe(0)
+    expect(model.requests.slice(before).find(request => request.purpose === 'loop')?.systemText).toContain('MINIMAL-PRESET-PERSONA')
+    const both = await runComposition(['--agents', AGENTS, '--agent', 'minimal', '--preset', 'minimal', 'hello'], { cwd: workspace, home: join(root, 'home-alias-both'), env: env() })
+    expect(both.code).not.toBe(0)
+    expect(both.stderr).toContain('deprecated alias of --agent')
+  })
+
+  it('rejects an unknown agent and an agent without roots as usage errors', async () => {
     const { home, workspace } = fresh('errors')
-    const unknown = await runComposition(['--agents', AGENTS, '--preset', 'nope', 'hello'], { cwd: workspace, home, env: env() })
+    const unknown = await runComposition(['--agents', AGENTS, '--agent', 'nope', 'hello'], { cwd: workspace, home, env: env() })
     expect(unknown.code).not.toBe(0)
     expect(unknown.stderr).toMatch(/nope/u)
-    const rootless = await runComposition(['--preset', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
+    const rootless = await runComposition(['--agent', 'minimal', 'hello'], { cwd: workspace, home, env: env() })
     expect(rootless.code).not.toBe(0)
     expect(rootless.stderr).toContain('--agents')
   })

@@ -22,7 +22,7 @@ function script(request: RecordedRequest) {
   return offered && !called.includes('asset_overview') ? { toolCall: { name: 'asset_overview', arguments: {}, id: 'call-overview' } } : { text: 'DEMO-SMOKE-OK' }
 }
 
-describe('boat run --agents ./agents --preset demo (built bin, scripted model)', () => {
+describe('boat run --agents ./agents --agent demo (built bin, scripted model)', () => {
   let root: string
   let model: ScriptedModel
 
@@ -40,7 +40,7 @@ describe('boat run --agents ./agents --preset demo (built bin, scripted model)',
     const home = join(root, 'home')
     const workspace = mkdtempSync(join(root, 'workspace-'))
     writeFileSync(join(workspace, 'README.md'), '# demo smoke\n')
-    const result = await runBoat(['run', '--agents', AGENTS, '--preset', 'demo', '看看资产'], {
+    const result = await runBoat(['run', '--agents', AGENTS, '--agent', 'demo', '看看资产'], {
       cwd: workspace,
       env: { BOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
     })

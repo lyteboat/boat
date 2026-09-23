@@ -1,17 +1,18 @@
 /**
- * The preset registrar row: composes a `render_a2ui` tool over the preset's
- * own templates directory, in the preset's standing scope. A relative
- * `templates` path resolves against the composition file's directory.
+ * The agent row: composes a `render_a2ui` tool over the agent's own
+ * templates directory, in the agent's standing scope (mounted by
+ * dsh-agent-presets). A relative `templates` path resolves against the
+ * composition file's directory.
  *
  * ```yaml
  * - id: boat-a2ui
- *   name: '@boat/a2ui/preset'
+ *   name: '@boat/a2ui/agent'
  *   config:
  *     templates: ./a2ui
  *     stateKeys: [yl_assets, yl_assets_raw]
  *     terminalCards: [unauthorized]
  * ```
- * @module @boat/a2ui/preset
+ * @module @boat/a2ui/agent
  */
 
 import { resolve } from 'node:path'
@@ -21,7 +22,7 @@ import z from '@deepseek-ai/schemastery'
 import type {} from './index.ts'
 
 /** Stable Cordis plugin name. */
-export const name = 'boat-a2ui-preset'
+export const name = 'boat-a2ui-agent'
 
 /** The host service the tool is composed through. */
 export const inject = ['a2ui']
@@ -62,7 +63,7 @@ function compositionDir(ctx: Context): string | undefined {
 
 /**
  * Compose the tool from the row's config.
- * @param ctx - the row's context (the preset's standing scope when mounted by agent-presets).
+ * @param ctx - the row's context (the agent's standing scope when dsh-agent-presets mounts it).
  * @param config - validated options.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {

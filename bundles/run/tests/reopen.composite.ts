@@ -112,7 +112,7 @@ describe('boat sessions reopen under dsh session persistence (in process, script
   })
 
   it('a routed session is refused: boat/skill-routed has no dsh envelope yet (known limitation, see @boat/contracts)', async () => {
-    const { types, refusal } = await run('routed', ['--agents', AGENTS, '--preset', 'routed', '看看资产'])
+    const { types, refusal } = await run('routed', ['--agents', AGENTS, '--agent', 'routed', '看看资产'])
     expect(types).toContain('boat/skill-routed')
     expect(refusal).toMatch(/"boat\/(skill-routed|route-request)".*not marked ignorable/u)
   })

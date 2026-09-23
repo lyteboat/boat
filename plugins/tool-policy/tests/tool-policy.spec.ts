@@ -15,7 +15,7 @@ import AgentLoop from '@boat/agentic-loop'
 import * as AgentLoopInvariant from '@boat/agentic-loop/invariant'
 import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@boat/testing'
 import ToolPolicyService from '@boat/tool-policy'
-import * as ToolPolicyPreset from '@boat/tool-policy/preset'
+import * as ToolPolicyAgent from '@boat/tool-policy/agent'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -189,8 +189,8 @@ describe('preset row', () => {
     const adapter = new MockAdapter([textResponse('one')])
     const ctx = await harness(adapter)
     ctx.tools.register(echo('official_tool'))
-    await ctx.plugin(ToolPolicyPreset, { tools: { official_tool: { visibility: 'auto' } } })
+    await ctx.plugin(ToolPolicyAgent, { tools: { official_tool: { visibility: 'auto' } } })
     expect(ctx.toolPolicy.metaOf('official_tool')).toEqual({ visibility: 'auto' })
-    await expect(ctx.plugin(ToolPolicyPreset, { tools: { official_tool: { visibilty: 'auto' } as never } })).rejects.toThrow(/unknown key "visibilty"/u)
+    await expect(ctx.plugin(ToolPolicyAgent, { tools: { official_tool: { visibilty: 'auto' } as never } })).rejects.toThrow(/unknown key "visibilty"/u)
   })
 })
