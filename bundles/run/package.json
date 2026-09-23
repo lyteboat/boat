@@ -29,16 +29,17 @@
   },
   "dependencies": {
     "@boat/history-import": "workspace:*",
-    "@deepseek-ai/dsh-agent-presets": "catalog:dsh",
+    "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-brand": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
-    "@deepseek-ai/dsh-code-runtime-worker-thread": "catalog:dsh",
     "@deepseek-ai/dsh-util-values": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
-    "commander": "catalog:"
+    "commander": "catalog:",
+    "js-yaml": "catalog:"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
@@ -49,6 +50,7 @@
     "@boat/host": "workspace:*",
     "@boat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "catalog:dsh",
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
@@ -56,6 +58,7 @@
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session": "catalog:dsh",
     "@deepseek-ai/dsh-session-persistence": "catalog:dsh",
-    "@deepseek-ai/dsh-tools": "catalog:dsh"
+    "@deepseek-ai/dsh-tools": "catalog:dsh",
+    "@types/js-yaml": "catalog:"
   }
 }
