@@ -39,8 +39,8 @@
     },
     {
       "files": [
-        "core/agentic-loop/**/*.ts",
-        "tooling/dsh-agent-loop-testkit-fork/**/*.ts"
+        "boat/core/agentic-loop/**/*.ts",
+        "boat/tooling/dsh-agent-loop-testkit-fork/**/*.ts"
       ],
       "rules": {
         "no-shadow": "off",

@@ -1,15 +1,10 @@
 packages:
-  # One top-level directory per architecture layer; dependencies point down only
-  # (scripts/check-layers.ts enforces it): apps/* own processes (the `boat` bin),
-  # bundles/* are compositions a profile includes by name, plugins/* are capabilities
-  # on the dsh seams, core/* are declarations and the driver fork, agents/* are the
-  # business agents, tooling/* is test infrastructure.
-  - apps/*
-  - bundles/*
-  - plugins/*
-  - core/*
-  - agents/*
-  - tooling/*
+  # boat/<layer>/<package>: one directory per architecture layer; dependencies point
+  # down only (scripts/check-layers.ts enforces it): apps own processes (the `boat`
+  # bin), bundles are compositions a profile includes by name, plugins are
+  # capabilities on the dsh seams, core are declarations and the driver fork, agents
+  # are the business agents, tooling is test infrastructure.
+  - boat/*/*
 
 # An agent directory (`boat run --agents`) names its rows by bare package name, and they
 # resolve from the agent directory upward; the composition tests resolve rows from the

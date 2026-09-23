@@ -30,13 +30,13 @@ interface ForkTarget {
 }
 
 const TARGETS: readonly ForkTarget[] = [
-  { source: 'packages/core/agent-loop/src', target: 'core/agentic-loop/src' },
+  { source: 'packages/core/agent-loop/src', target: 'boat/core/agentic-loop/src' },
   {
     source: 'packages/core/agent-loop/tests',
-    target: 'core/agentic-loop/tests',
+    target: 'boat/core/agentic-loop/tests',
     keep: ['boat-intake.spec.ts', 'support/live-config.ts', 'support/pi-context.ts', 'support/source-kinds.ts'],
   },
-  { source: 'packages/test-support/agent-loop-testkit/src', target: 'tooling/dsh-agent-loop-testkit-fork/src' },
+  { source: 'packages/test-support/agent-loop-testkit/src', target: 'boat/tooling/dsh-agent-loop-testkit-fork/src' },
 ]
 
 /**
@@ -97,7 +97,7 @@ function main(): void {
       mkdirSync(join(destination, '..'), { recursive: true })
       writeFileSync(destination, text)
     }
-    console.log(`${target}: ${String(copied)} files from ${source}, ${String(kept.size)} kept; re-apply the divergence listed in ${target.split('/').slice(0, 2).join('/')}/UPSTREAM.md`)
+    console.log(`${target}: ${String(copied)} files from ${source}, ${String(kept.size)} kept; re-apply the divergence listed in ${target.split('/').slice(0, 3).join('/')}/UPSTREAM.md`)
   }
 }
 

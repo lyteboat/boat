@@ -33,7 +33,7 @@ const PROFILE = 'composition'
  * `@deepseek-ai/*` and `@boat/*` package is hoisted; resolving from the profile
  * directory instead finds nothing under vitest, whose entry script lives in the store.
  */
-const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../package.json', import.meta.url))
+const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', import.meta.url))
 
 /** The launcher disables telemetry export when `DSH_TELEMETRY_DISABLED` is set, as tests do. */
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]

@@ -2,11 +2,11 @@
 
 boat is an agent harness built as Cordis plugins on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It is the TypeScript successor of ark-agentic: ark's runtime facts (skill routing, tool visibility, A2UI cards, session state, external history) are re-expressed as plugins on dsh's seams, so boat stays compatible with the dsh plugin ecosystem. dsh is pinned to one release (`dsh.upstream.json`); the design document (the boat artifact) owns the roadmap and the per-milestone acceptance log, this file owns how to work in the repository.
 
-Read [README.md](README.md) for what runs today. Read `core/agentic-loop/UPSTREAM.md` before touching the driver fork. When a dsh API is unclear, read its source in the pinned checkout (`packages/<group>/<pkg>/src`) rather than guessing from the published `lib/`.
+Read [README.md](README.md) for what runs today. Read `boat/core/agentic-loop/UPSTREAM.md` before touching the driver fork. When a dsh API is unclear, read its source in the pinned checkout (`packages/<group>/<pkg>/src`) rather than guessing from the published `lib/`.
 
 ## Stack
 
-TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`apps/*`, `bundles/*`, `plugins/*`, `core/*`, `agents/*`, `tooling/*`) · `tsc -b` with project references · vitest 4 (unit + e2e in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-alpha.2 packages as peer dependencies · `@deepseek-ai/schemastery` for plugin `Config`, zod for projection state schemas.
+TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`boat/apps/*`, `boat/bundles/*`, `boat/plugins/*`, `boat/core/*`, `boat/agents/*`, `boat/tooling/*`) · `tsc -b` with project references · vitest 4 (unit + e2e in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-alpha.2 packages as peer dependencies · `@deepseek-ai/schemastery` for plugin `Config`, zod for projection state schemas.
 
 ## Repository layout
 
@@ -33,9 +33,9 @@ scripts/                  sync-upstream.ts (re-fork from the pinned tag), check-
 dsh.upstream.json         the pinned dsh release; .pnpmfile.cjs pins every dsh and cordis package to it
 ```
 
-One top-level directory per layer, and a package's layer is its directory. `apps/*` owns a process — `apps/cli` owns the `boat` bin and nothing else does; `bundles/*` are compositions, a `cordis.patch.yml` a profile includes by name, with no bin of their own; `plugins/*` are the capabilities on the dsh seams those compositions wire together; `core/*` are declarations, the cordis shim, and the driver fork; `agents/*` are business agents; `tooling/*` is test infrastructure no runtime package depends on. A new runnable mode (`boat web`, an SDK entry) is a new `bundles/<name>`, not a second app and not a branch inside `@boat/run`.
+One top-level directory per layer, and a package's layer is its directory. `boat/apps/*` owns a process — `boat/apps/cli` owns the `boat` bin and nothing else does; `boat/bundles/*` are compositions, a `cordis.patch.yml` a profile includes by name, with no bin of their own; `boat/plugins/*` are the capabilities on the dsh seams those compositions wire together; `boat/core/*` are declarations, the cordis shim, and the driver fork; `boat/agents/*` are business agents; `boat/tooling/*` is test infrastructure no runtime package depends on. A new runnable mode (`boat web`, an SDK entry) is a new `boat/bundles/<name>`, not a second app and not a branch inside `@boat/run`.
 
-Each package has `src/` (compiled to `lib/`, gitignored), `tests/`, its own `tsconfig.json` with `references` to every workspace package it imports, an entry in the root `tsconfig.json`, and a package.json `exports` entry per public subpath (`@boat/x`, `@boat/x/agent`, …) whose first key is the `@boat/source` condition pointing at `src/*.ts`. `exports` is the only resolution table: `tsconfig.base.json` sets `customConditions: ['@boat/source']` and `vitest.config.ts` sets the same resolve condition, so typecheck and tests read `src`; Node, the built CLI (`apps/cli/lib/bin.js`), and cordis compositions use the default conditions and load `lib/`. There is no `paths` table.
+Each package has `src/` (compiled to `lib/`, gitignored), `tests/`, its own `tsconfig.json` with `references` to every workspace package it imports, an entry in the root `tsconfig.json`, and a package.json `exports` entry per public subpath (`@boat/x`, `@boat/x/agent`, …) whose first key is the `@boat/source` condition pointing at `src/*.ts`. `exports` is the only resolution table: `tsconfig.base.json` sets `customConditions: ['@boat/source']` and `vitest.config.ts` sets the same resolve condition, so typecheck and tests read `src`; Node, the built CLI (`boat/apps/cli/lib/bin.js`), and cordis compositions use the default conditions and load `lib/`. There is no `paths` table.
 
 ## Architecture boundaries
 
@@ -52,15 +52,15 @@ tooling/*                       ← tests only (devDependencies); depends on cor
 @deepseek-ai/dsh-*              ← the seams: tools, skills, llm, sessions, sessionProjections, systemPrompt, approval, agents, presets
 ```
 
-`pnpm run lint` enforces the direction with `scripts/check-layers.ts` (runtime edges per layer, devDependency edges to `tooling/*` and from `agents/*` to `bundles/*`, value imports between plugins) and the declarations with knip (every import a package's `src` or `tests` makes resolves through a dependency that package declares).
+`pnpm run lint` enforces the direction with `scripts/check-layers.ts` (runtime edges per layer, devDependency edges to `boat/tooling/*` and from `boat/agents/*` to `boat/bundles/*`, value imports between plugins) and the declarations with knip (every import a package's `src` or `tests` makes resolves through a dependency that package declares).
 
 Hard rules:
 
 - **contracts is the only shared declaration home.** A new event, log node, projection key, or metadata field is declared once in `@boat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
 - **Plugins sit on dsh seams; they do not re-implement them.** Tools go through `ctx.tools`, skills through `ctx.skills`, model calls through `ctx.llm`, state through `ctx.sessionProjections`, prompt text through `ctx.systemPrompt`, confirmation through the approval seam. If a seam is missing, first check whether dsh already has one under a different name.
-- **The driver fork carries exactly the boat changes `core/agentic-loop/UPSTREAM.md` lists** (in `src/agent.ts`: the `boat/intake` waterfall after the inbox claim, the `boat/pre-assemble` waterfall before assembly, `replyStep`, and the first-request series start). Everything else in `core/agentic-loop` and `tooling/dsh-agent-loop-testkit-fork` is upstream verbatim after the identity rewrites in `scripts/sync-upstream.ts`. New behavior is a plugin on those two events or on a dsh event; another change to the fork is a design decision, not a code change: it needs the design document updated first and its line in UPSTREAM.md in the same commit.
-- **Composition is data.** `bundles/host/cordis.patch.yml` is the host composition every boat profile lists (the driver swap and boat's service rows), `bundles/run/cordis.patch.yml` adds the one-shot mode; `agents/<id>/agent.cordis.yml` is the per-agent composition. Host rows publish services (`@boat/tool-policy`, `@boat/skill-router`, `@boat/a2ui`, `@boat/history-import`); agent rows declare policy against them (`@boat/tool-policy/agent`, `@boat/skill-router/agent`, `@boat/a2ui/agent`, `./lib/x.js`). An agent row must never publish a service into the root realm.
-- **Framework packages stay domain-neutral.** `bundles/*`, `plugins/*`, and `core/*` know no business vocabulary; asset buckets, personas, and Chinese product copy live under `agents/*`. Strings ported from ark for golden fidelity (error messages, digest formats) are allowed inside `a2ui` and say so in a comment.
+- **The driver fork carries exactly the boat changes `boat/core/agentic-loop/UPSTREAM.md` lists** (in `src/agent.ts`: the `boat/intake` waterfall after the inbox claim, the `boat/pre-assemble` waterfall before assembly, `replyStep`, and the first-request series start). Everything else in `boat/core/agentic-loop` and `boat/tooling/dsh-agent-loop-testkit-fork` is upstream verbatim after the identity rewrites in `scripts/sync-upstream.ts`. New behavior is a plugin on those two events or on a dsh event; another change to the fork is a design decision, not a code change: it needs the design document updated first and its line in UPSTREAM.md in the same commit.
+- **Composition is data.** `boat/bundles/host/cordis.patch.yml` is the host composition every boat profile lists (the driver swap and boat's service rows), `boat/bundles/run/cordis.patch.yml` adds the one-shot mode; `boat/agents/<id>/agent.cordis.yml` is the per-agent composition. Host rows publish services (`@boat/tool-policy`, `@boat/skill-router`, `@boat/a2ui`, `@boat/history-import`); agent rows declare policy against them (`@boat/tool-policy/agent`, `@boat/skill-router/agent`, `@boat/a2ui/agent`, `./lib/x.js`). An agent row must never publish a service into the root realm.
+- **Framework packages stay domain-neutral.** `boat/bundles/*`, `boat/plugins/*`, and `boat/core/*` know no business vocabulary; asset buckets, personas, and Chinese product copy live under `boat/agents/*`. Strings ported from ark for golden fidelity (error messages, digest formats) are allowed inside `a2ui` and say so in a comment.
 - **Model-visible ⟺ logged** (dsh rule, boat inherits it). Anything that reaches a model request is reconstructable from the session log. boat's facts ride dsh envelopes (`tool/result.meta.boat.{card,stateDelta}`, the assistant `source` of a reply); only the skill router's `boat/skill-routed` and `boat/route-request` are boat's own nodes, and a new model-visible input needs the same treatment: an existing envelope first, a new node in contracts only with the persist-and-reopen proof below.
 - **A new session event type is proven reopenable before it ships.** dsh's persistence layer refuses a stored log that carries an event type outside its compiled catalog unless the event is marked `ignorable`, and `Session.append` offers no way to set that mark today, so every `boat/*` node currently makes its session unreadable by `boat web` and by resume. Prefer folding a fact into an existing envelope (`tool/result.meta`, the assistant message `source`) over a new node; a new node needs a persist-and-reopen test and an upstream path for the mark, and the design document records both.
 - **Registrations are effects.** Every contribution goes through `ctx.effect()` / `ctx.on()` / a registry `register()` that returns the disposer, so an agent scope or a plugin unload leaves nothing behind. Per-agent state lives in a `WeakMap<Agent, …>` or behind the agent scope's disposer, never in a module-level map that outlives the agent.
@@ -78,7 +78,7 @@ Hard rules:
 - **Misconfiguration fails loud.** Unknown tool names in a policy, an unknown agent, a missing template directory, a malformed manifest, a `Config` that fails its schema: throw at load, or at the earliest point the referent can be resolved. Never silently skip a missing referent. Degradations the design accepts (router timeout keeps the current skill, an unavailable approval channel denies) are logged at `warn` and recorded in the session log where the model would otherwise see a different world.
 - **No hardcoded tunables in plugins.** Anything a deployment would change (router timeout, history window, provider/model, template roots, validation strictness) is a validated `Config` field settable from `cordis.yml`. Protocol constants (prompt orders, event names, the ark router prompt, surface-id format) stay fixed constants with a name.
 - **Limits**: functions ≤ 160 lines, nesting ≤ 3, inheritance depth ≤ 2 (`Service` subclasses only; prefer composition). Extract on the third repetition, not the first: a helper used by two packages moves to `contracts` only when it is a contract, otherwise it stays local.
-- **Logging**: `this.ctx.logger` / `ctx.logger` from cordis, prefixed with the plugin name (`boat skill router: …`). `warn` for handled degradation, `error` only for aborted operations. No `console.*` in `bundles/*`, `plugins/*`, `core/*`, or `agents/*`; the CLI writes to stdout/stderr on purpose and says so. Never log credentials, full model requests, or user history.
+- **Logging**: `this.ctx.logger` / `ctx.logger` from cordis, prefixed with the plugin name (`boat skill router: …`). `warn` for handled degradation, `error` only for aborted operations. No `console.*` in `boat/bundles/*`, `boat/plugins/*`, `boat/core/*`, or `boat/agents/*`; the CLI writes to stdout/stderr on purpose and says so. Never log credentials, full model requests, or user history.
 - **An empty `catch` names what it swallows** and why nothing else can reach it; keep the `try` to one statement.
 - Files end with exactly one trailing newline. No `TODO` without an owner and a reason.
 
@@ -124,7 +124,7 @@ boat is delivered one runnable milestone at a time (§9 of the design document),
 
 - **Required**: remove imports, helpers, config fields, and events your change orphaned; keep `README.md`'s package table and status in step with the code in the same commit.
 - **Allowed**: dead-code removal limited to files you already edit, provably unreferenced, not a public export.
-- **Forbidden**: drive-by renames or reformatting, refactors of working code outside the task, edits to `core/agentic-loop` beyond what UPSTREAM.md lists, lint fixes in untouched files, changes to `data/`, `.env*`, `.github/`, `dsh.upstream.json`, or `.pnpmfile.cjs` without an explicit instruction.
+- **Forbidden**: drive-by renames or reformatting, refactors of working code outside the task, edits to `boat/core/agentic-loop` beyond what UPSTREAM.md lists, lint fixes in untouched files, changes to `data/`, `.env*`, `.github/`, `dsh.upstream.json`, or `.pnpmfile.cjs` without an explicit instruction.
 
 ### Done criteria
 
@@ -133,7 +133,7 @@ Run only the gates the change can affect, and report only the commands you ran.
 1. Touched `src/` or `tests/`? `pnpm run check` (lint + build + full vitest run: spec, composite, and e2e) passes. `pnpm run test:unit` is the fast loop while iterating.
 2. Touched types or a `tsconfig.json`? `pnpm run typecheck` (sources and tests) introduces no new errors.
 3. Tests for the new code match the [test table](#testing).
-4. Touched anything a user runs (CLI flags, `cordis.patch.yml`, an agent)? Run it once from the built binary (`node apps/cli/lib/bin.js …`) with the scripted model or a real key, and paste the command in the commit or PR.
+4. Touched anything a user runs (CLI flags, `cordis.patch.yml`, an agent)? Run it once from the built binary (`node boat/apps/cli/lib/bin.js …`) with the scripted model or a real key, and paste the command in the commit or PR.
 5. Touched a fork file? `git diff` against the re-synced upstream shows only the boat hunks.
 6. Diff is in scope; `README.md` and the design document are current.
 
@@ -141,7 +141,7 @@ Run only the gates the change can affect, and report only the commands you ran.
 
 | Task type | Tests required |
 |---|---|
-| `feature` / new plugin | Unit: happy path + ≥1 boundary case through the runtime harness (`mountDshTestServices` + `MockAdapter` from `@boat/testing`). Composition: one `*.composite.ts` in the bundle (or agent) that wires it, booting the composition in process with the scripted model and asserting on the session log. A new process surface (a flag, a bin, a profile) also gets an `apps/<app>/tests/*.e2e.ts` on the built binary. |
+| `feature` / new plugin | Unit: happy path + ≥1 boundary case through the runtime harness (`mountDshTestServices` + `MockAdapter` from `@boat/testing`). Composition: one `*.composite.ts` in the bundle (or agent) that wires it, booting the composition in process with the scripted model and asserting on the session log. A new process surface (a flag, a bin, a profile) also gets an `boat/apps/<app>/tests/*.e2e.ts` on the built binary. |
 | port from ark | Golden fixtures generated by ark's Python code, compared with deep equality; each deliberate deviation is a named test. |
 | `bug` | Regression test that fails before and passes after. |
 | `refactor` | Existing tests pass before and after; no new tests unless behavior moved. |
@@ -153,11 +153,11 @@ Conventions:
 - **Tests describe behavior, not implementation.** Name them `test('<subject> <does what> when <condition>')`; assert on session-log nodes, projection state, the model request the scripted server recorded, or the tool result, never on private fields.
 - **Mock the boundary, not the unit.** The model (`MockAdapter` in unit tests, the scripted DeepSeek Messages server in e2e), the filesystem for skills and templates (fixtures under `tests/fixtures`), the clock when ordering matters. Never mock a boat service to test another boat service; mount both.
 - **Unit harness** (`@boat/testing`): `new Context()` + invariant registry + `mountDshTestServices(ctx)` + `ctx.plugin(AgentLoop, { agents: [] })` + the boat services under test + `ctx.llm.registerAdapter(['mock'], adapter)`. Router requests are recognized by their system text, never by call order.
-- **Who tests what.** `plugins/*` and `core/*` test their own behavior (`*.spec.ts`, in process, from `src`); `bundles/*` and `agents/*` test their composition (`*.composite.ts`); `apps/*` test only their process surface — flags, help, exit codes, profiles — plus one built-binary smoke per bundle or agent (`*.e2e.ts`). A test never reaches into another package's `tests/` or `src/` by relative path; shared helpers live in `@boat/testing`.
-- **Composition** (`bundles/*/tests`, `agents/*/tests`): `bootComposition` (`@boat/testing/composition`) boots dsh-base plus the bundles under test in the test process, the way the launcher boots a profile, with the inner arguments on `ctx.cmdlineArgs`; `pluginFileRow` stands in for `--plugin`. The cordis loader loads `lib/`, so vitest runs these files in the `composite` project, which does not set the `@boat/source` condition; `pnpm run test` builds first.
-- **E2E** (`apps/*/tests`): `runBoat` / `startBoat` (bound to the app's `lib/bin.js` through `boatLauncher` from `@boat/testing/process`) spawn the built launcher under plain Node with `BOAT_HOME` in a temp directory.
+- **Who tests what.** `boat/plugins/*` and `boat/core/*` test their own behavior (`*.spec.ts`, in process, from `src`); `boat/bundles/*` and `boat/agents/*` test their composition (`*.composite.ts`); `boat/apps/*` test only their process surface — flags, help, exit codes, profiles — plus one built-binary smoke per bundle or agent (`*.e2e.ts`). A test never reaches into another package's `tests/` or `src/` by relative path; shared helpers live in `@boat/testing`.
+- **Composition** (`boat/bundles/*/tests`, `boat/agents/*/tests`): `bootComposition` (`@boat/testing/composition`) boots dsh-base plus the bundles under test in the test process, the way the launcher boots a profile, with the inner arguments on `ctx.cmdlineArgs`; `pluginFileRow` stands in for `--plugin`. The cordis loader loads `lib/`, so vitest runs these files in the `composite` project, which does not set the `@boat/source` condition; `pnpm run test` builds first.
+- **E2E** (`boat/apps/*/tests`): `runBoat` / `startBoat` (bound to the app's `lib/bin.js` through `boatLauncher` from `@boat/testing/process`) spawn the built launcher under plain Node with `BOAT_HOME` in a temp directory.
 - **Scripted model and logs**: `startScriptedModel` (`@boat/testing/scripted-model`) answers by purpose (loop / title / router) and records every request; `@boat/testing/session-log` reads the log. Tool order in a request is not registration order: sort before asserting.
-- **Fixtures** belong to the package whose tests use them: agent directories and plugin files for the run composition under `bundles/run/tests/fixtures`, `--plugin` files for the launcher under `apps/cli/tests/fixtures/plugins`, templates under `plugins/a2ui/tests/fixtures`, ark baselines under `tests/fixtures/baseline`. Fix the fixture, never the normalizer.
+- **Fixtures** belong to the package whose tests use them: agent directories and plugin files for the run composition under `boat/bundles/run/tests/fixtures`, `--plugin` files for the launcher under `boat/apps/cli/tests/fixtures/plugins`, templates under `boat/plugins/a2ui/tests/fixtures`, ark baselines under `tests/fixtures/baseline`. Fix the fixture, never the normalizer.
 - One `test.skip` is acceptable only with a reason string; a skipped new test marks the step ⚠️ partial in the design document.
 
 ## Unattended runs
@@ -166,14 +166,14 @@ Conventions:
 - If the designated branch's PR is already merged, restart the branch from `origin/master` and treat the work as a new change.
 - One focused fix attempt on a failing new test. Still failing → mark ⚠️ partial, skip the test with a reason, and say so in the commit and the design document.
 - State assumptions in the commit message and the PR description instead of guessing silently; never create a PR unless asked.
-- Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or `core/agentic-loop` beyond what UPSTREAM.md lists without explicit instruction.
+- Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or `boat/core/agentic-loop` beyond what UPSTREAM.md lists without explicit instruction.
 - Commit messages: `<milestone-step>: <package> — <what it delivers>` for milestone work (`M2-3: @boat/tool-policy — …`), conventional `fix:` / `chore:` / `docs:` otherwise, followed by a body that states what runs now and what was accepted. End with the attribution trailers the session provides.
 - Never put a model identifier in a commit, PR, code comment, or file.
 
 ## Upstream (dsh) pinning
 
 - `dsh.upstream.json` names the dsh version, tag, commit, and the cordis versions (taken from the tag's `vendor/*/package.json`); `.pnpmfile.cjs` rewrites every `@deepseek-ai/*` dependency to those versions at install; `pnpm-workspace.yaml` hoists `@deepseek-ai/*` and `@boat/*` because agent directories and the composition tests resolve bare row names from the repository, not through the launcher's runtime resolution.
-- **Bumping dsh**: update `dsh.upstream.json` and the `dsh` / `cordis` catalogs in `pnpm-workspace.yaml` (replace removed packages with the successors dsh's own bundles compose, and keep `apps/cli/package.json` equal to dsh's `apps/cli/package.json` closure), run `pnpm install` (pnpm lists a release younger than its `minimumReleaseAge` under `minimumReleaseAgeExclude`), check out the new tag beside the repository, run `node --import tsx scripts/sync-upstream.ts <checkout>`, re-apply the boat hunks from the diff, update `core/agentic-loop/UPSTREAM.md` and `THIRD_PARTY_NOTICES.md`, run `pnpm run check`, and run `pnpm run smoke:equivalence` (both drivers must still write identical logs for the same scripted model).
+- **Bumping dsh**: update `dsh.upstream.json` and the `dsh` / `cordis` catalogs in `pnpm-workspace.yaml` (replace removed packages with the successors dsh's own bundles compose, and keep `boat/apps/cli/package.json` equal to dsh's `boat/apps/cli/package.json` closure), run `pnpm install` (pnpm lists a release younger than its `minimumReleaseAge` under `minimumReleaseAgeExclude`), check out the new tag beside the repository, run `node --import tsx scripts/sync-upstream.ts <checkout>`, re-apply the boat hunks from the diff, update `boat/core/agentic-loop/UPSTREAM.md` and `THIRD_PARTY_NOTICES.md`, run `pnpm run check`, and run `pnpm run smoke:equivalence` (both drivers must still write identical logs for the same scripted model).
 - Files adapted from dsh keep the header `Adapted from deepseek-ai/deepseek-harness` and are listed by that header in `THIRD_PARTY_NOTICES.md`.
 - dsh's public APIs are pre-stable: a bump may rename a seam. Update every consumer in the same commit; never keep a compatibility shim.
 
@@ -181,12 +181,12 @@ Conventions:
 
 Read `docs/agent_design_principles.md` in ark-agentic before designing, reviewing, or porting an agent; ark's principles still apply, only the mechanism changed. Prompt changes need eval data; without it they are a working hypothesis and the commit says so.
 
-- Vocabulary: an **agent** is a business agent's definition, the directory `agents/<id>`; `boat run` declares it to dsh's `dsh-agent-preset-registry`, which calls it a preset, so "preset" names only that mechanism. An **agent instance** is the runtime `Agent` dsh creates per session; one agent has many instances.
-- An agent is a directory with `agent.cordis.yml` (required; its rows are the preset's `plugins`, read by `bundles/run/src/agent-directory.ts`) and an optional `preset.yml` (`name`, `description`, `order`: display only). Every row runs in the agent's standing scope, so it reaches exactly the sessions of that agent. `boat run --agents <dir> --agent <id>` selects one (`--preset` is a deprecated alias).
+- Vocabulary: an **agent** is a business agent's definition, the directory `boat/agents/<id>`; `boat run` declares it to dsh's `dsh-agent-preset-registry`, which calls it a preset, so "preset" names only that mechanism. An **agent instance** is the runtime `Agent` dsh creates per session; one agent has many instances.
+- An agent is a directory with `agent.cordis.yml` (required; its rows are the preset's `plugins`, read by `boat/bundles/run/src/agent-directory.ts`) and an optional `preset.yml` (`name`, `description`, `order`: display only). Every row runs in the agent's standing scope, so it reaches exactly the sessions of that agent. `boat run --agents <dir> --agent <id>` selects one (`--preset` is a deprecated alias).
 - Skill names are hyphenated (`asset-overview`), matching `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`; ark's underscore ids are renamed on migration. boat's skill metadata is the `metadata.boat` object of the SKILL.md frontmatter (`group`, `requiredTools`, `version`, `tags`).
 - Tools are registered through `ctx.toolPolicy.register(definition, meta)` so visibility, confirmation, and the state delta are declared with the tool. `visibility: 'auto'` tools become visible only through an active skill's `requiredTools` or an explicit activation in `boat/pre-assemble`.
 - Cards are rendered through `ctx.a2ui.render(...)` from the session state, returned on the tool result's presentation meta, and never described to the model beyond the digest.
-- Business logic (`buildAssetsBundle`, thresholds, personas) lives in `agents/<id>/src` and is compiled to `agents/<id>/lib` so `./lib/x.js` rows resolve relative to the composition file. Deployment inputs (persona selection, template roots) are `Config` or environment read at the edge, documented in the preset's `package.json` description.
+- Business logic (`buildAssetsBundle`, thresholds, personas) lives in `boat/agents/<id>/src` and is compiled to `boat/agents/<id>/lib` so `./lib/x.js` rows resolve relative to the composition file. Deployment inputs (persona selection, template roots) are `Config` or environment read at the edge, documented in the preset's `package.json` description.
 - Prompt orders: contexts `boat:state` 130, `boat:skill` 140; section `boat:skills` 450. New prompt text picks an order relative to these and to dsh's (`SANDBOX_POLICY` 110, `APPROVAL_POLICY` 115, `SUBAGENT_DELEGATION` 120) and records it in contracts.
 
 ## Commands
@@ -202,13 +202,13 @@ Read `docs/agent_design_principles.md` in ark-agentic before designing, reviewin
 | Everything CI runs | `pnpm run check` |
 | Driver equivalence smoke | `pnpm run smoke:equivalence` |
 | Show one test's console output | `npx vitest run <file> --silent=false --reporter=verbose` |
-| One-shot task | `node apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
-| A plugin file (boat driver is the default) | `node apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
-| An agent | `node apps/cli/lib/bin.js run --agents ./agents --agent demo "看看资产"` |
-| dsh's official driver instead | `node apps/cli/lib/bin.js run --driver dsh "task"` |
-| Imported history | `node apps/cli/lib/bin.js run --agents ./agents --agent demo --history agents/demo/fixtures/history/sa.json "继续刚才的话题"` |
-| Browser UI | `node apps/cli/lib/bin.js web --no-open` |
-| Composed plugin tree | `node apps/cli/lib/bin.js config dump --profile run` |
+| One-shot task | `node boat/apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
+| A plugin file (boat driver is the default) | `node boat/apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
+| An agent | `node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent demo "看看资产"` |
+| dsh's official driver instead | `node boat/apps/cli/lib/bin.js run --driver dsh "task"` |
+| Imported history | `node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent demo --history boat/agents/demo/fixtures/history/sa.json "继续刚才的话题"` |
+| Browser UI | `node boat/apps/cli/lib/bin.js web --no-open` |
+| Composed plugin tree | `node boat/apps/cli/lib/bin.js config dump --profile run` |
 | Re-fork from the pinned dsh tag | `node --import tsx scripts/sync-upstream.ts <dsh checkout>` |
 
 All boat data lives under `$BOAT_HOME` (default `~/.boat`); the launcher exports it as `DSH_HOME` before any dsh package loads, so a user's `~/.dsh` is never touched. Set `DSH_TELEMETRY_DISABLED=1` in tests and CI.

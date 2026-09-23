@@ -1,6 +1,6 @@
 /**
- * Enforce the layer rule: a workspace package's layer is its top-level
- * directory, and dependencies point down only. Runtime edges (dependencies,
+ * Enforce the layer rule: a boat package's layer is its directory under
+ * `boat/`, and dependencies point down only. Runtime edges (dependencies,
  * peerDependencies) follow RUNTIME; devDependencies may also reach DEV_ONLY
  * (tests only). Between plugins the only allowed source import is
  * `import type`, the service declaration a plugin merges onto the cordis
@@ -57,7 +57,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 function workspacePackages(): WorkspacePackage[] {
   const found: WorkspacePackage[] = []
   for (const layer of LAYERS) {
-    const layerDir = join(root, layer)
+    const layerDir = join(root, 'boat', layer)
     if (!existsSync(layerDir)) continue
     for (const entry of readdirSync(layerDir, { withFileTypes: true })) {
       const file = join(layerDir, entry.name, 'package.json')

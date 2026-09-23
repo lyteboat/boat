@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./boat/tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
     "incremental": false,
@@ -9,18 +9,18 @@
     "rootDir": "."
   },
   "include": [
-    "apps/*/tests/**/*.ts",
-    "apps/*/src/**/*.ts",
-    "bundles/*/tests/**/*.ts",
-    "bundles/*/src/**/*.ts",
-    "plugins/*/tests/**/*.ts",
-    "plugins/*/src/**/*.ts",
-    "core/*/tests/**/*.ts",
-    "core/*/src/**/*.ts",
-    "agents/*/tests/**/*.ts",
-    "agents/*/src/**/*.ts",
-    "tooling/*/tests/**/*.ts",
-    "tooling/*/src/**/*.ts",
+    "boat/apps/*/tests/**/*.ts",
+    "boat/apps/*/src/**/*.ts",
+    "boat/bundles/*/tests/**/*.ts",
+    "boat/bundles/*/src/**/*.ts",
+    "boat/plugins/*/tests/**/*.ts",
+    "boat/plugins/*/src/**/*.ts",
+    "boat/core/*/tests/**/*.ts",
+    "boat/core/*/src/**/*.ts",
+    "boat/agents/*/tests/**/*.ts",
+    "boat/agents/*/src/**/*.ts",
+    "boat/tooling/*/tests/**/*.ts",
+    "boat/tooling/*/src/**/*.ts",
     "scripts/**/*.ts"
   ]
 }

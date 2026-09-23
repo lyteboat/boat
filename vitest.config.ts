@@ -8,7 +8,7 @@ import { defineConfig } from 'vitest/config'
 // plugin rows natively and must get lib/, which Node can load (src uses TypeScript
 // parameter properties, which Node's type stripping rejects).
 const conditions = ['@boat/source']
-const layers = '{apps,bundles,plugins,core,agents,tooling}'
+const layers = 'boat/{apps,bundles,plugins,core,agents,tooling}'
 
 export default defineConfig({
   test: {

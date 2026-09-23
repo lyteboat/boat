@@ -1,42 +1,42 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./boat/tsconfig.base.json",
   "files": [],
   "references": [
     {
-      "path": "./core/cordis-compat"
+      "path": "./boat/core/cordis-compat"
     },
     {
-      "path": "./core/contracts"
+      "path": "./boat/core/contracts"
     },
     {
-      "path": "./core/agentic-loop"
+      "path": "./boat/core/agentic-loop"
     },
     {
-      "path": "./plugins/tool-policy"
+      "path": "./boat/plugins/tool-policy"
     },
     {
-      "path": "./plugins/skill-router"
+      "path": "./boat/plugins/skill-router"
     },
     {
-      "path": "./plugins/a2ui"
+      "path": "./boat/plugins/a2ui"
     },
     {
-      "path": "./plugins/history-import"
+      "path": "./boat/plugins/history-import"
     },
     {
-      "path": "./bundles/run"
+      "path": "./boat/bundles/run"
     },
     {
-      "path": "./apps/cli"
+      "path": "./boat/apps/cli"
     },
     {
-      "path": "./agents/demo"
+      "path": "./boat/agents/demo"
     },
     {
-      "path": "./tooling/testing"
+      "path": "./boat/tooling/testing"
     },
     {
-      "path": "./tooling/dsh-agent-loop-testkit-fork"
+      "path": "./boat/tooling/dsh-agent-loop-testkit-fork"
     }
   ]
 }
