@@ -1,20 +1,62 @@
-# boat
+# 轻舟 boat
 
-> **轻舟已过万重山.** A light harness for every industry, built on DeepSeek Harness.
+> **轻舟智能体底座 —— 赋能行业穿越 AI 万重山。**
+> *Harness for business, built on DeepSeek Harness.*
 
-boat is an agent harness built as plugins on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) and its Cordis plugin system. The design document tracks the plan; this repository is its implementation, delivered one runnable milestone at a time.
+轻舟是构建在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）之上的业务智能体底座。我们不做 coding agent，我们要做的是生产级就绪、开箱即用的业务 harness：让 AI 能干活、干得对、有迹可查。
 
-## Vision
+## 愿景
 
-AI in production is **Model + Harness**: the model brings general intelligence, the harness turns it into dependable work in one domain, with its tools, skills, state, and rules. boat builds on the DeepSeek Harness community to give every industry such a harness, a light boat that carries vertical teams across the ten thousand mountains between a capable model and a product that ships.
+大模型是发动机，不是收割机。发动机再强，不装上专用割台就不收粮食。
 
-AI 的未来是 Model + Harness。模型提供通用智能，Harness 把它落到具体行业的工具、技能、状态与规则之中。boat 依托 DeepSeek Harness 社区，为各行各业打造 Harness 轻舟，助力垂域轻舟过万重山。
+今天各行业面临的局面完全一样：模型能力已不是瓶颈，把模型接进真实业务、跑通最后一公里才是。最后一公里里没有新算法，只有一件件具体的事：模型在哪一步该看到哪些工具，哪些操作必须先经人确认，业务状态以谁为准，结果怎样以业务界面交到用户手里，出了问题怎样还原模型当时看到了什么。每个行业团队都要把这些重新做一遍。
+
+轻舟把这最后一公里做成一套可复用的垂域智能体底座。行业团队只需装上自己的割台，也就是业务技能、业务工具和卡片模板，就能得到一个上得了生产的智能体。
+
+### 为什么基于 DeepSeek Harness
+
+- **不重造轮子。** 会话日志、工具与技能注册、审批、持久化、Web UI 由 dsh 提供，轻舟只做业务场景真正缺的那一层。
+- **兼容生态。** 轻舟的每项能力都是 dsh 扩展点上的 Cordis 插件，dsh 社区的插件可以直接组合进来，轻舟的插件也能回馈社区。
+- **升级可控。** 锁定一个 dsh 发布版本（`dsh.upstream.json`）；驱动 fork 只保留 `core/agentic-loop/UPSTREAM.md` 列出的改动，`--driver dsh` 随时切回官方驱动，两者对同一脚本化模型写出相同的会话日志。
+- **经验延续。** 技能路由、工具可见性、A2UI 卡片、会话状态与外部历史都来自已在业务场景中验证过的参考实现，以插件形式在 dsh 上重新表达，并以参考实现的产出作为黄金基线校验。
+
+### 开箱即用
+
+一个业务智能体就是一个目录：
+
+```text
+agents/<id>/
+  agent.cordis.yml   组合：人设、技能模式、工具与闸门
+  preset.yml         展示名称（可选）
+  skills/            业务技能，每个技能一个 SKILL.md
+  a2ui/              卡片模板
+  src/               业务逻辑：工具、状态、闸门
+```
+
+构建后一条命令即可运行随仓库提供的示例智能体 `agents/demo`：
+
+```sh
+pnpm install && pnpm run build
+node apps/cli/lib/bin.js run --agents ./agents --agent demo "看看资产"
+```
+
+当前交付进度见下方 [Status](#status)。
+
+## Vision (English)
+
+> **Harness for business, built on DeepSeek Harness.**
+
+The model is the engine, not the harvester: however strong the engine, it brings in no grain until a purpose-built header is mounted on it. Every industry faces the same situation today. Model capability is no longer the bottleneck; wiring the model into real business and closing the last mile is.
+
+boat is not a coding agent. It is a production-ready, out-of-the-box harness for business agents, built as Cordis plugins on DeepSeek Harness (dsh). dsh supplies sessions, tools, skills, approval, persistence, and the web UI; boat adds what business work needs on dsh's seams (skill routing, tool visibility and confirmation, session state, A2UI cards, imported history) and stays domain-neutral; each industry mounts its own header as an agent directory under `agents/`. The goal is AI that gets the work done, does it right, and leaves a trace: everything a model sees is reconstructable from the session log.
+
+The design document tracks the plan; this repository is its implementation, delivered one runnable milestone at a time.
 
 ## Status
 
 - M0 — runnable skeleton: `boat run` and `boat web` boot the official dsh bundles through boat's own launcher.
 - M1 — `@boat/agentic-loop`, a fork of dsh-agent-loop, the default driver since the layering refactor (`--driver dsh` mounts dsh's official one); both drivers write identical session logs for the same scripted model.
-- M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --agent <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`bundles/run/tests/tool-policy.composite.ts`). Step 4: `@boat/skill-router`, ark's skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (ark's router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, ark's A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads ark produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`bundles/run/tests/a2ui.composite.ts`). Step 6: `@boat/history-import`, external conversation history (ark's SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history <file>`, either driver). Step 7: `agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --agents ./agents --agent demo "看看资产"`).
+- M2 — boat's own plugins, one runnable step at a time. Step 1: `@boat/contracts` and the boat driver's intake path (`boat/intake`, `boat/pre-assemble`), plus `--plugin <file>`. Step 2: `@boat/run`, boat's one-shot runner, composing the agent from a preset directory (`boat run --agents ./agents --agent <id> "task"`). Step 3: `@boat/tool-policy`, tool visibility (`always`/`auto` + activation), confirmation through the approval seam, and tool-result state deltas folded into the `boatState` projection (`bundles/run/tests/tool-policy.composite.ts`). Step 4: `@boat/skill-router`, the reference skill load modes over the dsh skill registry: `full` puts every skill body in the system prompt, `dynamic` routes each user input through a side model call (the reference router prompt, sticky on null and errors), puts the active skill's body and required tools into the same step, and records `boat/route-request` / `boat/skill-routed`. Step 5: `@boat/a2ui`, the reference A2UI template engine ported field-for-field (manifest resolution, transforms DSL, walker, contract validation, checked against payloads the reference implementation produced for the same templates), the `render_a2ui` tool that renders a card from the session state and puts it on the tool result's meta, and the `boatCards` projection (`bundles/run/tests/a2ui.composite.ts`). Step 6: `@boat/history-import`, external conversation history (the reference SA history rules: rounds by trace id, half and malformed rounds dropped, ordered by create time) turned into a session seed of closed turns, so the task becomes the next turn and the first request already derives the imported rounds (`boat run --history <file>`, either driver). Step 7: `agents/demo`, the demo agent preset (persona, two routed skills, an asset tool that fills the state and renders the card in one call, a diagnosis tool, an intake gate), and the M2 integration acceptance over it (`boat run --agents ./agents --agent demo "看看资产"`).
 
 ## Requirements
 
@@ -53,7 +95,7 @@ One top-level directory per layer; dependencies point down only (`apps` → `bun
 | `bundles/run` | `@boat/run` | the one-shot bundle behind `boat run`: task, `--agent` (alias `--preset`), `--agents`, `--history` |
 | `plugins/tool-policy` | `@boat/tool-policy` | tool visibility, confirmation, and state deltas over the dsh tool registry; `./agent` declares policy from an agent's composition file |
 | `plugins/skill-router` | `@boat/skill-router` | skill load modes and LLM routing over the dsh skill registry; `./agent` declares the mode from an agent's composition file |
-| `plugins/a2ui` | `@boat/a2ui` | the A2UI template engine (ark's template mode), `render_a2ui`, and the `boatCards` projection; `./agent` composes the tool from an agent's composition file |
+| `plugins/a2ui` | `@boat/a2ui` | the A2UI template engine (the reference template mode), `render_a2ui`, and the `boatCards` projection; `./agent` composes the tool from an agent's composition file |
 | `plugins/history-import` | `@boat/history-import` | SA history parsing and the session seed behind `boat run --history` |
 | `core/contracts` | `@boat/contracts` | boat's contract extensions over the dsh seams: tool and skill metadata, `boat/*` events, log nodes |
 | `core/cordis-compat` | `@boat/cordis-compat` | runtime values for const enums the published cordis build erases |

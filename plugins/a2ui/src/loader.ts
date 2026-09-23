@@ -3,7 +3,7 @@
  * (`paths`, `args`, `emission_mode`), `business_hierarchy.yaml` (`default`,
  * `hierarchies`) and the optional `compute.js` ESM module (named exports: the
  * manifest's computed functions, plus the `digest(raw, flat)` and
- * `stateDelta(raw, flat)` hooks). A port of ark's template_engine/loader.py
+ * `stateDelta(raw, flat)` hooks). A port of the reference implementation's template_engine/loader.py
  * with `compute.py` replaced by an ES module.
  * @module @boat/a2ui/loader
  */

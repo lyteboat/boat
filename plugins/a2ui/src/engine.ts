@@ -1,6 +1,6 @@
 /**
  * Template-mode rendering: load → resolve the manifest → walk → business
- * payload → surface identity → compute hooks. A port of ark's
+ * payload → surface identity → compute hooks. A port of the reference implementation's
  * template_engine/engine.py. The payload is literal-only and frontend-ready.
  * @module @boat/a2ui/engine
  */
@@ -139,7 +139,7 @@ export class TemplateEngine {
   }
 }
 
-/** ark's surface identity: `<card>-<sessionId[:8]>-<6 hex>`. */
+/** The reference surface identity: `<card>-<sessionId[:8]>-<6 hex>`. */
 export function mintSurfaceId(card: string, sessionId: string): string {
   return `${card}-${sessionId.slice(0, 8)}-${randomBytes(3).toString('hex')}`
 }

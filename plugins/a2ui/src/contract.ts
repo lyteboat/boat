@@ -1,7 +1,7 @@
 /**
  * A2UI payload validation: the event-level contract (which top-level fields
  * each event allows and requires), the component level (ids, references,
- * binding shapes) and data coverage. A port of ark's contract_models.py,
+ * binding shapes) and data coverage. A port of the reference implementation's contract_models.py,
  * validator.py and guard.py.
  * @module @boat/a2ui/contract
  */
@@ -20,7 +20,7 @@ const ALLOWED_BY_EVENT: Record<string, Set<string>> = {
 
 /**
  * What one A2UI client renders: the component types it knows (an unknown type
- * is reported, as in ark, not rejected) and, per type, the fields whose value
+ * is reported, as in the reference implementation, not rejected) and, per type, the fields whose value
  * is a `{path}` / `{literalString}` binding.
  */
 export interface A2uiComponentCatalog {
@@ -29,11 +29,11 @@ export interface A2uiComponentCatalog {
 }
 
 /**
- * The catalog of ark's reference client (validator.py), the default when a
+ * The catalog of the reference client (validator.py), the default when a
  * composition names none. A deployment with another client passes its own
  * through `RenderToolOptions.components`.
  */
-export const ARK_A2UI_COMPONENT_CATALOG: A2uiComponentCatalog = {
+export const DEFAULT_A2UI_COMPONENT_CATALOG: A2uiComponentCatalog = {
   types: [
     'Row', 'Column', 'Card', 'List', 'Table', 'Popup', 'Text', 'RichText', 'Image', 'Icon', 'Tag', 'Circle', 'Divider', 'Line', 'Button',
     'LineChart', 'CandlestickChart', 'Pie', 'IdealRange', 'CollapseList', 'AssetProportionProgress', 'AssetListCard', 'FundFavIcon',
@@ -60,7 +60,7 @@ function nonEmpty(value: unknown): boolean {
 }
 
 /**
- * Validate the top-level event contract; throws with ark's messages.
+ * Validate the top-level event contract; throws with the reference messages.
  * @param payload - the event payload.
  */
 export function validateEventPayload(payload: unknown): void {
@@ -121,12 +121,12 @@ function componentReferences(props: Record<string, unknown>): string[] {
 /**
  * Validate the component layer: duplicate ids, entry shapes, dangling
  * references, binding XOR, root reference. An unsupported component type is
- * reported to the log, as in ark, not counted as an error.
+ * reported to the log, as in the reference implementation, not counted as an error.
  * @param payload - the rendered payload.
  * @param log - where unsupported types are reported.
- * @param catalog - the client's component catalog; ark's reference client by default.
+ * @param catalog - the client's component catalog; the reference client by default.
  */
-export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG, catalog: A2uiComponentCatalog = ARK_A2UI_COMPONENT_CATALOG): ValidationResult {
+export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG, catalog: A2uiComponentCatalog = DEFAULT_A2UI_COMPONENT_CATALOG): ValidationResult {
   const entries: { code: string; message: string }[] = []
   const add = (code: string, message: string): void => { entries.push({ code, message }) }
   const done = (): ValidationResult => ({
@@ -265,7 +265,7 @@ export interface GuardResult {
 /**
  * Every validation layer over one payload; `strict` turns event-contract
  * violations into errors instead of warnings. Each component error carries
- * its own code (ark paired codes and messages by index over a deduplicated
+ * its own code (the reference implementation paired codes and messages by index over a deduplicated
  * code list, mislabelling from the third error on).
  */
 export function validateFullPayload(payload: Record<string, unknown>, options: { strict?: boolean; log?: A2uiLog; catalog?: A2uiComponentCatalog } = {}): GuardResult {

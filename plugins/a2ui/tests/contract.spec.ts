@@ -3,7 +3,7 @@
  * catalog is the caller's to supply.
  */
 import { describe, expect, it } from 'vitest'
-import { ARK_A2UI_COMPONENT_CATALOG, validateFullPayload, validatePayload } from '@boat/a2ui'
+import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload, validatePayload } from '@boat/a2ui'
 
 const payload = {
   event: 'beginRendering', version: '1.0.0', surfaceId: 's', rootComponentId: 'c1',
@@ -30,6 +30,6 @@ describe('validatePayload', () => {
     expect(warnings).toEqual(['Unsupported A2UI component type: Widget (component id=w index=0)'])
     const result = validatePayload(widget, log, { types: ['Widget'], bindingFields: { Widget: ['label'] } })
     expect(result.entries).toEqual([{ code: 'A2UI_BINDING_XOR', message: "Component 'w' field 'label' must contain exactly one of 'path' or 'literalString'" }])
-    expect(ARK_A2UI_COMPONENT_CATALOG.types).toContain('Text')
+    expect(DEFAULT_A2UI_COMPONENT_CATALOG.types).toContain('Text')
   })
 })

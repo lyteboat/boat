@@ -31,7 +31,7 @@ describe('resolveRouteDecision', () => {
 })
 
 describe('buildRoutePrompt', () => {
-  it('renders ark\'s sections in order', () => {
+  it('renders the reference sections in order', () => {
     const prompt = buildRoutePrompt({
       candidates: [{ name: 'asset-overview', description: '资产总览' }],
       history: ['user: 你好', 'assistant: 您好'],

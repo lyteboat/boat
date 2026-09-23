@@ -1,6 +1,6 @@
 /**
  * Resolve a card's manifest against raw data into the flat binding table.
- * A port of ark's template_engine/resolver.py: `state` entries read a path
+ * A port of the reference implementation's template_engine/resolver.py: `state` entries read a path
  * (with an optional default), `transform` entries run the transforms DSL,
  * `computed` entries call a named export of the card's compute module with
  * `state:<path>` arguments pre-resolved.

@@ -1,4 +1,4 @@
-/** ark's synthetic walker tests (tests/unit/core/test_template_engine.py), ported. */
+/** The reference synthetic walker tests (tests/unit/core/test_template_engine.py), ported. */
 import { describe, expect, it } from 'vitest'
 import { BoundPathTracker, walk, rowTemplateIds, validateFullPayload } from '@boat/a2ui'
 import type { TemplateDocument } from '@boat/a2ui'

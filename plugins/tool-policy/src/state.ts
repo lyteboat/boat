@@ -3,7 +3,7 @@
  * from the `stateDelta` a successful `tool/result` carries on
  * `meta.boat.stateDelta`. A delta is a JSON object whose top-level keys are
  * dot paths (`assets.total`); each path is assigned into the state, nested
- * plain objects deep-merge (ark's `apply_state_delta` overwrites the leaf
+ * plain objects deep-merge (the reference `apply_state_delta` overwrites the leaf
  * instead; boat keeps sibling fields a partial refresh did not mention),
  * every other value replaces. The fold is immutable and returns the same
  * reference when nothing changed.

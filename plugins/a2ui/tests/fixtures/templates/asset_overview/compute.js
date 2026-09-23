@@ -1,5 +1,5 @@
 // compute.js — the asset_overview card's imperative escape hatch, ported from
-// ark's templates_v2/asset_overview/compute.py (with the yinglong helpers it
+// the reference implementation's templates_v2/asset_overview/compute.py (with the yinglong helpers it
 // imported inlined: fmt_plain, fmt_money_llm, ASSET_BUCKETS, BUCKET_LABEL,
 // ASSET_BUCKET_COLOR). Named exports are referenced by manifest.yaml
 // `computed.fn`; `digest` is the card's LLM digest hook.
