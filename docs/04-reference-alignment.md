@@ -1,18 +1,18 @@
-# boat 与 ark-agentic 对齐分析：哪些能力要引入，core 怎么重新设计
+# boat 与参考实现对齐分析：哪些能力要引入，core 怎么重新设计
 
 > 本文只做分析，不改代码。
 >
 > **基线**
 > - boat 仓库 `3d29a07`：内核 13 个包，对应 dsh 0.1.7-rc.1；
-> - ark-agentic 的 master 分支；
+> - 参考实现的 master 分支；
 > - dsh 的 tag `dsh-v0.1.7-rc.1`；
 > - boat 发行版蓝图 v7（v8 只更新了内核清单与验收记录，本文引用的 §7、§9 没有变）。
 >
 > **路径约定**
 > - 不带前缀的路径从 boat 仓库根算起，例如 `dsh/core/agent-loop/src/agent.ts`、`boat/plugins/tool-policy/src/state.ts`。
-> - `ark:` 指 ark-agentic 仓库里的 `src/ark_agentic/`，例如 `ark:core/runtime/base_agent.py`。`ark 仓库:` 指 ark-agentic 仓库根。
+> - `ref:` 指参考实现的 Python 包根目录，例如 `ref:core/runtime/base_agent.py`。`ref 仓库:` 指参考实现的仓库根。
 > - `dsh:` 指 dsh 0.1.7-rc.1 上游 monorepo 的根，例如 `dsh:packages/preset/agent-preset-registry/README.md`。boat 内核的 13 个包与上游同名，引用内核源码时写 boat 里的路径 `dsh/...`。
-> - 「蓝图 §n」指 boat 发行版蓝图 v7（HTML 格式，没有入仓）。其中 §7 定义变更类别，§9 定义 ark 能力的落点。
+> - 「蓝图 §n」指 boat 发行版蓝图 v7（HTML 格式，没有入仓）。其中 §7 定义变更类别，§9 定义参考实现能力的落点。
 >
 > **数据说明**
 > - 行号以写作时的代码为准。
@@ -23,13 +23,13 @@
 
 ## 0. 结论
 
-dsh 的核心代码已经在 boat 里跑通。ark-agentic 的大部分能力，在 dsh 里都有现成的扩展点可以接住，所以不需要把 ark 的运行器、提示词构建器或压缩策略搬进内核。
+dsh 的核心代码已经在 boat 里跑通。参考实现的大部分能力，在 dsh 里都有现成的扩展点可以接住，所以不需要把参考实现的运行器、提示词构建器或压缩策略搬进内核。
 
 推荐的方案叫「dsh 原生薄内核」：
 - 内核 13 个包里，11 个与上游零差量。
 - 只带 3 项登记过的 extend：现有的 `boat/intake` 和 `boat/pre-assemble`，再加一项新的 `session-append-ignorable`（下称 E1）。E1 只允许写纯信息记录。
-- ark 的能力分到四个地方落地：boat 插件；少数 boat 自有 seam；一个有严格进入条件的 `boat/lib` 共享层；按 dsh bundle 形式分发的业务 agent。
-- 代价是：一部分 ark 语义要改由出口层推导，或者写进迁移说明，再用 eval 验证影响。
+- 参考实现的能力分到四个地方落地：boat 插件；少数 boat 自有 seam；一个有严格进入条件的 `boat/lib` 共享层；按 dsh bundle 形式分发的业务 agent。
+- 代价是：一部分参考实现语义要改由出口层推导，或者写进迁移说明，再用 eval 验证影响。
 
 要点：
 
@@ -37,12 +37,12 @@ dsh 的核心代码已经在 boat 里跑通。ark-agentic 的大部分能力，�
 2. **第二个阻断是服务化。** boat 现在只有两种形态：run（一次性任务）和 web（原样的 dsh-web-app）。还缺 `/chat`、多用户、会话归属和多 POD 存储。dsh 的 session-query 自己不做调用方授权（`dsh:packages/session-query/session-query/README.md:150`），所以这些都得由 boat 补，而且都能在内核外做：`@boat/serve` bundle、会话目录 seam、SQL 版 `SessionPersistence` provider。
 3. **第三个阻断是模型通路。** dsh-base 里已经挂着 llm-pi-ai（默认休眠），它能接 OpenAI 兼容网关和自托管的 Chat Completions（`dsh:packages/llm/llm-pi-ai/README.md:12,62-65`），但做不到三件事：
    - 按请求签名；
-   - 发送 ark 用到的 penalty、top_k、extra_body，因为它只透传 temperature 和 maxTokens（`dsh:packages/llm/llm-pi-ai/src/adapter.ts:380-389`）；
+   - 发送参考实现用到的 penalty、top_k、extra_body，因为它只透传 temperature 和 maxTokens（`dsh:packages/llm/llm-pi-ai/src/adapter.ts:380-389`）；
    - 按请求改写 header，因为它只支持静态的 profile headers（同文件 204-209）。
 
    建议直接在它依赖的 pi-ai 库上写一个薄适配器 `@boat/llm-openai-compat`：用 `onPayload` 加采样字段，用 `fetch` 做签名。三个 PA 网关的专有逻辑放进部署私有包。
-4. **llm、tool、skill、session、memory 五项是启动必备能力。** 前四项已经在内核里，由 dsh-base 的行初始化。dsh 没有记忆包，所以记忆要由 boat 自己提供：定义一个 seam，host bundle 常驻挂载一个本地 provider，boat CLI 在启动后检查这五个服务是否都在，缺一个就启动失败。记忆 seam 因此定为 P0，不再看「生产是否开了记忆」。flush、dream 这些记忆策略由 agent 按需开启。
-5. **以下 ark 机制不移植，因为 dsh 更严格，或者已经有等价物：**
+4. **llm、tool、skill、session、memory 五项是启动必备能力。** 前四项已经在内核里，由 dsh-base 的行初始化。dsh 的官方包里没有记忆包；社区有 40 多个记忆插件，但各自定义服务名，没有公共 seam（见 3.4）。所以记忆要由 boat 自己提供：定义一个 seam，host bundle 常驻挂载一个本地 provider，boat CLI 在启动后检查这五个服务是否都在，缺一个就启动失败。记忆 seam 因此定为 P0，不再看「生产是否开了记忆」。flush、dream 这些记忆策略由 agent 按需开启。
+5. **以下参考实现机制不移植，因为 dsh 更严格，或者已经有等价物：**
    - RunnerCallbacks 这个统一容器；
    - Bootstrap、AppContext 和 ENABLE_* 开关；
    - checkout/flush 与乐观锁；
@@ -55,7 +55,7 @@ dsh 的核心代码已经在 boat 里跑通。ark-agentic 的大部分能力，�
    - seam 的抽象基类：插件之间只能 `import type`（`scripts/check-layers.ts:99-111`），`@boat/contracts` 又不能放运行时行为（`CLAUDE.md:56`）；
    - 被三个以上包复用的纯函数。
 
-   进入条件与 `CLAUDE.md:92` 的「第三次重复再抽取」保持一致。这件事要改 `CLAUDE.md` 第 43、51-61、67、92 行，需要拍板。
+   进入条件与 `CLAUDE.md:93` 的「第三次重复再抽取」保持一致。这件事要改 `CLAUDE.md` 第 43、51-61、67、93 行，需要拍板。
 8. **读代码时发现两个现存问题。**
    - (a) **prune 重折（推断）。** dsh-base 挂载的 tool-result-pruner 会用 `...event.data` 复制出一条 replace 事件（`dsh:packages/compaction/compaction-tool-result-pruner/src/index.ts:165-171`），`meta` 也一起被复制。而 boatState 和 boatCards 两个投影都不检查 `surfaceOp`（`boat/plugins/tool-policy/src/state.ts:78-94`、`boat/plugins/a2ui/src/index.ts:103-109`）。后果是旧的 stateDelta 会在新值之后再被折一次，卡片也可能重复或回退到旧内容。
    - (b) **反馈会触发会话上传。** dsh-base 的 session-telemetry-otel 默认是 FEEDBACK_ONLY 模式：用户一做显式反馈（点赞、点踩、文本反馈、编辑、撤回），就把截至该反馈的完整会话前缀（含上下文）上传到 `harness-telemetry.deepseeksvc.com`；平常的对话不触发（`dsh:packages/bundle/base/cordis.patch.yml:188-217`、`dsh:packages/session/session-telemetry-otel/README.md:12,34`）。boat/host 只关了 session-log-deepseek（`boat/bundles/host/cordis.patch.yml:7-12`），没有覆盖这一行。boat web 自带点赞、点踩（`dsh:packages/bundle/web-app/cordis.patch.yml:50-51,363-364`），在金融场景下有合规风险。
@@ -88,19 +88,19 @@ dsh 的核心代码已经在 boat 里跑通。ark-agentic 的大部分能力，�
 
 另外，`src/boat/step-hooks.ts` 有 64 行，只放类型和事件声明。
 
-**M2 已经从 ark 移植的内容：**
+**M2 已经从参考实现移植的内容：**
 - `@boat/tool-policy`：可见性、确认、stateDelta，以及 boatState 投影；
-- `@boat/skill-router`：full 和 dynamic 两种模式，沿用 ark 的 LLM 路由；
-- `@boat/a2ui`：ark 的 template 引擎；
+- `@boat/skill-router`：full 和 dynamic 两种模式，沿用参考实现的 LLM 路由；
+- `@boat/a2ui`：参考实现的 template 引擎；
 - `@boat/history-import`：把 SA 历史导入为会话 seed；
 - 示例 agent `boat/agents/demo`。
 
-### 1.2 术语对照（给熟悉 ark、刚接触 dsh 的读者）
+### 1.2 术语对照（给熟悉参考实现、刚接触 dsh 的读者）
 
-| ark 的说法 | dsh / boat 的对应 | 要点 |
+| 参考实现的说法 | dsh / boat 的对应 | 要点 |
 |---|---|---|
-| 一次 run：一次用户请求走完 `agent.run()` | 一个 turn：从 `turn/start` 到 `turn/end` | ark 的 RunOutcome 对应 dsh `turn/end` 的 reason（`dsh/core/session/src/types.ts:189-232`） |
-| run 里的一轮模型调用：`ls.turns`，受 `max_turns=10` 限制（`ark:core/runtime/base_agent.py:144,1052`） | 一个 step：从 `step/start` 到 `step/end` | 最容易混淆：ark 的 turn 等于 dsh 的 step，ark 的 max_turns 实际上是步数上限 |
+| 一次 run：一次用户请求走完 `agent.run()` | 一个 turn：从 `turn/start` 到 `turn/end` | 参考实现的 RunOutcome 对应 dsh `turn/end` 的 reason（`dsh/core/session/src/types.ts:189-232`） |
+| run 里的一轮模型调用：`ls.turns`，受 `max_turns=10` 限制（`ref:core/runtime/base_agent.py:144,1052`） | 一个 step：从 `step/start` 到 `step/end` | 最容易混淆：参考实现的 turn 等于 dsh 的 step，参考实现的 max_turns 实际上是步数上限 |
 | SessionEntry：messages、可变的 state、meta | session：只追加的事件日志，加上从日志折叠出来的投影 | dsh 没有可变的 meta |
 | session.state 与 state_delta | projection（`ctx.sessionProjections`），boat 这边是 boatState | 投影是日志的纯函数 |
 | 消息的 metadata | user/message 上的 `source` | `MessageSourceMap` 的键只是声明合并时用的名字，运行时靠 `kind` 区分来源（`dsh/llm/llm/src/message.ts:103-116`） |
@@ -141,11 +141,11 @@ dsh 目前不接受外部 PR（`dsh:CONTRIBUTING.md:9`）。所以 boat 带进�
 | tool | `dsh/core/tools`（内核） | `tools` 行（同文件 498 行） | 已有 | `@boat/biz` 收窄工具面 |
 | skill | `dsh/skill/skill`（内核） | `skill`、`skill-filesystem` 行（同文件 293、296 行），以及 tool-skill | 已有 | 迁移 SKILL.md 格式 |
 | session | `dsh/core/session` 与持久化 seam（内核） | `session-persistence-jsonl` 行（同文件 130 行） | 已有 | 多 POD 场景加 SQL provider |
-| memory | dsh 没有这个包 | boat 自有 seam `boatMemory` | **缺** | 抽象基类放在 `boat/lib`；`@boat/host` 常驻挂 `memory-store-local` 这一行；业务 agent 按需打开记忆策略 |
+| memory | dsh 官方没有这个包；社区插件见 3.4 | boat 自有 seam `boatMemory` | **缺** | 抽象基类放在 `boat/lib`；`@boat/host` 常驻挂 `memory-store-local` 这一行；业务 agent 按需打开记忆策略 |
 
 补充两点：
 - **CLI 启动审计。** app-boot 的 required 清单是写死在代码里的全局常量，不能靠 profile 扩展（`dsh:packages/boot/app-boot/src/index.ts:737-751`）。所以由 `@boat/cli` 在 `boot()` 之后检查 `llm`、`tools`、`skills`、`sessions`（连同持久化 provider）、`boatMemory` 五个服务是否可用，缺一个就以非零码退出。
-- **与 ark 的差别。** ark 的记忆由 `ENABLE_MEMORY` 控制，默认关闭（`ark 仓库:.env-sample:62`）。boat 改为「seam 一直存在，策略可以关闭」，这样不同 profile 的启动行为一致。
+- **与参考实现的差别。** 参考实现的记忆由 `ENABLE_MEMORY` 控制，默认关闭（`ref 仓库:.env-sample:62`）。boat 改为「seam 一直存在，策略可以关闭」，这样不同 profile 的启动行为一致。
 
 ### 1.6 必须保留的 dsh 最佳实践
 
@@ -177,145 +177,145 @@ dsh 目前不接受外部 PR（`dsh:CONTRIBUTING.md:9`）。所以 boat 带进�
 
 ### 2.1 运行时循环、回调、护栏、子任务与多 agent
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| 8 个 hook 与 CallbackResult | `ark:core/runtime/callbacks.py:37-69,197-222` | 各扩展点都是独立的类型化事件 | 只有两个 boat 钩子 | 不引入容器，写一张映射表 | 开发指南 | P1 | S |
-| before_agent 返回 ABORT 拒识，CallbackEvent 写进 hook_effects 并落盘 | `ark:core/runtime/base_agent.py:844-880`；`ark:core/runtime/_runner_helpers.py:172-185`；`ark:core/session/format.py:392-394` | 无；boat/intake 是 boat 自己的 extend | reply 只能带 content blocks，可以重开 | 部分：决定、帧、卡片在准入阶段写进用户消息的 source | `@boat/intake-guard` 加 agent-invoke | P0 | M |
-| LLM 准入分类（看最近 10 条、正则预判、降级方向因 agent 而异） | `ark:agents/wealth/guard.py:124,182-253`；`ark:agents/yinglong/guard.py` | 无 | demo 里只有正则门 | 引入骨架 | `@boat/intake-guard` | P0 | M |
-| securities 的 `_auth_check`（未登录时 ABORT 出登录卡）和 `_enrich_context` | `ark:agents/securities/agent.py:32-51,98`；`ark:agents/securities/tools/service/param_mapping.py:118-135` | 无 | 无 | 引入：放进准入阶段的 enrich 和 gate | agent 层，经由 intake-guard | P0 | S |
-| trading 的 `_enrich_context` | `ark:agents/trading/agent.py:45-62` | 无 | 无 | 引入 | 同上 | P1 | S |
-| context_updates 与画像预取 | `ark:agents/wealth/callbacks.py:35-66`；`ark:core/runtime/base_agent.py:830-834` | 带来源的 user/message、runtime context | 无 | 引入 | `@boat/request-context`，外加准入阶段 | P0 | M |
-| before_loop_end 的 RETRY（grounding 校验） | `ark:core/runtime/validation.py:442-534` | agent/turn-stopping 加 steer | 无 | 引入 | `@boat/turn-review` | P1 | S |
-| 工具返回 STOP，以 tool_stopped 结束 | `ark:core/runtime/base_agent.py:1505-1536` | `exec.concludeTurn()`（`dsh/core/tools/src/index.ts:425-434`） | a2ui 的终态卡已经在用（`boat/plugins/a2ui/src/index.ts:268`） | 引入，有 3 处语义差异 | tool-policy 提供辅助 | P0 | S |
-| agent_router 多路 consult 时推迟 STOP（before_tool、after_tool） | `ark:agents/agent_router/agent.py:30-56,77-81` | 同一步里只要有一个结果结束本轮，本轮就结束（`dsh/core/agent-loop/src/tool-calls.ts:37,158`） | 无 | 部分：由 consult 工具自己判断是否 concludeTurn | `@boat/consult` | P2 | S |
-| max_turns 与 stopped_by_limit | `ark:core/runtime/base_agent.py:144,1052-1071` | 没有步数上限；有 `cancel(hook, {keepInbox})` | 无 | 引入 | `@boat/step-budget` | P0 | S |
-| 单轮最多 5 个调用、每个 30s 超时 | `ark:core/tools/executor.py:55-83` | maxParallelToolCalls、timeout-policy | 无 | 截断不引入，超时默认值引入 | tool-policy 辅助 | P1 | S |
-| RunOutcome 作为唯一的结束原因来源 | `ark:core/types.py:55-63` | TurnEndReason | 无 | 引入，做成纯函数 | `@boat/turn-outcome`（lib） | P0 | S |
-| on_model_error：友好话术写进会话 | `ark:core/runtime/base_agent.py:1331-1363` | agent/request-error 加 llm-retry | 无 | 部分：话术放出口层，不写日志 | chat-wire | P1 | S |
-| AgentsLifecycle、Registry、invoker | `ark:core/runtime/agents_lifecycle.py:43-85`；`ark:core/runtime/invoker.py:13-60` | agent-preset-registry：多个 preset，按会话选择 | 只有 `@boat/run` 读 agent 目录 | 部分 | agent bundle 加 `@boat/agent-invoke`（lib） | P0 | M |
-| SpawnSubtasksTool 并行子任务 | `ark:core/subtask/tool.py:61-314` | tool-subagent 已声明可并发（`dsh:packages/subagent/tool-subagent/src/index.ts:471`），子 agent 继承父 preset | 无 | 部分：只缺状态的传入和回传 | 先验证不新增工具的方案 | P2 | S/M |
-| consult_sub_agent | `ark:agents/agent_router/tools/consult_tool.py` | SubagentProvider seam | 无 | 部分 | `@boat/consult` | P2 | L |
-| orchestrator 使用 tool_choice=required | `ark:agents/orchestrator/agent.py:108-138` | LlmCallConfig 里没有这个字段（`dsh/llm/llm/src/call-config.ts:23-30`） | 无 | 部分 | 路由预设，加 turn-stopping 纠偏 | P2 | M |
-| app_type 运行期覆盖 | `ark:agents/_shared/app_type_framing.py:9-24`；`ark:plugins/api/chat.py:160` | 无 | 无 | 部分 | serve profile 里 chat-wire 行的 Config | P1 | S |
+| 8 个 hook 与 CallbackResult | `ref:core/runtime/callbacks.py:37-69,197-222` | 各扩展点都是独立的类型化事件 | 只有两个 boat 钩子 | 不引入容器，写一张映射表 | 开发指南 | P1 | S |
+| before_agent 返回 ABORT 拒识，CallbackEvent 写进 hook_effects 并落盘 | `ref:core/runtime/base_agent.py:844-880`；`ref:core/runtime/_runner_helpers.py:172-185`；`ref:core/session/format.py:392-394` | 无；boat/intake 是 boat 自己的 extend | reply 只能带 content blocks，可以重开 | 部分：决定、帧、卡片在准入阶段写进用户消息的 source | `@boat/intake-guard` 加 agent-invoke | P0 | M |
+| LLM 准入分类（看最近 10 条、正则预判、降级方向因 agent 而异） | `ref:agents/wealth/guard.py:124,182-253`；`ref:agents/yinglong/guard.py` | 无 | demo 里只有正则门 | 引入骨架 | `@boat/intake-guard` | P0 | M |
+| securities 的 `_auth_check`（未登录时 ABORT 出登录卡）和 `_enrich_context` | `ref:agents/securities/agent.py:32-51,98`；`ref:agents/securities/tools/service/param_mapping.py:118-135` | 无 | 无 | 引入：放进准入阶段的 enrich 和 gate | agent 层，经由 intake-guard | P0 | S |
+| trading 的 `_enrich_context` | `ref:agents/trading/agent.py:45-62` | 无 | 无 | 引入 | 同上 | P1 | S |
+| context_updates 与画像预取 | `ref:agents/wealth/callbacks.py:35-66`；`ref:core/runtime/base_agent.py:830-834` | 带来源的 user/message、runtime context | 无 | 引入 | `@boat/request-context`，外加准入阶段 | P0 | M |
+| before_loop_end 的 RETRY（grounding 校验） | `ref:core/runtime/validation.py:442-534` | agent/turn-stopping 加 steer | 无 | 引入 | `@boat/turn-review` | P1 | S |
+| 工具返回 STOP，以 tool_stopped 结束 | `ref:core/runtime/base_agent.py:1505-1536` | `exec.concludeTurn()`（`dsh/core/tools/src/index.ts:425-434`） | a2ui 的终态卡已经在用（`boat/plugins/a2ui/src/index.ts:268`） | 引入，有 3 处语义差异 | tool-policy 提供辅助 | P0 | S |
+| agent_router 多路 consult 时推迟 STOP（before_tool、after_tool） | `ref:agents/agent_router/agent.py:30-56,77-81` | 同一步里只要有一个结果结束本轮，本轮就结束（`dsh/core/agent-loop/src/tool-calls.ts:37,158`） | 无 | 部分：由 consult 工具自己判断是否 concludeTurn | `@boat/consult` | P2 | S |
+| max_turns 与 stopped_by_limit | `ref:core/runtime/base_agent.py:144,1052-1071` | 没有步数上限；有 `cancel(hook, {keepInbox})` | 无 | 引入 | `@boat/step-budget` | P0 | S |
+| 单轮最多 5 个调用、每个 30s 超时 | `ref:core/tools/executor.py:55-83` | maxParallelToolCalls、timeout-policy | 无 | 截断不引入，超时默认值引入 | tool-policy 辅助 | P1 | S |
+| RunOutcome 作为唯一的结束原因来源 | `ref:core/types.py:55-63` | TurnEndReason | 无 | 引入，做成纯函数 | `@boat/turn-outcome`（lib） | P0 | S |
+| on_model_error：友好话术写进会话 | `ref:core/runtime/base_agent.py:1331-1363` | agent/request-error 加 llm-retry | 无 | 部分：话术放出口层，不写日志 | chat-wire | P1 | S |
+| AgentsLifecycle、Registry、invoker | `ref:core/runtime/agents_lifecycle.py:43-85`；`ref:core/runtime/invoker.py:13-60` | agent-preset-registry：多个 preset，按会话选择 | 只有 `@boat/run` 读 agent 目录 | 部分 | agent bundle 加 `@boat/agent-invoke`（lib） | P0 | M |
+| SpawnSubtasksTool 并行子任务 | `ref:core/subtask/tool.py:61-314` | tool-subagent 已声明可并发（`dsh:packages/subagent/tool-subagent/src/index.ts:471`），子 agent 继承父 preset | 无 | 部分：只缺状态的传入和回传 | 先验证不新增工具的方案 | P2 | S/M |
+| consult_sub_agent | `ref:agents/agent_router/tools/consult_tool.py` | SubagentProvider seam | 无 | 部分 | `@boat/consult` | P2 | L |
+| orchestrator 使用 tool_choice=required | `ref:agents/orchestrator/agent.py:108-138` | LlmCallConfig 里没有这个字段（`dsh/llm/llm/src/call-config.ts:23-30`） | 无 | 部分 | 路由预设，加 turn-stopping 纠偏 | P2 | M |
+| app_type 运行期覆盖 | `ref:agents/_shared/app_type_framing.py:9-24`；`ref:plugins/api/chat.py:160` | 无 | 无 | 部分 | serve profile 里 chat-wire 行的 Config | P1 | S |
 
 ### 2.2 会话、存储与持久化
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| checkout/flush、shield、version 乐观锁 | `ark:core/session/manager.py:274-365` | 只追加日志，加 session/flush 和 checkpoint-policy | JSONL | 不引入 | dsh 原样 | P3 | S |
-| 跨 POD 运行锁，冲突时返回 409/session_busy | `ark:core/storage/database/sql/session.py:450-526`；`ark:plugins/api/errors.py:16-28` | `open('write')` 独占写；`SessionOwnershipLostError` 已声明，但还没有实现方（`dsh/session/session-persistence/src/errors.ts:51-66`） | JSONL 用 flock | 引入 | `@boat/session-persistence-sql` 加 serve | P0（多 POD 时） | L |
-| seq 原子分配、预计算计数 | `ark:core/storage/database/sql/session.py:247-416` | append 要求 seq 连续 | 无 | 部分 | SQL provider 加会话目录读模型 | P1 | M |
-| 存储 Protocol：文件和 SQL 两种后端、按 agent 隔离 | `ark:core/storage/protocols/session.py:13-228` | SessionPersistence 抽象 seam（`dsh/session/session-persistence/src/index.ts:135`） | 只有 JSONL | 部分 | 增加第二个 provider | P0 | M |
-| Datasource、方言、alembic、DDL 导出、托管密码 | `ark:core/storage/datasource.py`；`ark:core/storage/dialect.py`；`ark:core/storage/database/migrate.py` | credentials seam | 无 | 部分 | `@boat/datasource-sql` | P1 | M |
-| (agent_id, session_id) 复合唯一，session_id 由调用方指定 | `ark:core/storage/database/models.py:79-82`；`ark:core/runtime/base_agent.py:570-599` | SessionId 全局唯一 | 无 | 引入 | `@boat/session-directory` | P0 | M |
-| 会话列表、搜索、摘要 | `ark:core/storage/protocols/session.py:99-219` | session-query 不做调用方授权（README:150）；`listSessions` 返回全量（`src/index.ts:170-176`），只有搜索支持 limit 和 cursor（`src/types.ts:257-262`） | 无 | 部分 | 会话目录读模型；单会话详情用 dsh | P1 | M |
-| state 命名空间 user:、temp:、meta: | `ark:plugins/api/chat.py:60-88`；`ark:core/types.py:772-783` | user/message 的 source 可以扩展 | boatState 只折叠工具的 delta，并且整份注入 prompt | 引入 | request-context，加 tool-policy 的 fold | P0 | M |
-| 外部 SA 历史合并，按 trace_id 去重 | `ark:core/session/history_strategy.py`；`ark:agents/wealth/sa_history_merger.py` | 日志只追加 | 只能给新会话做 seed | 部分 | history-import 增量模式（以 recall 形式注入） | P1 | M |
-| tool_exchange | `ark:core/session/tool_exchange.py` | 无 | 无 | 引入 | `@boat/tool-exchange` | P1 | M |
-| 会话删除与保留期（含子任务的临时会话） | `ark:core/subtask/tool.py:313-315`；`ark:plugins/evals/replay_runner.py:345` | 没有删除 API | 无 | 引入 | session-directory 的 purge | P1 | M |
-| 异常时整轮丢弃、原始会话整体回写 | `ark:plugins/studio/api/sessions.py:359` | 只追加 | 无 | 不引入 | 不移植 | P3 | S |
+| checkout/flush、shield、version 乐观锁 | `ref:core/session/manager.py:274-365` | 只追加日志，加 session/flush 和 checkpoint-policy | JSONL | 不引入 | dsh 原样 | P3 | S |
+| 跨 POD 运行锁，冲突时返回 409/session_busy | `ref:core/storage/database/sql/session.py:450-526`；`ref:plugins/api/errors.py:16-28` | `open('write')` 独占写；`SessionOwnershipLostError` 已声明，但还没有实现方（`dsh/session/session-persistence/src/errors.ts:51-66`） | JSONL 用 flock | 引入 | `@boat/session-persistence-sql` 加 serve | P0（多 POD 时） | L |
+| seq 原子分配、预计算计数 | `ref:core/storage/database/sql/session.py:247-416` | append 要求 seq 连续 | 无 | 部分 | SQL provider 加会话目录读模型 | P1 | M |
+| 存储 Protocol：文件和 SQL 两种后端、按 agent 隔离 | `ref:core/storage/protocols/session.py:13-228` | SessionPersistence 抽象 seam（`dsh/session/session-persistence/src/index.ts:135`） | 只有 JSONL | 部分 | 增加第二个 provider | P0 | M |
+| Datasource、方言、alembic、DDL 导出、托管密码 | `ref:core/storage/datasource.py`；`ref:core/storage/dialect.py`；`ref:core/storage/database/migrate.py` | credentials seam | 无 | 部分 | `@boat/datasource-sql` | P1 | M |
+| (agent_id, session_id) 复合唯一，session_id 由调用方指定 | `ref:core/storage/database/models.py:79-82`；`ref:core/runtime/base_agent.py:570-599` | SessionId 全局唯一 | 无 | 引入 | `@boat/session-directory` | P0 | M |
+| 会话列表、搜索、摘要 | `ref:core/storage/protocols/session.py:99-219` | session-query 不做调用方授权（README:150）；`listSessions` 返回全量（`src/index.ts:170-176`），只有搜索支持 limit 和 cursor（`src/types.ts:257-262`） | 无 | 部分 | 会话目录读模型；单会话详情用 dsh | P1 | M |
+| state 命名空间 user:、temp:、meta: | `ref:plugins/api/chat.py:60-88`；`ref:core/types.py:772-783` | user/message 的 source 可以扩展 | boatState 只折叠工具的 delta，并且整份注入 prompt | 引入 | request-context，加 tool-policy 的 fold | P0 | M |
+| 外部 SA 历史合并，按 trace_id 去重 | `ref:core/session/history_strategy.py`；`ref:agents/wealth/sa_history_merger.py` | 日志只追加 | 只能给新会话做 seed | 部分 | history-import 增量模式（以 recall 形式注入） | P1 | M |
+| tool_exchange | `ref:core/session/tool_exchange.py` | 无 | 无 | 引入 | `@boat/tool-exchange` | P1 | M |
+| 会话删除与保留期（含子任务的临时会话） | `ref:core/subtask/tool.py:313-315`；`ref:plugins/evals/replay_runner.py:345` | 没有删除 API | 无 | 引入 | session-directory 的 purge | P1 | M |
+| 异常时整轮丢弃、原始会话整体回写 | `ref:plugins/studio/api/sessions.py:359` | 只追加 | 无 | 不引入 | 不移植 | P3 | S |
 
 ### 2.3 记忆、上下文压缩与提示词
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| MemoryProvider（11 个成员）与工厂插槽 | `ark:core/protocol/memory_provider.py`；`ark:core/protocol/_active_memory_factory.py` | 没有记忆包 | 无 | 引入，拆成不超过 7 个方法 | `@boat/memory-store`（lib），host 常驻挂 local provider | **P0（启动必备）** | M |
-| 冻结快照，注入 `<memory_context>` | `ark:plugins/memory/manager.py:126-160`；`ark:plugins/memory/prompts.py:35-42` | agent-instructions 的「被遮蔽就重新注入」模式（`dsh:packages/context/agent-instructions/src/index.ts:46-63`） | 无 | 引入 | `@boat/memory` | P1（前提是生产开着记忆） | M |
-| 每轮 flush 抽取、dream 整理 | `ark:plugins/memory/extractor.py`；`ark:plugins/memory/dream.py` | 无 | 无 | 引入：两者放进同一个串行队列 | `@boat/memory`，加 boatLease | P1 | M |
-| 代码独占的记忆小节（yinglong 的外部资产） | `ark:agents/yinglong/capabilities/diagnosis/allocation/external_asset_memory.py:1-33` | 无 | 无 | 引入「受保护标题」 | `@boat/memory` | P1 | S |
-| memory_write 工具 | `ark:core/tools/memory.py` | 无 | 无 | 部分，默认关闭 | `@boat/memory` | P3 | S |
-| SystemPromptBuilder 分段 | `ark:core/prompt/builder.py`；`ark:core/runtime/base_agent.py:1649-1726` | system-prompt 的 section 与 context、dsh-persona | 只有 persona 行 | 不引入 builder | dsh 原样 | P2 | S |
-| 内容生产方各自控制预算 | `ark:core/skills/base.py:195-247`；`ark:plugins/memory/user_profile.py:40-81` | 组装阶段没有预算 | 无 | 引入 | 在各生产方执行；全局只计量（`@boat/prompt-budget`） | P1 | S |
-| 非破坏式的三档视图 | `ark:core/session/compaction.py:756-818` | compaction/* 事件加 surface replace | dsh-base 默认 | 不引入 | dsh 原样 | P3 | S |
-| 中文四节摘要模板 | `ark:core/session/compaction.py:330-420` | `summarize()` 是唯一的子类钩子 | 英文、面向编码助手的模板 | 引入 | `@boat/compaction-business` | P1 | S |
-| 上下文窗口与压缩阈值（ark 默认 128k，只有 meta_builder 是 64k） | `ark:core/runtime/base_agent.py:212-213`；`ark:core/session/compaction.py:429,466-469`；`ark:agents/meta_builder/agent.py:41` | 默认 headroomTokens=65536（`dsh/compaction/compaction-basic/src/config.ts:75`）；窗口太小时抛 TargetPressureConfigError（181-190），只告警一次，之后照常运行（`index.ts:158-176`） | 默认配置 | 引入配置 | `@boat/biz` 的 modelPolicies | P0（条件见 3.5） | S |
-| 时态边界 llm_digest_past | `ark:core/runtime/_runner_helpers.py:395-475` | pruner 只在压力下截断 | 无 | 部分 | render 文本写成与时态无关，加 BoatDigestPruner | P2 | M |
-| 身份与时间段 | `ark:core/prompt/builder.py` | persona、time-context、includeHarnessIdentity | `@boat/run` 的 persona 是 coding agent | 引入 | `@boat/biz` | P1 | S |
+| MemoryProvider（11 个成员）与工厂插槽 | `ref:core/protocol/memory_provider.py`；`ref:core/protocol/_active_memory_factory.py` | 官方没有记忆包；社区插件各自定义服务 | 无 | 引入，拆成不超过 7 个方法 | `@boat/memory-store`（lib），host 常驻挂 local provider | **P0（启动必备）** | M |
+| 冻结快照，注入 `<memory_context>` | `ref:plugins/memory/manager.py:126-160`；`ref:plugins/memory/prompts.py:35-42` | agent-instructions 的「被遮蔽就重新注入」模式（`dsh:packages/context/agent-instructions/src/index.ts:46-63`） | 无 | 引入 | `@boat/memory` | P1（前提是生产开着记忆） | M |
+| 每轮 flush 抽取、dream 整理 | `ref:plugins/memory/extractor.py`；`ref:plugins/memory/dream.py` | 无 | 无 | 引入：两者放进同一个串行队列 | `@boat/memory`，加 boatLease | P1 | M |
+| 代码独占的记忆小节（yinglong 的外部资产） | `ref:agents/yinglong/capabilities/diagnosis/allocation/external_asset_memory.py:1-33` | 无 | 无 | 引入「受保护标题」 | `@boat/memory` | P1 | S |
+| memory_write 工具 | `ref:core/tools/memory.py` | 无 | 无 | 部分，默认关闭 | `@boat/memory` | P3 | S |
+| SystemPromptBuilder 分段 | `ref:core/prompt/builder.py`；`ref:core/runtime/base_agent.py:1649-1726` | system-prompt 的 section 与 context、dsh-persona | 只有 persona 行 | 不引入 builder | dsh 原样 | P2 | S |
+| 内容生产方各自控制预算 | `ref:core/skills/base.py:195-247`；`ref:plugins/memory/user_profile.py:40-81` | 组装阶段没有预算 | 无 | 引入 | 在各生产方执行；全局只计量（`@boat/prompt-budget`） | P1 | S |
+| 非破坏式的三档视图 | `ref:core/session/compaction.py:756-818` | compaction/* 事件加 surface replace | dsh-base 默认 | 不引入 | dsh 原样 | P3 | S |
+| 中文四节摘要模板 | `ref:core/session/compaction.py:330-420` | `summarize()` 是唯一的子类钩子 | 英文、面向编码助手的模板 | 引入 | `@boat/compaction-business` | P1 | S |
+| 上下文窗口与压缩阈值（参考实现默认 128k，只有 meta_builder 是 64k） | `ref:core/runtime/base_agent.py:212-213`；`ref:core/session/compaction.py:429,466-469`；`ref:agents/meta_builder/agent.py:41` | 默认 headroomTokens=65536（`dsh/compaction/compaction-basic/src/config.ts:75`）；窗口太小时抛 TargetPressureConfigError（181-190），只告警一次，之后照常运行（`index.ts:158-176`） | 默认配置 | 引入配置 | `@boat/biz` 的 modelPolicies | P0（条件见 3.5） | S |
+| 时态边界 llm_digest_past | `ref:core/runtime/_runner_helpers.py:395-475` | pruner 只在压力下截断 | 无 | 部分 | render 文本写成与时态无关，加 BoatDigestPruner | P2 | M |
+| 身份与时间段 | `ref:core/prompt/builder.py` | persona、time-context、includeHarnessIdentity | `@boat/run` 的 persona 是 coding agent | 引入 | `@boat/biz` | P1 | S |
 | （dsh 自带）agent-instructions | 无 | dsh-base 会把仓库的 CLAUDE.md、AGENTS.md 注入会话（`dsh:packages/bundle/base/cordis.patch.yml:288`） | 默认开 | 业务场景关闭 | `@boat/biz` | P1 | S |
-| 引用标注与 grounding | `ark:core/citation/hook.py:20-76`；`ark:core/runtime/validation.py:442` | 无 | 无 | 引入 | `@boat/citation`、`@boat/turn-review` | P1 | M |
+| 引用标注与 grounding | `ref:core/citation/hook.py:20-76`；`ref:core/runtime/validation.py:442` | 无 | 无 | 引入 | `@boat/citation`、`@boat/turn-review` | P1 | M |
 
 ### 2.4 工具、技能、工作流、MCP 与沙箱
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| AgentTool 声明与 parameters_schema_extra | `ark:core/tools/base.py:12-107` | defineTool DSL，只支持 schema 子集，不支持的关键字直接拒绝 | `toolPolicy.register` | 部分 | agent 层改写 | P1 | S |
-| 可见性 always/auto（默认 auto） | `ark:core/tools/base.py:53-54` | restrict 的 allow/deny 掩码 | 默认 always | 引入 preset 级默认值 | tool-policy | P1 | S |
-| state_delta 按顶层浅覆盖，只有 user:* 进 prompt | `ark:core/runtime/_runner_helpers.py:188-223` | 无 | 深合并，整份 JSON 注入（`boat/plugins/tool-policy/src/state.ts:101-104`） | 部分 | tool-policy：按键声明合并语义、声明可见键、加预算 | P1 | S |
-| 执行器：并行、超时、降级 | `ark:core/tools/executor.py:55-155` | 默认 exclusive（`dsh/core/tools/src/index.ts:1304`），没有默认超时 | 无 | 部分 | tool-policy 辅助 | P1 | S |
-| 入参二次编码纠正 | `ark:core/tools/argument_coercion.py` | 无 | 无 | 部分 | tool-policy 的 normalizeArgs | P2 | S |
-| thinking_hint、data_source、output_state_keys | `ark:core/tools/base.py:59-68` | presentCall 的 title | 无 | 引入 | tool-policy 元数据 | P2 | S |
-| SKILL.md、full/dynamic 两种模式 | `ark:core/skills/loader.py:78-116`；`ark:core/skills/base.py` | skill-filesystem：名字必须是 kebab-case，不合法的只记 warn 然后丢弃（`dsh:packages/skill/skill-filesystem/src/index.ts:814-839`） | 从 metadata.boat 读 | 引入：转换脚本，加载时核对数量 | agent 层与 skill-router | P0 | S |
-| 技能资格过滤（required_os/binaries/env_vars） | `ark:core/skills/base.py:54-84` | 无 | 无 | 不引入：业务技能都没用这些字段 | 不移植 | P3 | S |
-| read_reference（按需读 references/） | `ark:core/tools/read_reference.py`；`ark:core/runtime/base_agent.py:535-541` 无条件注册 | tool-skill 的资源指引（`dsh:packages/skill/tool-skill/README.md:154-172`） | 无 | 不引入：ark 的 agents 下没有任何 references/ 目录 | 不移植 | P3 | S |
-| read_skill 与 `<active_skill>`（新激活的替换旧的） | `ark:core/tools/read_skill.py:1-11` | tool-skill 的持久消息 | `boat:skill` runtime context，加 `boat/skill-routed` | 重新设计 | skill-router | P0 | M |
-| LLMSkillRouter | `ark:core/runtime/base_agent.py:216-223` | 无 | 已移植 | 已有，补 `router:false` | skill-router | P1 | S |
-| Workflow 有限状态机 | `ark:core/workflow/engine.py` | dsh 的 workflow 是脚本编排（`dsh:docs/subsystems/workflow.md`） | 无 | 引入 | `@boat/flow-fsm` | P1 | L |
-| PA 内部 RAG 知识库工具 | `ark:core/tools/pa_knowledge_api.py`（只在 `ark:core/tools/__init__.py:20` 导出，没有 agent 注册它） | 无 | 无 | 不引入：带领域词汇，也没有使用方 | 需要时放 agent 层 | P3 | S |
-| MCP | `ark:plugins/mcp` | dsh 的 mcp-client | 未接入 | 部分 | agent bundle 里配 mcp-client 行 | P2 | S |
-| 工具级沙箱 | `ark:plugins/sandbox` | 进程级沙箱 | 无 | 暂不引入 | 不移植 | P3 | L |
+| AgentTool 声明与 parameters_schema_extra | `ref:core/tools/base.py:12-107` | defineTool DSL，只支持 schema 子集，不支持的关键字直接拒绝 | `toolPolicy.register` | 部分 | agent 层改写 | P1 | S |
+| 可见性 always/auto（默认 auto） | `ref:core/tools/base.py:53-54` | restrict 的 allow/deny 掩码 | 默认 always | 引入 preset 级默认值 | tool-policy | P1 | S |
+| state_delta 按顶层浅覆盖，只有 user:* 进 prompt | `ref:core/runtime/_runner_helpers.py:188-223` | 无 | 深合并，整份 JSON 注入（`boat/plugins/tool-policy/src/state.ts:101-104`） | 部分 | tool-policy：按键声明合并语义、声明可见键、加预算 | P1 | S |
+| 执行器：并行、超时、降级 | `ref:core/tools/executor.py:55-155` | 默认 exclusive（`dsh/core/tools/src/index.ts:1304`），没有默认超时 | 无 | 部分 | tool-policy 辅助 | P1 | S |
+| 入参二次编码纠正 | `ref:core/tools/argument_coercion.py` | 无 | 无 | 部分 | tool-policy 的 normalizeArgs | P2 | S |
+| thinking_hint、data_source、output_state_keys | `ref:core/tools/base.py:59-68` | presentCall 的 title | 无 | 引入 | tool-policy 元数据 | P2 | S |
+| SKILL.md、full/dynamic 两种模式 | `ref:core/skills/loader.py:78-116`；`ref:core/skills/base.py` | skill-filesystem：名字必须是 kebab-case，不合法的只记 warn 然后丢弃（`dsh:packages/skill/skill-filesystem/src/index.ts:814-839`） | 从 metadata.boat 读 | 引入：转换脚本，加载时核对数量 | agent 层与 skill-router | P0 | S |
+| 技能资格过滤（required_os/binaries/env_vars） | `ref:core/skills/base.py:54-84` | 无 | 无 | 不引入：业务技能都没用这些字段 | 不移植 | P3 | S |
+| read_reference（按需读 references/） | `ref:core/tools/read_reference.py`；`ref:core/runtime/base_agent.py:535-541` 无条件注册 | tool-skill 的资源指引（`dsh:packages/skill/tool-skill/README.md:154-172`） | 无 | 不引入：参考实现的 agents 下没有任何 references/ 目录 | 不移植 | P3 | S |
+| read_skill 与 `<active_skill>`（新激活的替换旧的） | `ref:core/tools/read_skill.py:1-11` | tool-skill 的持久消息 | `boat:skill` runtime context，加 `boat/skill-routed` | 重新设计 | skill-router | P0 | M |
+| LLMSkillRouter | `ref:core/runtime/base_agent.py:216-223` | 无 | 已移植 | 已有，补 `router:false` | skill-router | P1 | S |
+| Workflow 有限状态机 | `ref:core/workflow/engine.py` | dsh 的 workflow 是脚本编排（`dsh:docs/subsystems/workflow.md`） | 无 | 引入 | `@boat/flow-fsm` | P1 | L |
+| PA 内部 RAG 知识库工具 | `ref:core/tools/pa_knowledge_api.py`（只在 `ref:core/tools/__init__.py:20` 导出，没有 agent 注册它） | 无 | 无 | 不引入：带领域词汇，也没有使用方 | 需要时放 agent 层 | P3 | S |
+| MCP | `ref:plugins/mcp` | dsh 的 mcp-client | 未接入 | 部分 | agent bundle 里配 mcp-client 行 | P2 | S |
+| 工具级沙箱 | `ref:plugins/sandbox` | 进程级沙箱 | 无 | 暂不引入 | 不移植 | P3 | L |
 | 业务 agent 的工具面只含业务工具 | 无 | dsh-base 在全局挂了 bash、fs、web、PTC 等编码工具（`dsh:packages/bundle/base/cordis.patch.yml:267-492`） | 没有收窄 | 引入 | `@boat/biz` | P0 | S |
 
 ### 2.5 模型层、可观测性与评测
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| Provider 注册表与三个 PA 网关 | `ark:core/llm/providers/__init__.py:37-85`；`pa_jituan.py:110-133,225-229`；`pa_shouxian.py:28-52`；`pa_zhengquan.py:32-54` | 通过 registerAdapter 注册适配器；llm-pi-ai 只支持静态 header，不透传采样扩展字段 | 只有 deepseek 和 pi-ai | 引入 | 在 pi-ai 库上写 `@boat/llm-openai-compat`；网关专有逻辑放私有包 | P0 | M |
-| 流式解析 reasoning 与 `<think>`、回填 tool_call | `ark:core/llm/caller.py:97-178` | 适配器的职责；pi-ai 有 thinkingFormat | 无 | 引入，并修掉流式不带 usage 的问题 | 同上 | P0 | 含在上一行 |
-| 按角色的 LLMRegistry 和 LLM_ROLE 环境变量 | `ark:core/llm/registry.py:24-57`；`ark:core/runtime/base_agent.py:202-211` | 各消费方在自己的 Config 里写路由，不写就回落到 agent 的路由 | skill-router 已经这样做 | 部分 | `@boat/model-routes` | P1 | S |
-| SamplingConfig 与 extra_body | `ark:core/llm/sampling.py` | LlmCallConfig 只有 6 个字段 | 无 | 部分 | 适配器的路由预设 | P1 | S |
-| 错误分类与两层重试 | `ark:core/llm/errors.py`；`ark:core/llm/retry.py` | LlmFailure.code 加 llm-retry | dsh-base 已带 | 不引入 | dsh 原样 | P1 | S |
-| OTel 追踪（OpenInference） | `ark:core/observability` | session-telemetry 导出的是 OTel 日志，dsh 本身不产生 span | 反馈时会上传 | 引入，并先关掉上传 | host 改配置；`@boat/telemetry-traces` | P0（关上传）/ P1 | S/M |
-| @timed 耗时埋点 | `ark:core/observability/timing.py` | session-stats | 未挂载 | 不引入 | dsh 原样 | P2 | S |
-| trace_id 贯穿 | `ark:core/observability/request_trace.py` | 无 | 无 | 引入 | 写进 `boat-request` 这个 source | P1 | S |
-| 每个 run 一行运行指标 | `ark:core/storage/entries.py:121-137` | session-stats 只看单个会话 | 无 | 部分 | serve 写一张运行摘要表 | P2 | M |
-| 辅助模型调用（guard、推荐问、路由） | `ark:agents/yinglong/agent.py:161,169-178` | 先例是 session/title-llm-request | skill-router 直接调 `ctx.llm.stream` | 引入 | `@boat/aux-llm` | P1 | M |
-| Evals 回放、白盒 grader、种子 | `ark:plugins/evals/replay_runner.py`；`ark:plugins/evals/grader_service.py`；`ark:plugins/evals/seed.py:43-73` | llm-replay、session-snapshot、invariants | 无 | 引入核心部分 | `@boat/eval` bundle | P1 | L |
-| callback_event 断言（对比客户端收到的帧） | `ark:plugins/evals/callback_event_grader.py:1-17`；`ark:plugins/evals/replay_event_collector.py:1-19` | 无 | 无 | 引入：grader 读出口层推导出的帧 | `@boat/eval` 加 chat-wire | P1 | S |
-| LLM judge、judge 校准、prompt 调优、变体、从会话导入用例 | `ark:plugins/evals/judge_service.py:1-11`；`judge_calibration_store.py`；`tune_service.py:1`；`variant_builder.py`；`session_case_importer.py` | 无 | 无 | 部分：先做核心，这些放后面 | `@boat/eval` 后续阶段 | P3 | L |
+| Provider 注册表与三个 PA 网关 | `ref:core/llm/providers/__init__.py:37-85`；`pa_jituan.py:110-133,225-229`；`pa_shouxian.py:28-52`；`pa_zhengquan.py:32-54` | 通过 registerAdapter 注册适配器；llm-pi-ai 只支持静态 header，不透传采样扩展字段 | 只有 deepseek 和 pi-ai | 引入 | 在 pi-ai 库上写 `@boat/llm-openai-compat`；网关专有逻辑放私有包 | P0 | M |
+| 流式解析 reasoning 与 `<think>`、回填 tool_call | `ref:core/llm/caller.py:97-178` | 适配器的职责；pi-ai 有 thinkingFormat | 无 | 引入，并修掉流式不带 usage 的问题 | 同上 | P0 | 含在上一行 |
+| 按角色的 LLMRegistry 和 LLM_ROLE 环境变量 | `ref:core/llm/registry.py:24-57`；`ref:core/runtime/base_agent.py:202-211` | 各消费方在自己的 Config 里写路由，不写就回落到 agent 的路由 | skill-router 已经这样做 | 部分 | `@boat/model-routes` | P1 | S |
+| SamplingConfig 与 extra_body | `ref:core/llm/sampling.py` | LlmCallConfig 只有 6 个字段 | 无 | 部分 | 适配器的路由预设 | P1 | S |
+| 错误分类与两层重试 | `ref:core/llm/errors.py`；`ref:core/llm/retry.py` | LlmFailure.code 加 llm-retry | dsh-base 已带 | 不引入 | dsh 原样 | P1 | S |
+| OTel 追踪（OpenInference） | `ref:core/observability` | session-telemetry 导出的是 OTel 日志，dsh 本身不产生 span | 反馈时会上传 | 引入，并先关掉上传 | host 改配置；`@boat/telemetry-traces` | P0（关上传）/ P1 | S/M |
+| @timed 耗时埋点 | `ref:core/observability/timing.py` | session-stats | 未挂载 | 不引入 | dsh 原样 | P2 | S |
+| trace_id 贯穿 | `ref:core/observability/request_trace.py` | 无 | 无 | 引入 | 写进 `boat-request` 这个 source | P1 | S |
+| 每个 run 一行运行指标 | `ref:core/storage/entries.py:121-137` | session-stats 只看单个会话 | 无 | 部分 | serve 写一张运行摘要表 | P2 | M |
+| 辅助模型调用（guard、推荐问、路由） | `ref:agents/yinglong/agent.py:161,169-178` | 先例是 session/title-llm-request | skill-router 直接调 `ctx.llm.stream` | 引入 | `@boat/aux-llm` | P1 | M |
+| Evals 回放、白盒 grader、种子 | `ref:plugins/evals/replay_runner.py`；`ref:plugins/evals/grader_service.py`；`ref:plugins/evals/seed.py:43-73` | llm-replay、session-snapshot、invariants | 无 | 引入核心部分 | `@boat/eval` bundle | P1 | L |
+| callback_event 断言（对比客户端收到的帧） | `ref:plugins/evals/callback_event_grader.py:1-17`；`ref:plugins/evals/replay_event_collector.py:1-19` | 无 | 无 | 引入：grader 读出口层推导出的帧 | `@boat/eval` 加 chat-wire | P1 | S |
+| LLM judge、judge 校准、prompt 调优、变体、从会话导入用例 | `ref:plugins/evals/judge_service.py:1-11`；`judge_calibration_store.py`；`tune_service.py:1`；`variant_builder.py`；`session_case_importer.py` | 无 | 无 | 部分：先做核心，这些放后面 | `@boat/eval` 后续阶段 | P3 | L |
 
 ### 2.6 对外接口、流式协议与界面能力
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| /chat 同步与 SSE，客户端断连即取消 | `ark:plugins/api/chat.py:48-136`；`ark:plugins/api/sse_runner.py:20-115` | host-webserver；session-controller 只面向单一操作者 | 无 | 引入 | `@boat/serve` | P0 | L |
-| AG-UI 事件与四种出口协议 | `ark:core/stream/events.py`；`ark:core/stream/output_formatter.py:54-552` | agent/assistant-stream 加 session/event | 无 | 引入 | `@boat/chat-wire`、`@boat/chat-wire-ark` | P0 | M |
-| 企业帧装饰器链 | `ark:core/stream/enterprise_frame_decorators.py` | 无 | 无 | 引入 | chat-wire，装饰器按 agent 登记 | P1 | S |
-| 终帧里的 card_description、original_context | `ark:plugins/api/chat.py:32-45,193-212` | 无 | 无 | 引入 | chat-wire-ark | P0 | 含在上一行 |
-| A2UI 的 blocks、template、preset 三种模式 | `ark:core/tools/render_a2ui.py` | presentationMeta | 只有 template | 部分：补 blocks，preset 留在 agent 层 | `@boat/a2ui` | P0 | L |
-| 工具直接出卡（a2ui_result） | `ark:core/types.py:396-420` | 无 | 无 | 引入 | `ctx.a2ui.cardMeta` | P1 | S |
-| 说卡交错（延迟出卡与卡片标记） | `ark:core/stream/output_composer.py`；`ark:core/stream/card_marker_scanner.py` | 无 | loader 不认 deferred_discard | 引入 | `@boat/a2ui` 内部模块，出口层通过服务方法调用 | P0 | M |
-| 业务事件（CustomToolEvent、RunErrorToolEvent） | `ark:core/tools/executor.py:177-208` | 无 | 无 | 引入 | `tool/result.meta.boat.events` | P0 | M |
-| 推荐问 | `ark:core/suggestion` | 无 | 无 | 引入 | `@boat/suggestion` | P1 | M |
-| 子 agent 的流转发 | `ark:core/stream/relay.py` | 子代理的子会话可以直接寻址 | 无 | 部分 | serve 的事件桥 | P2 | M |
-| idempotency_key 与 session_busy | `ark:plugins/api/models.py`；`ark:plugins/api/errors.py` | requestId 去重只在 session-controller 的命令层做（`dsh:packages/api/session-controller/src/commands.ts:603-615`） | 无 | 引入 | agent-invoke 加 serve | P1 | S |
-| Studio 管理台 | `ark:plugins/studio` | dsh web 客户端（ui-session、ui-trajectory 等） | boat web 就是 dsh web-app | 部分 | 只读功能先用 dsh web | P2/P3 | L |
-| portal 反馈墙（投票、回复、按 token 限流，属于框架内部站点） | `ark:portal/feedback/routes.py:28-30`；`ark:portal/feedback/rate_limit.py` | 没有对应物。dsh 的 message-feedback 是按消息的评分，只写进日志（`dsh:packages/feedback/message-feedback/README.md:96`） | 无 | 不引入：portal 本来就不进 wheel | 不移植 | P3 | S |
+| /chat 同步与 SSE，客户端断连即取消 | `ref:plugins/api/chat.py:48-136`；`ref:plugins/api/sse_runner.py:20-115` | host-webserver；session-controller 只面向单一操作者 | 无 | 引入 | `@boat/serve` | P0 | L |
+| AG-UI 事件与四种出口协议 | `ref:core/stream/events.py`；`ref:core/stream/output_formatter.py:54-552` | agent/assistant-stream 加 session/event | 无 | 引入 | `@boat/chat-wire`、`@boat/chat-wire-legacy` | P0 | M |
+| 企业帧装饰器链 | `ref:core/stream/enterprise_frame_decorators.py` | 无 | 无 | 引入 | chat-wire，装饰器按 agent 登记 | P1 | S |
+| 终帧里的 card_description、original_context | `ref:plugins/api/chat.py:32-45,193-212` | 无 | 无 | 引入 | chat-wire-legacy | P0 | 含在上一行 |
+| A2UI 的 blocks、template、preset 三种模式 | `ref:core/tools/render_a2ui.py` | presentationMeta | 只有 template | 部分：补 blocks，preset 留在 agent 层 | `@boat/a2ui` | P0 | L |
+| 工具直接出卡（a2ui_result） | `ref:core/types.py:396-420` | 无 | 无 | 引入 | `ctx.a2ui.cardMeta` | P1 | S |
+| 说卡交错（延迟出卡与卡片标记） | `ref:core/stream/output_composer.py`；`ref:core/stream/card_marker_scanner.py` | 无 | loader 不认 deferred_discard | 引入 | `@boat/a2ui` 内部模块，出口层通过服务方法调用 | P0 | M |
+| 业务事件（CustomToolEvent、RunErrorToolEvent） | `ref:core/tools/executor.py:177-208` | 无 | 无 | 引入 | `tool/result.meta.boat.events` | P0 | M |
+| 推荐问 | `ref:core/suggestion` | 无 | 无 | 引入 | `@boat/suggestion` | P1 | M |
+| 子 agent 的流转发 | `ref:core/stream/relay.py` | 子代理的子会话可以直接寻址 | 无 | 部分 | serve 的事件桥 | P2 | M |
+| idempotency_key 与 session_busy | `ref:plugins/api/models.py`；`ref:plugins/api/errors.py` | requestId 去重只在 session-controller 的命令层做（`dsh:packages/api/session-controller/src/commands.ts:603-615`） | 无 | 引入 | agent-invoke 加 serve | P1 | S |
+| Studio 管理台 | `ref:plugins/studio` | dsh web 客户端（ui-session、ui-trajectory 等） | boat web 就是 dsh web-app | 部分 | 只读功能先用 dsh web | P2/P3 | L |
+| portal 反馈墙（投票、回复、按 token 限流，属于框架内部站点） | `ref:portal/feedback/routes.py:28-30`；`ref:portal/feedback/rate_limit.py` | 没有对应物。dsh 的 message-feedback 是按消息的评分，只写进日志（`dsh:packages/feedback/message-feedback/README.md:96`） | 无 | 不引入：portal 本来就不进 wheel | 不移植 | P3 | S |
 | （dsh 自带）按消息评分与 /feedback 命令 | 无 | web-app 挂 message-feedback；dsh-base 挂 command-feedback（`base/cordis.patch.yml:309`） | 默认开 | 保留，但前提是遥测上传已关闭 | host 加 web 模板 | P0（关上传） | S |
 
 ### 2.7 后台任务、定时、通知与主动服务
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| @proactive 声明式主动服务 | `ark:plugins/proactive_service/decorator.py:46-70` | 无 | 无 | 引入 | `@boat/proactive`，由 agent 行声明 | P1 | M |
-| Cron 触发与多 POD 选主 | `ark:plugins/proactive_service/triggers/cron.py`；`ark:plugins/proactive_service/storage/leader.py` | schedule 只支持会话内的 after/at/every | 无 | 引入 | proactive 加 boatLease | P1/P2 | M |
-| PerUser 扫描与频控 | `ark:plugins/proactive_service/scopes/per_user.py:121-175` | 无法枚举用户 | 无 | 部分，同时修掉窗口缺陷 | proactive 加用户目录 | P1 | M |
-| 站内信与 SSE 推送 | `ark:plugins/notifications` | 无 | 无 | 引入 | boatNotifications 加 serve 路由 | P1 | M |
-| Webhook 触发 | `ark:plugins/proactive_service/triggers/webhook.py` | dsh-webhook：只负责发出，不跟踪结果 | 已安装但没挂载 | 部分 | proactive 的一种触发器 | P3 | M |
+| @proactive 声明式主动服务 | `ref:plugins/proactive_service/decorator.py:46-70` | 无 | 无 | 引入 | `@boat/proactive`，由 agent 行声明 | P1 | M |
+| Cron 触发与多 POD 选主 | `ref:plugins/proactive_service/triggers/cron.py`；`ref:plugins/proactive_service/storage/leader.py` | schedule 只支持会话内的 after/at/every | 无 | 引入 | proactive 加 boatLease | P1/P2 | M |
+| PerUser 扫描与频控 | `ref:plugins/proactive_service/scopes/per_user.py:121-175` | 无法枚举用户 | 无 | 部分，同时修掉窗口缺陷 | proactive 加用户目录 | P1 | M |
+| 站内信与 SSE 推送 | `ref:plugins/notifications` | 无 | 无 | 引入 | boatNotifications 加 serve 路由 | P1 | M |
+| Webhook 触发 | `ref:plugins/proactive_service/triggers/webhook.py` | dsh-webhook：只负责发出，不跟踪结果 | 已安装但没挂载 | 部分 | proactive 的一种触发器 | P3 | M |
 | （dsh 自带）goal 自动续轮、jobs | 无 | dsh-base 默认挂载 | 没有收窄 | 业务场景关闭 | `@boat/biz` | P2 | S |
 
 ### 2.8 框架组合、生命周期与开发体验
 
-| ark 能力 | ark 位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
+| 参考实现能力 | 参考实现位置 | dsh 对应 | boat 现状 | 建议 | 落点 | 优先级 | 工作量 |
 |---|---|---|---|---|---|---|---|
-| Lifecycle、Bootstrap、AppContext、ENABLE_* | `ark:core/protocol/bootstrap.py:21-204` | Cordis 的 Service、inject、effect、bundle patch | 已经用 Cordis | 不引入 | dsh 原样 | P0（只需对照） | S |
-| 启动必备能力 | `ark:app.py` 组合根 | app-boot 的 required 清单是全局固定的 | 没有记忆 | 引入五项审计 | `@boat/cli` 加 host | P0 | S |
-| BaseAgent 的声明式配置 | `ark:core/runtime/base_agent.py:115-373` | preset 声明行 | 目录格式 | 部分：先给映射表，agent-kit 推迟 | agent 层 | P0 | S |
-| 工具与回调共享的数据层单例 | `ark:agents/yinglong/agent.py:136-150`；`ark:agents/wealth/agent.py:189-207` | preset 行在每个修订里只挂载一次 | 无 | 引入这种模式 | `./lib/agent.js` 作为单行组合根 | P1 | S |
-| 常驻子进程（KYC 加密 JVM，按探针判断就绪，崩溃后重启） | `ark:core/utils/resident_process.py:1-16`；`ark:core/utils/executable_runner.py`；`ark:agents/yinglong/capabilities/kyc/gdb/crypto/resident_crypto.py:1-8`；`kyc/pama/token.py` | `ctx.subprocess` 负责拉起和终止，服务被 dispose 时会终止所有受管进程；就绪判断和重启由消费方负责（`dsh:packages/subprocess/subprocess/README.md:28-32,98,114`）；dsh-base 的 `subprocess` 行在 `base/cordis.patch.yml:219` | 无 | 引入 | agent 层 provider，建在 `ctx.subprocess` 上 | P1（yinglong） | M |
-| 每个 agent 自己的模型与采样 | `ark:agents/yinglong/agent.py:124-134` | agent/request | 全部用宿主的默认模型 | 引入 | agent 行在 agent/request 上选路由 | P1 | S |
-| CLI 的 init、add-agent、list、enable | `ark:cli/main.py:773-1101` | dsh CLI 的 plugin 子命令 | 只有 run、web、config dump | 部分 | `@boat/cli` | P2 | M |
-| meta_builder：用对话建 agent | `ark:agents/meta_builder`（按 `ark 仓库:pyproject.toml:67-83` 的配置，它不在 wheel 里） | Creator 模式 | 无 | 部分 | dsh 原样，加一个 boat skill | P3 | M |
-| 按约定放置的旁路文件 | `ark:plugins/proactive_service/discovery.py`；`ark:plugins/evals/seed.py:43-73` | 注册表不扫描目录 | 无 | 部分 | agent 行显式声明 | P2 | S |
+| Lifecycle、Bootstrap、AppContext、ENABLE_* | `ref:core/protocol/bootstrap.py:21-204` | Cordis 的 Service、inject、effect、bundle patch | 已经用 Cordis | 不引入 | dsh 原样 | P0（只需对照） | S |
+| 启动必备能力 | `ref:app.py` 组合根 | app-boot 的 required 清单是全局固定的 | 没有记忆 | 引入五项审计 | `@boat/cli` 加 host | P0 | S |
+| BaseAgent 的声明式配置 | `ref:core/runtime/base_agent.py:115-373` | preset 声明行 | 目录格式 | 部分：先给映射表，agent-kit 推迟 | agent 层 | P0 | S |
+| 工具与回调共享的数据层单例 | `ref:agents/yinglong/agent.py:136-150`；`ref:agents/wealth/agent.py:189-207` | preset 行在每个修订里只挂载一次 | 无 | 引入这种模式 | `./lib/agent.js` 作为单行组合根 | P1 | S |
+| 常驻子进程（KYC 加密 JVM，按探针判断就绪，崩溃后重启） | `ref:core/utils/resident_process.py:1-16`；`ref:core/utils/executable_runner.py`；`ref:agents/yinglong/capabilities/kyc/gdb/crypto/resident_crypto.py:1-8`；`kyc/pama/token.py` | `ctx.subprocess` 负责拉起和终止，服务被 dispose 时会终止所有受管进程；就绪判断和重启由消费方负责（`dsh:packages/subprocess/subprocess/README.md:28-32,98,114`）；dsh-base 的 `subprocess` 行在 `base/cordis.patch.yml:219` | 无 | 引入 | agent 层 provider，建在 `ctx.subprocess` 上 | P1（yinglong） | M |
+| 每个 agent 自己的模型与采样 | `ref:agents/yinglong/agent.py:124-134` | agent/request | 全部用宿主的默认模型 | 引入 | agent 行在 agent/request 上选路由 | P1 | S |
+| CLI 的 init、add-agent、list、enable | `ref:cli/main.py:773-1101` | dsh CLI 的 plugin 子命令 | 只有 run、web、config dump | 部分 | `@boat/cli` | P2 | M |
+| meta_builder：用对话建 agent | `ref:agents/meta_builder`（按 `ref 仓库:pyproject.toml:67-83` 的配置，它不在 wheel 里） | Creator 模式 | 无 | 部分 | dsh 原样，加一个 boat skill | P3 | M |
+| 按约定放置的旁路文件 | `ref:plugins/proactive_service/discovery.py`；`ref:plugins/evals/seed.py:43-73` | 注册表不扫描目录 | 无 | 部分 | agent 行显式声明 | P2 | S |
 | （boat 自身）profile 的 bundle 列表必须与模板完全相同 | 无 | plugin-manager 会改写 bundle 列表 | `boat/apps/cli/src/profile-boot.ts:114-128` | 修复 | cli | P0 | S |
 
 ---
@@ -324,14 +324,14 @@ dsh 目前不接受外部 PR（`dsh:CONTRIBUTING.md:9`）。所以 boat 带进�
 
 ### 3.1 运行时循环、回调与护栏
 
-**ark 的做法。** 以 BaseAgent 的 `_run_loop` 为核心，外面挂 8 个 hook。回调只返回 PASS、ABORT、OVERRIDE、RETRY 四种声明，具体怎么处理由 runner 按 hook 语义决定。
+**参考实现的做法。** 以 BaseAgent 的 `_run_loop` 为核心，外面挂 8 个 hook。回调只返回 PASS、ABORT、OVERRIDE、RETRY 四种声明，具体怎么处理由 runner 按 hook 语义决定。
 
 ABORT 路径做三件事：
 - 把入口的 user 消息写入会话，metadata 就是完整的 input_context；
 - 把回调事件的类型和完整数据写进 assistant 消息的 `hook_effects`；
-- 两者一起落盘（`ark:core/runtime/base_agent.py:855-866`、`ark:core/runtime/_runner_helpers.py:172-185`、`ark:core/session/format.py:392-394`）。
+- 两者一起落盘（`ref:core/runtime/base_agent.py:855-866`、`ref:core/runtime/_runner_helpers.py:172-185`、`ref:core/session/format.py:392-394`）。
 
-会话列表里的 `aborted_count` 就读这份数据（`ark:core/session/format.py:140-150`；`ark:plugins/studio/api/sessions.py:44-45,133-156`）。PASS 附带的事件（例如 citation_batch）只推流，不落盘。
+会话列表里的 `aborted_count` 就读这份数据（`ref:core/session/format.py:140-150`；`ref:plugins/studio/api/sessions.py:44-45,133-156`）。PASS 附带的事件（例如 citation_batch）只推流，不落盘。
 
 **dsh 的做法。** 没有统一的回调容器，每个扩展点都是一个类型化事件：
 - `agent/pre-step` 是 waterfall，可以拒绝本步，也可以替换进入本步的消息（`dsh/core/agent/src/runtime-types.ts:309-320`）。
@@ -343,11 +343,11 @@ ABORT 路径做三件事：
 1. boat/intake 的 reply 只能带 content blocks（`dsh/core/agent-loop/src/boat/step-hooks.ts`）。reply 分支在 `agent/pre-step` 之前就返回了（`dsh/core/agent-loop/src/agent.ts:284`），所以拒识轮里的判定、卡片、帧都没有地方记。
 2. 没有步数上限。
 3. 没有对外可用的结束原因。
-4. 两边都有 aborted，但含义相反：ark 的 aborted 表示 before_agent 拒识，dsh 的 aborted 表示用户取消。
+4. 两边都有 aborted，但含义相反：参考实现的 aborted 表示 before_agent 拒识，dsh 的 aborted 表示用户取消。
 
 **建议：准入前移（admission）。**
 1. **准入函数的登记。** `@boat/intake-guard` 发布宿主服务 `boatIntake`，agent 行调用 `register(presetId, gate)` 登记本 agent 的准入函数，返回 disposer。准入函数负责：
-   - 解析请求上下文，也就是 ark 的 `_enrich_context`；
+   - 解析请求上下文，也就是参考实现的 `_enrich_context`；
    - 预取数据；
    - LLM 分类；
    - 门槛判定，并渲染门槛卡。
@@ -358,9 +358,9 @@ ABORT 路径做三件事：
 4. **结果。** 拒识、登录卡、门槛卡、friction 判定都落在已有信封里，也就是用户消息的 source。模型看不到它，会话能够重开，Studio 统计和 evals 也都有数据可读，而且不需要新增事件，也不需要扩展 `BoatIntakeReply`。
 5. **回退路径。** 经 session-controller 从 boat web 进来的消息没有预判结果，这时在循环内分类。拒识帧仍然可以从回复文本推导，但卡片和 friction 判定记不下来。boat web 是面向操作者的界面，不是业务渠道，这个降级可以接受。另一种做法是把 `BoatIntakeReply` 放宽成允许替换 claimed 消息，大约 3 行内核改动，列入 7.2 待拍板。
 6. **步数上限。** 由插件在 `agent/pre-step` 计数，超限时调用 `cancel({kind:'hook', reason:'step-budget'}, {keepInbox:true})`。hook 类型的 cause 会原样写进 turn/end。
-7. **结束原因。** 用纯函数 `boatRunOutcomeOf(events, turn)` 从日志折叠出来。内部把「拒识」（rejected）和「取消」（cancelled）分开，只在 wire 层把 rejected 映射回 ark 的 aborted。
+7. **结束原因。** 用纯函数 `boatRunOutcomeOf(events, turn)` 从日志折叠出来。内部把「拒识」（rejected）和「取消」（cancelled）分开，只在 wire 层把 rejected 映射回参考实现的 aborted。
 
-**例子：securities 的 grounding 重试。** 原实现是 `ark:agents/securities/agent.py:90-100` 里挂的 `create_citation_validation_hook`，迁移后由 `@boat/turn-review` 负责：
+**例子：securities 的 grounding 重试。** 原实现是 `ref:agents/securities/agent.py:90-100` 里挂的 `create_citation_validation_hook`，迁移后由 `@boat/turn-review` 负责：
 - 在 `agent/turn-stopping` 上调用 `agent.steer(反馈)`；
 - 每个 turn 的重试预算记在 `WeakMap<Agent>` 里；
 - boat 自己的回复和已经 concluded 的 turn 不做校验。
@@ -369,9 +369,9 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
 ### 3.2 子任务与多 agent
 
-**ark 的做法。**
-- SpawnSubtasksTool 一次调用并行跑多个子任务。子任务继承父会话的 `user:*` 状态，结束后把 state_delta 合并回父会话；会话 id 里带 `:sub:` 标记，用来禁止嵌套（`ark:core/subtask/tool.py:61-314`）。目前只有 insurance 开启。
-- agent_router 通过 consult 工具委派给业务 agent。它有两个钩子（`ark:agents/agent_router/agent.py:30-56,77-81`）：before_tool 统计本批 consult 的调用次数，after_tool 在多路调用时把 STOP 改回 CONTINUE。效果是：单路调用直接 STOP，多路调用由 LLM 汇总。
+**参考实现的做法。**
+- SpawnSubtasksTool 一次调用并行跑多个子任务。子任务继承父会话的 `user:*` 状态，结束后把 state_delta 合并回父会话；会话 id 里带 `:sub:` 标记，用来禁止嵌套（`ref:core/subtask/tool.py:61-314`）。目前只有 insurance 开启。
+- agent_router 通过 consult 工具委派给业务 agent。它有两个钩子（`ref:agents/agent_router/agent.py:30-56,77-81`）：before_tool 统计本批 consult 的调用次数，after_tool 在多路调用时把 STOP 改回 CONTINUE。效果是：单路调用直接 STOP，多路调用由 LLM 汇总。
 
 **dsh 的做法。**
 - 子代理 seam 的默认深度上限是 1，并发上限是 8（`dsh:packages/subagent/subagent/README.md:47,51`）。
@@ -380,17 +380,17 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 - 同一步里只要有一个成功结果标了 concludesTurn，本轮就结束（`dsh/core/agent-loop/src/tool-calls.ts:37,158`）。
 
 **建议。**
-- **子任务。** 缺的只是 `user:*` 的传入和 state_delta 的回传。先验证两个不新增工具的方案：给 tool-subagent 配一个 provider，或者加一个 `tools/post-execute` 监听。只有当回传没法通过 meta 表达时，才做一个薄工具。默认的 toolFilter 要排除记忆写入工具，与 ark 的 tools_deny 保持一致。
-- **consult。** `@boat/consult` 是一个 preset 型的 SubagentProvider，只挂载目标 preset，不调用 `applyChildComposition`，否则子 agent 会拿到 router 自己的组合。是否 concludeTurn 由 consult 工具自己判断：读取所在 assistant 消息里的工具调用，只有它是这一批里唯一的 consult 调用、并且 `stop_after` 允许时，才调用 `concludeTurn()`。这样才能复现 ark 的规则：单路直接结束，多路交给 LLM 汇总。
+- **子任务。** 缺的只是 `user:*` 的传入和 state_delta 的回传。先验证两个不新增工具的方案：给 tool-subagent 配一个 provider，或者加一个 `tools/post-execute` 监听。只有当回传没法通过 meta 表达时，才做一个薄工具。默认的 toolFilter 要排除记忆写入工具，与参考实现的 tools_deny 保持一致。
+- **consult。** `@boat/consult` 是一个 preset 型的 SubagentProvider，只挂载目标 preset，不调用 `applyChildComposition`，否则子 agent 会拿到 router 自己的组合。是否 concludeTurn 由 consult 工具自己判断：读取所在 assistant 消息里的工具调用，只有它是这一批里唯一的 consult 调用、并且 `stop_after` 允许时，才调用 `concludeTurn()`。这样才能复现参考实现的规则：单路直接结束，多路交给 LLM 汇总。
 - **子 agent 的卡片。** 卡片留在子会话里。出口层通过 `subagent/start` 找到子会话，直接读取它的 boatCards。
 
 ### 3.3 会话、存储与多实例
 
-**ark 的做法。**
-- 持久层是唯一真相源，每个 turn 做一次 checkout/flush（`ark:core/session/manager.py:274-365`）。
-- 跨 POD 互斥有两层：DB 运行锁，加上 version 乐观锁（`ark:core/storage/database/sql/session.py:450-587`）。
-- 会话在 (agent_id, session_id) 这对组合内唯一（`ark:core/storage/database/models.py:79-82`）。
-- 请求的 context 一律加上 `user:` 前缀后并入 state（`ark:plugins/api/chat.py:60-72`）。
+**参考实现的做法。**
+- 持久层是唯一真相源，每个 turn 做一次 checkout/flush（`ref:core/session/manager.py:274-365`）。
+- 跨 POD 互斥有两层：DB 运行锁，加上 version 乐观锁（`ref:core/storage/database/sql/session.py:450-587`）。
+- 会话在 (agent_id, session_id) 这对组合内唯一（`ref:core/storage/database/models.py:79-82`）。
+- 请求的 context 一律加上 `user:` 前缀后并入 state（`ref:plugins/api/chat.py:60-72`）。
 
 **dsh 的做法。**
 - 会话是只追加的事件日志，写句柄由 agent-loop 独占。
@@ -408,32 +408,34 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 - **`@boat/session-persistence-sql`。** 租约、心跳和 fencing 都在 provider 内部实现；append 要求首个 seq 等于 next_seq，这一条同时起 fencing 作用。
 - **`@boat/session-directory`。** 维护 `(agentId, userKey, externalSessionId) → SessionId` 的映射，resume 之前校验归属。SQL 模式下，归属列和会话行在同一个事务里写入。
 - **会话列表与搜索。** 一律经过会话目录，按归属过滤。session-query 只在进程内做单会话的精读，不直接暴露。
-- **不移植的部分。** ark 的乐观锁，以及「先写 meta 再写消息」的双写都不移植。dsh 没有可变的 meta，连续的 seq 本身就是版本号。
+- **不移植的部分。** 参考实现的乐观锁，以及「先写 meta 再写消息」的双写都不移植。dsh 没有可变的 meta，连续的 seq 本身就是版本号。
 
-**例子：trace_id。** ark 的 `temp:trace_id` 名义上是本轮临时值，但 input_context 会整体作为 user 消息的 metadata 落盘（`ark:core/runtime/base_agent.py:830-832`）。按 trace_id 搜会话（`ark:core/session/format.py:99`）、SA 去重（`ark:core/session/history_insert.py:167`）都依赖这一点。迁移时要把 traceId、messageId 显式放进 `boat-request` 这个 source 的持久字段，设计见 4.3。
+**例子：trace_id。** 参考实现的 `temp:trace_id` 名义上是本轮临时值，但 input_context 会整体作为 user 消息的 metadata 落盘（`ref:core/runtime/base_agent.py:830-832`）。按 trace_id 搜会话（`ref:core/session/format.py:99`）、SA 去重（`ref:core/session/history_insert.py:167`）都依赖这一点。迁移时要把 traceId、messageId 显式放进 `boat-request` 这个 source 的持久字段，设计见 4.3。
 
 ### 3.4 记忆
 
-**ark 的做法。**
-- 每个 (agent, user) 有一份按标题组织的 MEMORY.md（`ark:plugins/memory/manager.py:24-34`）。
-- 会话开始时冻结一份截断后的快照，注入 `<memory_context>`，并声明「NOT current user input」（`ark:plugins/memory/prompts.py:35-42`）。
+**参考实现的做法。**
+- 每个 (agent, user) 有一份按标题组织的 MEMORY.md（`ref:plugins/memory/manager.py:24-34`）。
+- 会话开始时冻结一份截断后的快照，注入 `<memory_context>`，并声明「NOT current user input」（`ref:plugins/memory/prompts.py:35-42`）。
 - 每轮结束后用一次 LLM 调用抽取要写回的内容；另外定期做 dream 整理。
 
-**dsh 的做法。** dsh 没有长期记忆包。最接近的是 agent-instructions：它把持久指令作为带来源的 user/message 注入，被压缩遮蔽后按原文重新注入（`dsh:packages/context/agent-instructions/src/index.ts:46-63`）。
+**dsh 的做法。** dsh 的官方包里没有长期记忆包。最接近的是 agent-instructions：它把 `$DSH_HOME/AGENTS.md` 和项目里的 AGENTS.md 类文件作为带来源的 user/message 注入，被压缩遮蔽后按原文重新注入（`dsh:packages/context/agent-instructions/src/index.ts:46-63`）；这是人写的静态说明，不会自动学习。session-query 能全文检索历史会话，但 dsh-base 默认不打开它。
+
+**社区插件。** npm 上有 40 多个 dsh 记忆插件（例如 `dsh-memory-vault`、`@max-null/dsh-memory`、`@chenhw7/dsh-memory`、`@openviking/dsh-memory-plugin`），其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在 boat 内核上原样可用。它们的问题是：各自发布自己的服务名（例如 `ctx.memory`、自定义的 provider 注册表），没有公共 seam；多数按全局或工作区分区，面向编码助手，不按业务用户分区，也不支持多实例存储。所以 boat 仍然要自己定义记忆 seam；合适的社区插件可以包成这个 seam 的一个 provider，不必从头写。
 
 **建议。**
 1. **seam 与 provider。** `@boat/memory-store` 作为抽象基类放在 lib，方法不超过 7 个。provider 有 local 和 sql 两种，local 版由 `@boat/host` 常驻挂载，理由见 1.5。
-2. **注入。** `@boat/memory` 把快照作为 `plugin:boat-memory` 的 recall 消息注入，并保留 ark 的那句声明。被遮蔽后，用日志里的原文重新注入。
+2. **注入。** `@boat/memory` 把快照作为 `plugin:boat-memory` 的 recall 消息注入，并保留参考实现的那句声明。被遮蔽后，用日志里的原文重新注入。
 3. **写回。** flush 和 dream 放进同一个按用户串行的队列，dispose 时等队列排空。
 
-**例子：yinglong 的「外部资产·系统维护」小节。** 这一小节由诊断工具在代码里独占读写。模块注释写明了一个问题：会话末的抽取轮虽然被告知不要动这个标题，模型仍然会去「整理」它（加空格、改成「万」、换成全角括号），所以读取时只好把正则放宽（`ark:agents/yinglong/capabilities/diagnosis/allocation/external_asset_memory.py:1-7,27-33`）。boat 要提供「受保护标题」：flush 和 dream 的输入里不出现这些标题，写回时原样保留。
+**例子：yinglong 的「外部资产·系统维护」小节。** 这一小节由诊断工具在代码里独占读写。模块注释写明了一个问题：会话末的抽取轮虽然被告知不要动这个标题，模型仍然会去「整理」它（加空格、改成「万」、换成全角括号），所以读取时只好把正则放宽（`ref:agents/yinglong/capabilities/diagnosis/allocation/external_asset_memory.py:1-7,27-33`）。boat 要提供「受保护标题」：flush 和 dream 的输入里不出现这些标题，写回时原样保留。
 
 ### 3.5 上下文压缩与提示词
 
-**ark 的做法。**
-- 在 system prompt 里分段拼接（`ark:core/prompt/builder.py:22-103`）。
-- 所有 `user:*` 状态都会注入 prompt（`ark:core/runtime/base_agent.py:1672,1714-1715`；`ark:core/prompt/builder.py:189-209`）。
-- 压缩不改原文，每轮实时重算三档视图（`ark:core/session/compaction.py:756-818`），默认窗口 128k（`ark:core/runtime/base_agent.py:212-213`）。
+**参考实现的做法。**
+- 在 system prompt 里分段拼接（`ref:core/prompt/builder.py:22-103`）。
+- 所有 `user:*` 状态都会注入 prompt（`ref:core/runtime/base_agent.py:1672,1714-1715`；`ref:core/prompt/builder.py:189-209`）。
+- 压缩不改原文，每轮实时重算三档视图（`ref:core/session/compaction.py:756-818`），默认窗口 128k（`ref:core/runtime/base_agent.py:212-213`）。
 
 **dsh 的做法。**
 - system 头保持稳定，动态内容作为 runtime-context 快照追加在历史尾部。
@@ -450,7 +452,7 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
    全局的 `@boat/prompt-budget` 监听 `system-prompt/assemble` waterfall，只计量、只告警，不做截断。原因是它要看到最终结果，就得注册在最外层，或者在 `await next()` 之后处理，这依赖监听顺序；按 dsh 的规则，监听顺序不能用来执行约束。dsh 自己也只把注册顺序用在「决定放置位置」上（`dsh:packages/skill/tool-skill/src/index.ts:168-171`）。
 2. **中文摘要模板。** 写 `BasicCompactionEngine` 的子类，只覆盖 `summarize()`。
-3. **窗口配置。** compaction-basic 的默认 headroom 是 65536（`config.ts:75`）。如果部署用的模型窗口扣掉输出预留后放不下这个 headroom，就会抛 `TargetPressureConfigError`；这个错误每个 target 只告警一次，之后照常运行，主动压缩就这样静默失效了（`config.ts:181-190`、`index.ts:158-176`）。ark 的业务 agent 默认按 128k 窗口配置，只有 meta_builder 是 64k（`ark:agents/meta_builder/agent.py:41`）。`@boat/biz` 必须按模型写 modelPolicies。这一条暂定 P0，需要核实生产环境 Qwen 路由的实际窗口大小。
+3. **窗口配置。** compaction-basic 的默认 headroom 是 65536（`config.ts:75`）。如果部署用的模型窗口扣掉输出预留后放不下这个 headroom，就会抛 `TargetPressureConfigError`；这个错误每个 target 只告警一次，之后照常运行，主动压缩就这样静默失效了（`config.ts:181-190`、`index.ts:158-176`）。参考实现的业务 agent 默认按 128k 窗口配置，只有 meta_builder 是 64k（`ref:agents/meta_builder/agent.py:41`）。`@boat/biz` 必须按模型写 modelPolicies。这一条暂定 P0，需要核实生产环境 Qwen 路由的实际窗口大小。
 
 **例子：runtime-context 快照膨胀。** 现在 boat 把 `boat:state` 和 `boat:skill` 拼在同一条 runtime-context 快照里，其中任一项变化，整段快照都会重新追加一次（`dsh/core/agent-loop/src/runtime-context.ts:152-163`）。wealth 有 11 个技能，正文合计约 147KB，照现在的方式迁过来，历史会迅速膨胀。要改两处：
 - 技能正文改为只在激活时追加一次持久消息；
@@ -458,23 +460,23 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
 ### 3.6 工具、技能与工作流
 
-**ark 的做法。**
+**参考实现的做法。**
 - dynamic 模式下，模型只能看到 always 工具，加上当前技能 `required_tools` 里列出的工具。
-- Workflow 是一个确定性的有限状态机（`ark:core/workflow/engine.py:121-260`）。
+- Workflow 是一个确定性的有限状态机（`ref:core/workflow/engine.py:121-260`）。
 
 **dsh 的做法。**
-- restrict 掩码在执行器里生效：被隐藏的工具不仅模型看不到，调用也会被拒。这比 ark 只在 schema 里省略要严格。
+- restrict 掩码在执行器里生效：被隐藏的工具不仅模型看不到，调用也会被拒。这比参考实现只在 schema 里省略要严格。
 - dsh 的 workflow 是脚本编排，不是状态机。
 
 **差距与建议。**
 
-1. **SKILL.md 格式。** ark 的 31 个业务技能大多用下划线名或中文名，而 dsh 要求 kebab-case。用转换脚本迁移：
-   - kebab 名从目录名推导。ark 的技能 id 本来就取自目录名（`ark:core/skills/loader.py:78-79`）。
-   - `when_to_use` 拼进 description。ark 就是这么做的（`ark:core/skills/loader.py:104-116`）。dsh 的 skill 虽然有 `whenToUse` 字段（`dsh/skill/skill/src/index.ts:64`），skill-filesystem 也会读取它，但 tool-skill 的目录不会渲染它（在 `dsh:packages/skill/tool-skill/src` 里搜不到 whenToUse）。如果只映射到 whenToUse，full 模式和目录路径下模型就看不到这段说明。
+1. **SKILL.md 格式。** 参考实现的 31 个业务技能大多用下划线名或中文名，而 dsh 要求 kebab-case。用转换脚本迁移：
+   - kebab 名从目录名推导。参考实现的技能 id 本来就取自目录名（`ref:core/skills/loader.py:78-79`）。
+   - `when_to_use` 拼进 description。参考实现就是这么做的（`ref:core/skills/loader.py:104-116`）。dsh 的 skill 虽然有 `whenToUse` 字段（`dsh/skill/skill/src/index.ts:64`），skill-filesystem 也会读取它，但 tool-skill 的目录不会渲染它（在 `dsh:packages/skill/tool-skill/src` 里搜不到 whenToUse）。如果只映射到 whenToUse，full 模式和目录路径下模型就看不到这段说明。
    - 加载时核对技能数量。
 2. **不移植的两项。**
    - 技能资格过滤：业务技能都没有用这些字段。
-   - read_reference：ark 的 agents 下没有任何 references/ 目录。
+   - read_reference：参考实现的 agents 下没有任何 references/ 目录。
 
    另外，`@boat/biz` 关掉 fs 工具之后，tool-skill 给出的「目录型资源指引」就读不到了（`dsh:packages/skill/tool-skill/README.md:154-172`）。以后技能如果带资源，需要提供一个受限的读取工具。
 3. **工具面。** `@boat/biz` 关掉编码工具、PTC、workflow、goal、agent-instructions，并按 agent 用 allow 掩码限定工具面。关闭的标准是：这一行给模型注册了非业务工具，或者会把宿主环境信息注入会话。PTC 必须关，因为 PTC 子调度时不计算 presentationMeta（`dsh/core/tools/src/index.ts:1843`），卡片和 stateDelta 会被静默丢掉。
@@ -482,9 +484,9 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
 ### 3.7 模型层、可观测性与评测
 
-**ark 的做法。**
+**参考实现的做法。**
 - 按角色组织的 LLMRegistry。
-- 采样预设带 penalty 和 top_k。yinglong 的注释写明：temperature 0 在实测中提升 2 到 3 个百分点，复读问题由 presence_penalty 和 repetition_penalty 兜底（`ark:agents/yinglong/agent.py:124-134`）。
+- 采样预设带 penalty 和 top_k。yinglong 的注释写明：temperature 0 在实测中提升 2 到 3 个百分点，复读问题由 presence_penalty 和 repetition_penalty 兜底（`ref:agents/yinglong/agent.py:124-134`）。
 - 三个 PA 网关。pa-jituan 要按请求做 RSA+HMAC 签名，还要带 scene_id；pa-shouxian 和 pa-zhengquan 在 transport 层给每个请求注入固定的 trace header，并且 transport 自带 `retries=3`（`pa_shouxian.py:28-52`、`pa_zhengquan.py:32-54`）。
 
 **dsh 的做法。**
@@ -505,13 +507,13 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
   - `@boat/model-routes`：发布具名路由；
   - `@boat/aux-llm`：统一旁路调用的 deadline、重试、JSON 容错解析和留痕；
   - `@boat/telemetry-traces`：从 session-telemetry 的 ledger 派生 span。
-- **评测。** `@boat/eval` 的 grader 读日志和投影。ark 的 callback_event 断言对比的是回放时收集到的、客户端实际收到的事件载荷（`ark:plugins/evals/replay_event_collector.py:1-19`）。boat 让 eval bundle 跑同一套 chat-wire 推导，就能得到同样的帧。judge、校准、调优放在后续阶段。
+- **评测。** `@boat/eval` 的 grader 读日志和投影。参考实现的 callback_event 断言对比的是回放时收集到的、客户端实际收到的事件载荷（`ref:plugins/evals/replay_event_collector.py:1-19`）。boat 让 eval bundle 跑同一套 chat-wire 推导，就能得到同样的帧。judge、校准、调优放在后续阶段。
 
 ### 3.8 对外接口与界面
 
-**ark 的做法。**
-- `/chat` 支持同步和 SSE，客户端断连就取消（`ark:plugins/api/sse_runner.py:20-115`）。
-- 四种出口协议（`ark:core/stream/output_formatter.py:533`）。
+**参考实现的做法。**
+- `/chat` 支持同步和 SSE，客户端断连就取消（`ref:plugins/api/sse_runner.py:20-115`）。
+- 四种出口协议（`ref:core/stream/output_formatter.py:533`）。
 - 企业帧装饰器链。
 - 说卡交错。
 
@@ -522,34 +524,34 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 **建议。**
 1. **webserver 行。** serve bundle 插入（或复用）一行 id 为 `webserver` 的 `@deepseek-ai/dsh-host-webserver`，这样它会进入 app-boot 的 required 审计（`dsh:packages/boot/app-boot/src/index.ts:743-751`）。`@boat/serve` 自己的路由用另一个行 id，通过 inject `webServer` 注册。写法参照 webhook-github：用 credentialRef 解析共享密钥，限制 maxBodyBytes，用 `ctx.effect` 注册（`dsh:packages/webhook/webhook-github/src/index.ts:13-59`）。如果某个 profile 同时列了 dsh-web-app，要复用它已有的 `webserver` 行，不能再插一行。
 2. **同步模式。** 按本次请求 id 所在轮的 turn/end 返回，不要等 agent 整体空闲。
-3. **出口格式。** 格式化器和帧装饰器登记在 `ctx.chatWire` 上，用 ark 生成的 SSE 金样逐帧比对。
+3. **出口格式。** 格式化器和帧装饰器登记在 `ctx.chatWire` 上，用参考实现生成的 SSE 金样逐帧比对。
 4. **说卡交错。** 放在 `@boat/a2ui` 内部实现，出口层通过 `ctx.a2ui` 的服务方法调用，web 客户端通过 a2ui 包的 client 子路径使用。这样不需要为两个消费方新开一个共享包。
 
 ### 3.9 后台任务与主动服务
 
-**ark 的做法。** 一个 async 函数加一个 `@proactive` 装饰器，就同时声明了触发、扇出和投递（`ark:plugins/proactive_service/decorator.py:46-70`）。
+**参考实现的做法。** 一个 async 函数加一个 `@proactive` 装饰器，就同时声明了触发、扇出和投递（`ref:plugins/proactive_service/decorator.py:46-70`）。
 
 **dsh 的做法。** schedule 只提供会话内的提醒，不支持 Cron，也不做站外通知（`dsh:packages/schedule/schedule/README.md:32,216-221`）。
 
 **建议。** `@boat/proactive` 保留触发、扇出、投递三个维度。另外要修一个频控缺陷（推断）：
-- **问题。** last_run 记录的是用户处理完成的时间（`ark:plugins/proactive_service/scopes/per_user.py:168-170`）。当频控窗口正好等于 cron 周期时，下一轮可能把这个用户判在窗口内而跳过。
+- **问题。** last_run 记录的是用户处理完成的时间（`ref:plugins/proactive_service/scopes/per_user.py:168-170`）。当频控窗口正好等于 cron 周期时，下一轮可能把这个用户判在窗口内而跳过。
 - **修法。** 改为记录本次 tick 的 fired_at。
 
-现有的两个主动服务都注明是 demo、用的是 mock 数据（`ark:agents/insurance/proactive.py:66-72`；`ark:agents/securities/proactive.py:1-10`），所以定为 P1。
+现有的两个主动服务都注明是 demo、用的是 mock 数据（`ref:agents/insurance/proactive.py:66-72`；`ref:agents/securities/proactive.py:1-10`），所以定为 P1。
 
 ### 3.10 框架组合与开发体验
 
-**ark 的做法。** 插件之间用 `getattr` 取对方的产物（`ark:plugins/proactive_service/plugin.py:203-213`），业务 agent 只要继承 BaseAgent 就会被注册。
+**参考实现的做法。** 插件之间用 `getattr` 取对方的产物（`ref:plugins/proactive_service/plugin.py:203-213`），业务 agent 只要继承 BaseAgent 就会被注册。
 
 **dsh 的做法。** `inject` 声明依赖，服务可用时才激活；新增 agent 就是插入一行 dsh-agent-preset。
 
 **建议。**
 - **agent 包。** 业务 agent 做成 npm 包，`dsh.bundle.patch` 插入 `preset-<id>` 这一行，行下的子行就是现在 `agent.cordis.yml` 的内容。
-- **数据层单例。** 放在 `./lib/agent.js` 的 `apply()` 闭包里，生命周期与 preset 修订相同。KYC 加密 JVM 这类常驻进程也放在这里，通过 `ctx.subprocess` 拉起，就绪判断和重启逻辑从 ark 的 `resident_process.py` 移植过来。要注意两点：
+- **数据层单例。** 放在 `./lib/agent.js` 的 `apply()` 闭包里，生命周期与 preset 修订相同。KYC 加密 JVM 这类常驻进程也放在这里，通过 `ctx.subprocess` 拉起，就绪判断和重启逻辑从参考实现的 `resident_process.py` 移植过来。要注意两点：
   - 每换一个 preset 修订就会起一个新 JVM，热更新等于重启；
   - `@boat/biz` 必须保留 `subprocess` 这一行。
 - **profile 检查。** `profile-boot` 从「必须与模板完全相同」放宽为「以模板为前缀」（`boat/apps/cli/src/profile-boot.ts:114-128`）。
-- **agent-kit。** 等 demo、yinglong、wealth 三个 agent 迁完之后再提炼，与 `CLAUDE.md:92` 一致。
+- **agent-kit。** 等 demo、yinglong、wealth 三个 agent 迁完之后再提炼，与 `CLAUDE.md:93` 一致。
 
 ---
 
@@ -557,34 +559,34 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
 ### 4.1 三个方案
 
-- **方案一：dsh 原生薄内核。** 内核尽量贴近上游，只加 E1。ark 的能力按这个顺序落地：先用 dsh 原样包，不够再写 boat 插件，最后才建 boat 自有 seam。业务 agent 采用 dsh 原生的 bundle 形态。
-- **方案二：方舟内核。** 在 agent-loop、system-prompt、compaction-basic、session、llm 五个内核包的 `src/boat/` 下，实现 ark 的运行器、上下文槽、模型视图、分段预算、压缩策略和发行版词表。这些功能默认不生效，只有当 boat 的 agent 行声明了 profile 时才启用。
+- **方案一：dsh 原生薄内核。** 内核尽量贴近上游，只加 E1。参考实现的能力按这个顺序落地：先用 dsh 原样包，不够再写 boat 插件，最后才建 boat 自有 seam。业务 agent 采用 dsh 原生的 bundle 形态。
+- **方案二：厚内核。** 在 agent-loop、system-prompt、compaction-basic、session、llm 五个内核包的 `src/boat/` 下，实现参考实现的运行器、上下文槽、模型视图、分段预算、压缩策略和发行版词表。这些功能默认不生效，只有当 boat 的 agent 行声明了 profile 时才启用。
 - **方案三：分层混合。** 内核改动与方案一相同，另外在内核和插件之间加一层约 8 个包的 `boat/runtime`，放 agent-kit、抽象 seam 和纯函数库。
 
 ### 4.2 对比与评分
 
-| 维度 | 方案一 dsh 原生 | 方案二 方舟内核 | 方案三 分层混合 |
+| 维度 | 方案一 dsh 原生 | 方案二 厚内核 | 方案三 分层混合 |
 |---|---|---|---|
 | 内核 extend 数量 | 3 | 9 | 3（另有 3 项候选） |
 | 上游文件里的 carry（估算） | 约 103 行（实测 88 行，加 E1 不超过 15 行） | 约 190–220 行（实测 88 行，加方案自己估的 100–130 行） | 约 103 行 |
 | 路由会话能否重开 | 能，挂在已有信封上 | 能，但要依赖发行版词表 | 能，挂在已有信封上 |
 | 官方 dsh 能否读 boat 写的会话（G6） | 能 | 含发行版词表事件的会话会被拒读 | 能 |
-| 对 ark 语义的保真度 | 中高，部分由出口层推导 | 最高 | 高 |
+| 对参考实现语义的保真度 | 中高，部分由出口层推导 | 最高 | 高 |
 | 同步时的冲突面 | agent.ts 的 preStep、session 的 append | 上游改动最频繁的 9 个文件 | 同方案一 |
 | 新增 boat 包数（按各方案自己的清单粗算） | 约 35–40 | 约 15 | 约 40 |
-| 主要风险 | 若干 ark 语义降级 | 内核永久分叉 | 过早抽象，变成第二个框架 |
+| 主要风险 | 若干参考实现语义降级 | 内核永久分叉 | 过早抽象，变成第二个框架 |
 
 **评分口径。** 每项 1–10 分，是方案评审时的主观判断：
 - 兼容性：对 G1–G6 承诺的影响；
-- ark 保真：迁移后的行为与 ark 一致的程度；
+- 参考实现保真：迁移后的行为与参考实现一致的程度；
 - 同步成本：每次上游同步需要的人工量，越少分越高；
 - 简洁度：新增的概念和包数；
 - 可测性：能否用现有闸门和组合测试来证明。
 
-| 方案 | 兼容性 | ark 保真 | 同步成本 | 简洁度 | 可测性 | 合计 |
+| 方案 | 兼容性 | 参考实现保真 | 同步成本 | 简洁度 | 可测性 | 合计 |
 |---|---|---|---|---|---|---|
 | 方案一 dsh 原生 | 9 | 7 | 9 | 7 | 8 | **40** |
-| 方案二 方舟内核 | 5 | 9 | 3 | 4 | 6 | 27 |
+| 方案二 厚内核 | 5 | 9 | 3 | 4 | 6 | 27 |
 | 方案三 分层混合 | 9 | 8 | 8 | 5 | 8 | 38 |
 
 **方案二的前提不成立。** 它有三条「必须进内核」的理由，对照源码后都站不住：
@@ -632,7 +634,7 @@ flowchart TB
     P2["工具与技能：tool-policy · skill-router · a2ui<br/>flow-fsm · tool-exchange · consult"]
     P3["上下文：request-context · memory · history-import<br/>compaction-business · prompt-budget"]
     P4["模型：llm-openai-compat · model-routes · aux-llm"]
-    P5["出口：chat-wire · chat-wire-ark · suggestion · citation"]
+    P5["出口：chat-wire · chat-wire-legacy · suggestion · citation"]
     P6["provider：session-persistence-sql · datasource-sql<br/>lease · session-directory · memory-store · telemetry-traces"]
   end
   subgraph LIB["L2b boat/lib：seam 定义，或被三个以上包值导入的纯函数"]
@@ -691,7 +693,7 @@ flowchart TB
 
 **lib 的进入条件分两类：**
 1. **能力 seam 的 Definition**，也就是抽象基类加 conformance 套件。dsh 的 seam 定义本来就是按值导入的抽象类（`dsh/session/session-persistence/src/index.ts:135`），而 contracts 不能放运行时值。
-2. **共享 helper**：必须已经被三个以上的包按值导入，与 `CLAUDE.md:92` 一致。
+2. **共享 helper**：必须已经被三个以上的包按值导入，与 `CLAUDE.md:93` 一致。
 
 两类合计不超过 8 个包。据此，首批只进入 turn-outcome（消费方是 serve、eval、run、suggestion）和 agent-invoke（消费方是 run、serve、eval）。说卡交错只有两个消费方，所以留在 `@boat/a2ui` 内部。
 
@@ -700,7 +702,7 @@ flowchart TB
   - 第 43 行（层列表）、第 51-61 行（分层图）加上 lib；
   - 第 54 行把「agents 可以依赖任意 boat 插件」改为「源码只允许 `import type` 或 inject」；
   - 第 67 行「never through a shared module」加上 lib 的例外；
-  - 第 92 行写明 lib 是第三次重复之后的去处。
+  - 第 93 行写明 lib 是第三次重复之后的去处。
 - `scripts/check-layers.ts`：`LAYERS`（18 行）、`RUNTIME`（22 行起）、`DEV_ONLY`（32 行起）加上 lib；`checkPluginImports`（99-111 行）扩展到 agents 层。
 
 新规则只约束源码里的按值导入。agent 包仍然要在 manifest 里声明对插件的运行时依赖，因为 `agent.cordis.yml` 里的行要解析 `@boat/tool-policy/agent` 这类入口；demo 就把 `@boat/a2ui`、`@boat/tool-policy` 列在 peerDependencies 里（`boat/agents/demo/package.json`），源码只用了 `import type`（`boat/agents/demo/src/tools.ts:16-17`）。
@@ -718,7 +720,7 @@ flowchart TB
 
 - **MessageSourceMap 的键和 kind 是两回事。** 键只是声明合并时用的名字，运行时靠 kind 区分来源。dsh 所有代表人类输入的来源都用 kind `'user'`，因为 tool-skill 只把 `source.kind === 'user'` 的消息当作人类输入（`dsh:packages/skill/tool-skill/src/index.ts:171`），goal 的授权判断也是这样（`dsh:packages/goal/tool-goal/src/authority.ts:76-84`）。session-controller 的 `user-rpc` 也是 kind `'user'`，额外带一个 `rpcId`（`dsh:packages/api/session-controller/src/types.ts:399-402`）。
 - **形状。** boat 声明一个键 `'boat-request'`，形状为 `{ kind: 'user'; boatRequest: { requestId, traceId, messageId, context, intake } }`。所有 boat 字段都收在 `boatRequest` 下面，不使用 `rpcId` 这个名字，否则 session-controller 的 `hasPromptRequest`（`commands.ts:603-615`，用 `'rpcId' in source` 判断）会把它误当成 user-rpc。
-- **判别需要一个例外。** 由于同为 kind `'user'`，只能用 `'boatRequest' in source` 来区分，而这正是 `CLAUDE.md:87` 禁止的能力探测。dsh 自己的 `hasPromptRequest` 也是这样写的。建议把它登记为例外：只允许出现在 request-context 的一个函数里（例如 `boatRequestOf(source)`）。列入 7.2 待拍板。
+- **判别需要一个例外。** 由于同为 kind `'user'`，只能用 `'boatRequest' in source` 来区分，而这正是 `CLAUDE.md:88` 禁止的能力探测。dsh 自己的 `hasPromptRequest` 也是这样写的。建议把它登记为例外：只允许出现在 request-context 的一个函数里（例如 `boatRequestOf(source)`）。列入 7.2 待拍板。
 - **source 不会发给模型。** 官方适配器只在 replay 时读取 assistant 消息的 source（`dsh:packages/llm/llm-deepseek/src/replay.ts:49`），不会把 user 消息的 source 序列化进请求。`@boat/llm-openai-compat` 的验收要包含同样一条。
 
 #### 内核改动清单
@@ -748,7 +750,7 @@ flowchart TB
 | `@boat/intake-guard`、`@boat/step-budget`、`@boat/turn-review` | plugins | 护栏 | 准入登记表与循环内读取、步数上限、终答前纠错 | B–C |
 | `@boat/aux-llm`、`@boat/model-routes` | plugins | 宿主服务 | 旁路模型调用、具名路由 | B |
 | `@boat/llm-openai-compat` | plugins | 适配器 | 基于 pi-ai 库，接 Qwen、vLLM 和企业网关 | B |
-| `@boat/chat-wire`、`@boat/chat-wire-ark` | plugins | 出口 | 协议格式化器、帧装饰器、拒识帧推导 | B |
+| `@boat/chat-wire`、`@boat/chat-wire-legacy` | plugins | 出口 | 协议格式化器、帧装饰器、拒识帧推导 | B |
 | `@boat/compaction-business`、`@boat/prompt-budget` | plugins | 替换默认行 / 可选插件 | 中文摘要、digestPast 剪裁；全局只计量（默认关闭） | C |
 | `@boat/flow-fsm`、`@boat/tool-exchange`、`@boat/consult` | plugins | 能力 | 状态机、工具间发布订阅、委派 | C–E |
 | `@boat/memory`、`@boat/suggestion`、`@boat/citation` | plugins | 能力 | 记忆策略、推荐问、引用 | C |
@@ -763,9 +765,9 @@ flowchart TB
 - `@boat/host`：关闭遥测上传；常驻挂载记忆 provider。
 - `@boat/cli`：profile 改为前缀检查；增加五项启动审计；增加 serve、eval 模板。
 
-#### 反查：每个 boat 包接手哪些 ark 能力
+#### 反查：每个 boat 包接手哪些参考实现能力
 
-| boat 包 | 接手的 ark 能力 |
+| boat 包 | 接手的参考实现能力 |
 |---|---|
 | boat/intake（内核）加 `@boat/intake-guard` | before_agent 的 ABORT、IntakeGuard、auth_check、enrich_context、门槛门 |
 | `@boat/turn-outcome` | RunOutcome；chat 终帧里的 outcome；推荐问门控；Studio 的拒识统计 |
@@ -778,7 +780,7 @@ flowchart TB
 | `@boat/memory` 加 `@boat/memory-store` | MemoryProvider；冻结快照；flush 与 dream；memory_write |
 | `@boat/compaction-business` | LLMSummarizer 的中文模板；过去时 digest |
 | `@boat/llm-openai-compat`、`@boat/model-routes`、`@boat/aux-llm` | LLMProvider 与三个网关；LLMRegistry 的角色；SamplingConfig；json_extract |
-| `@boat/chat-wire`、`@boat/chat-wire-ark`、`@boat/serve` | /chat；SSE；AG-UI；四种出口协议；帧装饰器；app_type 覆盖；session_busy；idempotency_key |
+| `@boat/chat-wire`、`@boat/chat-wire-legacy`、`@boat/serve` | /chat；SSE；AG-UI；四种出口协议；帧装饰器；app_type 覆盖；session_busy；idempotency_key |
 | `@boat/a2ui` | render_a2ui 的三种模式；延迟出卡；说卡交错；a2ui_result |
 | `@boat/flow-fsm`、`@boat/tool-exchange` | Workflow FSM；tool_exchange |
 | `@boat/consult`（加子代理 provider） | consult_sub_agent；SpawnSubtasksTool |
@@ -792,7 +794,7 @@ flowchart TB
 
 ## 5. 贯穿例子：把 yinglong 迁到推荐架构上
 
-选 yinglong 作例子，是因为它几乎用到了 ark 的所有特殊机制：
+选 yinglong 作例子，是因为它几乎用到了参考实现的所有特殊机制：
 - dynamic 技能；
 - LLM 准入加六选一门控；
 - template 卡片加 DEFERRED_DISCARD；
@@ -803,14 +805,14 @@ flowchart TB
 - app_type 覆盖；
 - KYC 常驻进程。
 
-### 5.1 yinglong 在 ark 里的构成（`ark:agents/yinglong/`）
+### 5.1 yinglong 在参考实现里的构成（`ref:agents/yinglong/`）
 
 - **身份与声明**（`agent.py`）：`custom_instructions`；`skill_load_mode = dynamic`；描述上限 600；`business_profile`；`runtime_overrides = APP_TYPE_RUNTIME_OVERRIDES`。
 - **模型**：`temperature=0.0`，外加 `suppress_tool_turn_content=True`（`agent.py:124-134`）。
 - **单例**：`_provider_registry()` 惰性创建一个 ProviderRegistry，由工具和 before_agent 回调共用，其中包括 PAMA 取数缓存（`agent.py:136-150`）。
 - **KYC 链路**：
   - PAMA 客户端、签名和 token（`capabilities/kyc/pama/`）；
-  - GDB 加密，由常驻 JVM 提供 `/encrypt`，以长生命周期单例的形式注入，通信失败时重启一次（`capabilities/kyc/gdb/crypto/resident_crypto.py:1-8`；`ark:core/utils/resident_process.py:1-16`）。
+  - GDB 加密，由常驻 JVM 提供 `/encrypt`，以长生命周期单例的形式注入，通信失败时重启一次（`capabilities/kyc/gdb/crypto/resident_crypto.py:1-8`；`ref:core/utils/resident_process.py:1-16`）。
 - **工具**：取数、诊断、组合入口、知识查询，以及 template 模式的 `render_a2ui`。出卡方式是 `DEFERRED_DISCARD`，`unauthorized` 是终态卡（`tools/__init__.py:28-67`）。
 - **回调**：`before_agent = [make_a2ui_refresh, make_intake_gate]`（`agent.py:152-167`）。
   - `make_intake_gate`：guard 分类一次，然后在六个分支里选一个（`callbacks.py:248-376`）。friction 每轮都计入会话状态，轮号等于「历史里的 USER 条数加 1」（`callbacks.py:198-212`）。
@@ -824,18 +826,18 @@ flowchart TB
 
 ### 5.2 逐项承接
 
-| ark 机制 | boat 里由谁承接 | 说明 |
+| 参考实现机制 | boat 里由谁承接 | 说明 |
 |---|---|---|
 | agent_id、agent_name、custom_instructions | `boat/agents/yinglong` 包里的 `preset-yinglong` 行，加 dsh-persona 子行 | 关掉 harness identity |
 | dynamic 技能、600 字描述上限 | skill-router 的 agent 行设 `mode: dynamic`；tool-skill 的 `catalogDescriptionMaxLength: 600` 挂在 preset 内 | 4 个技能改用 kebab 名，旧 id 保留一张映射表 |
 | build_llm 的 temperature 0 和 penalty | agent 行在 agent/request 上选用一个路由预设；penalty 写在适配器的路由配置里 | 日志里只留下路由名 |
 | suppress_tool_turn_content | chat-wire 在出口层缓冲带 tool-call 那一步的正文 | 日志里仍是完整的流 |
 | ProviderRegistry 单例 | `./lib/agent.js` 的 `apply()` 闭包 | 生命周期与 preset 修订相同 |
-| KYC 加密常驻 JVM、PAMA token | agent 层 provider：用 `ctx.subprocess` 拉起 JVM，就绪判断和重启逻辑从 ark 移植，放在闭包里当单例 | preset 的修订一换，JVM 就会重启；`@boat/biz` 必须保留 `subprocess` 行 |
+| KYC 加密常驻 JVM、PAMA token | agent 层 provider：用 `ctx.subprocess` 拉起 JVM，就绪判断和重启逻辑从参考实现移植，放在闭包里当单例 | preset 的修订一换，JVM 就会重启；`@boat/biz` 必须保留 `subprocess` 行 |
 | 取数与诊断工具 | 在闭包里调 `toolPolicy.register` 注册；`_yl_*` 写成 replace 语义的 stateDelta，只在宿主侧可见 | 查询类工具声明 `isConcurrencySafe` |
 | render_a2ui、DEFERRED_DISCARD、unauthorized 终态卡 | `@boat/a2ui` 的 template 模式加 deferred_discard；终态卡调用 `concludeTurn`，并写上 `meta.boat.concluded` | 卡片标记由 a2ui 服务在出口层就地替换 |
 | make_intake_gate、YinglongIntakeGuard | yinglong 的准入函数登记到 `boatIntake`，由 agent-invoke 在 followup 之前调用；分类走 aux-llm 的 `callback` 路由 | 见 5.3、5.4 |
-| make_a2ui_refresh | 同一个准入函数识别 `ui_event=a2ui_refresh`，不做分类，直接产出 reply 和卡片 | 与 ark 一样，作为一轮写进会话 |
+| make_a2ui_refresh | 同一个准入函数识别 `ui_event=a2ui_refresh`，不做分类，直接产出 reply 和卡片 | 与参考实现一样，作为一轮写进会话 |
 | SaHistoryMerger | `@boat/history-import` 的增量模式：按 trace_id 找出缺失的轮次，以 recall 形式注入 | 只追加到末尾，不在历史中间插入 |
 | memory_extraction_rules、外部资产小节 | `@boat/memory` 的 agent 行配置 extractionRules 和 protectedHeadings | 策略由 agent 按需打开 |
 | 双轨推荐问 | `@boat/suggestion` 支持两种来源：agent 提供的规则生成器，加上候选池兜底；池兜底走 `callback` 路由 | 只在 enterprise 或 agui 请求时触发，并按 outcome 门控 |
@@ -859,7 +861,7 @@ boat/agents/yinglong/
   tests/*.composite.ts  真实组合测试
 ```
 
-### 5.3 准入函数在 boat 里怎么走（各分支对应 `ark:agents/yinglong/callbacks.py:248-376`）
+### 5.3 准入函数在 boat 里怎么走（各分支对应 `ref:agents/yinglong/callbacks.py:248-376`）
 
 ```mermaid
 flowchart TB
@@ -889,11 +891,11 @@ flowchart TB
 
 ### 5.4 friction 计数与准入前移
 
-**ark 的规则**是「受不受理都计一次」（`callbacks.py` 的 `_cb` 里先调用 `_bump_friction`）。boat 如果改成在循环里用 `agent/pre-step` 替换消息，会有问题：拒识走的是 reply 分支，在 pre-step 之前就返回了（`dsh/core/agent-loop/src/agent.ts:284`），这样拒识轮的 friction 就会丢。准入前移解决了这个问题，具体做法：
+**参考实现的规则**是「受不受理都计一次」（`callbacks.py` 的 `_cb` 里先调用 `_bump_friction`）。boat 如果改成在循环里用 `agent/pre-step` 替换消息，会有问题：拒识走的是 reply 分支，在 pre-step 之前就返回了（`dsh/core/agent-loop/src/agent.ts:284`），这样拒识轮的 friction 就会丢。准入前移解决了这个问题，具体做法：
 
 - **跨作用域的取用方式。** 准入函数由 agent 行登记到宿主服务 `boatIntake`，以 preset id 为键，返回 disposer。这和 tool-policy 的 agent 行登记元数据是同一种模式，没有向根 realm 发布服务（`CLAUDE.md:74`）。agent-invoke 从会话头读出 agentPreset，查到对应的准入函数。
 - **等价的数据来源。** 轮号等于日志里已有的人类输入条数（带 `boatRequest` 的 user/message）加 1。上一轮的 friction 状态取最近一条 `boatRequest.intake.friction`。两者都由 boatRequest 投影折叠得到，模型看不到。
-- **历史窗口。** 准入函数从 agent 的会话日志里取最近 10 条，与 ark 的 guard 取法一致（`ark:agents/wealth/guard.py:182`）。
+- **历史窗口。** 准入函数从 agent 的会话日志里取最近 10 条，与参考实现的 guard 取法一致（`ref:agents/wealth/guard.py:182`）。
 - **两条路径。** `boat run`、`boat serve`、eval 都经过 agent-invoke，走同一条路径。只有 boat web 通过 session-controller 进来的消息走循环内回退，此时拒识轮记不下 friction 和卡片。
 - **排队语义下的偏差。** 如果采用 inbox 排队而不是 session_busy，判定依据的是入队时的历史。
 
@@ -915,7 +917,7 @@ sequenceDiagram
     participant SR as skill-router
     participant M as 业务模型
     participant T as yinglong 工具与 a2ui
-    participant W as chat-wire-ark
+    participant W as chat-wire-legacy
     SA->>SV: POST /chat（agent_id yinglong，session_id，message，context，trace_id）
     SV->>SV: 校验网关共享密钥，限制请求体大小
     SV->>DIR: resolve（yinglong，userKey，外部 session_id）
@@ -962,12 +964,12 @@ sequenceDiagram
 ### 5.6 迁移说明里必须写清的行为差异
 
 1. **拒识帧改由出口层推导。** 回复写在 assistant 消息里，帧和卡片写在用户消息的 source 里，两者不再在同一步内原子提交。
-2. **兜底话术模型看不到。** 按 `LlmFailure.code` 在出口层映射，不写进会话。ark 会写进会话（`ark:core/runtime/base_agent.py:1353-1360`）。
+2. **兜底话术模型看不到。** 按 `LlmFailure.code` 在出口层映射，不写进会话。参考实现会写进会话（`ref:core/runtime/base_agent.py:1353-1360`）。
 3. **终态卡结束本轮后，不再合成 assistant 消息。** 另外，出错的结果不会结束本轮；同一步里的 additionalContexts 可能让本轮继续。
 4. **技能切换只追加。** 旧技能的正文会留在历史里，直到被压缩；新的激活消息会声明它已取代旧技能。
 5. **采样参数在日志里只留下路由名。**
-6. **请求上下文按白名单渲染。** ark 会把所有 `user:*` 注入 prompt（`ark:core/runtime/base_agent.py:1672`），其中包括 `user:validatedata` 和 `user:signature` 这类凭证（wealth 从这里读取，见 `ark:agents/wealth/callbacks.py:52-53`）；而且 input_context 整体会随 user 消息落盘（`base_agent.py:830-832`）。boat 只渲染白名单里的字段，凭证不写日志、不进 prompt。
-7. **stateDelta 的合并语义变了。** boat 现在是深合并（`boat/plugins/tool-policy/src/state.ts`），改为按键声明，`_yl_*` 用 replace。和 ark 顶层浅覆盖的差别要逐个键核对。
+6. **请求上下文按白名单渲染。** 参考实现会把所有 `user:*` 注入 prompt（`ref:core/runtime/base_agent.py:1672`），其中包括 `user:validatedata` 和 `user:signature` 这类凭证（wealth 从这里读取，见 `ref:agents/wealth/callbacks.py:52-53`）；而且 input_context 整体会随 user 消息落盘（`base_agent.py:830-832`）。boat 只渲染白名单里的字段，凭证不写日志、不进 prompt。
+7. **stateDelta 的合并语义变了。** boat 现在是深合并（`boat/plugins/tool-policy/src/state.ts`），改为按键声明，`_yl_*` 用 replace。和参考实现顶层浅覆盖的差别要逐个键核对。
 8. **阶段 A 期间路由审计只写 logger。** 到阶段 B 有了 E1，才恢复写进会话（见第 6 节）。
 9. **boat web 路径下，拒识轮的 friction 和卡片不落日志。**
 
@@ -982,7 +984,7 @@ sequenceDiagram
 **内容**
 - host 关闭 session-telemetry-otel 的上传。
 - skill-router 重新设计：激活改为持久消息，被遮蔽后重新注入；删除 `boat/skill-routed` 和 `boat:skill`。
-- `boat/route-request` 暂时只写 logger。这是有意接受的临时偏离：它违背了 1.6 第 13 条「辅助调用留痕」和 `CLAUDE.md:90`「降级要记进会话日志」，到阶段 B 由 E1 补回。
+- `boat/route-request` 暂时只写 logger。这是有意接受的临时偏离：它违背了 1.6 第 13 条「辅助调用留痕」和 `CLAUDE.md:91`「降级要记进会话日志」，到阶段 B 由 E1 补回。
 - 修复 boatState 和 boatCards 的 prune 重折问题。
 - profile-boot 改为前缀检查。
 - 新增 `@boat/biz`。
@@ -1006,7 +1008,7 @@ sequenceDiagram
 - 新建 `boat/lib`，首批放入 turn-outcome、agent-invoke、memory-store、session-directory。
 - `@boat/memory-store-local` 由 host 常驻挂载；`@boat/cli` 增加五项启动审计。
 - 新增 aux-llm、model-routes；`boat/route-request` 改为 ignorable。
-- 新增 request-context、intake-guard 的登记表骨架、serve、chat-wire、chat-wire-ark 和 AG-UI 事件桥。
+- 新增 request-context、intake-guard 的登记表骨架、serve、chat-wire、chat-wire-legacy 和 AG-UI 事件桥。
 - 新增 session-directory 的 local provider、step-budget、llm-openai-compat。
 - `@boat/testing` 增加 chat-completions 脚本化模型和 invariants。
 - G6 增加两个变体。
@@ -1015,7 +1017,7 @@ sequenceDiagram
 - G1 只多出 `session-append-ignorable` 一项；上游 session 测试原样全绿；persistence 指纹不变。
 - 拿掉 `boatMemory` 这一行后，`boat run` 以非零码退出，并写明缺的是哪个服务。
 - 含 ignorable 记录的会话，由官方 rc.1 续写一轮，结果与 boat 去掉这些记录后续写的结果相同。
-- `/chat` 的 SSE 与 ark 生成的 enterprise 金样逐帧一致，wealth 和 yinglong 各至少 3 个场景。
+- `/chat` 的 SSE 与参考实现生成的 enterprise 金样逐帧一致，wealth 和 yinglong 各至少 3 个场景。
 - 同一个请求 id 重试时，返回原来的答案。
 - step-budget 超限时，turn/end 为 `aborted{hook, step-budget}`，追发的消息仍留在 inbox。
 - 用 Qwen 脚本模型测试，tokenUsage 与脚本给出的 usage 一致，缓存命中部分已扣除；user 消息的 source 不出现在请求体里。
@@ -1034,9 +1036,9 @@ sequenceDiagram
 
 **验收**
 - friction 用例：连续三轮负面输入（其中包含拒识轮），第三轮触发升级；模型请求里看不到计数；会话重开后计数不变。
-- Studio 口径的拒识计数，从用户消息的 source 推导，与 ark 的 `aborted_count` 一致。
-- blocks 卡片与 ark 金样逐字段一致；说卡交错通过「不泄漏」和「批量与增量结果相同」两条属性测试。
-- 同一模型、同一预设下，eval 通过率不低于 ark 的基线。
+- Studio 口径的拒识计数，从用户消息的 source 推导，与参考实现的 `aborted_count` 一致。
+- blocks 卡片与参考实现金样逐字段一致；说卡交错通过「不泄漏」和「批量与增量结果相同」两条属性测试。
+- 同一模型、同一预设下，eval 通过率不低于参考实现的基线。
 - 中文长会话触发压缩后，摘要有四节标题，订单号和金额原样保留。
 - G1 仍然只有 3 项；lib 不超过 8 个包。
 
@@ -1080,7 +1082,7 @@ sequenceDiagram
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
-| 一批 ark 语义降级（见 5.6） | 行为偏离 ark 的 eval 基线 | 每迁一个 agent 就重跑 eval 种子，差异写进迁移说明 |
+| 一批参考实现语义降级（见 5.6） | 行为偏离参考实现的 eval 基线 | 每迁一个 agent 就重跑 eval 种子，差异写进迁移说明 |
 | 目标架构 L1 清单里有 20 个非内核 dsh 包，0.x 阶段会有破坏性变化，不受 G1 保护。先例：0.1.7 删除了 `agent/session-start`，并拆分了 agent-presets（蓝图 §8 E2）；preset 从目录格式改成了声明行（2026-09-18 决策） | 每次同步都要适配 boat 插件 | 用 seam 使用清单自动定位受影响的包；每个插件有组合测试，每个 seam 有 conformance 套件 |
 | 依赖了上游不承诺的内部实现：compaction-basic 的 `./src/*`、ToolResultPruner、复制过来的持久化契约套件、session-controller 按 rpcId 去重的写法 | 上游改动时静默失配 | 每次同步都跑类型对齐测试和摘要比对 |
 | E1 可能要永久携带（dsh 不接受外部 PR） | 长期的同步成本 | 钩子只挂在单行锚点上；锚点函数被上游改动时，`dist:delta` 标黄 |
@@ -1099,31 +1101,31 @@ sequenceDiagram
 1. 是否接受与蓝图 v7 §9 的几处偏差：
    - 路由结果和记忆快照不走 E1；
    - 撤回 E3 和 compaction-basic 的 redesign；
-   - 新增 `boat/lib` 层，并修改 `CLAUDE.md` 第 43、51-61、54、67、92 行。
+   - 新增 `boat/lib` 层，并修改 `CLAUDE.md` 第 43、51-61、54、67、93 行。
 
    如果接受，蓝图要同步更新。
-2. boatState 是否默认对模型不可见（与 ark 一致）。这会改变 demo 和现有组合测试的预期。
-3. 技能切换改为只追加是否可以接受，还是必须复现 ark「新正文替换旧正文」的行为。
+2. boatState 是否默认对模型不可见（与参考实现一致）。这会改变 demo 和现有组合测试的预期。
+3. 技能切换改为只追加是否可以接受，还是必须复现参考实现「新正文替换旧正文」的行为。
 
 **阶段 B 之前**
 4. 生产的部署形态：是否多 POD，是否共享文件系统。这决定了 SQL provider 是不是上线的前置条件。
-5. `/chat` 是否必须与 ark 的 enterprise、alone、internal 帧逐字节兼容，也就是现有 SA、财小安、zq 客户端一行都不改。
-6. 同一会话的并发请求：沿用 ark 的 session_busy，还是采用 dsh 的 inbox 排队。后者会让准入判定基于入队时的历史。
+5. `/chat` 是否必须与参考实现的 enterprise、alone、internal 帧逐字节兼容，也就是现有 SA、财小安、zq 客户端一行都不改。
+6. 同一会话的并发请求：沿用参考实现的 session_busy，还是采用 dsh 的 inbox 排队。后者会让准入判定基于入队时的历史。
 7. 用户身份由谁认证：网关共享密钥还是请求签名；user_id 从哪里取才可信。
-8. **凭证字段清单。** ark 的现状是：input_context 整体随 user 消息落盘（`ark:core/runtime/base_agent.py:830-832,855-856`），所有 `user:*` 都注入 prompt（1672、1714-1715 行），wealth 从 `user:validatedata` 和 `user:signature` 读取凭证（`ark:agents/wealth/callbacks.py:52-53,92-98`）。也就是说，ark 现在的凭证既落盘，也会进 prompt。需要确认：哪些字段属于凭证；boat 是否只把它们放在请求作用域里，不写日志；validatedata 解析出的非凭证字段（比如 account_type）能否写进 source。
-9. 允许 `boatRequestOf(source)` 作为 `CLAUDE.md:87`「禁止能力探测」的唯一登记例外。另一种办法是改用独立的 kind，但那样 tool-skill、goal 等 dsh 消费方就不再把它当作人类输入。
+8. **凭证字段清单。** 参考实现的现状是：input_context 整体随 user 消息落盘（`ref:core/runtime/base_agent.py:830-832,855-856`），所有 `user:*` 都注入 prompt（1672、1714-1715 行），wealth 从 `user:validatedata` 和 `user:signature` 读取凭证（`ref:agents/wealth/callbacks.py:52-53,92-98`）。也就是说，参考实现现在的凭证既落盘，也会进 prompt。需要确认：哪些字段属于凭证；boat 是否只把它们放在请求作用域里，不写日志；validatedata 解析出的非凭证字段（比如 account_type）能否写进 source。
+9. 允许 `boatRequestOf(source)` 作为 `CLAUDE.md:88`「禁止能力探测」的唯一登记例外。另一种办法是改用独立的 kind，但那样 tool-skill、goal 等 dsh 消费方就不再把它当作人类输入。
 10. 采样参数在日志里只留路由名是否可以接受；orchestrator 是否需要 `toolChoice` 这个内核 extend。
 
 **阶段 C 之前**
 11. 生产环境是否开启了 `ENABLE_MEMORY` 和 `ENABLE_DREAM`。这决定了哪些 agent 默认打开记忆策略；记忆 seam 本身都会初始化。
-12. 记忆的用户键和分区方式：沿用 ark 按 agent 分区，还是跨 agent 共享。
+12. 记忆的用户键和分区方式：沿用参考实现按 agent 分区，还是跨 agent 共享。
 13. SA 历史的增量轮次以 recall 文本注入，对 eval 的影响能否接受。
 14. 准入前移之外，boat web 路径是否也要记下拒识轮的判定。如果要，就需要放宽 `BoatIntakeReply`（约 3 行，属于已登记接口的 extend）。
 15. agent_router 和 orchestrator 是否在本轮迁移范围内。这决定了 consult、子 agent 流合并、toolChoice 的优先级。
 
 **阶段 D、E 之前**
 16. 目标 SQL 选 MySQL 还是 PostgreSQL；TS 侧用什么迁移工具；是否沿用「DDL 账号预置表结构、DML 账号运行」的流程。
-17. 存量的 ark 会话切到 boat 后是否要能续聊。要的话，需要一个离线转换工具。
+17. 存量的参考实现会话切到 boat 后是否要能续聊。要的话，需要一个离线转换工具。
 18. 主动服务：两个 demo 是否要保持同等能力；通知投递到哪里。
 19. Studio 用什么替代；RBAC 和跨用户看板的时间点。evals 的 judge、调优是否在本轮范围内。
-20. MCP 和工具级沙箱：仓库里没有配置，但部署环境的 CONFIG_DIR（`data/ark_config/<agent>/`）或 MCP 的数据库表里可能有。先核查部署环境再决定。
+20. MCP 和工具级沙箱：仓库里没有配置，但部署环境按 agent 划分的配置目录（CONFIG_DIR）或 MCP 的数据库表里可能有。先核查部署环境再决定。

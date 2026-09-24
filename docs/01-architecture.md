@@ -1,6 +1,6 @@
 # boat 架构：从启动到一次请求
 
-> **读者**：熟悉 ark-agentic（boat 的 Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。
+> **读者**：熟悉参考实现（boat 的 Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。
 >
 > **描述的状态**：仓库 `3d29a07`（`dist(promote): dsh-llm and dsh-skill enter the kernel`），跟踪 dsh `0.1.7-rc.1`（`dsh.upstream.json`，tag `dsh-v0.1.7-rc.1`，commit `46a7f68b`），内核 13 个包（`dsh/kernel.json`）。发行版蓝图 v7 写作时内核还是 11 个包，`3d29a07` 把 `dsh-llm`、`dsh-skill` 提进来后是 13 个（蓝图 v8 已跟上），本文以仓库为准。
 >
@@ -16,7 +16,7 @@
 
 ### 0.1 一句话
 
-**boat 是 dsh 的一个发行版：它拥有 dsh 内核 13 个包的源码（沿用上游包名），把 ark-agentic 的运行时能力（skill 路由、工具可见性、A2UI 卡片、会话状态、外部历史导入）写成挂在 dsh 接缝上的 Cordis 插件，再用自己的启动器 `boat` 把这些东西按 YAML 组合起来跑。**（`CLAUDE.md:3`）
+**boat 是 dsh 的一个发行版：它拥有 dsh 内核 13 个包的源码（沿用上游包名），把参考实现的运行时能力（skill 路由、工具可见性、A2UI 卡片、会话状态、外部历史导入）写成挂在 dsh 接缝上的 Cordis 插件，再用自己的启动器 `boat` 把这些东西按 YAML 组合起来跑。**（`CLAUDE.md:3`）
 
 为什么要“拥有内核源码、保留包名”：npm 上的官方包和社区插件都按包名 `@deepseek-ai/dsh-tools` 这类名字去 import 内核；boat 用 pnpm `overrides` 把这些名字全部指到 `dsh/` 下自己的副本（`pnpm-workspace.yaml:16-29`），于是整个依赖图里只有一份内核，而且是 boat 的。插件不用改一行代码就跑在 boat 的实现上。
 
@@ -41,21 +41,21 @@
 5. **投影**把 `tool/result` 折叠成 `boatState`、`boatCards`；下一个 step 的 runtime context 里就出现了 `boat:state`，模型据此回答。
 6. 每条事件都经 `Session.append` 进入会话日志，由 JSONL 后端写到 `$BOAT_HOME/sessions/.../session.v4.jsonl.zstd`。
 
-### 0.4 给 ark-agentic 工程师的对照
+### 0.4 给参考实现工程师的对照
 
-| ark-agentic | boat / dsh | 差别在哪 |
+| 参考实现 | boat / dsh | 差别在哪 |
 |---|---|---|
-| `Lifecycle` Protocol：`init` / `install_routes` / `start` / `stop`（ark-agentic `src/ark_agentic/core/protocol/lifecycle.py:9-31`） | Cordis 插件：`apply(ctx, config)` 或 `Service` 子类；停止靠 `ctx.effect` 登记的 disposer | 没有显式的 start 阶段：插件声明 `inject`，依赖的服务到齐就激活，依赖消失就卸载 |
-| `Bootstrap(plugins=[...])`（ark-agentic `src/ark_agentic/core/protocol/bootstrap.py:21`） | `boot()`（`dsh@rc.1:packages/boot/app-boot/src/index.ts:970`）+ profile 的 patch 层 | 组合写在 YAML 里（`cordis.patch.yml`），不是 Python 列表；用户可以用 `--patch` 覆盖任意一行 |
+| `Lifecycle` Protocol：`init` / `install_routes` / `start` / `stop`（参考实现 `core/protocol/lifecycle.py:9-31`） | Cordis 插件：`apply(ctx, config)` 或 `Service` 子类；停止靠 `ctx.effect` 登记的 disposer | 没有显式的 start 阶段：插件声明 `inject`，依赖的服务到齐就激活，依赖消失就卸载 |
+| `Bootstrap(plugins=[...])`（参考实现 `core/protocol/bootstrap.py:21`） | `boot()`（`dsh@rc.1:packages/boot/app-boot/src/index.ts:970`）+ profile 的 patch 层 | 组合写在 YAML 里（`cordis.patch.yml`），不是 Python 列表；用户可以用 `--patch` 覆盖任意一行 |
 | `AppContext` | Cordis `Context` 上的服务：`ctx.llm`、`ctx.tools`、`ctx.sessions`… | 按名字发布、按名字注入 |
-| `BaseAgent.build_tools()` / `build_llm()` / `build_skill_router()`（ark-agentic `src/ark_agentic/core/runtime/base_agent.py:187-258`） | agent 目录的 `agent.cordis.yml`，每行一个插件（`boat/agents/demo/agent.cordis.yml:5-24`） | 行在 agent 的 standing scope 里运行，只影响这个 agent 的会话 |
+| `BaseAgent.build_tools()` / `build_llm()` / `build_skill_router()`（参考实现 `core/runtime/base_agent.py:187-258`） | agent 目录的 `agent.cordis.yml`，每行一个插件（`boat/agents/demo/agent.cordis.yml:5-24`） | 行在 agent 的 standing scope 里运行，只影响这个 agent 的会话 |
 | Runner + `RunnerCallbacks` | 内核 `AgentLoop` / `ReactLoopAgent` + 事件（`boat/intake`、`boat/pre-assemble`、`tools/*`…） | 回调变成 waterfall 事件，谁都可以挂 |
 | SessionManager + JSONL | `sessions`（dsh-session）+ `sessionPersistence`（dsh-session-persistence-jsonl，zstd 分帧） | 日志是唯一事实来源，模型请求由日志推导出来 |
-| SkillRouter（`BaseAgent.build_skill_router()`，ark-agentic `base_agent.py:213`） | `@boat/skill-router` | ark 的路由 prompt 原样移植（`boat/plugins/skill-router/src/router.ts`） |
-| `BaseAgent.build_compaction()`（ark-agentic `base_agent.py:210`） | 内核包 `dsh-compaction` + `dsh-compaction-basic`，后者作为 `agent/pre-step` 监听运行（`dsh/compaction/compaction-basic/src/index.ts:158`） | 压缩不是 Runner 的一个配置项，而是 step 进入前的一层 waterfall；压缩过程写成 `compaction/start` / `compaction/summary` / `compaction/end` 进日志（`dsh/compaction/compaction-basic/src/region.ts:210,237,491`） |
+| SkillRouter（`BaseAgent.build_skill_router()`，参考实现 `base_agent.py:213`） | `@boat/skill-router` | 参考实现的路由 prompt 原样移植（`boat/plugins/skill-router/src/router.ts`） |
+| `BaseAgent.build_compaction()`（参考实现 `base_agent.py:210`） | 内核包 `dsh-compaction` + `dsh-compaction-basic`，后者作为 `agent/pre-step` 监听运行（`dsh/compaction/compaction-basic/src/index.ts:158`） | 压缩不是 Runner 的一个配置项，而是 step 进入前的一层 waterfall；压缩过程写成 `compaction/start` / `compaction/summary` / `compaction/end` 进日志（`dsh/compaction/compaction-basic/src/region.ts:210,237,491`） |
 | Runner 里的重试 | npm `dsh-llm-retry`，监听 `agent/request-error`（`dsh@rc.1:packages/llm/llm-retry/src/index.ts:243`） | 失败的请求在日志里留一条 `assistant/attempt`，重试决定由插件给出 |
 | `SessionHistoryMerger`（`base_agent.py:222`） | `@boat/history-import` + dsh 的 session seed | 外部历史变成会话开头的“已关闭的 turn”，见 [5.7](#57-外部历史导入种子怎么进日志) |
-| memory：`MemoryProvider` Protocol（ark-agentic `src/ark_agentic/core/protocol/memory_provider.py:21-`）+ `MemoryWriteTool`（`src/ark_agentic/core/tools/memory.py:40`，由 `create_memory_tools` 在 117 行创建） | dsh `0.1.7-rc.1` 的 `packages/` 下没有 memory 分组，run 组合里也没有对应服务。最接近的机制：`dsh-agent-instructions` 在 `agent/pre-step` 把 AGENTS.md 类文件注入上下文（`dsh@rc.1:packages/context/agent-instructions/src/index.ts:315`，在 run 组合里）；`dsh-session-reference` 做跨会话引用（`dsh@rc.1:packages/context/session-reference/src/index.ts:1-5`，只由 web 组合的 `dsh@rc.1:packages/bundle/web-app/cordis.patch.yml:75-76` 挂上） | 没有“长期记忆读写”这一层，需要单独设计 |
+| memory：`MemoryProvider` Protocol（参考实现 `core/protocol/memory_provider.py:21-`）+ `MemoryWriteTool`（`core/tools/memory.py:40`，由 `create_memory_tools` 在 117 行创建） | dsh `0.1.7-rc.1` 的 `packages/` 下没有 memory 分组，run 组合里也没有对应服务。最接近的机制：`dsh-agent-instructions` 在 `agent/pre-step` 把 AGENTS.md 类文件注入上下文（`dsh@rc.1:packages/context/agent-instructions/src/index.ts:315`，在 run 组合里）；`dsh-session-reference` 做跨会话引用（`dsh@rc.1:packages/context/session-reference/src/index.ts:1-5`，只由 web 组合的 `dsh@rc.1:packages/bundle/web-app/cordis.patch.yml:75-76` 挂上）。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在官方树和 boat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区 | 官方包里没有“长期记忆读写”这一层；社区插件能装，但没有公共接口，boat 需要自己定义 seam（见 [04-reference-alignment.md](04-reference-alignment.md) 1.5、3.4） |
 
 ---
 
@@ -69,7 +69,7 @@ flowchart TB
   dev["业务开发<br/>写 agent 目录、插件、patch"]
   author["社区插件作者<br/>按 dsh 公开接口写插件"]
   subgraph SYS["本系统"]
-    boat["boat<br/>dsh 发行版 + ark 能力插件<br/>启动器 boat/apps/cli"]
+    boat["boat<br/>dsh 发行版 + 参考实现能力插件<br/>启动器 boat/apps/cli"]
   end
   upstream["dsh 上游<br/>deepseek-harness tag dsh-v0.1.7-rc.1"]
   npm["npm 上的官方 dsh 包<br/>@deepseek-ai/dsh-* 0.1.7-rc.1"]
@@ -88,7 +88,7 @@ flowchart TB
 |---|---|---|---|
 | 终端用户 | 跑 `boat run "任务"` 或 `boat web` 的人 | 通过命令行参数和浏览器交互 | `boat/apps/cli/src/args.ts:109-129` |
 | 业务开发 | 写 `boat/agents/<id>` 目录、`--plugin` 文件、`--patch` 文件的人 | 业务逻辑只放在 agent 目录里，框架包不带业务词汇 | `CLAUDE.md:75` |
-| dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | boat 每个 tag 导入一次内核源码，三方合并 boat 的改动 | `dsh.upstream.json`，`CLAUDE.md:189-190` |
+| dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | boat 每个 tag 导入一次内核源码，三方合并 boat 的改动 | `dsh.upstream.json`，`CLAUDE.md:190-191` |
 | npm 官方包 | 除内核外的 `@deepseek-ai/dsh-*` | 原样使用，版本全钉在 `0.1.7-rc.1` | `.pnpmfile.cjs:7-22`，`pnpm-workspace.yaml:64-149` |
 | 社区插件 | 按 dsh 接口写的第三方插件 | 不改代码即可跑在 boat 上；要用 boat 扩展时注入 `boatDistro` | `compatibility/COMPAT.md:46` |
 | 模型服务 | DeepSeek Messages API 兼容端点 | `dsh-llm-deepseek` 适配器 POST 到 `messagesApiRoot(baseURL)/messages`：baseURL 不以 `/v1` 结尾时补上 `/v1`；baseURL 来自 `DEEPSEEK_BASE_URL`，默认值是 `config.ts:115` 的公开端点。本文的运行把它设成脚本化模型的 `http://127.0.0.1:<port>/v1`，请求就落在 `/v1/messages` | `dsh@rc.1:packages/llm/llm-deepseek/src/adapter.ts:113`，`messages-api.ts:11-14`，`config.ts:115-118` |
@@ -137,7 +137,7 @@ flowchart TB
 | bundle：`@boat/run` | `boat/bundles/run/cordis.patch.yml` + `src/` | 一次性任务模式：解析任务和 `--agent`，声明 agent，驱动一个 turn，打印答案，退出 | 行 + runner 代码 |
 | 内核 | `dsh/`（13 包） | 服务 `llm`、`tools`、`skills`、`sessions`、`systemPrompt`、`sessionProjections`、`sessionPersistence`、`compaction`、`agents`、`agentLoop`；driver 本身 | `dsh/*/*/lib/` |
 | 其余 dsh 包 | `node_modules/@deepseek-ai/*` | 启动（app-boot）、preset 注册、模型适配、审批、沙箱、检查点、标题… | npm 发布物 |
-| boat plugins | `boat/plugins/*` | 在 dsh 接缝上实现 ark 的能力 | `lib/` |
+| boat plugins | `boat/plugins/*` | 在 dsh 接缝上实现参考实现的能力 | `lib/` |
 | agents | `boat/agents/<id>/` | 业务 agent 的组合（`agent.cordis.yml`）与业务代码（`src/` → `lib/`） | 行 + skills + 模板 |
 | 会话存储 | `$BOAT_HOME/sessions/<编码后的 cwd>/<session-id>/session.v4.jsonl.zstd` | 追加式事件日志，每次落盘一个 zstd 帧 | 文件 |
 | 模型服务 | 外部 | 回答循环请求、路由请求、标题请求 | HTTP |
@@ -212,8 +212,8 @@ flowchart LR
 | 默认模型 | `agentDefaultModel` | npm `dsh-agent-default-model` | 给 runner 提供 provider/model 选择 |
 | 发行版标记 | `boatDistro` | `boat/plugins/distro/src/index.ts:16-27` | 列出本构建携带的内核扩展 |
 | 工具策略 | `toolPolicy` | `boat/plugins/tool-policy/src/index.ts:99-132` | `always` / `auto` 可见性、确认、state delta，`boat:state` context |
-| skill 路由 | `skillRouter` | `boat/plugins/skill-router/src/index.ts:149-206` | `off` / `full` / `dynamic` 三种加载模式，ark 的 LLM 路由，`boat:skill` context |
-| 卡片 | `a2ui` | `boat/plugins/a2ui/src/index.ts:159-167` | ark 的 A2UI 模板引擎，`render_a2ui` 工具 |
+| skill 路由 | `skillRouter` | `boat/plugins/skill-router/src/index.ts:149-206` | `off` / `full` / `dynamic` 三种加载模式，参考实现的 LLM 路由，`boat:skill` context |
+| 卡片 | `a2ui` | `boat/plugins/a2ui/src/index.ts:159-167` | 参考实现的 A2UI 模板引擎，`render_a2ui` 工具 |
 | 历史导入 | `historyImport` | `boat/plugins/history-import/src/index.ts:50-53` | 把外部 SA 历史变成会话 seed |
 
 **事件与投影**（完整列表见 [7.2](#72-事件一览表)）：
@@ -316,14 +316,14 @@ stateDiagram-v2
 
 状态值 PENDING 0、LOADING 1、ACTIVE 2、FAILED 3、DISPOSED 4、UNLOADING 5（`dsh@rc.1:vendor/cordis/src/fiber.ts:147-154`，boat 的镜像在 `boat/core/cordis-compat/src/index.ts:14-21`）。fiber 不会从 ACTIVE 直接跳到 DISPOSED：释放时先把 `uid` 置空、epoch 设为 INACTIVE，在 UNLOADING 里跑 `_unload`（逆序执行 disposer），之后 `_getState()` 才报告 DISPOSED（`fiber.ts:264-290`、`574-579`、`666-676`）。一个 fiber 的 epoch 由它所依赖服务的 fiber uid 拼成（`fiber.ts:611-622`），epoch 变了就卸载再加载（`fiber.ts:624-638`）——**依赖是响应式的**。
 
-**这和 ark 最大的不同**：ark 的 `Bootstrap` 按列表顺序先逐个 `init`、再逐个 `start`，把 `start` 的返回值挂到 `ctx.{name}` 上，停止时逆序 `stop`（ark-agentic `src/ark_agentic/core/protocol/bootstrap.py:125-190`）——`ctx.{name}` 这一点和 Cordis 的 `super(ctx, key)` 很像；但 Cordis 里行的顺序没有加载语义，激活顺序完全由“服务什么时候可用”决定（dsh-base 的注释写明了：`dsh@rc.1:packages/bundle/base/cordis.patch.yml:12-13`）。我们用一个 `--plugin` 探针验证过：探针行排在所有层的最后、不注入任何服务，它 apply 的时候 `llm`、`toolPolicy`、`agentPresets` 都还没出现（[3.3](#33-启动时能看到的真实输出)）。
+**这和参考实现最大的不同**：参考实现的 `Bootstrap` 按列表顺序先逐个 `init`、再逐个 `start`，把 `start` 的返回值挂到 `ctx.{name}` 上，停止时逆序 `stop`（参考实现 `core/protocol/bootstrap.py:125-190`）——`ctx.{name}` 这一点和 Cordis 的 `super(ctx, key)` 很像；但 Cordis 里行的顺序没有加载语义，激活顺序完全由“服务什么时候可用”决定（dsh-base 的注释写明了：`dsh@rc.1:packages/bundle/base/cordis.patch.yml:12-13`）。我们用一个 `--plugin` 探针验证过：探针行排在所有层的最后、不注入任何服务，它 apply 的时候 `llm`、`toolPolicy`、`agentPresets` 都还没出现（[3.3](#33-启动时能看到的真实输出)）。
 
 **可选依赖怎么写**：`inject` 永远是必需的。可选访问有两种写法：
 
 - `ctx.get('x')`：拿一次，不响应变化。例：tools 运行时拿审批服务（`dsh/core/tools/src/index.ts:1730`），agent-loop 拿 `sessionPersistence`（`dsh/core/agent-loop/src/index.ts:683`），`boat-run` 拿 `agentPresets`、`appExit`、`loader`（`boat/bundles/run/src/index.ts:185,193,248`）。
 - 嵌套 `ctx.inject(['x'], cb)`：一个子 fiber，`x` 到了才跑。例：preset 注册表对 `settings` 的用法（`dsh@rc.1:packages/preset/agent-preset-registry/src/index.ts:68`）。
 
-**事件的四种派发方式**。ark 的 `RunnerCallbacks` 是固定的回调槽位；dsh 里“回调”全是事件，谁都能挂，派发方式决定返回值和顺序的含义（`dsh@rc.1:vendor/cordis/src/events.ts`）：
+**事件的四种派发方式**。参考实现的 `RunnerCallbacks` 是固定的回调槽位；dsh 里“回调”全是事件，谁都能挂，派发方式决定返回值和顺序的含义（`dsh@rc.1:vendor/cordis/src/events.ts`）：
 
 | 方式 | 代码 | 顺序 | 返回值 | 能否否决 | 例子 |
 |---|---|---|---|---|---|
@@ -334,7 +334,7 @@ stateDiagram-v2
 
 **waterfall 监听的顺序就是注册顺序**（`events.ts:254-260`：默认 `push`，先注册的在最外层；监听时传 `prepend: true` 会 `unshift` 到最外层）。skill-router 注入了 `toolPolicy`，所以一定比 tool-policy 晚激活、晚注册监听，于是在 `boat/pre-assemble` 里 tool-policy 在外层、skill-router 在里层。tool-policy 的代码注释写的“在 `next()` 之后对齐”（`boat/plugins/tool-policy/src/index.ts:117-123`）依赖的就是这个顺序：里层（skill-router、agent 行、注入了 `toolPolicy` 的 `--plugin` 行，比如 `tools.mjs` 的 `inject = ['toolPolicy']`，`boat/bundles/run/tests/fixtures/plugins/tools.mjs:9`）都激活完工具之后，它最后算一次限制。不注入任何服务的 `--plugin` 行反而比 tool-policy 先 apply、先注册，处在最外层；但 `activate()` 和 `clear()` 自己会立即 `reconcile`（`boat/plugins/tool-policy/src/index.ts:187-207`），所以可见性结果不变。
 
-**想在整棵树起来之后跑一次代码怎么办**。ark 的 `Lifecycle.start` 保证在所有 `init` 之后运行；Cordis 没有这个阶段，有两种替代：
+**想在整棵树起来之后跑一次代码怎么办**。参考实现的 `Lifecycle.start` 保证在所有 `init` 之后运行；Cordis 没有这个阶段，有两种替代：
 
 - 注入启动器发布的 `appReady`，用 `appReady.onReady(listener)`：boat 的启动器在 `boot()` 返回、根 fiber 是 ACTIVE、`loader` 还在时才 `commit()`（`boat/apps/cli/src/profile-boot.ts:58-79`、`246-251`）。
 - 像 `boat-run` 那样 `await ctx.get('loader')?.await()`（`boat/bundles/run/src/index.ts:185`）：等 Loader 把当前能激活的行都处理完。`boat-run` 的 `apply` 不等待这个 Promise（`index.ts:253`），所以不会拖住 `boot()`。
@@ -551,7 +551,7 @@ sequenceDiagram
 6. `prepareProfile('run')`（138-143）→ `ensureProfileInitialized`（114-128）：`$BOAT_HOME/profiles/run/package.json` 不存在就按模板 `['@deepseek-ai/dsh-base','@boat/host','@boat/run']`（`templates.ts:17-20`）调 `initProfile`（`dsh@rc.1:packages/boot/app-boot/src/profile.ts:219`）；存在但 bundle 列表和模板不一致就报错退出。**为什么要报错**：老版本 boat 生成的 profile 可能少一个 bundle，悄悄照旧启动会缺服务。
 7. `loadProfile`（`profile.ts:690`）→ `loadProfileDirectory`（642）对每个 bundle 做**bundle 准入**：`evaluatePluginCompatibility`（`dsh@rc.1:packages/boot/app-boot/src/plugin-compatibility.ts:61-88`）把 bundle 的 `@deepseek-ai/dsh*` peer 和 dsh-app-boot 自己的版本比，`workspace:*` 视为当前版本（76 行），不匹配就跳过这个 bundle 并在 stderr 说明。
 8. 根 `$BOAT_HOME/profiles/run/cordis.yml` 每次都重写成 `[]`（`profile-boot.ts:94-98,141`）。**为什么**：整棵树只由 patch 层组成；Loader 的回写可能把组合后的行烤进根文件，下次启动就会重复。
-9. `createRuntimeResolution`（`profile.ts:406`）从 `@boat/cli` 的依赖和 peer 广度优先收集包，给后面的裸包名解析用。这就是 `boat/apps/cli/package.json` 要列出所有 dsh 包的原因，也是 `CLAUDE.md:190` 要求“启动器的依赖闭包必须是 dsh 自己 `apps/cli` 的超集”的原因。
+9. `createRuntimeResolution`（`profile.ts:406`）从 `@boat/cli` 的依赖和 peer 广度优先收集包，给后面的裸包名解析用。这就是 `boat/apps/cli/package.json` 要列出所有 dsh 包的原因，也是 `CLAUDE.md:191` 要求“启动器的依赖闭包必须是 dsh 自己 `apps/cli` 的超集”的原因。
 10. overlay 顺序是 `[...--patch 文件, ...--plugin 行]`（`profile-boot.ts:168-171`），`--plugin` 在最上面，用户文件盖不掉它。
 
 **C. `boot()`**
@@ -629,7 +629,7 @@ boat on dsh 0.1.7-rc.1: agent-loop-intake, agent-loop-pre-assemble
 
 ### 3.4 启动保证哪些能力
 
-常见的问题是：llm、tools、skill、session、memory 是不是每次启动都一定初始化好了？在 ark 里答案由 `BaseAgent` 的 `build_*` 方法决定；在 dsh 里答案取决于“谁注入它”和“谁在启动审计的名单上”。
+常见的问题是：llm、tools、skill、session、memory 是不是每次启动都一定初始化好了？在参考实现里答案由 `BaseAgent` 的 `build_*` 方法决定；在 dsh 里答案取决于“谁注入它”和“谁在启动审计的名单上”。
 
 - 启动审计 `auditStartupEntries` 只对 7 个固定 id 强制“必须激活”（`dsh@rc.1:packages/boot/app-boot/src/index.ts:744-752`），`run` 组合里只有 `agent-loop` 在名单上。
 - 所以硬保证的是 `AgentLoop.inject` 的 6 个服务：`agents`、`sessions`、`llm`、`tools`、`systemPrompt`、`sessionProjections`（`dsh/core/agent-loop/src/index.ts:334`）。缺一个，`agent-loop` 停在 PENDING，审计抛 `StartupError`。
@@ -652,7 +652,7 @@ boat on dsh 0.1.7-rc.1: agent-loop-intake, agent-loop-pre-assemble
 | `skill` | `run --patch /tmp/no-skill.yml --agents <abs>/boat/agents --agent demo 看看资产` | 同样 3 行 warning，然后 `boat: boat-skill-router (@boat/skill-router/agent): waiting for skillRouter` 和 `demo-tools (./lib/tools.js): waiting for skills` | 1 | demo 的 preset 挂载审计发现两行等不到服务，preset 标为 broken；`presets.mount` 抛 `agent-preset/invalid`（`dsh@rc.1:packages/preset/agent-preset-registry/src/index.ts:221-227`），`boat-run` 打印原因并退出 1（`boat/bundles/run/src/index.ts:173-176,253`） |
 | `session-persistence-jsonl` | `run --patch /tmp/no-persistence.yml 你好` | `session-checkpoint-policy ... pending (waiting for service: sessionPersistence)`；照常回答，但 `$BOAT_HOME/sessions` 下**没有任何日志** | 0 | `AgentLoop` 只用 `ctx.get('sessionPersistence')` 可选地取后端（`dsh/core/agent-loop/src/index.ts:682-690`），没有就只在内存里 |
 | `boat-history-import` | 见 [2.3](#23-dsh-与-boat-的-di-怎么交互) 例子 3 | `boat-run (@boat/run): pending (waiting for service: historyImport)`，进程挂住 | 124（被 `timeout` 杀掉） | `boat-run` 静态注入 `historyImport`，但不在审计名单上 |
-| memory | — | 没有可禁的行：dsh `0.1.7-rc.1` 没有 memory 包，也没有 memory 服务 | — | 见 [0.4](#04-给-ark-agentic-工程师的对照) |
+| memory | — | 没有可禁的行：dsh `0.1.7-rc.1` 的官方包里没有 memory 包，也没有 memory 服务；社区记忆插件各用各的服务名 | — | 见 [0.4](#04-给参考实现工程师的对照) |
 
 结论：
 
@@ -940,7 +940,7 @@ boat 的事实都骑在 dsh 已有的信封上：
 - `meta.boat.card` 和 `stateDelta` **永远不进对话记录**，模型看到的是工具 `render` 出来的 digest（`tools.ts:56`：`status=ok · …`）。卡片只给 UI。
 - 状态进模型的唯一路径是下一步的 `boat:state` runtime context（seq 23）。
 
-dsh 在测试里用一条不变式强制这件事：每个循环请求的 `messages` 必须等于派发时的 `deriveMessages()`，模型、工具等必须等于折叠后的 `request/header`（`dsh/core/agent-loop/src/invariant.ts:21-56`）。这条不变式挂在 `invariants` 服务上，`boat run` 的组合里没有这个服务，它在单元测试 harness 和 G2 里生效（`CLAUDE.md:167-168`）。对上面这次真实运行，我们离线用内核的 `Session.create(id, 回复前的事件)`（`dsh/core/session/src/index.ts:505`）`.deriveMessages()` 逐个重建循环请求，再和脚本化模型收到的请求比较（脚本是 [7.5](#75-复现本文的运行) 的 `check-log.mjs`，它输出 `loop #1: ... system equal=true  blocks equal=true (3)  tools equal=true (25)`）：
+dsh 在测试里用一条不变式强制这件事：每个循环请求的 `messages` 必须等于派发时的 `deriveMessages()`，模型、工具等必须等于折叠后的 `request/header`（`dsh/core/agent-loop/src/invariant.ts:21-56`）。这条不变式挂在 `invariants` 服务上，`boat run` 的组合里没有这个服务，它在单元测试 harness 和 G2 里生效（`CLAUDE.md:168-169`）。对上面这次真实运行，我们离线用内核的 `Session.create(id, 回复前的事件)`（`dsh/core/session/src/index.ts:505`）`.deriveMessages()` 逐个重建循环请求，再和脚本化模型收到的请求比较（脚本是 [7.5](#75-复现本文的运行) 的 `check-log.mjs`，它输出 `loop #1: ... system equal=true  blocks equal=true (3)  tools equal=true (25)`）：
 
 | 请求 | 推导出的消息 | 线上请求 | 系统文本 | 各块文本 | 工具 vs `request/header` |
 |---|---|---|---|---|---|
@@ -983,7 +983,7 @@ dsh 的持久化层读日志时先过 `validateStoredEvents`（`dsh/session/sess
 
 ### 5.7 外部历史导入：种子怎么进日志
 
-ark 用 `SessionHistoryMerger`（`base_agent.py:222`）把外部历史（SA 的 `sa_history`）并进会话；boat 把它做成 dsh 的**会话种子**：在 agent 发布之前写进日志的一串已经关闭的 turn。模型从第一次请求起就能看到这些历史，因为 `deriveMessages` 本来就从日志里的 surface 事件推导消息。
+参考实现用 `SessionHistoryMerger`（`base_agent.py:222`）把外部历史（SA 的 `sa_history`）并进会话；boat 把它做成 dsh 的**会话种子**：在 agent 发布之前写进日志的一串已经关闭的 turn。模型从第一次请求起就能看到这些历史，因为 `deriveMessages` 本来就从日志里的 surface 事件推导消息。
 
 ```mermaid
 flowchart LR

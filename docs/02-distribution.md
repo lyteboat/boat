@@ -1,6 +1,6 @@
 # boat 发行版：约定、规则、分支与验证
 
-> **读者**：熟悉 ark-agentic（Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。第一次读，先看 §0.7 的术语表。
+> **读者**：熟悉参考实现（Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。第一次读，先看 §0.7 的术语表。
 >
 > **描述的状态**：`/home/user/boat` 的分支 `c-willis/magical-mccarthy-q2grch`，`HEAD = 3d29a07`（`dist(promote): dsh-llm and dsh-skill enter the kernel`），`git status --short` 无输出。跟踪的上游是 `dsh-v0.1.7-rc.1`，上游提交 `46a7f68b`（`dsh.upstream.json:2-4`）。
 >
@@ -27,7 +27,7 @@
 
 boat 同时要两样东西：
 
-1. **能直接改内核。** ark 的实践（技能路由、工具可见性、会话状态……）要落到 harness 层，不能只在外面绕。
+1. **能直接改内核。** 参考实现的实践（技能路由、工具可见性、会话状态……）要落到 harness 层，不能只在外面绕。
 2. **生态照常跑。** 官方插件和社区插件不改一行就能跑在 boat 上。
 
 只满足第一条就是一个普通 fork，生态会分裂；只满足第二条，boat 就只是 dsh 的使用者。
@@ -81,29 +81,29 @@ flowchart LR
 2. **内核只通过分类提交改变。** 碰 `dsh/<group>/<package>/` 的提交必须带 `Dist-Change` 和该类要求的 trailer（`CLAUDE.md:70`）。
 3. **契约只增不减，而且要登记。** 删除必定失败；改动（只能是放宽）和追加都必须在 `extensions.yml` 登记，并由一个 `extend` 提交点名（`CLAUDE.md:71`；`scripts/dist/contract-check.ts:94-107`）。
 4. **上游测试永不修改。** 环境差异只在测试装置里适配（`CLAUDE.md:72`）。
-5. **历史不改写。** 同步用合并；不 force-push，不改写已推送的提交（`CLAUDE.md:178`、`:189`）。
+5. **历史不改写。** 同步用合并；不 force-push，不改写已推送的提交（`CLAUDE.md:179`、`:189`）。
 
-### 0.6 与 ark-agentic 对照
+### 0.6 与参考实现对照
 
-| 话题 | ark-agentic | boat |
+| 话题 | 参考实现 | boat |
 |---|---|---|
-| 引擎代码的归属 | `src/ark_agentic/core/` 是自己写的引擎，规则是 core 自包含（`/home/user/ark-agentic/CLAUDE.md:39`） | 引擎是 dsh 的 13 个包。源码在 `dsh/`，但包名和契约属于上游；boat 的改动都是登记过的差量 |
-| 组件怎么接起来 | `Lifecycle` / `Plugin` 协议 + `AppContext`，由 `app.py` 组装（`/home/user/ark-agentic/CLAUDE.md:40`、`:49-57`） | cordis 插件 + `ctx` 上的服务 + `inject`；组合是 YAML 数据（profile、bundle、patch），见 §0.7 |
-| 版本号 | `pyproject.toml` 写 `x.y.z.n`；用 release commit 的短 SHA 作下次发版的边界（`/home/user/ark-agentic/docs/RELEASING.md:14`、`:27`） | 仓库里保持上游版本号，打包时才盖 `+boat.<commit>`；差量的边界是最近一次 `Dist-Import` 提交 |
+| 引擎代码的归属 | 参考实现的 `core/` 是自己写的引擎，规则是 core 自包含（参考实现 `CLAUDE.md:39`） | 引擎是 dsh 的 13 个包。源码在 `dsh/`，但包名和契约属于上游；boat 的改动都是登记过的差量 |
+| 组件怎么接起来 | `Lifecycle` / `Plugin` 协议 + `AppContext`，由 `app.py` 组装（参考实现 `CLAUDE.md:40`、`:49-57`） | cordis 插件 + `ctx` 上的服务 + `inject`；组合是 YAML 数据（profile、bundle、patch），见 §0.7 |
+| 版本号 | `pyproject.toml` 写 `x.y.z.n`；用 release commit 的短 SHA 作下次发版的边界（参考实现 `docs/RELEASING.md:14`、`:27`） | 仓库里保持上游版本号，打包时才盖 `+boat.<commit>`；差量的边界是最近一次 `Dist-Import` 提交 |
 | "兼容"指什么 | wheel 使用方看到的公开 API（发版说明里的 Breaking Changes） | 与同版本官方 dsh 在协议、接口、行为上一致，由 G1–G6 机器证明 |
-| 分支 | 只推 `claude/*`（`/home/user/ark-agentic/CLAUDE.md:141`） | 只推任务指定的分支（实践中是 `c-willis/*`），从不推 main、master、develop（`CLAUDE.md:178`） |
+| 分支 | 只推 `claude/*`（参考实现 `CLAUDE.md:141`） | 只推任务指定的分支（实践中是 `c-willis/*`），从不推 main、master、develop（`CLAUDE.md:179`） |
 | 发版产物 | wheel + `RELEASE_NOTES.md` | 还没有：boat 仓库没有 git tag，也没有发版说明文件，12 个 `@boat/*` 包都是 `0.0.1` 且 `private: true`（见 §7.6） |
 
 ### 0.7 术语：正文直接用到的 dsh 词汇
 
-| 词 | 意思 | boat 里的例子 | 近似的 ark 概念 | 出处 |
+| 词 | 意思 | boat 里的例子 | 近似的参考实现概念 | 出处 |
 |---|---|---|---|---|
 | cordis 插件、服务、`inject` | cordis 是 dsh 底下的插件框架。插件是带 `apply(ctx)` 的对象或 `Service` 子类；服务在 `ctx` 上占一个稳定的键（`ctx.llm`、`ctx.sessions`）；`inject` 列出依赖的服务，服务不在，插件就停在等待状态 | `boat/plugins/distro/src/index.ts:21` 的 `super(ctx, 'boatDistro')` 发布服务；`distro-aware.mjs` 的 `export const inject = ['boatDistro']` 依赖它（§4.4） | `Plugin(Lifecycle)` + `AppContext`，但依赖由框架按服务键解析，而不是组装根手工传递 | `up:docs/cordis-primer.md:9-11` |
 | 事件与派发模式 | 服务用声明合并声明事件名，按 `emit`、`waterfall`、`parallel`、`serial`、`bail` 之一派发；**派发模式是事件公开契约的一部分** | 契约快照 `events.json` 为每个事件记下模式，G1 比对它（§4.1） | 回调 / hook 列表 | `up:docs/cordis-primer.md:12`、`:15-27` |
 | waterfall 与 `next()` | 环绕式中间件：监听器收到 `(...args, next)`，调 `next()` 交给下一个，不调就短路后面所有监听器 | `dsh/core/agent-loop/src/agent.ts:279-282` 派发 `boat/intake`，链尾的默认值是 `{ kind: 'pass' }`；boat 规定 waterfall 监听器必须调 `next()`（`CLAUDE.md:79`） | 中间件链 | `up:docs/cordis-primer.md:29-35` |
-| seam、provider | seam 是一个可替换的能力：一个服务定义（占 `ctx.<key>`）、一个或多个 provider、一个或多个消费方 | `ctx.llm` 由内核 `dsh-llm` 定义，npm 上的 `dsh-llm-deepseek` 是 provider（它对 `dsh-llm` 是 peer 依赖）；boat 列出的 seam 见 `CLAUDE.md:59` | Protocol + 可替换实现（ark 的 DIP 规则） | `up:docs/glossary.md:9` |
+| seam、provider | seam 是一个可替换的能力：一个服务定义（占 `ctx.<key>`）、一个或多个 provider、一个或多个消费方 | `ctx.llm` 由内核 `dsh-llm` 定义，npm 上的 `dsh-llm-deepseek` 是 provider（它对 `dsh-llm` 是 peer 依赖）；boat 列出的 seam 见 `CLAUDE.md:59` | Protocol + 可替换实现（参考实现的 DIP 规则） | `up:docs/glossary.md:9` |
 | profile、bundle、patch、行（row） | bundle 是作者分发的组合，profile 是用户用 `--profile <名字>` 启动的东西；patch 是一个 YAML 数组，里面是插件"行"（`id` + 包名 `name` + 可选 `config`/`disabled`），或按 `id` 覆盖已有行、用 `- insert:` 插入新行的操作。启动时按 bundle → profile → `$DSH_HOME` → `--patch` 的顺序叠加 | `boat/bundles/host/cordis.patch.yml:10-17` 先按 `id` 覆盖 dsh-base 的 `session-log-deepseek` 行，再用 `- insert:` 插入 `id: boat-distro` 这一行；`config dump --profile run` 的输出里能看到 `# == @deepseek-ai/dsh-base, patched by @boat/run` 这样的层标记（§2.4） | `app.py` 里的组装代码，只是这里变成了数据 | `up:docs/user/develop/basic/publish.md:16`、`:56`、`:119-125` |
-| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；boat 把业务 agent 目录声明成预设 | `boat run --agents ./boat/agents --agent demo` | 一个 agent 的定义 | `CLAUDE.md:199-200` |
+| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；boat 把业务 agent 目录声明成预设 | `boat run --agents ./boat/agents --agent demo` | 一个 agent 的定义 | `CLAUDE.md:200-201` |
 | Typert Host face、Remote client | 上游生成器从 TypeScript 类型生成的运行时反射产物：包导出 `./typert`（Host face）和 `./remote`（Remote client），文件是 `lib/typert.*` | dsh-llm 的 `lib/typert.host.{js,d.ts}`、`lib/typert.remote-client.{js,d.ts}`（§5.4） | 无直接对应；类似按 schema 生成的客户端 | `up:packages/typert/generator/README.md:86`；`up:packages/typert/protocol/README.md:12` |
 | 准入（admission） | rc.1 起 `dsh-app-boot` 在启动时读每一行所属包的磁盘清单，`@deepseek-ai/dsh*` peer 与运行版本不匹配就禁用该行 | 这条规则让 boat 包的非内核 dsh peer 必须写精确版本（§8.2） | 无 | `up:packages/boot/app-boot/src/plugin-compatibility.ts:61-88` |
 | 契约键 | 契约快照里一条 JSON 路径，用 `' › '` 连接 | `events › @deepseek-ai/dsh-agent-loop › boat/intake` | 无 | `scripts/dist/contract-check.ts:27-28` |
@@ -265,7 +265,7 @@ $ xargs -a /tmp/kernel-links.txt -n1 readlink -f | grep -vc "^$PWD/dsh/"
 
 ### 2.1 导入提交：上游线上的每一个点
 
-**规则**（`CLAUDE.md:189`）：
+**规则**（`CLAUDE.md:190`）：
 
 - 每个 tag 的内核是**一个导入提交**。
 - 它的树里只有 `dsh/<dir>/`：
@@ -390,7 +390,7 @@ flowchart LR
 
 ### 2.3 一次同步的完整步骤：以 dsh-v0.1.7-rc.1 为例
 
-规则原文在 `CLAUDE.md:190`，目标是"一周一次同步，一次可以跨越期间所有 tag"。下表逐步对照 rc.1 那次同步：导入 `bd9d657`，合并 `edbe7bb`；蓝图 §15.4 有记录。这次同步带进 156 个上游提交，几乎都在内核之外。
+规则原文在 `CLAUDE.md:191`，目标是"一周一次同步，一次可以跨越期间所有 tag"。下表逐步对照 rc.1 那次同步：导入 `bd9d657`，合并 `edbe7bb`；蓝图 §15.4 有记录。这次同步带进 156 个上游提交，几乎都在内核之外。
 
 **前置条件**（写在前面，因为不满足时工具会在中途失败）：
 
@@ -423,7 +423,7 @@ flowchart TB
 | 6 | `pnpm install`（见 §8.5 的 release-age 处理），`pnpm run check` | lint、test、compatibility 全绿 | `pnpm run test` 126 文件 / 2623 通过 / 1 上游 skip；G1 16/0；G2 91 文件 / 2491；G4 5/5、G5 23/23、G6 2/2 |
 | 7 | `pnpm run dist:overlay <checkout> persistence`、`… typert`、`… g3` | 三行汇总（§6） | persistence 62 根 / 587 类型 / 0 差异；G3 171 包、893 测试文件，原样 tag 上通过 19890 个，boat 内核上 0 回归（typert 闸门那时还没有，晋升时才加入） |
 | 8 | `pnpm run dist:delta` | Markdown 差量表 | 没有可删的差量：两个 extend 的退出条件都不成立 |
-| 9 | 手工编辑 | distro manifest 的 `DSH_BASE`、扩展的 `since`、`COMPAT.md`、改编文件头（`Adapted from deepseek-ai/deepseek-harness`，`CLAUDE.md:192`）、`THIRD_PARTY_NOTICES.md`、CLAUDE.md、README、版本测试 | 版本测试改为读 `dsh.upstream.json`，不再写死版本号（`edbe7bb`） |
+| 9 | 手工编辑 | distro manifest 的 `DSH_BASE`、扩展的 `since`、`COMPAT.md`、改编文件头（`Adapted from deepseek-ai/deepseek-harness`，`CLAUDE.md:193`）、`THIRD_PARTY_NOTICES.md`、CLAUDE.md、README、版本测试 | 版本测试改为读 `dsh.upstream.json`，不再写死版本号（`edbe7bb`） |
 | 10 | 见 §9.5 | 更新的 `canaries.yml` | 移除 2 个、补入 1 个：24 → 23，见 §2.4 问题二 |
 | 11 | 独立提交 | `ad7a014`、`edb8168` | 见下 |
 
@@ -472,7 +472,7 @@ flowchart TB
 - 能在内核外做的，放 boat 层。
 - 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `boat/agents/*`，`CLAUDE.md:75`）。
 
-改内核是一个设计决定：设计文档要写明为什么放不到外面，以及属于哪一类；动手前还要和用户确认（`CLAUDE.md:120`）。
+改内核是一个设计决定：设计文档要写明为什么放不到外面，以及属于哪一类；动手前还要和用户确认（`CLAUDE.md:121`）。
 
 ```mermaid
 flowchart TD
@@ -596,7 +596,7 @@ Dist-Tests: dsh/core/agent-loop/tests/boat/intake.spec.ts
 | `Dist-Upstream: none (…)` | 回馈上游了吗？ | 人；dsh 不接受外部 PR，所以写明原因 |
 | `Dist-Tests: …` | 什么测试证明它？ | 人；该测试跑在 G2 项目里 |
 
-"Accepted:" 一段写明跑了什么、接受了什么结果，这是 `CLAUDE.md:183` 对提交正文的要求。
+"Accepted:" 一段写明跑了什么、接受了什么结果，这是 `CLAUDE.md:184` 对提交正文的要求。
 
 ### 3.5 例 2：`7dde6f9`，一个 build 提交，以及为什么要拆出来
 
@@ -657,14 +657,14 @@ Dist-Change: build
 
 | 形式 | 用在哪 | 真实例子 |
 |---|---|---|
-| `<里程碑步骤>: <包> — <交付什么>` | 里程碑工作（`CLAUDE.md:183`） | `D1-6: boat/ — one agent loop: the kernel's; the driver fork and --driver are gone` |
-| **内核提交**：`<里程碑步骤或 conventional 前缀>: <包名> — <类别>: <交付什么>` | 碰 `dsh/<group>/<pkg>/` 的提交；类别写在破折号后，与 `Dist-Change` 一致。这是仓库里观察到的写法，`CLAUDE.md:183` 没有单独规定 | `D1-4: @deepseek-ai/dsh-agent-loop — extend: the boat/intake gate`；`chore: @deepseek-ai/dsh-agent-loop — build: name the extension registry by its new path` |
+| `<里程碑步骤>: <包> — <交付什么>` | 里程碑工作（`CLAUDE.md:184`） | `D1-6: boat/ — one agent loop: the kernel's; the driver fork and --driver are gone` |
+| **内核提交**：`<里程碑步骤或 conventional 前缀>: <包名> — <类别>: <交付什么>` | 碰 `dsh/<group>/<pkg>/` 的提交；类别写在破折号后，与 `Dist-Change` 一致。这是仓库里观察到的写法，`CLAUDE.md:184` 没有单独规定 | `D1-4: @deepseek-ai/dsh-agent-loop — extend: the boat/intake gate`；`chore: @deepseek-ai/dsh-agent-loop — build: name the extension registry by its new path` |
 | `dist(import): <tag> kernel` | 导入提交（工具生成） | `dist(import): dsh-v0.1.7-rc.1 kernel` |
 | `dist(sync): track <tag>` | 同步合并 | `dist(sync): track dsh-v0.1.7-rc.1` |
 | `dist(promote): …` | 晋升合并 | `dist(promote): dsh-llm and dsh-skill enter the kernel` |
 | `fix:` / `chore:` / `docs:` | 其他 | `fix: conformance — run the G4–G6 files one at a time` |
 
-提交正文写明现在能跑什么、接受了什么结果。提交、PR、代码注释和文件里一律不出现模型标识（`CLAUDE.md:184`）。
+提交正文写明现在能跑什么、接受了什么结果。提交、PR、代码注释和文件里一律不出现模型标识（`CLAUDE.md:185`）。
 
 ---
 
@@ -931,7 +931,7 @@ flowchart TB
 3. 两者都不满足时，构建抛错，并提示去跑 `dist:overlay … typert --write`（`bundle-kernel.ts:58-59`）。
 4. `--write` 在上游 checkout 里用 boat 的源码重新生成文件，并写入摘要（`scripts/dist/overlay.ts:249`）。
 
-**这项校验在 CI 里是空的。** CI 用 `actions/checkout@v4` 且没有设 `fetch-depth`（`.github/workflows/ci.yml:26`），默认只取 1 层历史。浅克隆里 `lastImport('HEAD')` 找不到任何 `Dist-Import` 提交，于是第 2 条在 `:54` 直接返回。仓库自己也承认 CI 的默认 checkout 太浅（`delta-report.ts:19-21`）。所以这项校验只在本地完整克隆上生效；要让 CI 也生效，得给 checkout 加 `fetch-depth: 0`，而改 `.github/` 需要明确授权（`CLAUDE.md:182`）。
+**这项校验在 CI 里是空的。** CI 用 `actions/checkout@v4` 且没有设 `fetch-depth`（`.github/workflows/ci.yml:26`），默认只取 1 层历史。浅克隆里 `lastImport('HEAD')` 找不到任何 `Dist-Import` 提交，于是第 2 条在 `:54` 直接返回。仓库自己也承认 CI 的默认 checkout 太浅（`delta-report.ts:19-21`）。所以这项校验只在本地完整克隆上生效；要让 CI 也生效，得给 checkout 加 `fetch-depth: 0`，而改 `.github/` 需要明确授权（`CLAUDE.md:183`）。
 
 现状：
 
@@ -1220,7 +1220,7 @@ append<T extends SessionEventType>(type: T, data: SessionEventMap[T], ...opts: T
 
 ### 6.12 碰内核时的完成标准
 
-`CLAUDE.md:149`：
+`CLAUDE.md:150`：
 
 1. `pnpm run test` 跑 G1、G2；
 2. `pnpm run compatibility` 跑 G4–G6；
@@ -1233,10 +1233,10 @@ append<T extends SessionEventType>(type: T, data: SessionEventMap[T], ...opts: T
 
 | 变量 | 作用 | 出处 |
 |---|---|---|
-| `BOAT_HOME` | boat 的全部数据（profile、会话、存储），默认 `~/.boat`；launcher 在任何 dsh 模块加载之前把它导出为 `DSH_HOME`，所以用户的 `~/.dsh` 不会被碰 | `CLAUDE.md:235` |
-| `DSH_TELEMETRY_DISABLED=1` | 测试与 CI 必设 | `CLAUDE.md:235`；`ci.yml:11` |
+| `BOAT_HOME` | boat 的全部数据（profile、会话、存储），默认 `~/.boat`；launcher 在任何 dsh 模块加载之前把它导出为 `DSH_HOME`，所以用户的 `~/.dsh` 不会被碰 | `CLAUDE.md:236` |
+| `DSH_TELEMETRY_DISABLED=1` | 测试与 CI 必设 | `CLAUDE.md:236`；`ci.yml:11` |
 | `BOAT_DIST_CACHE` | G3 基线、G4–G6 安装树、`dist:import`/`dist:snapshot` 的原版树的位置，默认 `~/.cache/boat-dist` | `scripts/dist/trees.ts:22` |
-| `DEEPSEEK_BASE_URL` + `DEEPSEEK_API_KEY` | 指向脚本化模型（`@boat/testing/scripted-model`）做 boat 的 e2e 或实跑；G4–G6 用上游的 `@deepseek-ai/dsh-llm-mock-server` | `CLAUDE.md:221`、`:172` |
+| `DEEPSEEK_BASE_URL` + `DEEPSEEK_API_KEY` | 指向脚本化模型（`@boat/testing/scripted-model`）做 boat 的 e2e 或实跑；G4–G6 用上游的 `@deepseek-ai/dsh-llm-mock-server` | `CLAUDE.md:222`、`:172` |
 
 **脚本化模型怎么接。** `startScriptedModel(script)`（`boat/tooling/testing/src/scripted-model.ts:125`）在 `127.0.0.1` 的随机端口起一个 DeepSeek Messages 协议的服务器，按请求用途（loop / title / router）回答并记录每个请求；`withTitle`（`:162`）替你回答会话标题请求。要注意两点：
 
@@ -1304,12 +1304,12 @@ node boat/apps/cli/lib/bin.js config dump --profile run > /tmp/dump.yml 2> /tmp/
 
 ### 7.1 策略
 
-`compatibility/COMPAT.md:60-63` §7 与 `CLAUDE.md:191` 规定了两条通道：
+`compatibility/COMPAT.md:60-63` §7 与 `CLAUDE.md:192` 规定了两条通道：
 
 - **boat-next**：一次同步合并该 tag 的导入，必须通过 G1–G6；按周批量进行，一次可跨多个 tag。
 - **boat-stable**：只从 dsh 的 release candidate（`-rc.N`）切出，之后只接受回移（backport）。
 
-两处对 boat-next 的说法不一样：`COMPAT.md:62` 写"follows every dsh tag"，`CLAUDE.md:191` 写"follows every sync"。结合同一句后半的"Syncs are batched weekly; one sync may cross several tags"，实际意思是"每次同步都进 boat-next，而一次同步可以跨过多个 tag"，也就是不必每个 tag 各同步一次。本文按 `CLAUDE.md:191` 的说法写，并把不一致列进 §11.3。
+两处对 boat-next 的说法不一样：`COMPAT.md:62` 写"follows every dsh tag"，`CLAUDE.md:192` 写"follows every sync"。结合同一句后半的"Syncs are batched weekly; one sync may cross several tags"，实际意思是"每次同步都进 boat-next，而一次同步可以跨过多个 tag"，也就是不必每个 tag 各同步一次。本文按 `CLAUDE.md:192` 的说法写，并把不一致列进 §11.3。
 
 为什么 boat-stable 只从 rc 切？上游 2–5 天发一个 tag（蓝图 §0），预发布 tag 之间契约可能变动；rc 是上游自己宣布趋于稳定的点。这和 RHEL 冻结 kABI 基线是同一种做法（蓝图 §2）。
 
@@ -1356,7 +1356,7 @@ flowchart LR
 
 ### 7.3 不改写历史
 
-规则（`CLAUDE.md:178-182`）：
+规则（`CLAUDE.md:179-183`）：
 
 - 只在任务指定的分支上工作；
 - 从不推 `main`、`master`、`develop`；
@@ -1440,7 +1440,7 @@ eq true
 
 ### 8.2 dsh peer 写精确版本，以及原因
 
-**约定**（`CLAUDE.md:84`；`README.md:88`）：
+**约定**（`CLAUDE.md:84`；`README.md:105`）：
 
 - dsh 和 cordis 包写成 `peerDependencies` 加 `devDependencies`，默认用 `catalog:dsh` / `catalog:cordis`。
 - **例外：非内核的 dsh peer 写跟踪版本的精确值。**
@@ -1498,7 +1498,7 @@ workspace:*    admitted
 
 `scripts/upstream-pins.spec.ts:40-54` 把这条约定变成测试：遍历 `boat/*/*/package.json`，每个 dsh peer 必须是 `workspace:*`（内核）或 `dsh.upstream.json` 的版本（非内核）。
 
-副作用：每次同步都要改这些 peer，所以同步步骤里专门有一项（`CLAUDE.md:190`）。
+副作用：每次同步都要改这些 peer，所以同步步骤里专门有一项（`CLAUDE.md:191`）。
 
 ### 8.3 catalog
 
@@ -1520,7 +1520,7 @@ rc.1 同步时 dsh catalog 有 85 项。晋升删掉 llm、skill，又加了 `ds
 
 - 它是仓库里唯一的 CommonJS 文件，因为 pnpm 要求如此（`CLAUDE.md:85`）。
 - G4–G6 的安装树有自己生成的 pnpmfile，做同样的钉版本，只是不钉被 override 的名字（`scripts/dist/trees.ts:58-81`）。
-- 改这个文件需要明确指令（`CLAUDE.md:182`）。
+- 改这个文件需要明确指令（`CLAUDE.md:183`）。
 
 ### 8.5 `minimumReleaseAgeExclude`
 
@@ -1536,7 +1536,7 @@ rc.1 同步时 dsh catalog 有 85 项。晋升删掉 llm、skill，又加了 `ds
 | 从 npm 解析的 dsh 包 | 256 | 正好是工作区装的那 256 个，包括晋升时为 typert 闸门加的 `dsh-typert-generator@0.1.7-rc.1`（`:412`） |
 | 内核包名 | 12 | 例如 `dsh-agent-loop@0.1.7-rc.1`（`:170`）、`dsh-llm@0.1.7-rc.1`（`:312`）。13 个内核包里只有 `dsh-agent-loop-testkit` 不在列表里。这些名字经 overrides 解析到工作区、不从 registry 取，所以这 12 条已经不起作用（§11.3） |
 
-**同步时的安装步骤**（`CLAUDE.md:190`）：
+**同步时的安装步骤**（`CLAUDE.md:191`）：
 
 1. 删掉 `node_modules` 后运行 `pnpm install`。
 2. 此时 lockfile 还指向上一个版本，而新列表已经不再豁免它。所以这一次重新解析的安装要加 `--config.minimum-release-age=0`。
@@ -1565,7 +1565,7 @@ export BOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
    (cd <checkout> && pnpm install)
    git -C <checkout> describe --tags --exact-match HEAD                   # 必须输出 dsh-v<新版本>
    ```
-2. `pnpm run dist:snapshot <checkout>`，读 `contract <旧> → <新>: …` 那一行。有 removed 或 changed 就是需要人判断的契约变化：boat 的消费者要在同一次同步里跟上（`CLAUDE.md:193`）。
+2. `pnpm run dist:snapshot <checkout>`，读 `contract <旧> → <新>: …` 那一行。有 removed 或 changed 就是需要人判断的契约变化：boat 的消费者要在同一次同步里跟上（`CLAUDE.md:194`）。
 3. `pnpm run dist:import <checkout>`。按提示先 `git diff --stat <上次导入> <新导入>` 看上游改了内核什么，再 `git merge --no-ff <新导入>`。若输出 `nothing to merge`，说明内核没变，跳到第 5 步。
 4. 解决冲突。冲突出现在上游和 boat 都改过的同一段或相邻的行；因为 boat 在上游文件里只加几行 `// boat:` 钩子（`CLAUDE.md:70`），冲突通常落在这些钩子附近（例如 `dsh/core/agent-loop/src/agent.ts:276-288`、`src/index.ts:243-245`）。`src/boat/` 下的文件不会冲突。变成空改动的 hunk 按它的类别处理：backport 删掉，drop 删掉。
 5. 改版本钉：
@@ -1590,7 +1590,7 @@ export BOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
 ### 9.2 改一处内核（以 fix 为例）
 
 1. 先按 §3.1 确认放不到内核外，在设计文档里写明理由和类别，并和用户确认（`CLAUDE.md:69`、`:120`）。
-2. 在 `dsh/<group>/<pkg>/tests/boat/` 写回归测试，确认它在改动前失败。测试只能用内核和上游自己的测试辅助，不能用 `@boat/*`（`CLAUDE.md:168`）。
+2. 在 `dsh/<group>/<pkg>/tests/boat/` 写回归测试，确认它在改动前失败。测试只能用内核和上游自己的测试辅助，不能用 `@boat/*`（`CLAUDE.md:169`）。
 3. 改动尽量放 `src/boat/`，上游文件里只留带 `// boat:` 的几行钩子。
 4. 如果改到了发布 Typert 文件的包（今天只有 dsh-llm）的 `src/`，跑 `pnpm run dist:overlay <checkout> typert --write`，把重新生成的 `lib/typert.*` 和 `dsh/typert.json` 一起提交。否则本地 `pnpm run build` 会失败（§5.4；CI 的浅克隆发现不了，所以这一步不能指望 CI）。
 5. 跑门槛：`pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run compatibility && pnpm run dist:delta -- --check`；可能触及持久化类型时再跑 `pnpm run dist:overlay <checkout> persistence`。改动碰到哪条行为不变量，对照 §6.11 确认对应测试在跑。
@@ -1654,7 +1654,7 @@ export BOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
 flowchart TB
   A["1 起因<br/>boat/skill-routed 让会话打不开<br/>reopen.composite.ts:109"] --> B{"2 能在内核外做吗？"}
   B -->|"不能：写入口在 Session.append 里"| C["3 分类：extend<br/>只增加一个可选参数"]
-  C --> D["4 设计文档，与用户确认<br/>CLAUDE.md:120"]
+  C --> D["4 设计文档，与用户确认<br/>CLAUDE.md:121"]
   D --> E["5 代码<br/>上游文件几行钩子 + src/boat/"]
   E --> F["6 测试<br/>tests/boat/append-ignorable.spec.ts"]
   F --> G["7 构建 + G1<br/>一行 unregistered change"]
@@ -1675,11 +1675,11 @@ flowchart TB
 
 **3. 分类。** 外部可见面只增加（`append` 多一个可选参数，不用它的调用方不受影响），按 §3.1 的决策树是 `extend`，kind 是 `api-option`（`extensions.yml:12`）。
 
-**4. 设计与确认。** 改的是内核的公开 API，按 `CLAUDE.md:120` 先写设计文档并和用户确认。设计里要回答一个具体问题：今天的签名是 `append(type, data, ...opts)`，其中 `opts` 对 surface 事件类型已经是 `[opts: SurfaceIntent<T>]`，对其他类型是空元组（`dsh/core/session/src/index.ts:720-724`）。蓝图 E1 草图里的 `append(type, data, { ignorable: true })` 必须落在这个元组里，而不能和 `SurfaceIntent` 冲突。这正是"改内核是一个设计决定"的意思。
+**4. 设计与确认。** 改的是内核的公开 API，按 `CLAUDE.md:121` 先写设计文档并和用户确认。设计里要回答一个具体问题：今天的签名是 `append(type, data, ...opts)`，其中 `opts` 对 surface 事件类型已经是 `[opts: SurfaceIntent<T>]`，对其他类型是空元组（`dsh/core/session/src/index.ts:720-724`）。蓝图 E1 草图里的 `append(type, data, { ignorable: true })` 必须落在这个元组里，而不能和 `SurfaceIntent` 冲突。这正是"改内核是一个设计决定"的意思。
 
 **5. 代码。** 按 §3.6 的写法：`dsh/core/session/src/index.ts` 的 `append` 里只加几行 `// boat:` 钩子，把标记写进事件信封；逻辑与类型放在上游没有的 `dsh/core/session/src/boat/`，从包根导出（参照 `dsh/core/agent-loop/src/index.ts:243-245`）。
 
-**6. 测试。** `dsh/core/session/tests/boat/append-ignorable.spec.ts`：写一个带标记的未知事件，存盘，再用持久化层读回，断言不被拒绝。只用内核和上游的测试辅助，不用 `@boat/*`（`CLAUDE.md:168`）。它跑在 G2 项目里，与 session 的上游测试一起。
+**6. 测试。** `dsh/core/session/tests/boat/append-ignorable.spec.ts`：写一个带标记的未知事件，存盘，再用持久化层读回，断言不被拒绝。只用内核和上游的测试辅助，不用 `@boat/*`（`CLAUDE.md:169`）。它跑在 G2 项目里，与 session 的上游测试一起。
 
 **7. 构建并跑 G1。** `pnpm run build && pnpm run contract:check`。`append` 的声明变了，G1 按 `contract-check.ts:127`、`:131` 的格式打出：
 
@@ -1750,7 +1750,7 @@ Dist-Tests: dsh/core/session/tests/boat/append-ignorable.spec.ts
 
 | 目的 | 命令 | 出处 |
 |---|---|---|
-| 安装 | `pnpm install`（CI 用 `--frozen-lockfile`） | `CLAUDE.md:211` |
+| 安装 | `pnpm install`（CI 用 `--frozen-lockfile`） | `CLAUDE.md:212` |
 | 构建（`tsc -b` + 内核 tsdown 打包 + Typert 校验） | `pnpm run build` | `package.json:11` |
 | lint（oxlint、knip、层检查、distro manifest） | `pnpm run lint` | `package.json:13` |
 | 类型检查（源码与测试） | `pnpm run typecheck` | `package.json:12` |
@@ -1759,13 +1759,13 @@ Dist-Tests: dsh/core/session/tests/boat/append-ignorable.spec.ts
 | G4–G6 | `pnpm run compatibility` | `package.json:15` |
 | 全部 | `pnpm run check` | `package.json:17` |
 | 只跑 G1（构建后） | `pnpm run contract:check` | `package.json:22` |
-| 只跑 G2 | `npx vitest run --project dsh` | `CLAUDE.md:228` |
-| 差量报告 / 只检查 trailer | `pnpm run dist:delta` / `pnpm run dist:delta -- --check` | `CLAUDE.md:229` |
-| 生成某 tag 的契约快照 | `pnpm run dist:snapshot <checkout>` | `CLAUDE.md:230` |
-| 导入某 tag 的内核（然后 `git merge`） | `pnpm run dist:import <checkout>` | `CLAUDE.md:231` |
-| persistence / G3 | `pnpm run dist:overlay <checkout> persistence` / `g3 [--match <regex>]` | `CLAUDE.md:232` |
-| Typert 对照 / 重新生成 | `pnpm run dist:overlay <checkout> typert [--write]` | `CLAUDE.md:233` |
-| 看组合后的插件树（也能验证准入） | `node boat/apps/cli/lib/bin.js config dump --profile run` | `CLAUDE.md:226` |
+| 只跑 G2 | `npx vitest run --project dsh` | `CLAUDE.md:229` |
+| 差量报告 / 只检查 trailer | `pnpm run dist:delta` / `pnpm run dist:delta -- --check` | `CLAUDE.md:230` |
+| 生成某 tag 的契约快照 | `pnpm run dist:snapshot <checkout>` | `CLAUDE.md:231` |
+| 导入某 tag 的内核（然后 `git merge`） | `pnpm run dist:import <checkout>` | `CLAUDE.md:232` |
+| persistence / G3 | `pnpm run dist:overlay <checkout> persistence` / `g3 [--match <regex>]` | `CLAUDE.md:233` |
+| Typert 对照 / 重新生成 | `pnpm run dist:overlay <checkout> typert [--write]` | `CLAUDE.md:234` |
+| 看组合后的插件树（也能验证准入） | `node boat/apps/cli/lib/bin.js config dump --profile run` | `CLAUDE.md:227` |
 | 用脚本化模型跑一次 launcher | `node /path/to/scripted-run.mjs run "hello"` | §6.13 |
 | 列出上游线 | `git log --format='%h %p %s' --grep='^Dist-Import: '`，或 `git log --oneline <合并>^2` | §2.1 |
 | 看 boat 在内核上的全部差量 | `git diff <最近导入> HEAD -- dsh/` | §2.2 |
@@ -1807,15 +1807,15 @@ Dist-Tests: dsh/core/session/tests/boat/append-ignorable.spec.ts
 | 7 | 蓝图 §12 写"CI 强制：提交尾部格式检查" | `ci.yml` 只跑 lint、typecheck、test；`dist:delta --check`、overlay 闸门和 G4–G6 都靠手动或同步时跑 | 需要授权改 `.github/` 才能补上 |
 | 8 | `CLAUDE.md:21` 在布局里列出 `dsh/typert.json` | 文件还不存在，第一次 `typert --write` 后才会出现 | 符合预期 |
 | 9 | 蓝图 §13 X6 说兼容范围包括 Web 客户端协议 | G5 只跑 headless，23 个金丝雀全是宿主侧；界面扩展没有对照（蓝图 §16 第 11 条） | Web 兼容性目前没有闸门 |
-| 10 | 提交信息末尾的署名 trailer 带模型标识 | `CLAUDE.md:184` 禁止在文件里出现模型标识 | 在文档里引用提交时，必须省略这些 trailer（本文已省略） |
+| 10 | 提交信息末尾的署名 trailer 带模型标识 | `CLAUDE.md:185` 禁止在文件里出现模型标识 | 在文档里引用提交时，必须省略这些 trailer（本文已省略） |
 | 11 | `dsh/kernel.json:2` 的 `$comment`："nothing else in the repository lists the kernel" | overrides（`pnpm-workspace.yaml:16-29`）、根 `tsconfig.json` 的 references、`CLAUDE.md:15-17` 的布局、`minimumReleaseAgeExclude` 里的 12 个内核包名也都列出内核 | 晋升时这几处都要改（§9.4 第 2–4 步）；只有 overrides 有测试核对 |
 | 12 | `dsh/tsdown.config.ts:6-8` 注释说上游 Typert 插件产出的文件"none of which the kernel packages publish" | dsh-llm 晋升后发布 `lib/typert.*`，而且就用这份根配置打包；文件随导入而来，不经这个插件 | 注释过时 |
 | 13 | `pnpm-workspace.yaml:5` 写"core are declarations and the driver fork" | driver fork 在 D1-6（`4a98679`）已删除；`boat/core/*` 只有 contracts 和 cordis-compat | 注释过时 |
 | 14 | `extensions.yml:7` 的示例键是 `… › exports › . › IntakeDecision` | 内核的导出名是 `BoatIntakeDecision`（`extensions.yml:28`）；`IntakeDecision` 只是 `@boat/contracts` 的再导出别名 | 照抄示例会写出一个永远 stale 的键 |
 | 15 | `minimumReleaseAgeExclude` 里 12 个内核包名的条目 | 这些名字经 overrides 解析到工作区，不从 registry 取 | 条目已失效，可在下次整理列表时删掉 |
-| 16 | `CLAUDE.md:212` 说 `pnpm run build` 就是"`tsc -b`" | 还跑 `scripts/dist/bundle-kernel.ts`（tsdown 打包 + Typert 校验，`package.json:11`） | 读者会低估构建的内容 |
+| 16 | `CLAUDE.md:213` 说 `pnpm run build` 就是"`tsc -b`" | 还跑 `scripts/dist/bundle-kernel.ts`（tsdown 打包 + Typert 校验，`package.json:11`） | 读者会低估构建的内容 |
 | 17 | `COMPAT.md:11` 说稳定面"compared on every build by G1" | `pnpm run build` 不跑 G1；G1 在 `pnpm run test` 构建之后跑（`package.json:14`） | 只跑构建的人拿不到 G1 结果 |
 | 18 | `bundle-kernel.ts` 的 Typert 校验看起来在 CI 的构建里 | CI 是浅克隆（`ci.yml:26`），找不到导入提交，校验在 `bundle-kernel.ts:54` 直接返回 | 改了 dsh-llm 源码却没重新生成 Typert 文件，CI 不会报错；需要 `fetch-depth: 0` |
-| 19 | `COMPAT.md:62` 写 boat-next "follows every dsh tag"，`CLAUDE.md:191` 写 "follows every sync" | 两处说法不一；结合"一次同步可跨多个 tag"，应以"每次同步"为准 | 需要统一措辞 |
+| 19 | `COMPAT.md:62` 写 boat-next "follows every dsh tag"，`CLAUDE.md:192` 写 "follows every sync" | 两处说法不一；结合"一次同步可跨多个 tag"，应以"每次同步"为准 | 需要统一措辞 |
 | 20 | `COMPAT.md:27` 说上游的内核测试在 G2 下原样运行 | G2 只收 `*.spec.ts`（`vitest.config.ts:35`）；内核包里 4 个 `*.e2e.ts` / `*.perf.ts` 不在 G2，也没列进排除清单 | 这几个测试目前没有在 boat 源码上跑 |
 | 21 | `canaries.yml:16` 写"projections has two" | 不满 3 个的还有 step（1 个）和 tools（2 个） | 注释不完整 |

@@ -1,7 +1,7 @@
 # 基于 boat 开发业务 agent
 
 > 适用版本：boat `3d29a07`（`dist(promote): dsh-llm and dsh-skill enter the kernel`），跟踪 dsh `0.1.7-rc.1`，内核 13 个包（`dsh/kernel.json`）。
-> 读者：熟悉 ark-agentic（Python 前身）、刚接触 dsh 的工程师。dsh / Cordis 的术语先看 §0.6，完整的架构与启动过程见 [01-architecture.md](01-architecture.md)。
+> 读者：熟悉参考实现（Python 前身）、刚接触 dsh 的工程师。dsh / Cordis 的术语先看 §0.6，完整的架构与启动过程见 [01-architecture.md](01-architecture.md)。
 > 本文贯穿全文的例子「保单查询助手」（agent id `policy-desk`）已在仓库的一份 git 副本里按本文逐字落盘、构建并跑通：`pnpm run build`、`pnpm run lint`、`pnpm run typecheck`、`pnpm run test`（143 个测试文件：2942 个通过，1 个跳过）全部通过。文中的日志片段来自这些真实运行，模型标识一律写成 `<model>`。
 > 路径若不加说明，都相对仓库根（注意仓库里还有一个同名子目录 `boat/`，放 boat 自己的各层包）。「上游」指 dsh 在 tag `dsh-v0.1.7-rc.1` 上的源码（`packages/<group>/<pkg>/src`），boat 从 npm 安装的 dsh 包以它为准。
 
@@ -11,24 +11,24 @@
 
 ### 0.1 agent 就是一个目录
 
-一个业务 agent 是 `boat/agents/<id>/`，目录名就是 id（CLAUDE.md:199-200）。其中唯一必需的文件是 `agent.cordis.yml`。`boat run --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后每个会话由 dsh 创建一个 `Agent` 实例并挂到这个 preset 上（`boat/bundles/run/src/index.ts:165-204`）。「preset」这个词在 boat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（CLAUDE.md:199）。
+一个业务 agent 是 `boat/agents/<id>/`，目录名就是 id（CLAUDE.md:200-201）。其中唯一必需的文件是 `agent.cordis.yml`。`boat run --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后每个会话由 dsh 创建一个 `Agent` 实例并挂到这个 preset 上（`boat/bundles/run/src/index.ts:165-204`）。「preset」这个词在 boat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（CLAUDE.md:200）。
 
-### 0.2 和 ark 的对应
+### 0.2 和参考实现的对应
 
-ark 的一个 agent 是 `agent.py` 里的 instructions / callbacks，加上 `skills/`、`tools/`、`capabilities/`。boat 保留了同样的四层（ark `docs/agent_design_principles.md` §1），只换了机制：
+参考实现的一个 agent 是 `agent.py` 里的 instructions / callbacks，加上 `skills/`、`tools/`、`capabilities/`。boat 保留了同样的四层（参考实现 `docs/agent_design_principles.md` §1），只换了机制：
 
-| ark | boat 里写在哪 |
+| 参考实现 | boat 里写在哪 |
 |---|---|
 | L1 Agent：身份、红线、节奏 | `agent.cordis.yml` 里的 `persona` 行；硬拒识写成 `boat/intake` 监听器（`src/intake.ts`） |
-| L2 Skill：`SKILL.md`，description 是路由信号 | `skills/<name>/SKILL.md`，`metadata.boat.requiredTools` 对应 ark 的 `required_tools` |
+| L2 Skill：`SKILL.md`，description 是路由信号 | `skills/<name>/SKILL.md`，`metadata.boat.requiredTools` 对应参考实现的 `required_tools` |
 | L3 Tool：薄工具，digest 回传 | `src/tools.ts` 里 `ctx.toolPolicy.register(defineTool(...), meta)` |
 | L4 Capability：纯代码、阈值、数据源 | `src/*.ts` 里的纯函数（例子里的 `src/policies.ts`） |
-| `state_delta` | `ctx.toolPolicy.register(def, { stateDelta })` → 日志里的 `tool/result.meta.boat.stateDelta` → `boatState` 投影。ark 的 `output_state_keys`（声明并校验状态键）在 boat 里没有对应物：`BoatToolMeta` 只有 `visibility`、`group`、`requiresConfirmation`、`stateDelta` 四个字段（`boat/core/contracts/src/index.ts:89-102`） |
+| `state_delta` | `ctx.toolPolicy.register(def, { stateDelta })` → 日志里的 `tool/result.meta.boat.stateDelta` → `boatState` 投影。参考实现的 `output_state_keys`（声明并校验状态键）在 boat 里没有对应物：`BoatToolMeta` 只有 `visibility`、`group`、`requiresConfirmation`、`stateDelta` 四个字段（`boat/core/contracts/src/index.ts:89-102`） |
 | A2UI 模板卡 | `a2ui/<card>/`，由 `ctx.a2ui.render(...)` 渲染 |
 
 ### 0.3 框架替你做的事
 
-每个 boat profile 都带 `@boat/host`，它在宿主平面发布这些服务（`boat/bundles/host/cordis.patch.yml:14-29`）：`toolPolicy`（工具可见性、确认、状态增量）、`skillRouter`（ark 的技能路由）、`a2ui`（ark 的卡片模板引擎）、`historyImport`（外部历史导入）。内核的 agent loop 在每一步组装 prompt 之前多派发两个 waterfall 事件：`boat/intake`（拒识，直接回复且不请求模型）和 `boat/pre-assemble`（路由技能、激活工具，并在同一步生效）（`dsh/core/agent-loop/src/agent.ts:277-289`）。你只写业务。
+每个 boat profile 都带 `@boat/host`，它在宿主平面发布这些服务（`boat/bundles/host/cordis.patch.yml:14-29`）：`toolPolicy`（工具可见性、确认、状态增量）、`skillRouter`（参考实现的技能路由）、`a2ui`（参考实现的卡片模板引擎）、`historyImport`（外部历史导入）。内核的 agent loop 在每一步组装 prompt 之前多派发两个 waterfall 事件：`boat/intake`（拒识，直接回复且不请求模型）和 `boat/pre-assemble`（路由技能、激活工具，并在同一步生效）（`dsh/core/agent-loop/src/agent.ts:277-289`）。你只写业务。
 
 用户点名的五种基础能力在 run 组合里都是现成的，agent 不需要自己初始化：
 
@@ -38,7 +38,7 @@ ark 的一个 agent 是 `agent.py` 里的 instructions / callbacks，加上 `ski
 | tool | 内核 `@deepseek-ai/dsh-tools`（`ctx.tools`）+ boat 的 `ctx.toolPolicy` | `ctx.toolPolicy.register(defineTool(...), meta)`（§2.10） |
 | skill | 内核 `@deepseek-ai/dsh-skill`（`ctx.skills`）+ npm 上的 `dsh-skill-filesystem` provider + boat 的 `ctx.skillRouter` | `skills/<name>/SKILL.md`，在自己的行里挂 skill-filesystem（§2.6、§2.10） |
 | session | 内核 `dsh-session`、`dsh-session-persistence*`、`dsh-session-projection` | 工具里用 `exec.agent.session`；日志落在 `$BOAT_HOME/sessions/…`（§3.2） |
-| memory | 只有会话内的：`boatState`（工具状态增量折成的投影，每步作为 `boat:state` 发给模型，§4.8）加上会话历史本身 | 没有跨会话记忆。dsh 0.1.7-rc.1 的 `packages/` 下没有 memory 包；最接近的是 session-query（`session_search` 工具，用 SQLite FTS 检索历史会话），但 dsh-base 把它配成 `path: ':memory:'`、`openAt: never`（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:149-153`），run 组合给模型的 24 个工具里也没有 `session_search` |
+| memory | 只有会话内的：`boatState`（工具状态增量折成的投影，每步作为 `boat:state` 发给模型，§4.8）加上会话历史本身 | 没有跨会话记忆。dsh 0.1.7-rc.1 的 `packages/` 下没有 memory 包；最接近的是 session-query（`session_search` 工具，用 SQLite FTS 检索历史会话），但 dsh-base 把它配成 `path: ':memory:'`、`openAt: never`（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:149-153`），run 组合给模型的 24 个工具里也没有 `session_search`。另外，`dsh-agent-instructions` 会把 `$BOAT_HOME/AGENTS.md` 和项目里的 AGENTS.md/CLAUDE.md 注入第一次请求，这是人写的静态说明，不会自动学习。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在官方树和 boat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区；可以在自己的 agent 行里挂一个试用，但要先确认它的分区方式和写入内容符合业务要求 |
 
 五个能力的包都在 `dsh/kernel.json` 里（llm、skill 刚在 `3d29a07` 晋升进内核，CLAUDE.md:73），所以任何 boat 组合都一定带着它们。
 
@@ -46,8 +46,8 @@ ark 的一个 agent 是 `agent.py` 里的 instructions / callbacks，加上 `ski
 
 只有两处会加载 agent 目录：`boat run`，以及 composite 测试里的 `bootComposition`（§2.15）。`boat run` 是一次性的：一个任务、一轮，打印最后一条助手文本后退出（`boat/bundles/run/src/index.ts:221-239`）。
 
-- **没有 ark 那种 FastAPI 式的服务模式。** 能通过 HTTP 访问的只有 `boat web`（dsh-web-app），但它的 profile 里没有 `@boat/run`，不读 agent 目录（`boat/apps/cli/src/templates.ts:21-23`）。
-- **多轮只能靠导入历史来模拟。** 用 `--history <file>` 先塞进几轮已结束的对话，再跑一轮，例如 `node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent demo --history boat/agents/demo/fixtures/history/sa.json "继续刚才的话题"`（CLAUDE.md:224，`boat/bundles/run/src/index.ts:205-212`）。
+- **没有参考实现那种 FastAPI 式的服务模式。** 能通过 HTTP 访问的只有 `boat web`（dsh-web-app），但它的 profile 里没有 `@boat/run`，不读 agent 目录（`boat/apps/cli/src/templates.ts:21-23`）。
+- **多轮只能靠导入历史来模拟。** 用 `--history <file>` 先塞进几轮已结束的对话，再跑一轮，例如 `node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent demo --history boat/agents/demo/fixtures/history/sa.json "继续刚才的话题"`（CLAUDE.md:225，`boat/bundles/run/src/index.ts:205-212`）。
 - **Web 和续会话在路线图 D4**，路由过的会话目前不能重开（§4.10）。
 
 ### 0.5 五步走
@@ -106,7 +106,7 @@ boat/agents/policy-desk/
     └── policy-desk.composite.ts   组合测试（进程内启动 run 组合 + 脚本模型）
 ```
 
-另外还有一个文件在 agent 目录外：`boat/apps/cli/tests/policy-desk-smoke.e2e.ts`，它在构建好的 `boat` 可执行文件上做一次冒烟（CLAUDE.md:169）。
+另外还有一个文件在 agent 目录外：`boat/apps/cli/tests/policy-desk-smoke.e2e.ts`，它在构建好的 `boat` 可执行文件上做一次冒烟（CLAUDE.md:170）。
 
 ### 1.2 这些文件在运行时变成什么
 
@@ -194,7 +194,7 @@ flowchart LR
 
 **`fixtures/`。** agent 运行时读的业务数据和示例输入。`package.json` 的 `files` 要带上它。
 
-**`src/` → `lib/`。** 行的代码和业务逻辑。行名写 `./lib/x.js`，因为 loader 在 Node 里直接 import 编译产物（CLAUDE.md:204）。部署输入（数据源、persona 选择等）在边缘从 `Config` 或环境变量读，并写进 `package.json` 的 `description`（CLAUDE.md:204）。
+**`src/` → `lib/`。** 行的代码和业务逻辑。行名写 `./lib/x.js`，因为 loader 在 Node 里直接 import 编译产物（CLAUDE.md:205）。部署输入（数据源、persona 选择等）在边缘从 `Config` 或环境变量读，并写进 `package.json` 的 `description`（CLAUDE.md:205）。
 
 **`tests/`。** `*.spec.ts` 测纯逻辑，`*.composite.ts` 测组合（§5）。
 
@@ -241,7 +241,7 @@ DEEPSEEK_API_KEY=<你的 key> node boat/apps/cli/lib/bin.js run --agents ./boat/
 mkdir -p boat/agents/policy-desk/{src,tests,fixtures,skills/policy-lookup,a2ui/policy_card}
 ```
 
-`pnpm-workspace.yaml` 已经用 `boat/*/*` 收录每个包（`pnpm-workspace.yaml:7`），不用改它（CLAUDE.md:182 也不允许无授权改它）。
+`pnpm-workspace.yaml` 已经用 `boat/*/*` 收录每个包（`pnpm-workspace.yaml:7`），不用改它（CLAUDE.md:183 也不允许无授权改它）。
 
 ### 2.2 `package.json`
 
@@ -286,7 +286,7 @@ mkdir -p boat/agents/policy-desk/{src,tests,fixtures,skills/policy-lookup,a2ui/p
 | 字段 | 为什么这样写 |
 |---|---|
 | `name` | `@boat/agent-<id>`，名字带归属（CLAUDE.md:86） |
-| `description` | 写明部署输入 `BOAT_POLICY_DESK_BOOK`（CLAUDE.md:204） |
+| `description` | 写明部署输入 `BOAT_POLICY_DESK_BOOK`（CLAUDE.md:205） |
 | `exports["./policies"]` | 只导出单元测试要 import 的子路径。第一个键 `@boat/source` 指向 `src`，所以 vitest 的 `source` 项目和 typecheck 读本包的源码；Node 和 CLI 走 `default`，读 `lib/`（CLAUDE.md:45，`vitest.config.ts:4-11`） |
 | `files` | 发布时需要的全部运行时文件：`lib`、两个 yml、`skills`、`a2ui`、`fixtures` |
 | `dependencies` | 照 demo（`boat/agents/demo/package.json:15-19`）：代码里当库用的包。`@deepseek-ai/dsh-tools` 提供纯函数 `defineTool`（内核包，所以是 `workspace:*`）；`@deepseek-ai/dsh-skill-filesystem` 由本行自己 `ctx.plugin` 挂载（npm 包，`catalog:dsh`）；`@boat/contracts` 只提供类型 |
@@ -334,13 +334,13 @@ mkdir -p boat/agents/policy-desk/{src,tests,fixtures,skills/policy-lookup,a2ui/p
 
 `tsconfig.tests.json` 已经包含 `boat/agents/*/{src,tests}`，knip 已经把 `boat/agents/*/src/*.ts` 当入口（`knip.jsonc:37-40`），这两处不用改。
 
-README 的包表要在同一个提交里跟上（CLAUDE.md:137）。在 `README.md` 的 `boat/agents/demo` 那一行下面加：
+README 的包表要在同一个提交里跟上（CLAUDE.md:138）。在 `README.md` 的 `boat/agents/demo` 那一行下面加：
 
 ```markdown
 | `boat/agents/policy-desk` | `@boat/agent-policy-desk` | the policy-desk agent: one routed skill, a lookup tool that fills the session state and renders the policy card, a copy tool behind confirmation, an intake gate |
 ```
 
-然后**从干净的 `node_modules`** 重装。增量 `pnpm install` 会留下旧的提升链接，新包不会出现在根 `node_modules/@boat/` 下（README.md:83）；实测增量安装后根目录确实没有 `agent-policy-desk`，删掉根 `node_modules` 再装才有：
+然后**从干净的 `node_modules`** 重装。增量 `pnpm install` 会留下旧的提升链接，新包不会出现在根 `node_modules/@boat/` 下（README.md:100）；实测增量安装后根目录确实没有 `agent-policy-desk`，删掉根 `node_modules` 再装才有：
 
 ```sh
 rm -rf node_modules && pnpm install
@@ -348,7 +348,7 @@ ls node_modules/@boat/ | grep policy-desk     # 应输出 agent-policy-desk
 git status --short                            # pnpm-lock.yaml 多了 boat/agents/policy-desk 这个 importer，要一起提交
 ```
 
-CI 用 `--frozen-lockfile` 安装（CLAUDE.md:211），所以 `pnpm-lock.yaml` 的改动必须提交。
+CI 用 `--frozen-lockfile` 安装（CLAUDE.md:212），所以 `pnpm-lock.yaml` 的改动必须提交。
 
 ### 2.4 `agent.cordis.yml`
 
@@ -378,10 +378,10 @@ CI 用 `--frozen-lockfile` 安装（CLAUDE.md:211），所以 `pnpm-lock.yaml` �
   name: ./lib/intake.js
 ```
 
-- **`persona`**：只放身份、红线、语气（ark L1）。prefix 写成一行：YAML 的折叠写法 `>-` 会在换行处插入一个空格，两行中文之间就多出一个空格。
+- **`persona`**：只放身份、红线、语气（设计原则的 L1）。prefix 写成一行：YAML 的折叠写法 `>-` 会在换行处插入一个空格，两行中文之间就多出一个空格。
   - `POLICY-DESK-PERSONA` 是给测试断言系统 prompt 用的标记，照 demo 的 `DEMO-ASSET-PERSONA`（`boat/agents/demo/agent.cordis.yml:9`）。它会进入真实的系统 prompt，模型看得到。上线用的 persona 要去掉它，测试改为断言 persona 里的一句原文。
   - 省略了 `suffix`，所以部署级 persona 后缀（run bundle 的 `Your working directory is {{cwd}}.`，`boat/bundles/run/cordis.patch.yml:10-14`）被清空；想保留就像 demo 那样写上 `suffix`。
-- **`boat-skill-router`**：宿主默认 `mode: off`，agent 要用 ark 的动态路由必须在这里打开（`boat/plugins/skill-router/src/agent.ts:1-6`）。
+- **`boat-skill-router`**：宿主默认 `mode: off`，agent 要用参考实现的动态路由必须在这里打开（`boat/plugins/skill-router/src/agent.ts:1-6`）。
 - **监听顺序。** agent 行都比宿主服务晚注册，所以如果你的行也监听 `boat/pre-assemble`，它会位于 tool-policy 和 skill-router 之内（§1.4 第 2 步、§4.4）。同一 agent 的几行之间谁先谁后取决于激活的先后，不要依赖它。
 
 ### 2.5 `preset.yml`
@@ -417,9 +417,9 @@ metadata:
 ```
 
 - `name` 用连字符。写成 `policy_lookup` 时，这个技能会被**静默丢弃**，见 §4.3。
-- 路由器对每个候选技能只看到 id 和 `description`，所以 description 要写 WHAT、WHEN、关键词，以及和相邻技能的边界（ark §3）。
-- description 在两个地方出现，长度处理不同。路由器 prompt 发送全文（`boat/plugins/skill-router/src/router.ts:35`）；每个 loop 请求里的技能目录（`skill-catalog` 那条 user 消息）由 dsh-tool-skill 截断到 `catalogDescriptionMaxLength`，默认 500 字符（上游 `packages/skill/tool-skill/src/index.ts:27`、`:391-393`）。ark 在 `skill_description_max_chars` 处截断，boat 的路由器不截断，所以要靠约定保持简短。
-- `requiredTools` 必须和正文实际调用的工具一致（ark §3）：多列会污染工具面，少列会让工具不可见。路由到本技能时，skill-router 先 `clear` 再 `activate` 这两个工具（`boat/plugins/skill-router/src/index.ts:395-404`）。
+- 路由器对每个候选技能只看到 id 和 `description`，所以 description 要写 WHAT、WHEN、关键词，以及和相邻技能的边界（设计原则 §3）。
+- description 在两个地方出现，长度处理不同。路由器 prompt 发送全文（`boat/plugins/skill-router/src/router.ts:35`）；每个 loop 请求里的技能目录（`skill-catalog` 那条 user 消息）由 dsh-tool-skill 截断到 `catalogDescriptionMaxLength`，默认 500 字符（上游 `packages/skill/tool-skill/src/index.ts:27`、`:391-393`）。参考实现在 `skill_description_max_chars` 处截断，boat 的路由器不截断，所以要靠约定保持简短。
+- `requiredTools` 必须和正文实际调用的工具一致（设计原则 §3）：多列会污染工具面，少列会让工具不可见。路由到本技能时，skill-router 先 `clear` 再 `activate` 这两个工具（`boat/plugins/skill-router/src/index.ts:395-404`）。
 - 正文不写业务规则和阈值（那些属于 L4），也不描述模型看不见的字段。
 
 ### 2.7 业务数据：`fixtures/policies.json`
@@ -457,7 +457,7 @@ metadata:
 
 ### 2.8 L4：`src/policies.ts`
 
-纯函数，不依赖任何框架服务，对应 ark 的 capability 层。文件是真实边界，所以要校验，坏文件直接抛错，而不是拿残缺数据回答（CLAUDE.md:89-90）。
+纯函数，不依赖任何框架服务，对应参考实现的 capability 层。文件是真实边界，所以要校验，坏文件直接抛错，而不是拿残缺数据回答（CLAUDE.md:90-91）。
 
 ```ts
 /**
@@ -538,7 +538,7 @@ export function policySummary(policy: PolicyRecord): PolicySummary {
 
 ### 2.9 A2UI 卡片：`a2ui/policy_card/`
 
-卡片分三部分：`template.json` 是设计稿，`manifest.yaml` 规定每个绑定怎么取值，`compute.js` 放代码钩子。渲染结果只进工具结果的 `meta.boat.card`，模型只看 digest（CLAUDE.md:203）。
+卡片分三部分：`template.json` 是设计稿，`manifest.yaml` 规定每个绑定怎么取值，`compute.js` 放代码钩子。渲染结果只进工具结果的 `meta.boat.card`，模型只看 digest（CLAUDE.md:204）。
 
 `template.json`：
 
@@ -563,7 +563,7 @@ export function policySummary(policy: PolicyRecord): PolicySummary {
 ```
 
 - 绑定写成 `{"path": "<key>"}`。`Text.text` 这类契约字段解析成 `{"literalString": …}`，`hide` 为真时整棵子树被丢掉（`boat/plugins/a2ui/src/walker.ts:39`、`:125-128`）。
-- 组件类型要在客户端组件目录里。默认目录是 ark 参考客户端的 `Row`、`Column`、`Text`、`Tag`、`Button` 等（`boat/plugins/a2ui/src/contract.ts:36-50`）。
+- 组件类型要在客户端组件目录里。默认目录是参考实现客户端的 `Row`、`Column`、`Text`、`Tag`、`Button` 等（`boat/plugins/a2ui/src/contract.ts:36-50`）。
 - 顶层的 `surfaceId` 只是占位。渲染时换成 `<card>-<sessionId 前 8 个字符>-<6 位 hex>`（`boat/plugins/a2ui/src/engine.ts:102-104`、`:143-145`）。boat 的会话 id 总是 `session-<uuid>`（`boat/bundles/run/src/index.ts:215`），前 8 个字符恰好是 `session-`，所以实际的 surfaceId 形如 `policy_card-session--8fb6d7`，中间是两个连字符。
 
 `manifest.yaml`：
@@ -639,7 +639,7 @@ export function digest(raw, _flat) {
 }
 ```
 
-`digest(raw, flat)` 的返回值成为工具的 digest（`boat/plugins/a2ui/src/engine.ts:119-139`）。这里沿用 ark 的写法：先给结构化的事实头，再给收尾提示。这个工具只属于一个技能，所以 digest 里可以带收尾提示；如果工具被多个技能共用，ark 要求 digest 只报事实（ark §4）。`digest` 抛错时，引擎打一条 warn 并返回空串（`engine.ts:122-129`），所以 §2.10 的工具要给一个回退 digest。`compute.js` 还可以导出 `stateDelta(raw, flat)` 钩子（`loader.ts:144-157`），本例不用。
+`digest(raw, flat)` 的返回值成为工具的 digest（`boat/plugins/a2ui/src/engine.ts:119-139`）。这里沿用参考实现的写法：先给结构化的事实头，再给收尾提示。这个工具只属于一个技能，所以 digest 里可以带收尾提示；如果工具被多个技能共用，参考实现要求 digest 只报事实（参考实现 §4）。`digest` 抛错时，引擎打一条 warn 并返回空串（`engine.ts:122-129`），所以 §2.10 的工具要给一个回退 digest。`compute.js` 还可以导出 `stateDelta(raw, flat)` 钩子（`loader.ts:144-157`），本例不用。
 
 `business_hierarchy.yaml` 省略了：没有它时，引擎使用模板自己的 `rootComponentId`、不做过滤（`engine.ts:109-117`）。
 
@@ -756,17 +756,17 @@ export async function apply(ctx: Context): Promise<void> {
   - `stateDelta: (args, value) => …`：tool-policy 把它包进 `output.presentationMeta`，于是结果 meta 带上 `{ boat: { stateDelta } }`，并和工具自己的 `boat.card` 合并（`index.ts:74-92`）。
   - **`stateDelta` 的契约**：返回一个以点路径为键的 JSON 对象，或者 `undefined`（不写状态）。点路径展开成嵌套对象，嵌套对象深度合并，其他值直接替换（`boat/plugins/tool-policy/src/state.ts:40-68`）。返回非对象、或者路径里有空段，会在 `boatState` 投影折叠时抛错（`state.ts:59-64`、`:89-93`）。这不是 warn，整次运行失败。实测把键写成 `'policy_desk..current'`：退出码 1，stderr 为 `boat: UNKNOWN: invalid state delta at session seq 20: state delta path "policy_desk..current" has an empty segment`。
 - **`defineTool`**（`dsh/core/tools/src/schema.ts:483-554`）：
-  - `parameters` 是逐属性的规格。`required` 只能写 `true`（`schema.ts:293`），对象类型必须显式写 `additionalProperties`（`schema.ts:368`）。包装后的 `execute` 先校验参数，不合格就抛 `ToolArgsError`（`schema.ts:597-601`）；但 `execute` 仍然要把参数当作不可信输入（CLAUDE.md:89）。
+  - `parameters` 是逐属性的规格。`required` 只能写 `true`（`schema.ts:293`），对象类型必须显式写 `additionalProperties`（`schema.ts:368`）。包装后的 `execute` 先校验参数，不合格就抛 `ToolArgsError`（`schema.ts:597-601`）；但 `execute` 仍然要把参数当作不可信输入（CLAUDE.md:90）。
   - `output.render(args, value)` 产出**模型看得到**的内容，这里就是 digest。
-  - `output.presentationMeta(args, value)` 产出**持久化但模型看不到**的 meta。它只对模型直接发起的调用计算（`dsh/core/tools/src/index.ts:1843-1851`）。带 `exec.parent` 的调用不计算：那是 `run_code`（PTC 模式）的 SDK 发出的子调度（`index.ts:340-349`）。所以在 `DSH_TOOLS_MODE=ptc` 下（`boat/bundles/run/cordis.patch.yml:16-18`），经 `run_code` 调到的 `query_policy` 既不出卡也不写状态。子 agent 里的工具调用对子 agent 来说是模型直接调用，会计算 meta，但写进子会话自己的日志，不会折进父会话的 `boatState`。CLAUDE.md:109-110 和 `tool-policy/src/state.ts:83-84` 的注释把这件事说成「子 agent 的调用不算 meta」，以代码为准。
+  - `output.presentationMeta(args, value)` 产出**持久化但模型看不到**的 meta。它只对模型直接发起的调用计算（`dsh/core/tools/src/index.ts:1843-1851`）。带 `exec.parent` 的调用不计算：那是 `run_code`（PTC 模式）的 SDK 发出的子调度（`index.ts:340-349`）。所以在 `DSH_TOOLS_MODE=ptc` 下（`boat/bundles/run/cordis.patch.yml:16-18`），经 `run_code` 调到的 `query_policy` 既不出卡也不写状态。子 agent 里的工具调用对子 agent 来说是模型直接调用，会计算 meta，但写进子会话自己的日志，不会折进父会话的 `boatState`。CLAUDE.md:110-111 和 `tool-policy/src/state.ts:83-84` 的注释把这件事说成「子 agent 的调用不算 meta」，以代码为准。
   - 输出 schema 里给字符串写 `enum` 时，`execute` 返回的字面量 `'ok'` 会被推断成 `string`，`tsc -b` 在 `execute` 属性上报 TS2322，错误链的最后一行是 `Type 'string' is not assignable to type '"ok" | "not-found"'`。写这个例子时实际遇到过，所以这里没有写 `enum`；给返回的字面量加 `as const` 也能通过。
-- **查不到保单时不抛错**，返回 `status: 'not-found'` 和一句降级 digest，保持上下文连贯（ark §4「失败必须给降级 digest」）。这时 `presentationMeta` 返回 `{}`、`stateDelta` 返回 `undefined`，经 tool-policy 包装后结果的 meta 是 `{"boat":{}}`（`boat/plugins/tool-policy/src/index.ts:81-89`），不出卡也不写状态。实测：`tool/result` 文本为 `status=not-found · 未找到保单 P-1001，请用户核对保单号`，meta 为 `{"boat":{}}`。
+- **查不到保单时不抛错**，返回 `status: 'not-found'` 和一句降级 digest，保持上下文连贯（设计原则 §4「失败必须给降级 digest」）。这时 `presentationMeta` 返回 `{}`、`stateDelta` 返回 `undefined`，经 tool-policy 包装后结果的 meta 是 `{"boat":{}}`（`boat/plugins/tool-policy/src/index.ts:81-89`），不出卡也不写状态。实测：`tool/result` 文本为 `status=not-found · 未找到保单 P-1001，请用户核对保单号`，meta 为 `{"boat":{}}`。
 - **`ctx.a2ui.render(...)`** 返回 `{ payload, digest, warnings, stateDelta }`（`boat/plugins/a2ui/src/index.ts:188-190`，`engine.ts:94-107`）。它不做契约校验，也不打印 `warnings`；这两件事只有 `render_a2ui` 工具会做（`index.ts:264-267`）。所以直接调用 `render` 的工具要自己处理：
-  - **warnings 打成 warn。** CLAUDE.md:90 要求设计上接受的降级打 warn。实测把 manifest 的 `fn` 写成不存在的 `sum_insured_txt`，stderr（用 §6 的 log-to-stderr 插件）出现 `[warn] policy-desk-tools: policy-desk: [MANIFEST] computed 'sum_insured_text': compute.js 缺少导出 'sum_insured_txt'`。
+  - **warnings 打成 warn。** CLAUDE.md:91 要求设计上接受的降级打 warn。实测把 manifest 的 `fn` 写成不存在的 `sum_insured_txt`，stderr（用 §6 的 log-to-stderr 插件）出现 `[warn] policy-desk-tools: policy-desk: [MANIFEST] computed 'sum_insured_text': compute.js 缺少导出 'sum_insured_txt'`。
   - **回退 digest。** `digest` 钩子抛错时 `rendered.digest` 是空串。没有回退的话模型只会看到 `status=ok · `；有了回退，实测看到 `status=ok · [卡片:保单] 已渲染`。`render_a2ui` 用的是同一种回退：`[卡片:<template>] 已渲染`（`index.ts:241`）。
   - **契约校验放在单元测试里**（§2.14）。
 
-另一种出卡方式是通用的 `render_a2ui`：模型调用 `render_a2ui({ template })`，它从 `boatState[stateKeys]` 取数据，所以要先有数据工具把状态写好。在组合文件里用 `@boat/a2ui/agent` 行注册它，写法见 `boat/plugins/a2ui/src/agent.ts:7-14` 的 JSDoc（仓库里还没有 agent 用这一行）；在代码里用 `ctx.a2ui.registerRenderTool(...)` 做同样的事，参照 `boat/bundles/run/tests/fixtures/plugins/a2ui/plugin.mjs`。本例选「业务工具里一次查数、写状态、出卡」，是 ark 的超集工具原则：一次调用把场景需要的状态落齐（ark §4），模型少调一次工具、少做一次判断。
+另一种出卡方式是通用的 `render_a2ui`：模型调用 `render_a2ui({ template })`，它从 `boatState[stateKeys]` 取数据，所以要先有数据工具把状态写好。在组合文件里用 `@boat/a2ui/agent` 行注册它，写法见 `boat/plugins/a2ui/src/agent.ts:7-14` 的 JSDoc（仓库里还没有 agent 用这一行）；在代码里用 `ctx.a2ui.registerRenderTool(...)` 做同样的事，参照 `boat/bundles/run/tests/fixtures/plugins/a2ui/plugin.mjs`。本例选「业务工具里一次查数、写状态、出卡」，是参考实现的超集工具原则：一次调用把场景需要的状态落齐（参考实现 §4），模型少调一次工具、少做一次判断。
 
 ### 2.11 拒识门：`src/intake.ts`
 
@@ -808,7 +808,7 @@ export function apply(ctx: Context): void {
 - 返回 `REPLY` 时，内核把这一步写成一条不请求模型的助手消息。代码只传 `{ provider: 'boat', model: reply.plugin }`（`dsh/core/agent-loop/src/agent.ts:438-460`，`:455`；`src/boat/step-hooks.ts:16`），日志里记下的 `source` 是 `{ kind: 'model', provider: 'boat', model: 'policy-desk-intake' }`。
 - 不命中时**必须** `return next()`，否则会挡住排在后面的所有监听器（§4.4）。
 - `boat/intake` 在**每一步**都会触发，包括工具之后的续步，那时 `messages` 是 `[]`（`agent.ts:277-283`）。所以这里只看 `source.kind === 'user'` 的文本。
-- 在本仓库里，这个行只从 `@boat/contracts` import 类型。仓库外的插件如果用 `boat/intake`，要声明 `inject: ['boatDistro']`，这样在官方 dsh 上它不会加载（README.md:45，CLAUDE.md:71）。
+- 在本仓库里，这个行只从 `@boat/contracts` import 类型。仓库外的插件如果用 `boat/intake`，要声明 `inject: ['boatDistro']`，这样在官方 dsh 上它不会加载（README.md:62，CLAUDE.md:71）。
 
 ### 2.12 构建
 
@@ -817,11 +817,11 @@ pnpm run build
 ls boat/agents/policy-desk/lib     # intake.js policies.js tools.js 及其 .d.ts / .map
 ```
 
-改了 `src/` 就要重新构建，因为 CLI 和 composite 测试加载的是 `lib/`（CLAUDE.md:170）。
+改了 `src/` 就要重新构建，因为 CLI 和 composite 测试加载的是 `lib/`（CLAUDE.md:171）。
 
 ### 2.13 从 CLI 运行
 
-**用真实模型**（`DEEPSEEK_API_KEY` 放在环境或 `$BOAT_HOME/.env` 里，数据写到 `$BOAT_HOME`，默认 `~/.boat`，README.md:47）：
+**用真实模型**（`DEEPSEEK_API_KEY` 放在环境或 `$BOAT_HOME/.env` 里，数据写到 `$BOAT_HOME`，默认 `~/.boat`，README.md:64）：
 
 ```sh
 DEEPSEEK_API_KEY=<你的 key> node boat/apps/cli/lib/bin.js run --agents ./boat/agents --agent policy-desk "保单 P-1001 还有效吗"
@@ -1012,7 +1012,7 @@ npx vitest run --project source boat/agents/policy-desk     # 5 passed
 
 ### 2.15 组合测试：`tests/policy-desk.composite.ts`
 
-agent 必须有组合测试（CLAUDE.md:156、:169-170）。`bootComposition` 在测试进程里按 launcher 的方式启动 `dsh-base + @boat/host + @boat/run`，内部参数放在 `ctx.cmdlineArgs` 上。loader 加载 `lib/`，所以要先构建（`boat/tooling/testing/src/composition.ts:1-13`、`:151-190`）。
+agent 必须有组合测试（CLAUDE.md:157、:169-170）。`bootComposition` 在测试进程里按 launcher 的方式启动 `dsh-base + @boat/host + @boat/run`，内部参数放在 `ctx.cmdlineArgs` 上。loader 加载 `lib/`，所以要先构建（`boat/tooling/testing/src/composition.ts:1-13`、`:151-190`）。
 
 ```ts
 /**
@@ -1156,15 +1156,15 @@ pnpm run build && npx vitest run boat/agents/policy-desk/tests/policy-desk.compo
 
 写脚本的规矩：
 
-- 按**用途**应答，路由请求靠系统文本识别，不要靠调用顺序（CLAUDE.md:167）。`withTitle` 替你回答标题请求（`scripted-model.ts:162-164`）。
+- 按**用途**应答，路由请求靠系统文本识别，不要靠调用顺序（CLAUDE.md:168）。`withTitle` 替你回答标题请求（`scripted-model.ts:162-164`）。
 - 路由器 prompt 里会引用每个技能的 description，所以判断意图只看 `<latest_user_input>` 里的内容（demo 的 `latestInput` 也是这么做的）。
 - loop 请求里，第一个 user 块就是任务本身，因为 DeepSeek 适配器把连续的 user 节点合并成了一条消息（用户消息、runtime context、技能目录）。
-- 请求里的工具顺序不是注册顺序，断言时用 `arrayContaining` 或先排序（CLAUDE.md:172）。
+- 请求里的工具顺序不是注册顺序，断言时用 `arrayContaining` 或先排序（CLAUDE.md:173）。
 - 最后一个用例断言 `reply.source` 用的是 `toMatchObject`，只检查子集：日志里的 `source` 还带着 `kind: 'model'`（§2.11）。
 
 ### 2.16 e2e 冒烟：`boat/apps/cli/tests/policy-desk-smoke.e2e.ts`
 
-每个 agent 在构建好的可执行文件上跑一次冒烟（CLAUDE.md:169、:171）。它证明安装闭包、profile 和 agent 目录能在发布产物里一起加载；agent 的行为由上面的组合测试负责。
+每个 agent 在构建好的可执行文件上跑一次冒烟（CLAUDE.md:170、:171）。它证明安装闭包、profile 和 agent 目录能在发布产物里一起加载；agent 的行为由上面的组合测试负责。
 
 ```ts
 /**
@@ -1235,9 +1235,9 @@ pnpm run typecheck   # tsc -b + tsc -p tsconfig.tests.json（测试也做类型�
 pnpm run test        # build + G1 + source/dsh/composite 三个项目
 ```
 
-新 agent 属于 CLAUDE.md 里的「结构性」任务：先按 C4 自顶向下写设计，在设计文档里记录验收运行，再提交（CLAUDE.md:117-123、:129）。设计文档按 CLAUDE.md:131 的形式交付：一份自包含的 HTML（mermaid 内联，不走 CDN），通过 artifact 工具发布，**不提交进仓库**。它必须包含 C4 图、单步流程（一步里的 intake、pre-assemble、路由、激活、组装；一次带状态增量和卡片的工具调用）、改动与影响表、验收日志。
+新 agent 属于 CLAUDE.md 里的「结构性」任务：先按 C4 自顶向下写设计，在设计文档里记录验收运行，再提交（CLAUDE.md:118-124、:129）。设计文档按 CLAUDE.md:132 的形式交付：一份自包含的 HTML（mermaid 内联，不走 CDN），通过 artifact 工具发布，**不提交进仓库**。它必须包含 C4 图、单步流程（一步里的 intake、pre-assemble、路由、激活、组装；一次带状态增量和卡片的工具调用）、改动与影响表、验收日志。
 
-提交信息的格式看工作是否属于里程碑（CLAUDE.md:183）：里程碑步骤写 `<milestone-step>: <package> — <交付了什么>`；不属于里程碑时用 conventional 前缀（仓库历史里有 `fix:`、`chore:`、`refactor:`）。正文写现在能跑什么、验收了什么，贴上跑过的命令（CLAUDE.md:148）；没有 eval 数据的 prompt 文本要写明是 working hypothesis（CLAUDE.md:197）；最后是会话给出的署名尾部；任何地方都不写模型标识（CLAUDE.md:184）。下面的步骤号 `M3-1` 只是示意，用设计文档里实际的步骤号：
+提交信息的格式看工作是否属于里程碑（CLAUDE.md:184）：里程碑步骤写 `<milestone-step>: <package> — <交付了什么>`；不属于里程碑时用 conventional 前缀（仓库历史里有 `fix:`、`chore:`、`refactor:`）。正文写现在能跑什么、验收了什么，贴上跑过的命令（CLAUDE.md:149）；没有 eval 数据的 prompt 文本要写明是 working hypothesis（CLAUDE.md:198）；最后是会话给出的署名尾部；任何地方都不写模型标识（CLAUDE.md:185）。下面的步骤号 `M3-1` 只是示意，用设计文档里实际的步骤号：
 
 ```text
 M3-1: @boat/agent-policy-desk — a policy lookup agent: routed skill, policy card, confirmation-gated copy, intake gate
@@ -1401,11 +1401,11 @@ stateDiagram-v2
 
 ## 4. 设计要点与约束
 
-### 4.1 ark 的 agent 设计原则仍然适用
+### 4.1 参考实现的 agent 设计原则仍然适用
 
-CLAUDE.md:197 要求设计、评审或移植 agent 之前先读 ark 的 `docs/agent_design_principles.md`：原则不变，只是机制换了。
+CLAUDE.md:198 要求设计、评审或移植 agent 之前先读参考实现的 `docs/agent_design_principles.md`：原则不变，只是机制换了。
 
-| ark 原则 | 在 policy-desk 里的落点 |
+| 设计原则 | 在 policy-desk 里的落点 |
 |---|---|
 | L1 只放身份、红线、节奏（§2） | persona 只有两句；「不荐股」这种硬红线写成 intake 门，确定地执行，不交给模型 |
 | description = WHAT + WHEN + 关键词 + 邻居边界（§3） | `policy-lookup` 的 description 写了「理赔进度、产品推荐、投资建议不归此」 |
@@ -1414,7 +1414,7 @@ CLAUDE.md:197 要求设计、评审或移植 agent 之前先读 ark 的 `docs/ag
 | 超集工具，一次把状态落齐（§4） | 一次调用同时写状态、出卡 |
 | 业务阈值、常量都在 L4（§5） | 状态文案在 manifest 的 `switch` 里，金额格式在 `compute.js`，数据校验和状态摘要在 `policies.ts`，都不在 SKILL 正文里 |
 | 终态工具要 `always`（§4） | boat 的 `render_a2ui` 默认 `always`，`terminalCards` 调用 `exec.concludeTurn()`（`boat/plugins/a2ui/src/index.ts:268`、`:280-284`） |
-| 改 prompt 要有 eval 数据（§8） | CLAUDE.md:197：没有 eval 数据的 prompt 改动是 working hypothesis，提交信息要写明（§2.17 的示例） |
+| 改 prompt 要有 eval 数据（§8） | CLAUDE.md:198：没有 eval 数据的 prompt 改动是 working hypothesis，提交信息要写明（§2.17 的示例） |
 
 ### 4.2 业务词汇只出现在 `boat/agents/`
 
@@ -1422,7 +1422,7 @@ CLAUDE.md:197 要求设计、评审或移植 agent 之前先读 ark 的 `docs/ag
 
 ### 4.3 技能命名
 
-名字必须匹配 `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`（`dsh/skill/skill/src/index.ts:21`）。从 ark 迁过来的下划线 id 要改名（CLAUDE.md:201）。不合法的名字**不会报错**：skill-filesystem 只打一条 warn，然后忽略这个文件（上游 `packages/skill/skill-filesystem/src/index.ts:820-822`；缺 `name` 或 `description` 时同样只 warn，见 `:816-818`），而 `boat run` 默认不打印 warn（§6）。实测把 `name` 改成 `policy_lookup` 以后：退出码 0，stderr 为空，**没有路由请求**（候选集为空），请求里只有 24 个工具。
+名字必须匹配 `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`（`dsh/skill/skill/src/index.ts:21`）。从参考实现迁过来的下划线 id 要改名（CLAUDE.md:202）。不合法的名字**不会报错**：skill-filesystem 只打一条 warn，然后忽略这个文件（上游 `packages/skill/skill-filesystem/src/index.ts:820-822`；缺 `name` 或 `description` 时同样只 warn，见 `:816-818`），而 `boat run` 默认不打印 warn（§6）。实测把 `name` 改成 `policy_lookup` 以后：退出码 0，stderr 为空，**没有路由请求**（候选集为空），请求里只有 24 个工具。
 
 ### 4.4 waterfall 监听器必须调用 `next()`
 
@@ -1447,7 +1447,7 @@ runtime context（每步作为 user 消息追加）和 system prompt 段是**两
 | section | `boat:skills`（仅 full 模式） | 450 | `boat/plugins/skill-router/src/index.ts:54` |
 | section | `PLAN_POLICY` … persona 后缀 | 500 … 10200 | `dsh/core/system-prompt/src/index.ts:128-158` |
 
-新的 prompt 文本要相对这些值选序号，并在 contracts 里登记（CLAUDE.md:205）。目前已有的 boat 常量放在各自所属的插件里。persona 行设 `includeRuntimeContext: false` 会压掉这个作用域里**所有**的 runtime context，`boat:state` 和 `boat:skill` 也在内（上游 `packages/preset/persona/src/index.ts:44-45`、`:74`）。
+新的 prompt 文本要相对这些值选序号，并在 contracts 里登记（CLAUDE.md:206）。目前已有的 boat 常量放在各自所属的插件里。persona 行设 `includeRuntimeContext: false` 会压掉这个作用域里**所有**的 runtime context，`boat:state` 和 `boat:skill` 也在内（上游 `packages/preset/persona/src/index.ts:44-45`、`:74`）。
 
 ### 4.6 agent 行不向根 realm 发布服务
 
@@ -1469,11 +1469,11 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 ### 4.9 失败要响亮，降级要记录
 
-配置错误在加载时或最早能解析的时候就要抛错（CLAUDE.md:90）。boat 里现成的例子：`@boat/tool-policy/agent` 声明了一个没有任何行注册的工具，第一步就以 `boat: UNKNOWN: boat tool policy: declared tool "no_such_tool" registered by no row reachable from agent "session-…"` 失败退出（实测）；`activate` 一个未声明的名字，同样抛错；`stateDelta` 返回坏路径也会让运行失败（§2.10）。设计上接受的降级只打 warn：路由超时保持当前技能、`requiredTools` 里有未声明的工具时跳过它（`boat/plugins/skill-router/src/index.ts:398-402`）、manifest 取值失败（§2.10 的工具把 `warnings` 打成 warn）。这些 warn 在 `boat run` 里默认看不到，§6 讲怎么打开。
+配置错误在加载时或最早能解析的时候就要抛错（CLAUDE.md:91）。boat 里现成的例子：`@boat/tool-policy/agent` 声明了一个没有任何行注册的工具，第一步就以 `boat: UNKNOWN: boat tool policy: declared tool "no_such_tool" registered by no row reachable from agent "session-…"` 失败退出（实测）；`activate` 一个未声明的名字，同样抛错；`stateDelta` 返回坏路径也会让运行失败（§2.10）。设计上接受的降级只打 warn：路由超时保持当前技能、`requiredTools` 里有未声明的工具时跳过它（`boat/plugins/skill-router/src/index.ts:398-402`）、manifest 取值失败（§2.10 的工具把 `warnings` 打成 warn）。这些 warn 在 `boat run` 里默认看不到，§6 讲怎么打开。
 
 ### 4.10 路由过的会话目前不能重开
 
-`boat/route-request` 和 `boat/skill-routed` 不在 dsh 的事件目录里，也没有 `ignorable` 标记，所以 dsh 的持久化层拒绝重开路由过的会话：`boat web` 打不开，也不能续会话（README.md:51，`boat/bundles/run/tests/reopen.composite.ts:109-113`）。拒识回复、状态、卡片、导入的历史都走已有的 envelope，这些会话可以重开。
+`boat/route-request` 和 `boat/skill-routed` 不在 dsh 的事件目录里，也没有 `ignorable` 标记，所以 dsh 的持久化层拒绝重开路由过的会话：`boat web` 打不开，也不能续会话（README.md:68，`boat/bundles/run/tests/reopen.composite.ts:109-113`）。拒识回复、状态、卡片、导入的历史都走已有的 envelope，这些会话可以重开。
 
 修复方案在发行版蓝图里。蓝图是一份不在仓库里的 HTML 设计文档，仓库里的发行版约定见 [02-distribution.md](02-distribution.md)。蓝图 §8 的例子 E1：dsh 的读路径其实接受带 `ignorable: true` 的未知事件，缺的只是写入口；所以给 `Session.append` 加一个可选参数 `{ ignorable: true }`，作为 `extend` 类改动登记进 `compatibility/contract/extensions.yml`。蓝图 §11 的路线图把它排在 D3，Web 和续会话排在 D4。另外，`boat web` 目前不读 agent 目录（§0.4，`boat/apps/cli/src/templates.ts:21-23`）。
 
@@ -1542,7 +1542,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 - **loop 模型不由 agent 决定。** `@boat/run` 创建 Agent 时读一次 `agentDefaultModel.currentSelection()`，作为 `agentOptions` 的 provider 和 model 传进去（`boat/bundles/run/src/index.ts:187`、`:192`、`:218`）。preset 定义里没有模型字段（上游 `packages/preset/agent-preset-registry/src/types.ts`、`definition.ts` 里没有 `model`），所以一个 run 进程里所有 agent 用同一个 loop 模型。
 - **默认选择来自 dsh-base 的 `agent-default-model` 行。** 它的配置是 provider `deepseek-official` 加一个模型 id；如果 dsh settings（在 `$BOAT_HOME` 下）里保存了选择，就用保存的（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:80-86`，上游 `packages/core/agent-default-model/src/index.ts:23-31`）。要换模型，就在 settings 或 profile patch 层改这一行，不是在 agent 目录里改。
-- **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README.md:47）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（§2.13）。
+- **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README.md:64）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（§2.13）。
 - **路由器可以单独选模型。** `@boat/skill-router/agent` 的 `provider` + `model`（必须成对）只影响路由的旁路调用；没给时用 agent 的 provider 和 model（`boat/plugins/skill-router/src/index.ts:305-306`）。§3.2 的 `boat/route-request` 记录了路由实际用的 `route`。
 
 ---
@@ -1557,7 +1557,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 | 组合（agent 必需） | `boat/agents/<id>/tests/<id>.composite.ts` | vitest `composite` 项目，加载 `lib/`，需先构建 | 路由、可见性、状态增量、卡片、审批、拒识，全部在会话日志和模型请求上断言 |
 | e2e 冒烟（每个 agent 一个） | `boat/apps/cli/tests/<id>-smoke.e2e.ts` | vitest `source` 项目，派生构建好的 `lib/bin.js` 进程 | 安装闭包 + profile + agent 目录能一起加载 |
 
-依据：CLAUDE.md:154-160 的测试表、:169「谁测什么」、:145「内核至少构建过一次」、`vitest.config.ts:19-26`、`:54-59`。测试名描述行为而不是实现，断言会话日志节点、投影状态、脚本模型记录的请求或工具结果，不断言私有字段（CLAUDE.md:165）。只 mock 边界：模型用脚本服务器，技能和模板用 fixture 文件；不要 mock 一个 boat 服务去测另一个（CLAUDE.md:166）。
+依据：CLAUDE.md:155-161 的测试表、:169「谁测什么」、:145「内核至少构建过一次」、`vitest.config.ts:19-26`、`:54-59`。测试名描述行为而不是实现，断言会话日志节点、投影状态、脚本模型记录的请求或工具结果，不断言私有字段（CLAUDE.md:166）。只 mock 边界：模型用脚本服务器，技能和模板用 fixture 文件；不要 mock 一个 boat 服务去测另一个（CLAUDE.md:167）。
 
 ### 5.2 怎么断言会话日志
 
@@ -1590,7 +1590,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 ### 5.4 验收
 
-改了用户会运行的东西（agent 就是），要在构建好的二进制上用脚本模型或真实 key 跑一次，并把命令贴进提交信息或 PR（CLAUDE.md:148）。里程碑式的工作还要把验收结果（跑了什么、日志里看到了什么）记进设计文档的验收日志（CLAUDE.md:123）。§2.13 的 `/tmp/policy-desk-try.sh` 输出就是一份现成的验收记录。
+改了用户会运行的东西（agent 就是），要在构建好的二进制上用脚本模型或真实 key 跑一次，并把命令贴进提交信息或 PR（CLAUDE.md:149）。里程碑式的工作还要把验收结果（跑了什么、日志里看到了什么）记进设计文档的验收日志（CLAUDE.md:124）。§2.13 的 `/tmp/policy-desk-try.sh` 输出就是一份现成的验收记录。
 
 ---
 
@@ -1629,14 +1629,14 @@ node boat/apps/cli/lib/bin.js run --plugin /path/to/log-to-stderr.mjs --agents .
 | 删了 `lib/` 之后构建报 `Cannot find entry: ["lib/types/{index,invariant,startup}.js"]`，或者 TS6305 `Output file … has not been built from source` | 陈旧的 `*.tsbuildinfo`（被 gitignore）让 `tsc -b` 以为各项目都是最新的，什么也不产出 | `find . -name '*.tsbuildinfo' -not -path './node_modules/*' -delete`，再 `pnpm run build` |
 | `error: agent "policy_desk" not found in the --agents directories (available: demo, policy-desk)`，退出 1 | id 写错了（id 就是目录名），或者目录里没有 `agent.cordis.yml` | 用列出来的 id；确认文件存在（`boat/bundles/run/src/startup.ts:86-89`） |
 | `boat: policy-desk-tools (./lib/tools.js): never started`，退出 1 | 没有构建，`lib/` 不存在；或者行的 `inject` 里有服务不可用 | `pnpm run build`；检查 `inject` |
-| `boat: persona (@deepseek-ai/dsh-persona): never started` | agent 目录不在仓库里，行名从目录向上找不到 `node_modules` | agent 放在 `boat/agents/` 下；包按名字解析依赖根目录提升的 `@deepseek-ai/*`、`@boat/*`（README.md:84） |
+| `boat: persona (@deepseek-ai/dsh-persona): never started` | agent 目录不在仓库里，行名从目录向上找不到 `node_modules` | agent 放在 `boat/agents/` 下；包按名字解析依赖根目录提升的 `@deepseek-ai/*`、`@boat/*`（README.md:101） |
 | 路由器从不调用，`auto` 工具从不出现，退出 0 | 技能名不合法（下划线、大写），文件被静默忽略 | 改成连字符小写；打开 warn 确认 |
 | 路由到了技能，但某个工具仍然不在请求里 | `requiredTools` 拼错，或者那个工具没有经 tool-policy 注册 | 打开 warn，会看到 `boat skill router: required tool "query_polcy" not declared to the tool policy; skipped`（实测） |
 | 第一步就失败，退出 1：`boat: UNKNOWN: boat tool policy: declared tool "no_such_tool" registered by no row reachable from agent "session-…"`（实测） | `@boat/tool-policy/agent` 声明了没有任何行注册的工具；这个检查在每一步的 `boat/pre-assemble` 之后做 | 修正名字，或者把注册工具的行加上（`boat/plugins/tool-policy/src/index.ts:244-249`）。§4.11 的名单换 profile 时也会触发 |
 | 工具调用之后退出 1：`boat: UNKNOWN: invalid state delta at session seq 20: state delta path "policy_desk..current" has an empty segment`（实测） | `stateDelta` 返回了非对象，或者点路径里有空段 | 按 §2.10 的契约返回对象或 `undefined`（`state.ts:59-64`、`:89-93`） |
 | `boat tool policy: auto tool "x" registered in agent "…"'s own layer, which restrict() cannot hide` | 在 `agent.ctx` 上注册了 `auto` 工具 | 在 preset 的行里注册（§4.6） |
 | `boat: Preset services require isolate realms: x` | agent 行调用了 `ctx.provide` | 改成宿主插件，或者只做声明（§4.6） |
-| 需要确认的工具总是失败：`requires approval, but no approval channel is available` | `boat run` 里没有审批应答方，默认答案是 `unavailable` | 这是设计行为（CLAUDE.md:90）；需要人工确认的场景放到有审批通道的前端 |
+| 需要确认的工具总是失败：`requires approval, but no approval channel is available` | `boat run` 里没有审批应答方，默认答案是 `unavailable` | 这是设计行为（CLAUDE.md:91）；需要人工确认的场景放到有审批通道的前端 |
 | 拒识门不生效，荐股问题照样到了路由器和模型 | 排在前面的某个 `boat/intake` 监听器没有调用 `next()`，把后面的监听器全挡掉了 | 让每个 intake 监听器在不处理时都 `return next()`（§4.4） |
 | 模型说「会话状态里没有…」 | 工具出错（`isError` 的结果不折叠，`state.ts:86`）；`stateDelta` 返回了 `undefined`；调用发生在 `run_code`（PTC）里，子调度不计算 meta；或者调用发生在子 agent 里，结果写进了子会话的日志 | 看 `tool/result.meta.boat.stateDelta`（§2.10 `presentationMeta` 一条） |
 | 卡片空白或字段为空 | manifest 的 `path` 解析失败且没有 `default`；computed 函数名不匹配；YAML 不是映射（会直接抛错） | 打开 warn 看 `policy-desk: [MANIFEST] …`（§2.10）；单元测试里断言 `warnings` 为 `[]`（`resolver.ts:31-59`） |
