@@ -2,6 +2,7 @@
   "name": "@boat/run",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's one-shot bundle over dsh-base: answer one task, optionally composed from an agent preset, and exit",
   "type": "module",
   "exports": {

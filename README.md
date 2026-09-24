@@ -1,6 +1,7 @@
 # 轻舟 boat
 
 [![CI](https://github.com/lyteboat/boat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lyteboat/boat/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **中文** | [English](README.en.md)
 
@@ -208,7 +209,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 许可证
 
-轻舟自身的代码尚未声明许可证。`dsh/` 下的内核包和少数改编文件来自 DeepSeek Harness，遵循 MIT 许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+轻舟以 [MIT 许可证](LICENSE) 发布。`dsh/` 下的内核包，以及文件头标注 "Adapted from deepseek-ai/deepseek-harness" 的文件，保留 DeepSeek 的 MIT 版权声明，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 致谢
 

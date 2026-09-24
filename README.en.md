@@ -1,6 +1,7 @@
 # boat
 
 [![CI](https://github.com/lyteboat/boat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lyteboat/boat/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [中文](README.md) | **English**
 
@@ -210,7 +211,7 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 
 ## License
 
-boat's own code does not declare a license yet. The kernel packages under `dsh/` and a few adapted files come from DeepSeek Harness under the MIT License; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+boat is released under the [MIT License](LICENSE). The kernel packages under `dsh/` and the files marked "Adapted from deepseek-ai/deepseek-harness" keep DeepSeek's MIT copyright notice; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Acknowledgements
 

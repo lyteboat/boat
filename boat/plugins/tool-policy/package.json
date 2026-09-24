@@ -2,6 +2,7 @@
   "name": "@boat/tool-policy",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's tool policy over the dsh tool registry: visibility (always/auto + activation), confirmation, and tool-result state deltas folded into the boatState projection",
   "type": "module",
   "exports": {

@@ -2,6 +2,7 @@
   "name": "@boat/history-import",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's external history import: the reference SA history merge rules (rounds, half rounds, dedup by trace id) turned into a session seed of closed turns",
   "type": "module",
   "exports": {

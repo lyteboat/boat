@@ -2,6 +2,7 @@
   "name": "@boat/skill-router",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's skill router over the dsh skill registry: full / dynamic load modes, LLM routing per user input (the reference LLMSkillRouter), the boatActiveSkill projection, and required-tool activation through @boat/tool-policy",
   "type": "module",
   "exports": {
