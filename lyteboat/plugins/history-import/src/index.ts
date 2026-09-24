@@ -4,8 +4,7 @@
  * (a list of entries grouped into rounds by trace id) has to become log nodes:
  * this service parses it with the reference round rules and builds the seed of
  * closed turns a new session starts from. Importing into a live session is not offered: the driver
- * counts turns from its own phase, and dsh's persistence would refuse a
- * lyteboat-specific audit node.
+ * counts turns from its own phase.
  * @module @lyteboat/history-import
  */
 

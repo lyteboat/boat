@@ -929,12 +929,21 @@ importers:
       '@lyteboat/a2ui':
         specifier: workspace:*
         version: link:../../plugins/a2ui
+      '@lyteboat/aux-llm':
+        specifier: workspace:*
+        version: link:../../plugins/aux-llm
       '@lyteboat/distro':
         specifier: workspace:*
         version: link:../../plugins/distro
       '@lyteboat/history-import':
         specifier: workspace:*
         version: link:../../plugins/history-import
+      '@lyteboat/intake-guard':
+        specifier: workspace:*
+        version: link:../../plugins/intake-guard
+      '@lyteboat/request-context':
+        specifier: workspace:*
+        version: link:../../plugins/request-context
       '@lyteboat/skill-router':
         specifier: workspace:*
         version: link:../../plugins/skill-router
