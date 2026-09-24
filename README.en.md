@@ -31,11 +31,13 @@ lyteboat turns that last mile into a reusable chassis for vertical agents. A tea
 ## Features
 
 - **Business capabilities out of the box**, as Cordis plugins on dsh's seams; the framework packages carry no business vocabulary:
-  - Skill routing: `full` puts every skill body in the prompt; `dynamic` picks a skill with a side model call each turn and applies it in the same step (`@lyteboat/skill-router`).
+  - Skill routing: `full` puts every skill body in the prompt; `dynamic` picks a skill with a side model call each turn and applies it in the same step; the routed skill is dsh's own skill-invocation message, so the session reopens and continues (`@lyteboat/skill-router`).
   - Tool visibility, confirmation before a call, and state deltas carried by tool results (`@lyteboat/tool-policy`).
-  - A2UI template cards (`@lyteboat/a2ui`).
+  - A2UI template cards: a tool result can carry several, shown at once or placed where the answer writes a `[[card:<area>]]` marker, by emission mode (`@lyteboat/a2ui`).
+  - Request context: a request enters the log with its own context and admission verdict, and the session keeps the context (`@lyteboat/request-context`).
+  - Admission ahead of the loop: an agent registers an admission function that lets a request in or answers it before the loop, cards included (`@lyteboat/intake-guard`); the lower-level `lyteboat/intake` hook remains available.
+  - Audited side calls: routing and classification calls leave their full prompt and answer in the session (`@lyteboat/aux-llm`).
   - Import of external conversation history (`@lyteboat/history-import`).
-  - An intake gate that answers a turn without a model request (`lyteboat/intake`).
 - **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `lyteboat/agents/<id>/`.
 - **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 13 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
 - **Traceable.** Everything a model sees is reconstructable from the session log, and every fact lyteboat records rides an envelope dsh already knows.
@@ -169,7 +171,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 |---|---|---|
 | `lyteboat/apps/cli` | `@lyteboat/cli` | The `lyteboat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `lyteboat/bundles/host` | `@lyteboat/host` | The host bundle every profile lists: the distribution marker and the capability plugins' service rows |
-| `lyteboat/bundles/run` | `@lyteboat/run` | The one-shot bundle behind `lyteboat run`: task, `--agent`, `--agents`, `--history` |
+| `lyteboat/bundles/run` | `@lyteboat/run` | The one-shot bundle behind `lyteboat run`: task, `--agent`, `--agents`, `--history`, `--session-id`, `--context`; a request is admitted before the loop, and the output composes the turn's cards |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record; an answer cut off at `maxTokens` is a failure; `reasoningEffort` sets the effort side calls request |
@@ -210,10 +212,11 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 
 ## Status and roadmap
 
-- Tracks dsh **0.1.7-rc.1** (`dsh.upstream.json`). The kernel is its import plus lyteboat's two registered extensions (`lyteboat/intake`, `lyteboat/pre-assemble`), and every gate above passes against it.
-- Delivered: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, history-import, and the intake gate; the demo agent; the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. See the [CHANGELOG](CHANGELOG.md) for each milestone.
+- Tracks dsh **0.1.7-rc.1** (`dsh.upstream.json`). The kernel is its import plus lyteboat's three registered extensions (`lyteboat/intake`, `lyteboat/pre-assemble`, `session-append-ignorable`), and every gate above passes against it.
+- Delivered: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the demo and finance agents; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. See the [CHANGELOG](CHANGELOG.md) for each milestone.
 - Known limitations:
-  - There is no server mode yet (`/chat`, multiple users), and `lyteboat web` does not read agent directories.
+  - There is no server mode yet (`/chat`, multiple users). `lyteboat web` does not read agent directories, and a message arriving through it is admitted in the loop without a recorded verdict.
+  - There is no memory, no suggested questions, and no per-agent choice of business and side-call models.
 - What comes next: the roadmap in the [alignment analysis](docs/04-reference-alignment.md#6-路线图从-d3-开始).
 
 ## Contributing

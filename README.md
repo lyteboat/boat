@@ -31,11 +31,13 @@
 ## 特性
 
 - **业务能力开箱即用。** 都以 Cordis 插件的形式挂在 dsh 的接缝上，框架包不含任何业务词汇：
-  - 技能路由：`full` 把全部技能正文放进提示；`dynamic` 每轮用一次旁路模型调用选出技能，并在同一步生效（`@lyteboat/skill-router`）。
+  - 技能路由：`full` 把全部技能正文放进提示；`dynamic` 每轮用一次旁路模型调用选出技能，并在同一步生效；路由结果是 dsh 自己的技能调用消息，会话能重开、能续聊（`@lyteboat/skill-router`）。
   - 工具可见性、调用前确认、工具结果里的状态增量（`@lyteboat/tool-policy`）。
-  - A2UI 模板卡片（`@lyteboat/a2ui`）。
+  - A2UI 模板卡片：一个工具结果可以带多张卡，按发射模式立即出，或由回答里的 `[[card:区域]]` 标记放到位（`@lyteboat/a2ui`）。
+  - 请求上下文：一条请求带着自己的上下文和准入判定进日志，会话内沿用（`@lyteboat/request-context`）。
+  - 准入前移：agent 登记准入函数，请求进循环前就放行或直接回复，回复可以带卡（`@lyteboat/intake-guard`）；底层的拒识钩子 `lyteboat/intake` 仍可直接用。
+  - 旁路模型调用留痕：路由、分类这类旁路调用在会话里留下完整的 prompt 和回答（`@lyteboat/aux-llm`）。
   - 外部对话历史导入（`@lyteboat/history-import`）。
-  - 拒识门：不请求模型，直接回复一轮（`lyteboat/intake`）。
 - **一个业务 agent 就是一个目录。** 在 `lyteboat/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
 - **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`dsh-compat/`](dsh-compat/README.md)）。
 - **有迹可查。** 模型看到的一切都能从会话日志还原；轻舟记录的事实都放在 dsh 已有的日志信封里。
@@ -167,7 +169,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 |---|---|---|
 | `lyteboat/apps/cli` | `@lyteboat/cli` | `lyteboat` 启动器：profile 模板、patch 叠加、启动（改编自 dsh 的 CLI） |
 | `lyteboat/bundles/host` | `@lyteboat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
-| `lyteboat/bundles/run` | `@lyteboat/run` | `lyteboat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history` |
+| `lyteboat/bundles/run` | `@lyteboat/run` | `lyteboat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history`、`--session-id`、`--context`；请求进循环前先准入，输出按轮组合卡片 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略 |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | 旁路模型调用（技能路由、准入分类）：各自带超时，每次调用在会话里留一条可忽略的审计记录；在 `maxTokens` 处截断的回答算失败；`reasoningEffort` 配置旁路调用请求的推理强度 |
@@ -208,10 +210,11 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 状态与路线图
 
-- 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的两个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`），上面所有闸门都对它通过。
-- 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、history-import 与拒识门；示例 agent；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
+- 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的三个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`、`session-append-ignorable`），上面所有闸门都对它通过。
+- 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；示例 agent 与金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
-  - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录。
+  - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
+  - 还没有记忆、推荐问，也不能按 agent 分别配置业务模型和旁路模型。
 - 下一步见[对齐分析的路线图](docs/04-reference-alignment.md#6-路线图从-d3-开始)。
 
 ## 参与贡献
