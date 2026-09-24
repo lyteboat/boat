@@ -1,0 +1,46 @@
+{
+  "name": "@boat/tool-policy",
+  "version": "0.0.1",
+  "private": true,
+  "description": "boat's tool policy over the dsh tool registry: visibility (always/auto + activation), confirmation, and tool-result state deltas folded into the boatState projection",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@boat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./agent": {
+      "@boat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@boat/contracts": "workspace:*",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@boat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

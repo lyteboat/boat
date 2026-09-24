@@ -1,42 +1,78 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./boat/tsconfig.base.json",
   "files": [],
   "references": [
     {
-      "path": "./core/cordis-compat"
+      "path": "./dsh/llm/llm"
     },
     {
-      "path": "./core/contracts"
+      "path": "./dsh/core/session"
     },
     {
-      "path": "./core/agentic-loop"
+      "path": "./dsh/core/system-prompt"
     },
     {
-      "path": "./plugins/tool-policy"
+      "path": "./dsh/core/tools"
     },
     {
-      "path": "./plugins/skill-router"
+      "path": "./dsh/skill/skill"
     },
     {
-      "path": "./plugins/a2ui"
+      "path": "./dsh/core/agent"
     },
     {
-      "path": "./plugins/history-import"
+      "path": "./dsh/core/agent-loop"
     },
     {
-      "path": "./bundles/run"
+      "path": "./dsh/session/session-projection"
     },
     {
-      "path": "./apps/cli"
+      "path": "./dsh/session/session-persistence"
     },
     {
-      "path": "./agents/demo"
+      "path": "./dsh/session/session-persistence-jsonl"
     },
     {
-      "path": "./tooling/testing"
+      "path": "./dsh/compaction/compaction"
     },
     {
-      "path": "./tooling/dsh-agent-loop-testkit-fork"
+      "path": "./dsh/compaction/compaction-basic"
+    },
+    {
+      "path": "./dsh/test-support/agent-loop-testkit"
+    },
+    {
+      "path": "./boat/core/cordis-compat"
+    },
+    {
+      "path": "./boat/core/contracts"
+    },
+    {
+      "path": "./boat/plugins/tool-policy"
+    },
+    {
+      "path": "./boat/plugins/skill-router"
+    },
+    {
+      "path": "./boat/plugins/a2ui"
+    },
+    {
+      "path": "./boat/plugins/history-import"
+    },
+    {
+      "path": "./boat/plugins/distro"
+    },
+    {
+      "path": "./boat/bundles/run"
+    },
+    {
+      "path": "./boat/apps/cli"
+    },
+    {
+      "path": "./boat/agents/demo"
+    },
+    {
+      "path": "./boat/tooling/testing"
     }
   ]
 }

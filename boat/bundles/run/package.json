@@ -1,0 +1,64 @@
+{
+  "name": "@boat/run",
+  "version": "0.0.1",
+  "private": true,
+  "description": "boat's one-shot bundle over dsh-base: answer one task, optionally composed from an agent preset, and exit",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@boat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./startup": {
+      "@boat/source": "./src/startup.ts",
+      "types": "./lib/startup.d.ts",
+      "default": "./lib/startup.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@boat/history-import": "workspace:*",
+    "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
+    "@deepseek-ai/dsh-brand": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-util-values": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "commander": "catalog:",
+    "js-yaml": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*"
+  },
+  "devDependencies": {
+    "@boat/host": "workspace:*",
+    "@boat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "@types/js-yaml": "catalog:"
+  }
+}

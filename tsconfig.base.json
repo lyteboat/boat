@@ -1,4 +1,10 @@
 {
+  // The compiler options of upstream's tsconfig.base.json at the pinned tag, which
+  // every kernel package's tsconfig.json extends as ../../../tsconfig.base.json.
+  // Kept as upstream has them (no isolatedModules), so tsc inlines the const enums
+  // of the published cordis build (FiberState) the way upstream's build does;
+  // upstream's `paths` facade is replaced by the workspace links pnpm makes.
+  // boat's own packages extend boat/tsconfig.base.json instead.
   "compilerOptions": {
     "target": "es2024",
     "module": "esnext",
@@ -13,7 +19,6 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": false,
-    "isolatedModules": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -21,11 +26,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "types": [
-      "node"
-    ],
-    "customConditions": [
-      "@boat/source"
-    ]
+    "types": ["node"]
   }
 }

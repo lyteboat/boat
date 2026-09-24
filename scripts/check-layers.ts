@@ -1,10 +1,11 @@
 /**
- * Enforce the layer rule: a workspace package's layer is its top-level
- * directory, and dependencies point down only. Runtime edges (dependencies,
+ * Enforce the layer rule: a boat package's layer is its directory under
+ * `boat/`, and dependencies point down only. Runtime edges (dependencies,
  * peerDependencies) follow RUNTIME; devDependencies may also reach DEV_ONLY
  * (tests only). Between plugins the only allowed source import is
  * `import type`, the service declaration a plugin merges onto the cordis
- * Context. Exits non-zero with one line per violation.
+ * Context. The kernel under `dsh/` is below every layer and never names a
+ * boat package. Exits non-zero with one line per violation.
  *
  *   node --import tsx scripts/check-layers.ts
  * @module scripts/check-layers
@@ -57,7 +58,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 function workspacePackages(): WorkspacePackage[] {
   const found: WorkspacePackage[] = []
   for (const layer of LAYERS) {
-    const layerDir = join(root, layer)
+    const layerDir = join(root, 'boat', layer)
     if (!existsSync(layerDir)) continue
     for (const entry of readdirSync(layerDir, { withFileTypes: true })) {
       const file = join(layerDir, entry.name, 'package.json')
@@ -108,10 +109,30 @@ function checkPluginImports(pkg: WorkspacePackage, layerOf: ReadonlyMap<string, 
   return problems
 }
 
+/**
+ * The kernel (dsh/kernel.json) sits below every boat layer: a boat package may
+ * depend on it like on any dsh seam, but no kernel package may name a boat
+ * package, in its manifest or in any source or test file.
+ */
+function checkKernel(): string[] {
+  const kernel = (JSON.parse(readFileSync(join(root, 'dsh/kernel.json'), 'utf8')) as { packages: Record<string, string> }).packages
+  const problems: string[] = []
+  for (const [name, dir] of Object.entries(kernel)) {
+    const packageDir = join(root, 'dsh', dir)
+    const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as Manifest
+    const deps = { ...manifest.dependencies, ...manifest.peerDependencies, ...manifest.devDependencies }
+    for (const dep of Object.keys(deps)) if (dep.startsWith('@boat/')) problems.push(`kernel package ${name} depends on ${dep}`)
+    for (const file of [...sourceFiles(join(packageDir, 'src')), ...sourceFiles(join(packageDir, 'tests'))]) {
+      if (/from\s+'@boat\/|import\s+'@boat\//u.test(readFileSync(file, 'utf8'))) problems.push(`${relative(root, file)} imports a boat package; the kernel knows no boat package`)
+    }
+  }
+  return problems
+}
+
 function main(): void {
   const packages = workspacePackages()
   const layerOf = new Map(packages.map(pkg => [pkg.manifest.name, pkg.layer] as const))
-  const problems = packages.flatMap(pkg => [...checkManifest(pkg, layerOf), ...checkPluginImports(pkg, layerOf)])
+  const problems = [...packages.flatMap(pkg => [...checkManifest(pkg, layerOf), ...checkPluginImports(pkg, layerOf)]), ...checkKernel()]
   if (problems.length === 0) return
   for (const problem of problems) process.stderr.write(`check-layers: ${problem}\n`)
   process.exitCode = 1

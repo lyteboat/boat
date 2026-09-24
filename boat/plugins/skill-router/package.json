@@ -1,0 +1,50 @@
+{
+  "name": "@boat/skill-router",
+  "version": "0.0.1",
+  "private": true,
+  "description": "boat's skill router over the dsh skill registry: full / dynamic load modes, LLM routing per user input (the reference LLMSkillRouter), the boatActiveSkill projection, and required-tool activation through @boat/tool-policy",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@boat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./agent": {
+      "@boat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@boat/contracts": "workspace:*",
+    "@boat/tool-policy": "workspace:*",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-skill": "workspace:*",
+    "@deepseek-ai/dsh-timeout": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@boat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

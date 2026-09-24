@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.base.json",
+  "extends": "./boat/tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
     "incremental": false,
@@ -9,18 +9,25 @@
     "rootDir": "."
   },
   "include": [
-    "apps/*/tests/**/*.ts",
-    "apps/*/src/**/*.ts",
-    "bundles/*/tests/**/*.ts",
-    "bundles/*/src/**/*.ts",
-    "plugins/*/tests/**/*.ts",
-    "plugins/*/src/**/*.ts",
-    "core/*/tests/**/*.ts",
-    "core/*/src/**/*.ts",
-    "agents/*/tests/**/*.ts",
-    "agents/*/src/**/*.ts",
-    "tooling/*/tests/**/*.ts",
-    "tooling/*/src/**/*.ts",
-    "scripts/**/*.ts"
+    "boat/apps/*/tests/**/*.ts",
+    "boat/apps/*/src/**/*.ts",
+    "boat/bundles/*/tests/**/*.ts",
+    "boat/bundles/*/src/**/*.ts",
+    "boat/plugins/*/tests/**/*.ts",
+    "boat/plugins/*/src/**/*.ts",
+    "boat/core/*/tests/**/*.ts",
+    "boat/core/*/src/**/*.ts",
+    "boat/agents/*/tests/**/*.ts",
+    "boat/agents/*/src/**/*.ts",
+    "boat/tooling/*/tests/**/*.ts",
+    "boat/tooling/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    "compatibility/**/*.ts"
+  ],
+  // Upstream code carried by the G2 harness (it reads cordis const enums, which
+  // isolatedModules rejects); upstream type-checks it, boat runs it.
+  "exclude": [
+    "compatibility/tests/upstream-harness/test-invariants.ts",
+    "compatibility/tests/upstream-harness/shims/*.ts"
   ]
 }
