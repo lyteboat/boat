@@ -2,7 +2,7 @@
 
 > **读者**：熟悉参考实现（Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。第一次读，先看 §0.7 的术语表。
 >
-> **描述的状态**：仓库分支 `c-willis/magical-mccarthy-q2grch`，`HEAD = 8b09937`（`F2-6: @lyteboat/agent-finance — the request context names the customer; an admission ahead of the loop`），代码与该提交一致。本文第一版写于 `3d29a07`（`dist(promote): dsh-llm and dsh-skill enter the kernel`）；这一版补上此后三个里程碑给发行版带来的变化：V1（金融智能体与敏感词检查，`4f9d04c`、`739865b`）、F1（路由过的会话能重开，`ab2c5ae`）、F2（内核扩展 `session-append-ignorable` 及其第一个使用者 `@lyteboat/aux-llm`，`c5a553f` 到 `8b09937`）。跟踪的上游仍是 `dsh-v0.1.7-rc.1`，上游提交 `46a7f68b`（`dsh.upstream.json:2-4`）。
+> **描述的状态**：仓库分支 `c-willis/magical-mccarthy-q2grch`，`HEAD = 8b09937`（`F2-6: @lyteboat/agent-finance — the request context names the customer; an admission ahead of the loop`），代码与该提交一致。本文第一版写于 `3d29a07`（`dist(promote): dsh-llm and dsh-skill enter the kernel`）；这一版补上此后三个里程碑给发行版带来的变化：V1（金融智能体与敏感词检查，`4f9d04c`、`739865b`）、F1（路由过的会话能重开，`ab2c5ae`）、F2（内核扩展 `session-append-ignorable` 及其第一个使用者 `@lyteboat/aux-llm`，`c5a553f` 到 `8b09937`）。跟踪的上游仍是 `dsh-v0.1.7-rc.1`，上游提交 `46a7f68b`（`dsh.upstream.json:2-4`）。 之后的 `809e64d` 删掉了示例 agent `agents/demo`、把 `agents/finance` 精简到最小：这不碰内核和发行版机制，本文只相应改了包数、包列表和 `CLAUDE.md` 行号；标 **[实跑]** 的计数（如内核链接数）仍是 `8b09937` 上的。
 >
 > **路径写法**：不带前缀的路径相对仓库根。`up:` 开头的路径相对上游 checkout `/home/user/deepseek-ai/dsh-0.1.7-rc.1/`（该目录 `git rev-parse HEAD` 为 `46a7f68b…`，正是钉住的提交）。
 >
@@ -81,22 +81,22 @@ flowchart LR
 
 ### 0.5 最重要的五条规则
 
-1. **内核外优先。** 新行为先做成 lyteboat 插件、seam provider 或 lyteboat 自有 seam；实在不行才改内核，而且内核只收 harness 级能力（`CLAUDE.md:73`）。
-2. **内核只通过分类提交改变。** 碰 `dsh/<group>/<package>/` 的提交必须带 `Dist-Change` 和该类要求的 trailer（`CLAUDE.md:74`）。
-3. **契约只增不减，而且要登记。** 删除必定失败；改动（只能是放宽）和追加都必须在 `extensions.yml` 登记，并由一个 `extend` 提交点名（`CLAUDE.md:75`；`scripts/dist/contract-check.ts:94-107`）。
-4. **上游测试永不修改。** 环境差异只在测试装置里适配（`CLAUDE.md:76`）。
-5. **历史不改写。** 同步用合并；不 force-push，不改写已推送的提交（`CLAUDE.md:184`、`:195`）。
+1. **内核外优先。** 新行为先做成 lyteboat 插件、seam provider 或 lyteboat 自有 seam；实在不行才改内核，而且内核只收 harness 级能力（`CLAUDE.md:72`）。
+2. **内核只通过分类提交改变。** 碰 `dsh/<group>/<package>/` 的提交必须带 `Dist-Change` 和该类要求的 trailer（`CLAUDE.md:73`）。
+3. **契约只增不减，而且要登记。** 删除必定失败；改动（只能是放宽）和追加都必须在 `extensions.yml` 登记，并由一个 `extend` 提交点名（`CLAUDE.md:74`；`scripts/dist/contract-check.ts:94-107`）。
+4. **上游测试永不修改。** 环境差异只在测试装置里适配（`CLAUDE.md:75`）。
+5. **历史不改写。** 同步用合并；不 force-push，不改写已推送的提交（`CLAUDE.md:183`、`:195`）。
 
 ### 0.6 与参考实现对照
 
 | 话题 | 参考实现 | lyteboat |
 |---|---|---|
-| 引擎代码的归属 | 参考实现的 `core/` 是自己写的引擎，规则是 core 自包含（参考实现 `CLAUDE.md:39`） | 引擎是 dsh 的 13 个包。源码在 `dsh/`，但包名和契约属于上游；lyteboat 的改动都是登记过的差量 |
-| 组件怎么接起来 | `Lifecycle` / `Plugin` 协议 + `AppContext`，由 `app.py` 组装（参考实现 `CLAUDE.md:40`、`:49-57`） | cordis 插件 + `ctx` 上的服务 + `inject`；组合是 YAML 数据（profile、bundle、patch），见 §0.7 |
+| 引擎代码的归属 | 参考实现的 `core/` 是自己写的引擎，规则是 core 自包含（参考实现 `CLAUDE.md:38`） | 引擎是 dsh 的 13 个包。源码在 `dsh/`，但包名和契约属于上游；lyteboat 的改动都是登记过的差量 |
+| 组件怎么接起来 | `Lifecycle` / `Plugin` 协议 + `AppContext`，由 `app.py` 组装（参考实现 `CLAUDE.md:39`、`:49-57`） | cordis 插件 + `ctx` 上的服务 + `inject`；组合是 YAML 数据（profile、bundle、patch），见 §0.7 |
 | 版本号 | `pyproject.toml` 写 `x.y.z.n`；用 release commit 的短 SHA 作下次发版的边界（参考实现 `docs/RELEASING.md:14`、`:27`） | 仓库里保持上游版本号，打包时才盖 `+lyteboat.<commit>`；差量的边界是最近一次 `Dist-Import` 提交 |
 | "兼容"指什么 | wheel 使用方看到的公开 API（发版说明里的 Breaking Changes） | 与同版本官方 dsh 在协议、接口、行为上一致，由 G1–G6 机器证明 |
-| 分支 | 只推 `claude/*`（参考实现 `CLAUDE.md:141`） | 只推任务指定的分支（实践中是 `c-willis/*`），从不推 main、master、develop（`CLAUDE.md:184`） |
-| 发版产物 | wheel + `RELEASE_NOTES.md` | 还没有：lyteboat 仓库没有 git tag；`CHANGELOG.md` 按里程碑记录交付了什么，开头就写明还没有发过版（`CHANGELOG.md:3`）；16 个 `@lyteboat/*` 包都是 `0.0.1` 且 `private: true`（见 §7.6） |
+| 分支 | 只推 `claude/*`（参考实现 `CLAUDE.md:140`） | 只推任务指定的分支（实践中是 `c-willis/*`），从不推 main、master、develop（`CLAUDE.md:183`） |
+| 发版产物 | wheel + `RELEASE_NOTES.md` | 还没有：lyteboat 仓库没有 git tag；`CHANGELOG.md` 按里程碑记录交付了什么，开头就写明还没有发过版（`CHANGELOG.md:3`）；15 个 `@lyteboat/*` 包都是 `0.0.1` 且 `private: true`（见 §7.6） |
 
 ### 0.7 术语：正文直接用到的 dsh 词汇
 
@@ -104,14 +104,14 @@ flowchart LR
 |---|---|---|---|---|
 | cordis 插件、服务、`inject` | cordis 是 dsh 底下的插件框架。插件是带 `apply(ctx)` 的对象或 `Service` 子类；服务在 `ctx` 上占一个稳定的键（`ctx.llm`、`ctx.sessions`）；`inject` 列出依赖的服务，服务不在，插件就停在等待状态 | `lyteboat/plugins/distro/src/index.ts:21` 的 `super(ctx, 'lyteboatDistro')` 发布服务；`distro-aware.mjs` 的 `export const inject = ['lyteboatDistro']` 依赖它（§4.4） | `Plugin(Lifecycle)` + `AppContext`，但依赖由框架按服务键解析，而不是组装根手工传递 | `up:docs/cordis-primer.md:9-11` |
 | 事件与派发模式 | 服务用声明合并声明事件名，按 `emit`、`waterfall`、`parallel`、`serial`、`bail` 之一派发；**派发模式是事件公开契约的一部分** | 契约快照 `events.json` 为每个事件记下模式，G1 比对它（§4.1） | 回调 / hook 列表 | `up:docs/cordis-primer.md:12`、`:15-27` |
-| waterfall 与 `next()` | 环绕式中间件：监听器收到 `(...args, next)`，调 `next()` 交给下一个，不调就短路后面所有监听器 | `dsh/core/agent-loop/src/agent.ts:279-282` 派发 `lyteboat/intake`，链尾的默认值是 `{ kind: 'pass' }`；lyteboat 规定 waterfall 监听器必须调 `next()`（`CLAUDE.md:83`） | 中间件链 | `up:docs/cordis-primer.md:29-35` |
-| seam、provider | seam 是一个可替换的能力：一个服务定义（占 `ctx.<key>`）、一个或多个 provider、一个或多个消费方 | `ctx.llm` 由内核 `dsh-llm` 定义，npm 上的 `dsh-llm-deepseek` 是 provider（它对 `dsh-llm` 是 peer 依赖）；lyteboat 列出的 seam 见 `CLAUDE.md:63` | Protocol + 可替换实现（参考实现的 DIP 规则） | `up:docs/glossary.md:9` |
+| waterfall 与 `next()` | 环绕式中间件：监听器收到 `(...args, next)`，调 `next()` 交给下一个，不调就短路后面所有监听器 | `dsh/core/agent-loop/src/agent.ts:279-282` 派发 `lyteboat/intake`，链尾的默认值是 `{ kind: 'pass' }`；lyteboat 规定 waterfall 监听器必须调 `next()`（`CLAUDE.md:82`） | 中间件链 | `up:docs/cordis-primer.md:29-35` |
+| seam、provider | seam 是一个可替换的能力：一个服务定义（占 `ctx.<key>`）、一个或多个 provider、一个或多个消费方 | `ctx.llm` 由内核 `dsh-llm` 定义，npm 上的 `dsh-llm-deepseek` 是 provider（它对 `dsh-llm` 是 peer 依赖）；lyteboat 列出的 seam 见 `CLAUDE.md:62` | Protocol + 可替换实现（参考实现的 DIP 规则） | `up:docs/glossary.md:9` |
 | profile、bundle、patch、行（row） | bundle 是作者分发的组合，profile 是用户用 `--profile <名字>` 启动的东西；patch 是一个 YAML 数组，里面是插件"行"（`id` + 包名 `name` + 可选 `config`/`disabled`），或按 `id` 覆盖已有行、用 `- insert:` 插入新行的操作。启动时按 bundle → profile → `$DSH_HOME` → `--patch` 的顺序叠加 | `lyteboat/bundles/host/cordis.patch.yml:10-24` 先按 `id` 覆盖 dsh-base 的 `session-log-deepseek` 行和 `session-telemetry-otel` 行（后者 `disabled: true`，F1 加的），再用 `- insert:` 插入从 `id: lyteboat-distro` 开始的 lyteboat 服务行；`config dump --profile run` 的输出里能看到 `# == @deepseek-ai/dsh-base, patched by @lyteboat/run` 这样的层标记（§2.4） | `app.py` 里的组装代码，只是这里变成了数据 | `up:docs/user/develop/basic/publish.md:16`、`:56`、`:119-125` |
-| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；lyteboat 把业务 agent 目录声明成预设 | `lyteboat run --agents ./lyteboat/agents --agent demo` | 一个 agent 的定义 | `CLAUDE.md:205-206` |
+| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；lyteboat 把业务 agent 目录声明成预设 | `lyteboat run --agents ./lyteboat/agents --agent finance` | 一个 agent 的定义 | `CLAUDE.md:204-205` |
 | Typert Host face、Remote client | 上游生成器从 TypeScript 类型生成的运行时反射产物：包导出 `./typert`（Host face）和 `./remote`（Remote client），文件是 `lib/typert.*` | dsh-llm 的 `lib/typert.host.{js,d.ts}`、`lib/typert.remote-client.{js,d.ts}`（§5.4） | 无直接对应；类似按 schema 生成的客户端 | `up:packages/typert/generator/README.md:86`；`up:packages/typert/protocol/README.md:12` |
 | 准入（admission） | rc.1 起 `dsh-app-boot` 在启动时读每一行所属包的磁盘清单，`@deepseek-ai/dsh*` peer 与运行版本不匹配就禁用该行 | 这条规则让 lyteboat 包的非内核 dsh peer 必须写精确版本（§8.2） | 无 | `up:packages/boot/app-boot/src/plugin-compatibility.ts:61-88` |
 | 契约键 | 契约快照里一条 JSON 路径，用 `' › '` 连接 | `events › @deepseek-ai/dsh-agent-loop › lyteboat/intake` | 无 | `scripts/dist/contract-check.ts:27-28` |
-| 内核、原样层、晋升 | lyteboat 拥有源码的 dsh 包；从 npm 原样安装的其余 dsh 包；把原样层的包收进内核 | 见 §1、§5 | — | `dsh/kernel.json`；`CLAUDE.md:77` |
+| 内核、原样层、晋升 | lyteboat 拥有源码的 dsh 包；从 npm 原样安装的其余 dsh 包；把原样层的包收进内核 | 见 §1、§5 | — | `dsh/kernel.json`；`CLAUDE.md:76` |
 
 ---
 
@@ -123,9 +123,9 @@ flowchart LR
 |---|---|---|---|---|
 | **内核** `dsh/` | lyteboat 拥有的 13 个 dsh 包，保留 `@deepseek-ai/dsh-*` 包名：`llm/llm`、`core/session`、`core/system-prompt`、`core/tools`、`skill/skill`、`core/agent`、`core/agent-loop`、`session/session-projection`、`session/session-persistence`、`session/session-persistence-jsonl`、`compaction/compaction`、`compaction/compaction-basic`、`test-support/agent-loop-testkit` | 权威清单是 `dsh/kernel.json`。`pnpm-workspace.yaml:16-29` 的 overrides 和根 `tsconfig.json` 的 references 是它的镜像；`scripts/upstream-pins.spec.ts:31-34` 核对 overrides 与清单一致 | overrides 把每个内核包名改写成 `workspace:*`；lyteboat 自己的清单也写 `workspace:*` | 每个 tag 一个导入提交，三方合并（§2） |
 | **npm 原样层** | 上游其余 294 个 dsh 包都不改源码；工作区实际装其中 256 个：seam 与 provider、可选插件、基础设施、Web 产品等 | `pnpm-workspace.yaml:64-150` 的 `catalogs.dsh`（85 项）、`:151-156` 的 `catalogs.cordis`、`dsh.upstream.json` | `.pnpmfile.cjs:10-14` 把所有非内核的 `@deepseek-ai/dsh*` 依赖改写成 `dsh.upstream.json` 里的版本 | 改 catalog、版本钉文件和精确 peer（§8） |
-| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,run}`、`plugins/{distro,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/{contracts,cordis-compat}`、`agents/{demo,finance}`、`tooling/testing`，共 16 个（`CLAUDE.md:22-38`） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`） | `workspace:*` | 不适用 |
+| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,run}`、`plugins/{distro,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/{contracts,cordis-compat}`、`agents/finance`、`tooling/testing`，共 16 个（`CLAUDE.md:22-37`） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`） | `workspace:*` | 不适用 |
 
-**一个包归哪一层，看什么？** 规则在 `CLAUDE.md:77`，满足任一条就进内核：
+**一个包归哪一层，看什么？** 规则在 `CLAUDE.md:76`，满足任一条就进内核：
 
 - lyteboat 第一次需要**改它的实现**。只是配置它，或用 provider 替换它，都不算。
 - 它是**每个 lyteboat 组合启动都离不开的能力**。llm 和 skill 就是按这一条进来的，与 tools、sessions 并列。
@@ -270,7 +270,7 @@ $ xargs -a /tmp/kernel-links.txt -n1 readlink -f | grep -vc "^$PWD/dsh/"
 
 ### 2.1 导入提交：上游线上的每一个点
 
-**规则**（`CLAUDE.md:195`）：
+**规则**（`CLAUDE.md:194`）：
 
 - 每个 tag 的内核是**一个导入提交**。
 - 它的树里只有 `dsh/<dir>/`：
@@ -399,7 +399,7 @@ flowchart LR
 
 ### 2.3 一次同步的完整步骤：以 dsh-v0.1.7-rc.1 为例
 
-规则原文在 `CLAUDE.md:196`，目标是"一周一次同步，一次可以跨越期间所有 tag"。下表逐步对照 rc.1 那次同步：导入 `bd9d657`，合并 `edbe7bb`；蓝图 §15.4 有记录。这次同步带进 156 个上游提交，几乎都在内核之外。
+规则原文在 `CLAUDE.md:195`，目标是"一周一次同步，一次可以跨越期间所有 tag"。下表逐步对照 rc.1 那次同步：导入 `bd9d657`，合并 `edbe7bb`；蓝图 §15.4 有记录。这次同步带进 156 个上游提交，几乎都在内核之外。
 
 **前置条件**（写在前面，因为不满足时工具会在中途失败）：
 
@@ -432,7 +432,7 @@ flowchart TB
 | 6 | `pnpm install`（见 §8.5 的 release-age 处理），`pnpm run check` | lint、test、dsh-compat 全绿 | `pnpm run test` 126 文件 / 2623 通过 / 1 上游 skip；G1 16/0；G2 91 文件 / 2491；G4 5/5、G5 23/23、G6 2/2 |
 | 7 | `pnpm run dist:overlay <checkout> persistence`、`… typert`、`… g3` | 三行汇总（§6） | persistence 62 根 / 587 类型 / 0 差异；G3 171 包、893 测试文件，原样 tag 上通过 19890 个，lyteboat 内核上 0 回归（typert 闸门那时还没有，晋升时才加入） |
 | 8 | `pnpm run dist:delta` | Markdown 差量表 | 没有可删的差量：两个 extend 的退出条件都不成立 |
-| 9 | 手工编辑 | distro manifest 的 `DSH_BASE`、扩展的 `since`、`COMPAT.md`、改编文件头（`Adapted from deepseek-ai/deepseek-harness`，`CLAUDE.md:198`）、`THIRD_PARTY_NOTICES.md`、CLAUDE.md、README、版本测试 | 版本测试改为读 `dsh.upstream.json`，不再写死版本号（`edbe7bb`） |
+| 9 | 手工编辑 | distro manifest 的 `DSH_BASE`、扩展的 `since`、`COMPAT.md`、改编文件头（`Adapted from deepseek-ai/deepseek-harness`，`CLAUDE.md:197`）、`THIRD_PARTY_NOTICES.md`、CLAUDE.md、README、版本测试 | 版本测试改为读 `dsh.upstream.json`，不再写死版本号（`edbe7bb`） |
 | 10 | 见 §9.5 | 更新的 `canaries.yml` | 移除 2 个、补入 1 个：24 → 23，见 §2.4 问题二 |
 | 11 | 独立提交 | `ad7a014`、`edb8168` | 见下 |
 
@@ -476,12 +476,12 @@ flowchart TB
 
 ### 3.1 先问：能不能不碰内核
 
-这是 §0.5 的第一条规则（`CLAUDE.md:73`），也是蓝图 §7 决策流程的第一问。
+这是 §0.5 的第一条规则（`CLAUDE.md:72`），也是蓝图 §7 决策流程的第一问。
 
 - 能在内核外做的，放 lyteboat 层。
-- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `lyteboat/agents/*`，`CLAUDE.md:79`）。
+- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `lyteboat/agents/*`，`CLAUDE.md:78`）。
 
-改内核是一个设计决定：设计文档要写明为什么放不到外面，以及属于哪一类；动手前还要和用户确认（`CLAUDE.md:126`）。
+改内核是一个设计决定：设计文档要写明为什么放不到外面，以及属于哪一类；动手前还要和用户确认（`CLAUDE.md:125`）。
 
 V1、F1、F2 三个里程碑都是这条规则的实例。V1 的金融智能体没有改内核（`CHANGELOG.md` 的 V1 条目）。F1 让路由过的会话能重开，办法是把路由选中的技能正文改成 dsh 自己的 skill-invocation 消息，不再写 lyteboat 自己的节点（`ab2c5ae`）。F2 的请求上下文和准入搭在人类消息的 `source` 与已有的 `lyteboat/intake` 上（`200ec40` 正文："No kernel change: the verdict needs no room in the reply."），一个工具结果的多张卡片走 `meta.lyteboat.cards`（`ea8c45a`）。只有一件事在内核外做不到：让 `Session.append` 写 `ignorable` 标记。它是 F2 唯一的内核改动，§10 把它从头走一遍。
 
@@ -533,7 +533,7 @@ flowchart TD
 
 它**不检查**的：
 
-- `Dist-Contract` 是否存在，`extend` 是否带 `Dist-Exit`。这两项是惯例（`CLAUDE.md:74`："wherever the contract or an exit condition is involved"）。
+- `Dist-Contract` 是否存在，`extend` 是否带 `Dist-Exit`。这两项是惯例（`CLAUDE.md:73`："wherever the contract or an exit condition is involved"）。
 - **合并提交**。同步或晋升的合并提交里如果夹带了 `dsh/<pkg>/` 下的 lyteboat 改动，这个检查看不见。可以手工核对：先让 git 算出"干净合并"的树，再和实际的合并提交比。**[实跑]**：
 
   ```console
@@ -607,7 +607,7 @@ Dist-Tests: dsh/core/agent-loop/tests/lyteboat/intake.spec.ts
 | `Dist-Upstream: none (…)` | 回馈上游了吗？ | 人；dsh 不接受外部 PR，所以写明原因 |
 | `Dist-Tests: …` | 什么测试证明它？ | 人；该测试跑在 G2 项目里 |
 
-"Accepted:" 一段写明跑了什么、接受了什么结果，这是 `CLAUDE.md:189` 对提交正文的要求。
+"Accepted:" 一段写明跑了什么、接受了什么结果，这是 `CLAUDE.md:188` 对提交正文的要求。
 
 ### 3.5 例 2：`7dde6f9`，一个 build 提交，以及为什么要拆出来
 
@@ -662,7 +662,7 @@ F2 的 `session-append-ignorable` 在 dsh-session 上用的是同一种写法（
 
 为什么这样写：
 
-- `CLAUDE.md:74`："a smaller carried hunk is a cheaper sync"。git 的冲突只发生在上游和 lyteboat 都改过的同一段或相邻的行；lyteboat 在上游文件里只动这几行，冲突也就通常落在它们附近。
+- `CLAUDE.md:73`："a smaller carried hunk is a cheaper sync"。git 的冲突只发生在上游和 lyteboat 都改过的同一段或相邻的行；lyteboat 在上游文件里只动这几行，冲突也就通常落在它们附近。
 - `src/lyteboat/` 是上游不存在的目录，永远不会冲突。这是 Brave 的 `chromium_src` 手法在 TypeScript 里的样子（蓝图 §8 E3）。
 - 蓝图 §8 E3 还画了一个 `redesign` 的样子：`system-prompt/src/index.ts` 里 3 行钩子加 `src/lyteboat/assembly.ts`。那只是示意，**尚未落地**。
 
@@ -670,14 +670,14 @@ F2 的 `session-append-ignorable` 在 dsh-session 上用的是同一种写法（
 
 | 形式 | 用在哪 | 真实例子 |
 |---|---|---|
-| `<里程碑步骤>: <包> — <交付什么>` | 里程碑工作（`CLAUDE.md:189`） | `D1-6: lyteboat/ — one agent loop: the kernel's; the driver fork and --driver are gone` |
-| **内核提交**：`<里程碑步骤或 conventional 前缀>: <包名> — <类别>: <交付什么>` | 碰 `dsh/<group>/<pkg>/` 的提交；类别写在破折号后，与 `Dist-Change` 一致。这是仓库里观察到的写法，`CLAUDE.md:189` 没有单独规定；两个改名提交 `b06f513`、`92c2f71` 也碰了内核，标题却按整件改动写，没有带类别 | `D1-4: @deepseek-ai/dsh-agent-loop — extend: the lyteboat/intake gate`；`chore: @deepseek-ai/dsh-agent-loop — build: name the extension registry by its new path`；`F2-1: @deepseek-ai/dsh-session — extend: Session.append can mark a record ignorable` |
+| `<里程碑步骤>: <包> — <交付什么>` | 里程碑工作（`CLAUDE.md:188`） | `D1-6: lyteboat/ — one agent loop: the kernel's; the driver fork and --driver are gone` |
+| **内核提交**：`<里程碑步骤或 conventional 前缀>: <包名> — <类别>: <交付什么>` | 碰 `dsh/<group>/<pkg>/` 的提交；类别写在破折号后，与 `Dist-Change` 一致。这是仓库里观察到的写法，`CLAUDE.md:188` 没有单独规定；两个改名提交 `b06f513`、`92c2f71` 也碰了内核，标题却按整件改动写，没有带类别 | `D1-4: @deepseek-ai/dsh-agent-loop — extend: the lyteboat/intake gate`；`chore: @deepseek-ai/dsh-agent-loop — build: name the extension registry by its new path`；`F2-1: @deepseek-ai/dsh-session — extend: Session.append can mark a record ignorable` |
 | `dist(import): <tag> kernel` | 导入提交（工具生成） | `dist(import): dsh-v0.1.7-rc.1 kernel` |
 | `dist(sync): track <tag>` | 同步合并 | `dist(sync): track dsh-v0.1.7-rc.1` |
 | `dist(promote): …` | 晋升合并 | `dist(promote): dsh-llm and dsh-skill enter the kernel` |
 | `fix:` / `chore:` / `docs:` | 其他 | `fix: conformance — run the G4–G6 files one at a time` |
 
-提交正文写明现在能跑什么、接受了什么结果。提交、PR、代码注释和文件里一律不出现模型标识（`CLAUDE.md:190`）。
+提交正文写明现在能跑什么、接受了什么结果。提交、PR、代码注释和文件里一律不出现模型标识（`CLAUDE.md:189`）。
 
 ---
 
@@ -811,7 +811,7 @@ stderr: lyteboat: session session-3206c672-702b-4b9f-b29e-df6709b3d3e6
 
 放到官方 dsh 上，同一个插件没有 `lyteboatDistro` 可注入，cordis 让它停在 `pending (waiting for service: lyteboatDistro)`，而不是调用一个不存在的事件（`b3aac4f` 正文；`dsh-compat/COMPAT.md:46`）。
 
-有一点要注意：仓库内的插件大多监听 `lyteboat/*` 事件却**没有** inject `lyteboatDistro`：`@lyteboat/tool-policy`（`lyteboat/plugins/tool-policy/src/index.ts:120`）、`@lyteboat/skill-router`（`lyteboat/plugins/skill-router/src/index.ts:232`）、demo 与 finance 的 hooks。它们本来就只随 lyteboat 发布，这条要求只针对仓库外的第三方插件（`COMPAT.md:46`）。F2 新加的两个宿主服务照第三方的写法做了：`@lyteboat/aux-llm` 用 `session-append-ignorable`（`lyteboat/plugins/aux-llm/src/index.ts:95-96`），`@lyteboat/intake-guard` 用 `agent-loop-intake`（`lyteboat/plugins/intake-guard/src/index.ts:60-61`），都 inject 了它。skill-router 又 inject 了 `auxLlm`（`lyteboat/plugins/skill-router/src/index.ts:211`），所以放到官方 dsh 上，它也会跟着停在等待状态。
+有一点要注意：仓库内的插件大多监听 `lyteboat/*` 事件却**没有** inject `lyteboatDistro`：`@lyteboat/tool-policy`（`lyteboat/plugins/tool-policy/src/index.ts:120`）、`@lyteboat/skill-router`（`lyteboat/plugins/skill-router/src/index.ts:232`）。它们本来就只随 lyteboat 发布，这条要求只针对仓库外的第三方插件（`COMPAT.md:46`）。F2 新加的两个宿主服务照第三方的写法做了：`@lyteboat/aux-llm` 用 `session-append-ignorable`（`lyteboat/plugins/aux-llm/src/index.ts:95-96`），`@lyteboat/intake-guard` 用 `agent-loop-intake`（`lyteboat/plugins/intake-guard/src/index.ts:60-61`），都 inject 了它。skill-router 又 inject 了 `auxLlm`（`lyteboat/plugins/skill-router/src/index.ts:211`），所以放到官方 dsh 上，它也会跟着停在等待状态。
 
 ### 4.5 例子：`lyteboat/intake` 扩展的完整生命周期
 
@@ -850,7 +850,7 @@ stateDiagram-v2
 | 路径变更 | `92c2f71` | 目录 `compatibility/` 改名为 `dsh-compat/`，内核注释里登记表的路径跟着改，归为 `build` 类 | `delta-report --check` |
 | 退出（未来） | — | 上游一旦提供"装配前、可不发请求就回答一步"的 waterfall，lyteboat 插件改听上游事件；在那次同步里删掉钩子、`src/lyteboat/step-hooks.ts` 和登记条目 | 代码删了而登记还在：G1 的 stale 规则失败（`contract-check.ts:108-112`）；登记新写了却没有任何提交点名：`delta-report` 第 4 条失败 |
 
-**第三条登记：`session-append-ignorable`。** 蓝图 §6.3 和 §8 E1 设计过它，第一版这里写的还是"计划中、尚未落地"。它在 F2 的第一步落地（`c5a553f`）：`Session.append` 能给本构建不认识的非 surface 类型写 `ignorable: true`，kind 为 `api-option`，登记在 `extensions.yml:51-68`。动机和计划不同：计划要解决的"路由过的会话打不开"，F1 已经在内核外解决了（§3.1）；它服务的是旁路模型调用的审计记录 `lyteboat/aux-llm-call`（`CLAUDE.md:80-81`）。§10 按时间顺序把它从头走一遍。
+**第三条登记：`session-append-ignorable`。** 蓝图 §6.3 和 §8 E1 设计过它，第一版这里写的还是"计划中、尚未落地"。它在 F2 的第一步落地（`c5a553f`）：`Session.append` 能给本构建不认识的非 surface 类型写 `ignorable: true`，kind 为 `api-option`，登记在 `extensions.yml:51-68`。动机和计划不同：计划要解决的"路由过的会话打不开"，F1 已经在内核外解决了（§3.1）；它服务的是旁路模型调用的审计记录 `lyteboat/aux-llm-call`（`CLAUDE.md:79-80`）。§10 按时间顺序把它从头走一遍。
 
 ### 4.6 不承诺的东西
 
@@ -870,7 +870,7 @@ stateDiagram-v2
 
 ### 5.1 规则，以及它为什么改过
 
-`CLAUDE.md:77`（`3d29a07` 修订后）规定，npm 上的 dsh 包在以下任一情况下进入内核：
+`CLAUDE.md:76`（`3d29a07` 修订后）规定，npm 上的 dsh 包在以下任一情况下进入内核：
 
 - lyteboat 第一次必须改它的实现；
 - 它是每个 lyteboat 组合启动都需要的能力。
@@ -949,7 +949,7 @@ flowchart TB
 3. 两者都不满足时，构建抛错，并提示去跑 `dist:overlay … typert --write`（`bundle-kernel.ts:58-59`）。
 4. `--write` 在上游 checkout 里用 lyteboat 的源码重新生成文件，并写入摘要（`scripts/dist/overlay.ts:249`）。
 
-**这项校验在 CI 里是空的。** CI 用 `actions/checkout@v4` 且没有设 `fetch-depth`（`.github/workflows/ci.yml:26`），默认只取 1 层历史。浅克隆里 `lastImport('HEAD')` 找不到任何 `Dist-Import` 提交，于是第 2 条在 `:54` 直接返回。仓库自己也承认 CI 的默认 checkout 太浅（`delta-report.ts:19-21`）。所以这项校验只在本地完整克隆上生效；要让 CI 也生效，得给 checkout 加 `fetch-depth: 0`，而改 `.github/` 需要明确授权（`CLAUDE.md:188`）。
+**这项校验在 CI 里是空的。** CI 用 `actions/checkout@v4` 且没有设 `fetch-depth`（`.github/workflows/ci.yml:26`），默认只取 1 层历史。浅克隆里 `lastImport('HEAD')` 找不到任何 `Dist-Import` 提交，于是第 2 条在 `:54` 直接返回。仓库自己也承认 CI 的默认 checkout 太浅（`delta-report.ts:19-21`）。所以这项校验只在本地完整克隆上生效；要让 CI 也生效，得给 checkout 加 `fetch-depth: 0`，而改 `.github/` 需要明确授权（`CLAUDE.md:187`）。
 
 现状：
 
@@ -1076,7 +1076,7 @@ append<T extends SessionEventType>(type: T, data: SessionEventMap[T], ...opts: T
 
 ### 6.4 G2：上游测试怎么原样跑
 
-**原则**（`dsh-compat/tests/upstream-harness/README.md:3`、`:27`；`CLAUDE.md:76`）：
+**原则**（`dsh-compat/tests/upstream-harness/README.md:3`、`:27`；`CLAUDE.md:75`）：
 
 - 测试文件逐字节来自最近一次导入，仓库里没有任何东西修改它们。
 - 环境差异只能在装置里加一行适配，并写进 README 的表格。
@@ -1103,7 +1103,7 @@ append<T extends SessionEventType>(type: T, data: SessionEventMap[T], ...opts: T
 
 它们测的都是上游的仓库脚本，不是内核包本身。
 
-G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试：今天有 4 个文件，agent-loop 的 `intake.spec.ts`、`pre-assemble.spec.ts`，session 的 `append-ignorable.spec.ts`，session-persistence 的 `reopen-ignorable.spec.ts`（后两个是 E1 加的）。它们和上游测试跑在同一个装置、同一个不变量宿主下（`CLAUDE.md:174`）。
+G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试：今天有 4 个文件，agent-loop 的 `intake.spec.ts`、`pre-assemble.spec.ts`，session 的 `append-ignorable.spec.ts`，session-persistence 的 `reopen-ignorable.spec.ts`（后两个是 E1 加的）。它们和上游测试跑在同一个装置、同一个不变量宿主下（`CLAUDE.md:173`）。
 
 **G2 只收 `*.spec.ts`**（`vitest.config.ts:35`：`dsh/*/*/tests/**/*.spec.ts`）。内核包的 `tests/` 里另有 4 个非 spec 文件不在 G2 里，也没有列进 README 的排除清单：`dsh/core/agent-loop/tests/request-cache.e2e.ts`、`dsh/session/session-persistence-jsonl/tests/built-migration-worker.e2e.ts`、`lease.two-process.e2e.ts`、`catalog-migration.perf.ts`（**[实跑]** `find dsh -path '*/tests/*' \( -name '*.e2e.ts' -o -name '*.perf.ts' \)`）。
 
@@ -1245,7 +1245,7 @@ G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试
 
 ### 6.12 碰内核时的完成标准
 
-`CLAUDE.md:155`：
+`CLAUDE.md:154`：
 
 1. `pnpm run test` 跑 G1、G2；
 2. `pnpm run dsh-compat` 跑 G4–G6；
@@ -1258,10 +1258,10 @@ G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试
 
 | 变量 | 作用 | 出处 |
 |---|---|---|
-| `LYTEBOAT_HOME` | lyteboat 的全部数据（profile、会话、存储），默认 `~/.lyteboat`；launcher 在任何 dsh 模块加载之前把它导出为 `DSH_HOME`，所以用户的 `~/.dsh` 不会被碰 | `CLAUDE.md:241` |
-| `DSH_TELEMETRY_DISABLED=1` | 测试与 CI 必设 | `CLAUDE.md:241`；`ci.yml:11` |
+| `LYTEBOAT_HOME` | lyteboat 的全部数据（profile、会话、存储），默认 `~/.lyteboat`；launcher 在任何 dsh 模块加载之前把它导出为 `DSH_HOME`，所以用户的 `~/.dsh` 不会被碰 | `CLAUDE.md:240` |
+| `DSH_TELEMETRY_DISABLED=1` | 测试与 CI 必设 | `CLAUDE.md:240`；`ci.yml:11` |
 | `LYTEBOAT_DIST_CACHE` | G3 基线、G4–G6 安装树、`dist:import`/`dist:snapshot` 的原版树的位置，默认 `~/.cache/lyteboat-dist` | `scripts/dist/trees.ts:22` |
-| `DEEPSEEK_BASE_URL` + `DEEPSEEK_API_KEY` | 指向脚本化模型（`@lyteboat/testing/scripted-model`）做 lyteboat 的 e2e 或实跑；G4–G6 用上游的 `@deepseek-ai/dsh-llm-mock-server` | `CLAUDE.md:227`、`:178` |
+| `DEEPSEEK_BASE_URL` + `DEEPSEEK_API_KEY` | 指向脚本化模型（`@lyteboat/testing/scripted-model`）做 lyteboat 的 e2e 或实跑；G4–G6 用上游的 `@deepseek-ai/dsh-llm-mock-server` | `CLAUDE.md:226`、`:178` |
 
 **脚本化模型怎么接。** `startScriptedModel(script)`（`lyteboat/tooling/testing/src/scripted-model.ts:125`）在 `127.0.0.1` 的随机端口起一个 DeepSeek Messages 协议的服务器，按请求用途（loop / title / router）回答并记录每个请求；`withTitle`（`:162`）替你回答会话标题请求。要注意两点：
 
@@ -1331,12 +1331,12 @@ node lyteboat/apps/cli/lib/bin.js config dump --profile run > /tmp/dump.yml 2> /
 
 ### 7.1 策略
 
-`dsh-compat/COMPAT.md:60-63` §7 与 `CLAUDE.md:197` 规定了两条通道：
+`dsh-compat/COMPAT.md:60-63` §7 与 `CLAUDE.md:196` 规定了两条通道：
 
 - **lyteboat-next**：一次同步合并该 tag 的导入，必须通过 G1–G6；按周批量进行，一次可跨多个 tag。
 - **lyteboat-stable**：只从 dsh 的 release candidate（`-rc.N`）切出，之后只接受回移（backport）。
 
-两处对 lyteboat-next 的说法不一样：`COMPAT.md:62` 写"follows every dsh tag"，`CLAUDE.md:197` 写"follows every sync"。结合同一句后半的"Syncs are batched weekly; one sync may cross several tags"，实际意思是"每次同步都进 lyteboat-next，而一次同步可以跨过多个 tag"，也就是不必每个 tag 各同步一次。本文按 `CLAUDE.md:197` 的说法写，并把不一致列进 §11.3。
+两处对 lyteboat-next 的说法不一样：`COMPAT.md:62` 写"follows every dsh tag"，`CLAUDE.md:196` 写"follows every sync"。结合同一句后半的"Syncs are batched weekly; one sync may cross several tags"，实际意思是"每次同步都进 lyteboat-next，而一次同步可以跨过多个 tag"，也就是不必每个 tag 各同步一次。本文按 `CLAUDE.md:196` 的说法写，并把不一致列进 §11.3。
 
 为什么 lyteboat-stable 只从 rc 切？上游 2–5 天发一个 tag（蓝图 §0），预发布 tag 之间契约可能变动；rc 是上游自己宣布趋于稳定的点。这和 RHEL 冻结 kABI 基线是同一种做法（蓝图 §2）。
 
@@ -1386,7 +1386,7 @@ flowchart LR
 
 ### 7.3 不改写历史
 
-规则（`CLAUDE.md:184-188`）：
+规则（`CLAUDE.md:183-187`）：
 
 - 只在任务指定的分支上工作；
 - 从不推 `main`、`master`、`develop`；
@@ -1428,7 +1428,7 @@ PR #8 本身不同步上游，但完整走了发行版纪律（§3.5）：
 - **从 rc.1 切 lyteboat-stable。** 需要授权推新分支（蓝图 §16 结尾）。
 - **`COMPAT.md:63` 已过时。** 它写"None exists yet: dsh has published no release candidate since lyteboat's first import"。rc.1 现在就是被跟踪的版本，这句话应该改成"条件具备、尚未切分支"。
 - **私有 registry（蓝图 §13 X8）。** 原定"D2 之后再定"。打包盖章与按包名替换的机制，已由 G4–G6 的安装树验证过（§8.1）。
-- **没有发版产物。** lyteboat 仓库没有 git tag；`CHANGELOG.md` 按里程碑记录交付内容，但开头就写着还没有发过版；16 个 `@lyteboat/*` 包都是 `version: 0.0.1`、`private: true`。发行版目前的"产物"是开发分支本身，加上 `packKernel` 在安装树里打的包。
+- **没有发版产物。** lyteboat 仓库没有 git tag；`CHANGELOG.md` 按里程碑记录交付内容，但开头就写着还没有发过版；15 个 `@lyteboat/*` 包都是 `version: 0.0.1`、`private: true`。发行版目前的"产物"是开发分支本身，加上 `packKernel` 在安装树里打的包。
 - **V1、F1、F2 还没有合回 master**（§7.2）：开发分支上的 9 个提交没有 PR。第一版列在这里的"master 与开发分支互不包含"已经由 PR #9 解决。
 
 ---
@@ -1472,7 +1472,7 @@ eq true
 
 ### 8.2 dsh peer 写精确版本，以及原因
 
-**约定**（`CLAUDE.md:89`；`README.md:205`）：
+**约定**（`CLAUDE.md:88`；`README.md:205`）：
 
 - dsh 和 cordis 包写成 `peerDependencies` 加 `devDependencies`，默认用 `catalog:dsh` / `catalog:cordis`。
 - **例外：非内核的 dsh peer 写跟踪版本的精确值。**
@@ -1530,7 +1530,7 @@ workspace:*    admitted
 
 `scripts/upstream-pins.spec.ts:40-54` 把这条约定变成测试：遍历 `lyteboat/*/*/package.json`，每个 dsh peer 必须是 `workspace:*`（内核）或 `dsh.upstream.json` 的版本（非内核）。
 
-副作用：每次同步都要改这些 peer，所以同步步骤里专门有一项（`CLAUDE.md:196`）。
+副作用：每次同步都要改这些 peer，所以同步步骤里专门有一项（`CLAUDE.md:195`）。
 
 ### 8.3 catalog
 
@@ -1550,9 +1550,9 @@ rc.1 同步时 dsh catalog 有 85 项。晋升删掉 llm、skill，又加了 `ds
 
 全文 33 行，要点见 §1.2。
 
-- 它是仓库里唯一的 CommonJS 文件，因为 pnpm 要求如此（`CLAUDE.md:90`）。
+- 它是仓库里唯一的 CommonJS 文件，因为 pnpm 要求如此（`CLAUDE.md:89`）。
 - G4–G6 的安装树有自己生成的 pnpmfile，做同样的钉版本，只是不钉被 override 的名字（`scripts/dist/trees.ts:58-81`）。
-- 改这个文件需要明确指令（`CLAUDE.md:188`）。
+- 改这个文件需要明确指令（`CLAUDE.md:187`）。
 
 ### 8.5 `minimumReleaseAgeExclude`
 
@@ -1568,7 +1568,7 @@ rc.1 同步时 dsh catalog 有 85 项。晋升删掉 llm、skill，又加了 `ds
 | 从 npm 解析的 dsh 包 | 256 | 正好是工作区装的那 256 个，包括晋升时为 typert 闸门加的 `dsh-typert-generator@0.1.7-rc.1`（`:413`） |
 | 内核包名 | 12 | 例如 `dsh-agent-loop@0.1.7-rc.1`（`:171`）、`dsh-llm@0.1.7-rc.1`（`:313`）。13 个内核包里只有 `dsh-agent-loop-testkit` 不在列表里。这些名字经 overrides 解析到工作区、不从 registry 取，所以这 12 条已经不起作用（§11.3） |
 
-**同步时的安装步骤**（`CLAUDE.md:196`）：
+**同步时的安装步骤**（`CLAUDE.md:195`）：
 
 1. 删掉 `node_modules` 后运行 `pnpm install`。
 2. 此时 lockfile 还指向上一个版本，而新列表已经不再豁免它。所以这一次重新解析的安装要加 `--config.minimum-release-age=0`。
@@ -1597,9 +1597,9 @@ export LYTEBOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
    (cd <checkout> && pnpm install)
    git -C <checkout> describe --tags --exact-match HEAD                   # 必须输出 dsh-v<新版本>
    ```
-2. `pnpm run dist:snapshot <checkout>`，读 `contract <旧> → <新>: …` 那一行。有 removed 或 changed 就是需要人判断的契约变化：lyteboat 的消费者要在同一次同步里跟上（`CLAUDE.md:199`）。
+2. `pnpm run dist:snapshot <checkout>`，读 `contract <旧> → <新>: …` 那一行。有 removed 或 changed 就是需要人判断的契约变化：lyteboat 的消费者要在同一次同步里跟上（`CLAUDE.md:198`）。
 3. `pnpm run dist:import <checkout>`。按提示先 `git diff --stat <上次导入> <新导入>` 看上游改了内核什么，再 `git merge --no-ff <新导入>`。若输出 `nothing to merge`，说明内核没变，跳到第 5 步。
-4. 解决冲突。冲突出现在上游和 lyteboat 都改过的同一段或相邻的行；因为 lyteboat 在上游文件里只加几行 `// lyteboat:` 钩子（`CLAUDE.md:74`），冲突通常落在这些钩子附近（例如 `dsh/core/agent-loop/src/agent.ts:276-288`、`src/index.ts:243-245`，以及 `dsh/core/session/src/index.ts` 的 `:24-25`、`:37-38`、`:727-731`、`:754`）。`src/lyteboat/` 下的文件不会冲突。变成空改动的 hunk 按它的类别处理：backport 删掉，drop 删掉。
+4. 解决冲突。冲突出现在上游和 lyteboat 都改过的同一段或相邻的行；因为 lyteboat 在上游文件里只加几行 `// lyteboat:` 钩子（`CLAUDE.md:73`），冲突通常落在这些钩子附近（例如 `dsh/core/agent-loop/src/agent.ts:276-288`、`src/index.ts:243-245`，以及 `dsh/core/session/src/index.ts` 的 `:24-25`、`:37-38`、`:727-731`、`:754`）。`src/lyteboat/` 下的文件不会冲突。变成空改动的 hunk 按它的类别处理：backport 删掉，drop 删掉。
 5. 改版本钉：
    - `dsh.upstream.json`：版本、tag、commit，以及取自 `<checkout>/vendor/*/package.json` 的 cordis 版本；
    - `lyteboat/*/*/package.json` 里的非内核 dsh peer；
@@ -1621,8 +1621,8 @@ export LYTEBOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
 
 ### 9.2 改一处内核（以 fix 为例）
 
-1. 先按 §3.1 确认放不到内核外，在设计文档里写明理由和类别，并和用户确认（`CLAUDE.md:73`、`:126`）。
-2. 在 `dsh/<group>/<pkg>/tests/lyteboat/` 写回归测试，确认它在改动前失败。测试只能用内核和上游自己的测试辅助，不能用 `@lyteboat/*`（`CLAUDE.md:174`）。
+1. 先按 §3.1 确认放不到内核外，在设计文档里写明理由和类别，并和用户确认（`CLAUDE.md:72`、`:126`）。
+2. 在 `dsh/<group>/<pkg>/tests/lyteboat/` 写回归测试，确认它在改动前失败。测试只能用内核和上游自己的测试辅助，不能用 `@lyteboat/*`（`CLAUDE.md:173`）。
 3. 改动尽量放 `src/lyteboat/`，上游文件里只留带 `// lyteboat:` 的几行钩子。
 4. 如果改到了发布 Typert 文件的包（今天只有 dsh-llm）的 `src/`，跑 `pnpm run dist:overlay <checkout> typert --write`，把重新生成的 `lib/typert.*` 和 `dsh/typert.json` 一起提交。否则本地 `pnpm run build` 会失败（§5.4；CI 的浅克隆发现不了，所以这一步不能指望 CI）。
 5. 跑门槛：`pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run dsh-compat && pnpm run dist:delta -- --check`；可能触及持久化类型时再跑 `pnpm run dist:overlay <checkout> persistence`。改动碰到哪条行为不变量，对照 §6.11 确认对应测试在跑。
@@ -1655,7 +1655,7 @@ export LYTEBOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
 
 ### 9.4 晋升一个包
 
-1. 确认符合 `CLAUDE.md:77` 的两个条件之一，并在设计文档里写明。
+1. 确认符合 `CLAUDE.md:76` 的两个条件之一，并在设计文档里写明。
 2. `dsh/kernel.json` 加一行 `"<包名>": "<group>/<pkg>"`（目录与上游 `packages/` 下一致）。
 3. `pnpm-workspace.yaml`：overrides 加 `"<包名>": "workspace:*"`，`catalogs.dsh` 删掉它。
 4. 根 `tsconfig.json` 的 references 加 `./dsh/<group>/<pkg>`；引用它的 lyteboat 包的 `tsconfig.json` 也加上。
@@ -1703,18 +1703,18 @@ flowchart TB
 
 **1. 起因。** 计划里的起因是 skill-router 写的两种节点 `lyteboat/route-request`、`lyteboat/skill-routed`：dsh 的持久化层拒绝读取带有目录外事件类型、又没标 `ignorable` 的日志（`COMPAT.md:36`；`dsh/core/session/src/types.ts:502-511` 的 `ignorable?: true` 注释），所以路由过的会话在 resume 和 `lyteboat web` 里打不开。F1（`ab2c5ae`）先在内核外解决了这件事：路由选中的技能正文改成 dsh 自己的 skill-invocation 消息，即一条 `source` 为 `{ kind: 'skill-invocation', name, form: 'instructions' }` 的 `user/message`，在 `agent/pre-step` 追加进这一步（`lyteboat/plugins/skill-router/src/index.ts:182-190`、`:236-244`）；两种节点从 `@lyteboat/contracts` 删掉，`reopen.composite.ts` 里"路由会话被拒绝"的测试翻成了"能重开"。代价是路由这次旁路模型调用不再进会话日志，F1 之后只留一行 debug 日志（`ab2c5ae` 正文："the router call leaves a debug log line until side calls have an audited path"）。要把旁路调用记进日志，就得有一种 lyteboat 自有、又不妨碍重开的记录类型。这才是 E1 实际的起因（`c5a553f` 正文："This is the write path, for the side-call audit records lyteboat logs next."）。
 
-**2. 能不能在内核外做（§3.1）。** 读路径早就接受标了 `ignorable: true` 的未知事件（`dsh/core/session/src/surface.ts:311-312`），缺的是写入口：按上游的签名，非 surface 类型的 `append` 没有第三个参数，信封上的字段全由 `append` 自己拼（`dsh/core/session/src/index.ts:748-755`，其中 `:754` 是 E1 加的）。`CLAUDE.md:80-81` 的首选仍是把事实折进已有的信封；可一次旁路调用的记录（用途、路由、提示词、回答或失败、耗时，`lyteboat/core/contracts/src/index.ts:139-156`）没有现成的信封可放，它又是纯信息性的：读者跳过它，重建出的会话不变。插件在外面拿不到写标记的入口，只能改内核。
+**2. 能不能在内核外做（§3.1）。** 读路径早就接受标了 `ignorable: true` 的未知事件（`dsh/core/session/src/surface.ts:311-312`），缺的是写入口：按上游的签名，非 surface 类型的 `append` 没有第三个参数，信封上的字段全由 `append` 自己拼（`dsh/core/session/src/index.ts:748-755`，其中 `:754` 是 E1 加的）。`CLAUDE.md:79-80` 的首选仍是把事实折进已有的信封；可一次旁路调用的记录（用途、路由、提示词、回答或失败、耗时，`lyteboat/core/contracts/src/index.ts:139-156`）没有现成的信封可放，它又是纯信息性的：读者跳过它，重建出的会话不变。插件在外面拿不到写标记的入口，只能改内核。
 
 **3. 分类。** 外部可见面只增加：`append` 多一个可选参数，不用它的调用方不受影响；另外多一个导出类型 `LyteboatAppendOptions`。按 §3.1 的决策树是 `extend`，kind 是 `api-option`（`extensions.yml:12`、`:53`）。
 
-**4. 设计与确认。** 改的是内核的公开 API，按 `CLAUDE.md:126` 先写设计文档并和用户确认。设计里要回答两个具体问题：
+**4. 设计与确认。** 改的是内核的公开 API，按 `CLAUDE.md:125` 先写设计文档并和用户确认。设计里要回答两个具体问题：
 
 - **标记放进哪个参数。** 上游签名是 `append(type, data, ...opts)`，`opts` 对 surface 类型是 `[opts: SurfaceIntent<T>]`，对其他类型是空元组。E1 只放宽后一半，改成 `[opts?: LyteboatAppendOptions]`（`dsh/core/session/src/index.ts:728`），surface 类型的签名不动。
 - **什么才算"要标记"。** E1 的第一版实现在 G2 里打破了上游的 `dsh/core/session/tests/canonical-envelopes.spec.ts`：它的辅助函数 `appendEvent`（`:39-47`）对 `request/header` 这类非 surface 类型也传一个空对象 `{}` 作第三个参数，那一版把它当成了标记请求。定稿只认显式的 `ignorable: true`（`dsh/core/session/src/lyteboat/append-ignorable.ts:38-40`），其他尾参数原样交给上游代码（`:29-31`；`c5a553f` 正文："Any other trailing argument reaches upstream's code exactly as before"）。本构建认识的类型（surface 类型在内）要求标记一律拒绝，因为读者会跳过一个必需的事件（`:32-34`）。
 
 **5. 代码。** 按 §3.6 的写法，`dsh/core/session/src/index.ts` 上 5 处改动、+9/−2（§3.6 逐处列出）：导入、类型导出、放宽的签名、把尾参数交给 `lyteboatAppendOptions` 拆开的两行、把标记摊进信封的一行。判断逻辑在上游没有的 `dsh/core/session/src/lyteboat/append-ignorable.ts`（40 行）：`lyteboatAppendOptions(type, options)` 返回上游要校验的 surface intent 和要摊进信封的字段（`:28-36`）。
 
-**6. 测试。** 两个 lyteboat 自己的内核测试，只用内核和上游的测试辅助，不用 `@lyteboat/*`（`CLAUDE.md:174`）：
+**6. 测试。** 两个 lyteboat 自己的内核测试，只用内核和上游的测试辅助，不用 `@lyteboat/*`（`CLAUDE.md:173`）：
 
 - `dsh/core/session/tests/lyteboat/append-ignorable.spec.ts`，4 个测试：未知类型带标记，信封上有 `ignorable: true`，surface 不变；不带标记的 append 写出的信封和上游完全一样，键只有 `data`、`seq`、`time`、`type`；已知类型要求标记被拒绝，日志不变；带标记的记录经 seed 路径（重开的日志走这条路径）读回。
 - `dsh/session/session-persistence/tests/lyteboat/reopen-ignorable.spec.ts`，1 个测试：同一条未知记录，带标记时 `validateStoredEvents` 放行，不带标记时抛 `SessionFormatUnsupportedError`。这就是计划里"存盘，再用持久化层读回"的那一步。持久化层是另一个内核包，所以测试放在它自己的 `tests/lyteboat/` 下，`Dist-Tests` 也就列了两个文件。
@@ -1848,7 +1848,7 @@ exit 列就是 `Dist-Exit` 的内容。同步的人看上游这次有没有给 `
 
 | 目的 | 命令 | 出处 |
 |---|---|---|
-| 安装 | `pnpm install`（CI 用 `--frozen-lockfile`） | `CLAUDE.md:217` |
+| 安装 | `pnpm install`（CI 用 `--frozen-lockfile`） | `CLAUDE.md:216` |
 | 构建（`tsc -b` + 内核 tsdown 打包 + Typert 校验） | `pnpm run build` | `package.json:12` |
 | lint（oxlint、knip、层检查、distro manifest、敏感词） | `pnpm run lint` | `package.json:14` |
 | 类型检查（源码与测试） | `pnpm run typecheck` | `package.json:13` |
@@ -1857,13 +1857,13 @@ exit 列就是 `Dist-Exit` 的内容。同步的人看上游这次有没有给 `
 | G4–G6 | `pnpm run dsh-compat` | `package.json:16` |
 | 全部 | `pnpm run check` | `package.json:18` |
 | 只跑 G1（构建后） | `pnpm run contract:check` | `package.json:23` |
-| 只跑 G2 | `npx vitest run --project dsh` | `CLAUDE.md:234` |
-| 差量报告 / 只检查 trailer | `pnpm run dist:delta` / `pnpm run dist:delta -- --check` | `CLAUDE.md:235` |
-| 生成某 tag 的契约快照 | `pnpm run dist:snapshot <checkout>` | `CLAUDE.md:236` |
-| 导入某 tag 的内核（然后 `git merge`） | `pnpm run dist:import <checkout>` | `CLAUDE.md:237` |
-| persistence / G3 | `pnpm run dist:overlay <checkout> persistence` / `g3 [--match <regex>]` | `CLAUDE.md:238` |
-| Typert 对照 / 重新生成 | `pnpm run dist:overlay <checkout> typert [--write]` | `CLAUDE.md:239` |
-| 看组合后的插件树（也能验证准入） | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` | `CLAUDE.md:232` |
+| 只跑 G2 | `npx vitest run --project dsh` | `CLAUDE.md:233` |
+| 差量报告 / 只检查 trailer | `pnpm run dist:delta` / `pnpm run dist:delta -- --check` | `CLAUDE.md:234` |
+| 生成某 tag 的契约快照 | `pnpm run dist:snapshot <checkout>` | `CLAUDE.md:235` |
+| 导入某 tag 的内核（然后 `git merge`） | `pnpm run dist:import <checkout>` | `CLAUDE.md:236` |
+| persistence / G3 | `pnpm run dist:overlay <checkout> persistence` / `g3 [--match <regex>]` | `CLAUDE.md:237` |
+| Typert 对照 / 重新生成 | `pnpm run dist:overlay <checkout> typert [--write]` | `CLAUDE.md:238` |
+| 看组合后的插件树（也能验证准入） | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` | `CLAUDE.md:231` |
 | 用脚本化模型跑一次 launcher | `node /path/to/scripted-run.mjs run "hello"` | §6.13 |
 | 列出上游线 | `git log --format='%h %p %s' --grep='^Dist-Import: '`，或 `git log --oneline <合并>^2` | §2.1 |
 | 看 lyteboat 在内核上的全部差量 | `git diff <最近导入> HEAD -- dsh/` | §2.2 |
@@ -1901,26 +1901,26 @@ exit 列就是 `Dist-Exit` 的内容。同步的人看上游这次有没有给 `
 | 3 | 蓝图 §6.2 写仓库里 `package.json` 的版本是 `0.1.7-rc.1+lyteboat.14` | 仓库里保持上游版本号，打包时才盖 `+lyteboat.<10 位 sha>`（蓝图 §16 第 10 条） | 无：准入看 `dsh-app-boot` 的版本 |
 | 4 | 蓝图 v7 §4 列 11 个内核包，说 llm、skill 暂留原样层 | 内核 13 包（`3d29a07`） | 以 `dsh/kernel.json` 为准 |
 | 5 | 蓝图 §7 写 drop 要附"理由"，redesign 要附"上游测试全绿、日志等价" | 代码要求 drop 带 `Dist-Exit`，redesign 带 `Dist-Tests`；另有 `build` 类（`delta-report.ts:30-38`） | 以代码为准 |
-| 6 | `CLAUDE.md:74` 说 `Dist-Contract`、`Dist-Exit` "wherever … involved" | 机器不检查这两项；`delta-report` 跳过合并提交 | 合并里夹带的内核改动逃过 trailer 检查；靠评审和 §3.3 的 `git merge-tree` 核对 |
+| 6 | `CLAUDE.md:73` 说 `Dist-Contract`、`Dist-Exit` "wherever … involved" | 机器不检查这两项；`delta-report` 跳过合并提交 | 合并里夹带的内核改动逃过 trailer 检查；靠评审和 §3.3 的 `git merge-tree` 核对 |
 | 7 | 蓝图 §12 写"CI 强制：提交尾部格式检查" | `ci.yml` 只跑 lint、typecheck、test；`dist:delta --check`、overlay 闸门和 G4–G6 都靠手动或同步时跑 | 需要授权改 `.github/` 才能补上 |
 | 8 | `CLAUDE.md:21` 在布局里列出 `dsh/typert.json` | 文件还不存在，第一次 `typert --write` 后才会出现 | 符合预期 |
 | 9 | 蓝图 §13 X6 说兼容范围包括 Web 客户端协议 | G5 只跑 headless，23 个金丝雀全是宿主侧；界面扩展没有对照（蓝图 §16 第 11 条） | Web 兼容性目前没有闸门 |
-| 10 | 提交信息末尾的署名 trailer 带模型标识 | `CLAUDE.md:190` 禁止在文件里出现模型标识 | 在文档里引用提交时，必须省略这些 trailer（本文已省略） |
+| 10 | 提交信息末尾的署名 trailer 带模型标识 | `CLAUDE.md:189` 禁止在文件里出现模型标识 | 在文档里引用提交时，必须省略这些 trailer（本文已省略） |
 | 11 | `dsh/kernel.json:2` 的 `$comment`："nothing else in the repository lists the kernel" | overrides（`pnpm-workspace.yaml:16-29`）、根 `tsconfig.json` 的 references、`CLAUDE.md:15-17` 的布局、`minimumReleaseAgeExclude` 里的 12 个内核包名也都列出内核 | 晋升时这几处都要改（§9.4 第 2–4 步）；只有 overrides 有测试核对 |
 | 12 | `dsh/tsdown.config.ts:6-8` 注释说上游 Typert 插件产出的文件"none of which the kernel packages publish" | dsh-llm 晋升后发布 `lib/typert.*`，而且就用这份根配置打包；文件随导入而来，不经这个插件 | 注释过时 |
 | 13 | `pnpm-workspace.yaml:5` 写"core are declarations and the driver fork" | driver fork 在 D1-6（`4a98679`）已删除；`lyteboat/core/*` 只有 contracts 和 cordis-compat | 注释过时 |
 | 14 | `extensions.yml:7` 的示例键是 `… › exports › . › IntakeDecision` | 内核的导出名是 `LyteboatIntakeDecision`（`extensions.yml:28`）；`IntakeDecision` 只是 `@lyteboat/contracts` 的再导出别名 | 照抄示例会写出一个永远 stale 的键 |
 | 15 | `minimumReleaseAgeExclude` 里 12 个内核包名的条目 | 这些名字经 overrides 解析到工作区，不从 registry 取 | 条目已失效，可在下次整理列表时删掉 |
-| 16 | `CLAUDE.md:218` 说 `pnpm run build` 就是"`tsc -b`" | 还跑 `scripts/dist/bundle-kernel.ts`（tsdown 打包 + Typert 校验，`package.json:12`） | 读者会低估构建的内容 |
+| 16 | `CLAUDE.md:217` 说 `pnpm run build` 就是"`tsc -b`" | 还跑 `scripts/dist/bundle-kernel.ts`（tsdown 打包 + Typert 校验，`package.json:12`） | 读者会低估构建的内容 |
 | 17 | `COMPAT.md:11` 说稳定面"compared on every build by G1" | `pnpm run build` 不跑 G1；G1 在 `pnpm run test` 构建之后跑（`package.json:15`） | 只跑构建的人拿不到 G1 结果 |
 | 18 | `bundle-kernel.ts` 的 Typert 校验看起来在 CI 的构建里 | CI 是浅克隆（`ci.yml:26`），找不到导入提交，校验在 `bundle-kernel.ts:54` 直接返回 | 改了 dsh-llm 源码却没重新生成 Typert 文件，CI 不会报错；需要 `fetch-depth: 0` |
-| 19 | `COMPAT.md:62` 写 lyteboat-next "follows every dsh tag"，`CLAUDE.md:197` 写 "follows every sync" | 两处说法不一；结合"一次同步可跨多个 tag"，应以"每次同步"为准 | 需要统一措辞 |
+| 19 | `COMPAT.md:62` 写 lyteboat-next "follows every dsh tag"，`CLAUDE.md:196` 写 "follows every sync" | 两处说法不一；结合"一次同步可跨多个 tag"，应以"每次同步"为准 | 需要统一措辞 |
 | 20 | `COMPAT.md:27` 说上游的内核测试在 G2 下原样运行 | G2 只收 `*.spec.ts`（`vitest.config.ts:35`）；内核包里 4 个 `*.e2e.ts` / `*.perf.ts` 不在 G2，也没列进排除清单 | 这几个测试目前没有在 lyteboat 源码上跑 |
 | 21 | `canaries.yml:16` 写"projections has two" | 不满 3 个的还有 step（1 个）和 tools（2 个） | 注释不完整 |
 | 22 | `lyteboat/core/contracts/src/index.ts:9-11` 的模块注释说 "`Session.append` cannot set that mark" | E1 之后 `Session.append` 能写这个标记（`dsh/core/session/src/index.ts:727-731`）；同一段注释接着又说 `lyteboat/aux-llm-call` 经这个扩展以 ignorable 追加（`lyteboat/core/contracts/src/index.ts:15-18`） | 注释前后矛盾，E1 让前半句过时 |
 | 23 | `COMPAT.md:46` 说想用扩展的第三方插件从 `@lyteboat/contracts` 引扩展的类型 | contracts 只再导出 agent-loop 两个扩展的声明（`lyteboat/core/contracts/src/index.ts:38-43`），没有 `LyteboatAppendOptions`；E1 放宽的是内核 `Session.append` 自己的签名 | 想用 E1 的第三方插件要对着 lyteboat 内核的 `@deepseek-ai/dsh-session` 类型编译，在 contracts 里找不到它 |
 | 24 | `README.md:211`、`README.en.md:213` 说内核是导入加上两个登记的扩展（`lyteboat/intake`、`lyteboat/pre-assemble`） | `c5a553f` 之后是三个（§4.3） | README 的状态一节需要更新 |
 | 25 | `scripts/dist/trees.ts:168-169` 的注释说内核不变就打出相同的字节，安装树不用重装 | 版本号里带着打包时 `HEAD` 的 sha（`:150`、`:165`）；换一个提交，哪怕没碰内核，包的字节也变，G4–G6 的树随之重装（§8.1） | 只对同一个 `HEAD` 上的重跑成立 |
-| 26 | `CLAUDE.md:43` 的布局说 `scripts/` 里是 `check-layers.ts, upstream-pins.spec.ts` 和 `dist/` | V1 加了 `scripts/check-sensitive.ts`，`pnpm run lint` 的最后一步跑它（`package.json:14`） | 布局漏了一个脚本 |
+| 26 | `CLAUDE.md:42` 的布局说 `scripts/` 里是 `check-layers.ts, upstream-pins.spec.ts` 和 `dist/` | V1 加了 `scripts/check-sensitive.ts`，`pnpm run lint` 的最后一步跑它（`package.json:14`） | 布局漏了一个脚本 |
 | 27 | `pnpm run lint` 的敏感词检查看起来在 CI 里 | CI 没有设 `LYTEBOAT_SENSITIVE_WORDS` 或 `LYTEBOAT_SENSITIVE_WORDS_FILE`（`ci.yml:10-11`），脚本打印 skipped 就通过（`scripts/check-sensitive.ts:61-63`） | 检查只在设了词表的本地运行里生效；要在 CI 里生效，得改 `.github/`（需要授权）并提供词表 |
 | 28 | 蓝图 §8 E1 计划一个 G6 用例：路由过的会话在官方 dsh 上重开，跳过 lyteboat 的记录 | 没有做。G6 在两棵树上跑的都是官方 `dsh headless`，不装 lyteboat 的插件（`dsh-compat/tests/roundtrip/g6.spec.ts:1-5`、`:26-29`） | 官方读者跳过 `lyteboat/aux-llm-call` 这件事，只有内核层的测试证明（§10 第 12 步） |

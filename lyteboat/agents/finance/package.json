@@ -32,7 +32,6 @@
   ],
   "dependencies": {
     "@lyteboat/contracts": "workspace:*",
-    "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
     "@deepseek-ai/dsh-tools": "workspace:*",
     "zod": "catalog:"
