@@ -1,0 +1,79 @@
+# manifest.yaml — allocation_diagnosis: each bucket's share against its band.
+# The raw data namespace is what allocation_diagnosis passes to ctx.a2ui.render:
+# { diagnosis: { title, summary, <bucket>_share / _band / _judge, grid_hide,
+#                blocked_text / _hide, caveat_text / _hide, coverage_text } }.
+# A single-bucket diagnosis hides the grid and shows the blocked text; a
+# two-bucket one shows the caveat.
+
+paths:
+
+  title:
+    kind: state
+    path: "diagnosis.title"
+
+  summary:
+    kind: state
+    path: "diagnosis.summary"
+
+  blocked_text:
+    kind: state
+    path: "diagnosis.blocked_text"
+
+  caveat_text:
+    kind: state
+    path: "diagnosis.caveat_text"
+
+  coverage_text:
+    kind: state
+    path: "diagnosis.coverage_text"
+
+  grid_hide:
+    kind: state
+    path: "diagnosis.grid_hide"
+    default: true
+
+  blocked_hide:
+    kind: state
+    path: "diagnosis.blocked_hide"
+    default: true
+
+  caveat_hide:
+    kind: state
+    path: "diagnosis.caveat_hide"
+    default: true
+
+  daily_share:
+    kind: state
+    path: "diagnosis.daily_share"
+
+  daily_band:
+    kind: state
+    path: "diagnosis.daily_band"
+
+  daily_judge:
+    kind: state
+    path: "diagnosis.daily_judge"
+
+  steady_share:
+    kind: state
+    path: "diagnosis.steady_share"
+
+  steady_band:
+    kind: state
+    path: "diagnosis.steady_band"
+
+  steady_judge:
+    kind: state
+    path: "diagnosis.steady_judge"
+
+  growth_share:
+    kind: state
+    path: "diagnosis.growth_share"
+
+  growth_band:
+    kind: state
+    path: "diagnosis.growth_band"
+
+  growth_judge:
+    kind: state
+    path: "diagnosis.growth_judge"

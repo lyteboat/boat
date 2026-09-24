@@ -1,0 +1,7 @@
+# manifest.yaml — next_step: the button that follows a drill-down. Static:
+# nothing binds. `deferred`: the card follows the answer instead of sitting at
+# a marker the model writes.
+
+emission_mode: deferred
+
+paths: {}

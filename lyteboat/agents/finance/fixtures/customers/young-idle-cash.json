@@ -1,0 +1,61 @@
+{
+  "id": "young-idle-cash",
+  "note": "28 岁，风险等级 C4，钱大多放在活期和货币基金里，进取部分偏少；保险机构未授权。",
+  "profile": {
+    "age": 28,
+    "riskTier": "C4",
+    "monthlyExpense": "6000.00",
+    "hasChild": false
+  },
+  "institutions": [
+    {
+      "name": "示例银行",
+      "kind": "bank",
+      "authorized": true,
+      "accounts": [
+        {
+          "bucket": "daily",
+          "name": "活期",
+          "amount": "34400.00"
+        },
+        {
+          "bucket": "daily",
+          "name": "货币基金",
+          "amount": "20000.00"
+        },
+        {
+          "bucket": "steady",
+          "name": "定期存款",
+          "amount": "0.00"
+        }
+      ]
+    },
+    {
+      "name": "示例证券",
+      "kind": "securities",
+      "authorized": true,
+      "accounts": [
+        {
+          "bucket": "growth",
+          "name": "股票账户",
+          "amount": "25600.00"
+        }
+      ]
+    },
+    {
+      "name": "示例保险",
+      "kind": "insurance",
+      "authorized": false,
+      "accounts": [],
+      "policyCount": 1
+    }
+  ],
+  "coverage": {
+    "criticalIllness": "gap",
+    "medical": "covered",
+    "accident": "gap"
+  },
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

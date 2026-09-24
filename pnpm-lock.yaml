@@ -580,6 +580,67 @@ importers:
         specifier: workspace:*
         version: link:../../plugins/tool-policy
 
+  lyteboat/agents/finance:
+    dependencies:
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../../dsh/llm/llm
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: 0.1.7-rc.1
+        version: 0.1.7-rc.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-fs@0.1.7-rc.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.1.7-rc.1(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.1.7-rc.1(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@dsh+llm+llm)(@deepseek-ai/dsh-sandbox@0.1.7-rc.1(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@dsh+llm+llm)(@deepseek-ai/dsh-session@dsh+core+session)))(@deepseek-ai/dsh-home-paths@0.1.7-rc.1(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-skill@dsh+skill+skill)
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../../dsh/core/tools
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../../dsh/core/agent
+      '@deepseek-ai/dsh-agent-loop':
+        specifier: workspace:*
+        version: link:../../../dsh/core/agent-loop
+      '@deepseek-ai/dsh-invariants':
+        specifier: catalog:dsh
+        version: 0.1.7-rc.1(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../../dsh/core/session
+      '@deepseek-ai/dsh-session-persistence':
+        specifier: workspace:*
+        version: link:../../../dsh/session/session-persistence
+      '@deepseek-ai/dsh-session-projection':
+        specifier: workspace:*
+        version: link:../../../dsh/session/session-projection
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:*
+        version: link:../../../dsh/skill/skill
+      '@lyteboat/a2ui':
+        specifier: workspace:*
+        version: link:../../plugins/a2ui
+      '@lyteboat/host':
+        specifier: workspace:*
+        version: link:../../bundles/host
+      '@lyteboat/run':
+        specifier: workspace:*
+        version: link:../../bundles/run
+      '@lyteboat/skill-router':
+        specifier: workspace:*
+        version: link:../../plugins/skill-router
+      '@lyteboat/testing':
+        specifier: workspace:*
+        version: link:../../tooling/testing
+      '@lyteboat/tool-policy':
+        specifier: workspace:*
+        version: link:../../plugins/tool-policy
+
   lyteboat/apps/cli:
     dependencies:
       '@deepseek-ai/cordis':

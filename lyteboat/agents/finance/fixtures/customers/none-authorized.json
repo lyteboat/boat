@@ -1,0 +1,44 @@
+{
+  "id": "none-authorized",
+  "note": "一家机构都没有授权。",
+  "profile": {
+    "age": 30,
+    "riskTier": "C3",
+    "monthlyExpense": "7000.00",
+    "hasChild": false
+  },
+  "institutions": [
+    {
+      "name": "示例银行",
+      "kind": "bank",
+      "authorized": false,
+      "accounts": [
+        {
+          "bucket": "daily",
+          "name": "活期",
+          "amount": "10000.00"
+        }
+      ]
+    },
+    {
+      "name": "示例证券",
+      "kind": "securities",
+      "authorized": false,
+      "accounts": [
+        {
+          "bucket": "growth",
+          "name": "股票账户",
+          "amount": "20000.00"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "criticalIllness": "unknown",
+    "medical": "unknown",
+    "accident": "unknown"
+  },
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

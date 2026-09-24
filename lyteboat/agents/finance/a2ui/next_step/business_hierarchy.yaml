@@ -1,0 +1,9 @@
+# business_hierarchy.yaml — next_step: one button
+
+default: next_step
+
+hierarchies:
+  next_step:
+    root: root-container
+    ui_ids:
+      - next-btn

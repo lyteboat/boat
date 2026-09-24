@@ -1,0 +1,49 @@
+{
+  "id": "two-buckets",
+  "note": "授权了银行，证券未授权：看得到日常开销和稳健投资，看不到进取收益。",
+  "profile": {
+    "age": 45,
+    "riskTier": "C3",
+    "monthlyExpense": "9000.00",
+    "hasChild": false
+  },
+  "institutions": [
+    {
+      "name": "示例银行",
+      "kind": "bank",
+      "authorized": true,
+      "accounts": [
+        {
+          "bucket": "daily",
+          "name": "活期",
+          "amount": "30000.00"
+        },
+        {
+          "bucket": "steady",
+          "name": "银行理财",
+          "amount": "100000.00"
+        }
+      ]
+    },
+    {
+      "name": "示例证券",
+      "kind": "securities",
+      "authorized": false,
+      "accounts": [
+        {
+          "bucket": "growth",
+          "name": "股票账户",
+          "amount": "70000.00"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "criticalIllness": "covered",
+    "medical": "covered",
+    "accident": "covered"
+  },
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

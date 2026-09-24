@@ -1,0 +1,20 @@
+# manifest.yaml — allocation_plan: where each bucket should move.
+# The raw data namespace: { plan: { daily_plan, steady_plan, growth_plan, note } }.
+
+paths:
+
+  daily_plan:
+    kind: state
+    path: "plan.daily_plan"
+
+  steady_plan:
+    kind: state
+    path: "plan.steady_plan"
+
+  growth_plan:
+    kind: state
+    path: "plan.growth_plan"
+
+  note:
+    kind: state
+    path: "plan.note"

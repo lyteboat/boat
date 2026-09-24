@@ -113,7 +113,7 @@ lyteboat web --no-open                                         # 浏览器界面
 - `a2ui/`：卡片模板。
 - `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
 
-完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/demo`](lyteboat/agents/demo)。
+完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/demo`](lyteboat/agents/demo)（最小）和 [`lyteboat/agents/finance`](lyteboat/agents/finance)（接近真实规模的金融智能体）。
 
 ### 数据与会话日志
 
@@ -165,6 +165,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、`LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | cordis 发布物里被擦除的 const enum 的运行时取值 |
 | `lyteboat/agents/demo` | `@lyteboat/agent-demo` | 示例 agent：组合文件、两个路由技能、资产工具、卡片模板、拒识门 |
+| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：只用公开理财常识的业务 agent，资产总览、配置诊断、单项下钻、投资者教育，四个路由技能、六张卡片、会话状态投影 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：dsh 服务挂载与 `MockAdapter`、会话日志读取、脚本化模型、启动器进程 |
 
 ## 开发

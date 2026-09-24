@@ -1,0 +1,13 @@
+# business_hierarchy.yaml — bucket_detail: one shape
+
+default: bucket_detail
+
+hierarchies:
+  bucket_detail:
+    root: root-container
+    ui_ids:
+      - title-text
+      - share-row
+      - amount-text
+      - accounts-divider
+      - accounts-text

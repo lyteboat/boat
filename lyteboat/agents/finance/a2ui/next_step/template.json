@@ -1,0 +1,41 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-next-step",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "next-btn"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "next-btn",
+      "component": {
+        "Button": {
+          "text": {
+            "literalString": "诊断一下整体配置"
+          },
+          "type": "primary",
+          "block": true,
+          "action": {
+            "name": "query",
+            "args": {
+              "queryMsg": "诊断一下我的配置"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

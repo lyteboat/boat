@@ -1,0 +1,36 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../dsh/llm/llm"
+    },
+    {
+      "path": "../../../dsh/core/agent"
+    },
+    {
+      "path": "../../../dsh/core/session"
+    },
+    {
+      "path": "../../../dsh/core/tools"
+    },
+    {
+      "path": "../../../dsh/session/session-projection"
+    },
+    {
+      "path": "../../core/contracts"
+    },
+    {
+      "path": "../../plugins/tool-policy"
+    },
+    {
+      "path": "../../plugins/a2ui"
+    }
+  ]
+}

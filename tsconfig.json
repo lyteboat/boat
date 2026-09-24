@@ -72,6 +72,9 @@
       "path": "./lyteboat/agents/demo"
     },
     {
+      "path": "./lyteboat/agents/finance"
+    },
+    {
       "path": "./lyteboat/tooling/testing"
     }
   ]

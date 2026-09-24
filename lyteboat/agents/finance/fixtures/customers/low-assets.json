@@ -1,0 +1,49 @@
+{
+  "id": "low-assets",
+  "note": "23 岁，资产还不到 3 个月支出：先攒应急金。",
+  "profile": {
+    "age": 23,
+    "riskTier": "C2",
+    "monthlyExpense": "4000.00",
+    "hasChild": false
+  },
+  "institutions": [
+    {
+      "name": "示例银行",
+      "kind": "bank",
+      "authorized": true,
+      "accounts": [
+        {
+          "bucket": "daily",
+          "name": "活期",
+          "amount": "3000.00"
+        },
+        {
+          "bucket": "steady",
+          "name": "定期存款",
+          "amount": "2000.00"
+        }
+      ]
+    },
+    {
+      "name": "示例基金",
+      "kind": "fund",
+      "authorized": true,
+      "accounts": [
+        {
+          "bucket": "growth",
+          "name": "基金账户",
+          "amount": "0.00"
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "criticalIllness": "gap",
+    "medical": "covered",
+    "accident": "gap"
+  },
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

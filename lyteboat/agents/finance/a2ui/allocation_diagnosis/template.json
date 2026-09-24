@@ -1,0 +1,298 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-allocation-diagnosis",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "summary-text",
+              "grid",
+              "blocked-text",
+              "caveat-text",
+              "coverage-text"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "title"
+          },
+          "fontSize": "18px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "summary-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "summary"
+          },
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "grid",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 8,
+          "children": {
+            "explicitList": [
+              "daily-row",
+              "steady-row",
+              "growth-row"
+            ]
+          },
+          "hide": {
+            "path": "grid_hide"
+          }
+        }
+      }
+    },
+    {
+      "id": "daily-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "daily-label",
+              "daily-share",
+              "daily-band",
+              "daily-judge"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "daily-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "日常开销"
+          }
+        }
+      }
+    },
+    {
+      "id": "daily-share",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "daily_share"
+          },
+          "fontWeight": 600
+        }
+      }
+    },
+    {
+      "id": "daily-band",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "daily_band"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    },
+    {
+      "id": "daily-judge",
+      "component": {
+        "Tag": {
+          "text": {
+            "path": "daily_judge"
+          },
+          "backgroundColor": "#F2F4F5"
+        }
+      }
+    },
+    {
+      "id": "steady-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "steady-label",
+              "steady-share",
+              "steady-band",
+              "steady-judge"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "稳健投资"
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-share",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_share"
+          },
+          "fontWeight": 600
+        }
+      }
+    },
+    {
+      "id": "steady-band",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_band"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    },
+    {
+      "id": "steady-judge",
+      "component": {
+        "Tag": {
+          "text": {
+            "path": "steady_judge"
+          },
+          "backgroundColor": "#F2F4F5"
+        }
+      }
+    },
+    {
+      "id": "growth-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "growth-label",
+              "growth-share",
+              "growth-band",
+              "growth-judge"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "进取收益"
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-share",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "growth_share"
+          },
+          "fontWeight": 600
+        }
+      }
+    },
+    {
+      "id": "growth-band",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "growth_band"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    },
+    {
+      "id": "growth-judge",
+      "component": {
+        "Tag": {
+          "text": {
+            "path": "growth_judge"
+          },
+          "backgroundColor": "#F2F4F5"
+        }
+      }
+    },
+    {
+      "id": "blocked-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "blocked_text"
+          },
+          "color": "#8F8F8F",
+          "hide": {
+            "path": "blocked_hide"
+          }
+        }
+      }
+    },
+    {
+      "id": "caveat-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "caveat_text"
+          },
+          "fontSize": "12px",
+          "color": "#8F8F8F",
+          "hide": {
+            "path": "caveat_hide"
+          }
+        }
+      }
+    },
+    {
+      "id": "coverage-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "coverage_text"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+/**
+ * The finance agent in the run composition (in process, scripted DeepSeek
+ * Messages server): the persona is the whole system prompt, the official
+ * tools are narrowed away, the routed skill's tool alone reaches the model at
+ * temperature 0, cards ride the tool result, and the unauthorized card ends
+ * the turn. The reopen case pins today's limit: a routed session carries the
+ * router's own nodes, which dsh's persistence refuses to read.
+ */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
+import { SessionFormatUnsupportedError, validateStoredEvents } from '@deepseek-ai/dsh-session-persistence'
+import { bootComposition } from '@lyteboat/testing/composition'
+import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
+import { startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+
+/** The agents/ root this package lives in, as `--agents ./agents` names it. */
+const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
+const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
+
+/** The skill and tool call each task routes to. */
+const PLANS: Record<string, { skill: string; tool: string; args?: Record<string, unknown> }> = {
+  看看我的资产: { skill: 'asset-overview', tool: 'asset_overview' },
+  我的配置合理吗: { skill: 'allocation-diagnosis', tool: 'allocation_diagnosis' },
+  什么是再平衡: { skill: 'investor-education', tool: 'lookup_knowledge', args: { topic: '再平衡' } },
+}
+
+const FINANCE_TOOLS = ['asset_overview', 'allocation_diagnosis', 'bucket_diagnosis', 'lookup_knowledge']
+
+interface LogRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean; data?: Record<string, unknown> }
+
+function blockText(block: ChatBlock): string {
+  return block.text ?? (Array.isArray(block.content) ? (block.content as ChatBlock[]).map(blockText).join('') : '')
+}
+
+/** The text of the latest tool result in a request. */
+function lastToolResult(request: RecordedRequest): string {
+  const results = request.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result'))
+  return results.map(blockText).at(-1) ?? ''
+}
+
+function script(request: RecordedRequest) {
+  if (request.purpose === 'router') {
+    const latest = /<latest_user_input>([\s\S]*?)<\/latest_user_input>/u.exec(request.lastUser)?.[1] ?? ''
+    return { text: JSON.stringify({ skill_id: PLANS[latest]?.skill ?? null, reason: 'test' }) }
+  }
+  const plan = Object.values(PLANS).find(candidate => request.toolNames.includes(candidate.tool))
+  if (plan !== undefined && !request.calledTools.includes(plan.tool)) return { toolCall: { name: plan.tool, arguments: plan.args ?? {}, id: `call-${plan.tool}` } }
+  const areas = /areas=([^\]\s]+)/u.exec(lastToolResult(request))?.[1] ?? 'none'
+  const markers = areas === 'none' ? [] : areas.split(',').map(area => `[[card:${area}]]`)
+  return { text: ['FINANCE-OK', ...markers].join('\n') }
+}
+
+describe('finance agent in the run composition (in process, scripted model)', () => {
+  let root: string
+  let model: ScriptedModel
+
+  beforeAll(async () => {
+    root = mkdtempSync(join(tmpdir(), 'lyteboat-finance-'))
+    model = await startScriptedModel(withTitle(script), { apiKey: 'mock-key' })
+  })
+
+  afterAll(async () => {
+    await model.close()
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  async function run(label: string, customer: string, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
+    const home = join(root, `home-${label}`)
+    const workspace = join(root, `workspace-${label}`)
+    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
+    writeFileSync(join(workspace, 'README.md'), '# finance\n')
+    const before = model.requests.length
+    const result = await bootComposition({
+      bundles: RUN_BUNDLES,
+      args: ['--agents', AGENTS, '--agent', 'finance', task],
+      cwd: workspace,
+      home,
+      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1', LYTEBOAT_FINANCE_CUSTOMER: customer },
+    })
+    expect(result.code, result.stderr).toBe(0)
+    const [log] = findSessionLogs(home)
+    return { requests: model.requests.slice(before), records: readSessionLog(log!) as unknown as LogRecord[], stdout: result.stdout, home }
+  }
+
+  const resultMeta = (records: LogRecord[]) => records.find(record => record.type === 'tool/result')?.data?.['meta'] as {
+    lyteboat?: { card?: { surfaceId: string } }
+    finance?: { extraCards?: { area: string; surfaceId: string }[]; state?: Record<string, unknown> }
+  } | undefined
+
+  it('"看看我的资产": the persona is the whole system prompt and only the routed tool reaches the model, at temperature 0', async () => {
+    const { requests, records, stdout } = await run('overview', 'young-idle-cash', '看看我的资产')
+    expect(stdout).toContain('FINANCE-OK')
+    expect(stdout).toContain('[[card:asset_overview]]')
+    const loop = requests.filter(request => request.purpose === 'loop')
+    expect(loop).toHaveLength(2)
+    expect(loop[0]!.body.system).toContain('你是「轻舟金融助手」')
+    expect(loop[0]!.body.system).not.toContain('coding agent')
+    expect(loop[0]!.toolNames.filter(name => FINANCE_TOOLS.includes(name))).toEqual(['asset_overview'])
+    expect(loop[0]!.toolNames.filter(name => !FINANCE_TOOLS.includes(name))).toEqual(['skill'])
+    expect(loop[0]!.body['temperature']).toBe(0)
+    expect(lastToolResult(loop[1]!)).toContain('【事实】\n- 已授权资产合计 80,000.00 元（约 8.00 万元）')
+    expect(lastToolResult(loop[1]!)).toContain('【不可答】')
+    expect(resultMeta(records)?.lyteboat?.card?.surfaceId).toMatch(/^asset_overview-/u)
+  })
+
+  it('"我的配置合理吗": a rich diagnosis prepares two cards and asks for the investment horizon', async () => {
+    const { requests, records, stdout } = await run('diagnosis', 'midlife-moderate', '我的配置合理吗')
+    const digest = lastToolResult(requests.filter(request => request.purpose === 'loop')[1]!)
+    expect(digest).toMatch(/^\[tool:allocation_diagnosis status=ok state=rich seq=1 areas=allocation_diagnosis,allocation_plan\]/u)
+    expect(digest).toContain('稳健投资 146,000.00 元（约 14.60 万元），占 73.0%，建议 15%–25%，偏高')
+    expect(digest).toContain('大概多久用不到')
+    const meta = resultMeta(records)
+    expect(meta?.lyteboat?.card?.surfaceId).toMatch(/^allocation_diagnosis-/u)
+    expect(meta?.finance?.extraCards?.map(card => card.area)).toEqual(['allocation_plan'])
+    expect(meta?.finance?.state).toMatchObject({ diagnosisSeq: 1, asked: ['investmentHorizon'] })
+    // Without deferred emission the markers stay in the answer text (roadmap gap G3).
+    expect(stdout).toContain('[[card:allocation_plan]]')
+  })
+
+  it('nothing authorized: the unauthorized card ends the turn after one model request', async () => {
+    const { requests, records } = await run('unauthorized', 'none-authorized', '看看我的资产')
+    expect(requests.filter(request => request.purpose === 'loop')).toHaveLength(1)
+    expect(resultMeta(records)?.lyteboat?.card?.surfaceId).toMatch(/^unauthorized-/u)
+    expect(records.filter(record => record.type === 'turn/end')).toHaveLength(1)
+  })
+
+  it('"什么是再平衡": investor education answers from the knowledge base without a card', async () => {
+    const { requests, records } = await run('education', 'healthy', '什么是再平衡')
+    expect(lastToolResult(requests.filter(request => request.purpose === 'loop')[1]!)).toContain('再平衡是定期把各类资产的比例调回目标')
+    expect(resultMeta(records)?.lyteboat).toBeUndefined()
+  })
+
+  it('a routed session does not reopen yet: the router writes nodes dsh persistence refuses (roadmap gap G4)', async () => {
+    const { records } = await run('reopen', 'young-idle-cash', '看看我的资产')
+    const header = records.find(record => record.type === 'session')
+    const events = records.filter(record => typeof record.seq === 'number')
+    let refusal: string | undefined
+    try {
+      validateStoredEvents(
+        { id: SessionId(header?.id ?? 'reopen'), version: SESSION_FORMAT_VERSION, createdAt: header?.createdAt ?? 0, isSeeded: header?.isSeeded ?? false },
+        structuredClone(events) as never,
+        undefined,
+      )
+    } catch (error: unknown) {
+      if (!(error instanceof SessionFormatUnsupportedError)) throw error
+      refusal = error.message
+    }
+    expect(refusal).toMatch(/"lyteboat\/(skill-routed|route-request)".*not marked ignorable/u)
+  })
+})

@@ -113,7 +113,7 @@ A business agent is a directory `lyteboat/agents/<id>/`, named by its id:
 - `a2ui/`: card templates.
 - `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
 
-The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`lyteboat/agents/demo`](lyteboat/agents/demo) is a working agent.
+The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`lyteboat/agents/demo`](lyteboat/agents/demo) is the smallest working agent and [`lyteboat/agents/finance`](lyteboat/agents/finance) one closer to real scale.
 
 ### Data and session logs
 
@@ -167,6 +167,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |
 | `lyteboat/agents/demo` | `@lyteboat/agent-demo` | The demo agent: composition file, two routed skills, an asset tool, card templates, an intake gate |
+| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, built from public financial knowledge only: asset overview, allocation diagnosis, one-bucket drill-down, investor education; four routed skills, six cards, a session-state projection |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher processes |
 
 ## Development

@@ -1,0 +1,82 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-allocation-plan",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "daily-plan",
+              "steady-plan",
+              "growth-plan",
+              "note-text"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "调整方向"
+          },
+          "fontSize": "18px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "daily-plan",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "daily_plan"
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-plan",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_plan"
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-plan",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "growth_plan"
+          }
+        }
+      }
+    },
+    {
+      "id": "note-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "note"
+          },
+          "fontSize": "12px",
+          "color": "#8F8F8F"
+        }
+      }
+    }
+  ]
+}

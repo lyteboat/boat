@@ -1,0 +1,8 @@
+# manifest.yaml — unauthorized: the terminal card when nothing is authorized.
+# The raw data namespace: { access: { authorize_link } }.
+
+paths:
+
+  authorize_link:
+    kind: state
+    path: "access.authorize_link"

@@ -1,0 +1,218 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-asset-overview",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "total-text",
+              "bucket-divider",
+              "daily-row",
+              "steady-row",
+              "growth-row",
+              "policy-text",
+              "auth-tip-text",
+              "diag-btn"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "已授权资产合计(元)"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    },
+    {
+      "id": "total-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "total_display"
+          },
+          "fontSize": "28px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "bucket-divider",
+      "component": {
+        "Divider": {}
+      }
+    },
+    {
+      "id": "daily-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "daily-label",
+              "daily-value"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "daily-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "日常开销"
+          }
+        }
+      }
+    },
+    {
+      "id": "daily-value",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "daily_line"
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "steady-label",
+              "steady-value"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "稳健投资"
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-value",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_line"
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "growth-label",
+              "growth-value"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-label",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "进取收益"
+          }
+        }
+      }
+    },
+    {
+      "id": "growth-value",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "growth_line"
+          }
+        }
+      }
+    },
+    {
+      "id": "policy-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "policy_text"
+          },
+          "fontSize": "14px",
+          "color": "#666666",
+          "hide": {
+            "path": "policy_hide"
+          }
+        }
+      }
+    },
+    {
+      "id": "auth-tip-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "auth_tip_text"
+          },
+          "fontSize": "12px",
+          "color": "#4584BF",
+          "hide": {
+            "path": "auth_tip_hide"
+          }
+        }
+      }
+    },
+    {
+      "id": "diag-btn",
+      "component": {
+        "Button": {
+          "text": {
+            "literalString": "诊断一下我的配置"
+          },
+          "type": "primary",
+          "block": true,
+          "action": {
+            "name": "query",
+            "args": {
+              "queryMsg": "诊断一下我的配置"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

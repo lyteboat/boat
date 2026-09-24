@@ -1,0 +1,46 @@
+# manifest.yaml — asset_overview: the authorized total and the three buckets.
+# The raw data namespace is what asset_overview passes to ctx.a2ui.render:
+# { overview: { total_display, daily_line, steady_line, growth_line,
+#               policy_count, policy_hide, auth_tip_text, auth_tip_hide } }.
+
+paths:
+
+  total_display:
+    kind: state
+    path: "overview.total_display"
+    default: "0.00"
+
+  daily_line:
+    kind: state
+    path: "overview.daily_line"
+
+  steady_line:
+    kind: state
+    path: "overview.steady_line"
+
+  growth_line:
+    kind: state
+    path: "overview.growth_line"
+
+  policy_text:
+    kind: transform
+    spec:
+      concat:
+        - "已授权的保险机构里有 "
+        - {get: "overview.policy_count", default: 0}
+        - " 份保单"
+
+  policy_hide:
+    kind: state
+    path: "overview.policy_hide"
+    default: true
+
+  auth_tip_text:
+    kind: state
+    path: "overview.auth_tip_text"
+    default: ""
+
+  auth_tip_hide:
+    kind: state
+    path: "overview.auth_tip_hide"
+    default: true

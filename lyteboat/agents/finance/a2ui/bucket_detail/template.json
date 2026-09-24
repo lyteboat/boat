@@ -1,0 +1,107 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-bucket-detail",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "share-row",
+              "amount-text",
+              "accounts-divider",
+              "accounts-text"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "title"
+          },
+          "fontSize": "18px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "share-row",
+      "component": {
+        "Row": {
+          "width": 100,
+          "distribution": "spaceBetween",
+          "alignment": "middle",
+          "children": {
+            "explicitList": [
+              "share-text",
+              "judge-tag"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "share-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "share_text"
+          }
+        }
+      }
+    },
+    {
+      "id": "judge-tag",
+      "component": {
+        "Tag": {
+          "text": {
+            "path": "judge_text"
+          },
+          "backgroundColor": "#F2F4F5"
+        }
+      }
+    },
+    {
+      "id": "amount-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "amount_text"
+          },
+          "fontSize": "14px",
+          "color": "#666666"
+        }
+      }
+    },
+    {
+      "id": "accounts-divider",
+      "component": {
+        "Divider": {}
+      }
+    },
+    {
+      "id": "accounts-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "accounts_text"
+          },
+          "fontSize": "13px",
+          "color": "#1A1A1A"
+        }
+      }
+    }
+  ]
+}
