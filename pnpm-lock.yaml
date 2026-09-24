@@ -1099,6 +1099,9 @@ importers:
       '@deepseek-ai/dsh-timeout':
         specifier: 0.1.7-rc.1
         version: 0.1.7-rc.1(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery':
+        specifier: 'catalog:'
+        version: 3.18.4
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts

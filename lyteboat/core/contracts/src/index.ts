@@ -146,9 +146,11 @@ export interface LyteboatAuxLlmCallRecord {
   prompt: string
   maxTokens: number
   temperature: number
+  /** The reasoning effort the call requested; absent: the route's default. */
+  reasoningEffort?: string
   /** The model's text; absent when the call failed. */
   output?: string
-  /** Why the call has no answer: `timeout`, or the error's name, with its message. */
+  /** Why the call has no answer: `timeout`, `max-tokens`, or the error's name, with its message. */
   failure?: { reason: string; message: string }
   durationMs: number
 }

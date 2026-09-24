@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's side model calls: one prompt a plugin sends for an agent (a routing decision, an intake classification) under its own deadline, recorded in the agent's session as an ignorable lyteboat/aux-llm-call record",
+  "description": "lyteboat's side model calls: one prompt a plugin sends for an agent (a routing decision, an intake classification) under its own deadline, recorded in the agent's session as an ignorable lyteboat/aux-llm-call record. Config: reasoningEffort, the effort every side call requests (an id the routes' adapter defines)",
   "type": "module",
   "exports": {
     ".": {
@@ -17,7 +17,8 @@
   ],
   "dependencies": {
     "@lyteboat/contracts": "workspace:*",
-    "@deepseek-ai/dsh-timeout": "catalog:dsh"
+    "@deepseek-ai/dsh-timeout": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",

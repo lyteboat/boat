@@ -67,6 +67,14 @@ alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 
 lyteboat uses dsh's model settings: set `DEEPSEEK_API_KEY` in the environment or in `$LYTEBOAT_HOME/.env`. `DEEPSEEK_BASE_URL` is optional and points to an endpoint that speaks DeepSeek's Anthropic-compatible Messages API.
 
+Side calls (skill routing, intake classification) use their route's default reasoning effort; DeepSeek thinks before it answers by default, and the thinking counts against the call's `maxTokens`. To have side calls answer directly, give the `lyteboat-aux-llm` row an effort in a patch file and add it with `--patch`:
+
+```yaml
+- id: lyteboat-aux-llm
+  config:
+    reasoningEffort: 'off'    # the route's model adapter defines the ids; this one is DeepSeek's
+```
+
 ### Run
 
 ```sh
@@ -163,7 +171,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/bundles/run` | `@lyteboat/run` | The one-shot bundle behind `lyteboat run`: task, `--agent`, `--agents`, `--history` |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file |
-| `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record |
+| `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record; an answer cut off at `maxTokens` is a failure; `reasoningEffort` sets the effort side calls request |
 | `lyteboat/plugins/request-context` | `@lyteboat/request-context` | The request context: the request a human message answers to (request id, context, admission verdict) rides its own source; the `lyteboatRequest` projection keeps the session's context |
 | `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | Admission ahead of the loop: an agent registers an admission function, the caller records its verdict on the request before the loop; the loop answers a recorded reply verdict directly and admits in the loop what arrives unadmitted |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | Skill load modes and model routing; `./agent` declares the mode in an agent's composition file |

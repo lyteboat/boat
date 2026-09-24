@@ -3,15 +3,17 @@
  * routing decision, an intake classification. One host service, `ctx.auxLlm`,
  * sends one prompt under its own deadline and records the call in the agent's
  * session as a `lyteboat/aux-llm-call` record: route, system, prompt, answer
- * or failure, duration. No reader needs the record to rebuild the session, so
- * it is appended ignorable (the kernel extension `session-append-ignorable`)
- * and the official release reads the log past it.
+ * or failure, duration. An answer is complete or it is a failure: a response
+ * cut off at `maxTokens` is reported as one. No reader needs the record to
+ * rebuild the session, so it is appended ignorable (the kernel extension
+ * `session-append-ignorable`) and the official release reads the log past it.
  * @module @lyteboat/aux-llm
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { BlockAssembler, createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import { BlockAssembler, ReasoningEffortId, createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import { LYTEBOAT_AUX_LLM_SOURCE } from '@lyteboat/contracts'
@@ -25,6 +27,20 @@ declare module '@deepseek-ai/cordis' {
 
 /** Timeout reason code of one side call. */
 export const AUX_LLM_TIMEOUT_CODE = 'LYTEBOAT_AUX_LLM_TIMEOUT'
+
+/** Plugin config (the host row). */
+export interface Config {
+  /**
+   * The reasoning effort every side call requests, an id the routes' adapter
+   * defines (DeepSeek's `off` answers without thinking first). Absent: the
+   * route's default, whose thinking spends from the call's `maxTokens`.
+   */
+  reasoningEffort?: string
+}
+
+export const Config: z<Config> = z.object({
+  reasoningEffort: z.string().min(1),
+})
 
 /** The model a side call goes to. */
 export interface AuxLlmRoute {
@@ -60,14 +76,15 @@ function routeOf(agent: Agent): AuxLlmRoute | undefined {
   return provider === undefined || model === undefined ? undefined : { provider, model }
 }
 
-function recordOf(call: AuxLlmCall, route: AuxLlmRoute, temperature: number, outcome: AuxLlmOutcome): LyteboatAuxLlmCallRecord {
+function recordOf(call: AuxLlmCall, route: AuxLlmRoute, controls: { temperature: number; reasoningEffort: string | undefined }, outcome: AuxLlmOutcome): LyteboatAuxLlmCallRecord {
   return {
     purpose: call.purpose,
     route,
     system: call.system,
     prompt: call.prompt,
     maxTokens: call.maxTokens,
-    temperature,
+    temperature: controls.temperature,
+    ...controls.reasoningEffort === undefined ? {} : { reasoningEffort: controls.reasoningEffort },
     ...outcome.kind === 'answer' ? { output: outcome.text } : { failure: { reason: outcome.reason, message: outcome.message } },
     durationMs: outcome.durationMs,
   }
@@ -78,7 +95,7 @@ export class AuxLlmService extends Service {
   // lyteboatDistro: the record rides the kernel extension session-append-ignorable.
   static inject = ['llm', 'lyteboatDistro']
 
-  constructor(ctx: Context) {
+  constructor(ctx: Context, private readonly config: Config = {}) {
     super(ctx, 'auxLlm')
   }
 
@@ -93,33 +110,37 @@ export class AuxLlmService extends Service {
     if (route === undefined) {
       return { kind: 'failed', reason: 'no-route', message: 'no route for the side call: pass one, or give the agent a model', durationMs: 0 }
     }
-    const temperature = call.temperature ?? 0
+    const controls = { temperature: call.temperature ?? 0, reasoningEffort: this.config.reasoningEffort }
     const started = performance.now()
+    const elapsed = (): number => Math.round(performance.now() - started)
     let outcome: AuxLlmOutcome
     {
       using callDeadline = deadline(call.signal, call.timeoutMs, AUX_LLM_TIMEOUT_CODE)
       try {
-        const text = await this.stream(call, route, temperature, callDeadline.signal)
-        outcome = { kind: 'answer', text, route, durationMs: Math.round(performance.now() - started) }
+        const answer = await this.stream(call, route, controls, callDeadline.signal)
+        outcome = answer.complete
+          ? { kind: 'answer', text: answer.text, route, durationMs: elapsed() }
+          : { kind: 'failed', reason: 'max-tokens', message: `the answer did not finish within maxTokens (${call.maxTokens})`, durationMs: elapsed() }
       } catch (error: unknown) {
         call.signal.throwIfAborted()
         const reason = timeoutOf(callDeadline.signal, AUX_LLM_TIMEOUT_CODE) !== undefined ? 'timeout' : error instanceof Error ? error.name : 'error'
         const message = error instanceof Error ? error.message : String(error)
-        outcome = { kind: 'failed', reason, message, durationMs: Math.round(performance.now() - started) }
+        outcome = { kind: 'failed', reason, message, durationMs: elapsed() }
       }
     }
-    call.agent.session.append('lyteboat/aux-llm-call', recordOf(call, route, temperature, outcome), { ignorable: true })
+    call.agent.session.append('lyteboat/aux-llm-call', recordOf(call, route, controls, outcome), { ignorable: true })
     return outcome
   }
 
-  private async stream(call: AuxLlmCall, route: AuxLlmRoute, temperature: number, signal: AbortSignal): Promise<string> {
+  private async stream(call: AuxLlmCall, route: AuxLlmRoute, controls: { temperature: number; reasoningEffort: string | undefined }, signal: AbortSignal): Promise<{ text: string; complete: boolean }> {
     const options: GenerateOptions = {
       provider: route.provider,
       model: route.model,
+      ...controls.reasoningEffort === undefined ? {} : { reasoningEffort: ReasoningEffortId(controls.reasoningEffort) },
       messages: [createUserMessage({ content: [{ type: 'text', text: call.prompt }], source: { kind: LYTEBOAT_AUX_LLM_SOURCE } })],
       system: call.system,
       maxTokens: call.maxTokens,
-      temperature,
+      temperature: controls.temperature,
       sessionId: call.agent.session.id,
       signal,
     }
@@ -130,7 +151,9 @@ export class AuxLlmService extends Service {
     }
     const finish = assembler.finish
     if (finish.kind === 'error' || finish.kind === 'aborted') throw new Error(finish.failure.message)
-    return assembler.blocks().filter(block => block.type === 'text').map(block => block.text).join('')
+    const text = assembler.blocks().filter(block => block.type === 'text').map(block => block.text).join('')
+    // Any other finish, `stop` or a provider's own reason, ends a whole answer.
+    return { text, complete: finish.kind !== 'max-tokens' }
   }
 }
 

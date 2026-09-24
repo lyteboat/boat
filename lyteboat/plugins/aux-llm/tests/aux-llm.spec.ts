@@ -1,16 +1,18 @@
 /**
- * The side-call service: an answered call, a failed one, a timeout, the
- * caller's own abort, and an agent without a model; every call that reached a
- * model leaves exactly one ignorable record.
+ * The side-call service: an answered call, a failed one, a timeout, an answer
+ * cut off at maxTokens, the configured reasoning effort, the caller's own
+ * abort, and an agent without a model; every call that reached a model leaves
+ * exactly one ignorable record.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LyteboatDistroService from '@lyteboat/distro'
-import { MockAdapter, mountDshTestServices, textResponse } from '@lyteboat/testing'
-import AuxLlmService, { type AuxLlmCall } from '@lyteboat/aux-llm'
+import { MockAdapter, maxTokensResponse, mountDshTestServices, textResponse } from '@lyteboat/testing'
+import AuxLlmService, { type AuxLlmCall, type Config } from '@lyteboat/aux-llm'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -18,13 +20,13 @@ afterEach(async () => {
   cleanups.length = 0
 })
 
-async function harness(adapter: MockAdapter): Promise<Context> {
+async function harness(adapter: MockAdapter, config: Config = {}): Promise<Context> {
   const ctx = new Context()
   cleanups.push(() => ctx.fiber.dispose())
   await mountDshTestServices(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LyteboatDistroService)
-  await ctx.plugin(AuxLlmService)
+  await ctx.plugin(AuxLlmService, config)
   ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
 }
@@ -72,6 +74,29 @@ describe('ctx.auxLlm.generate', () => {
 
     expect(outcome).toMatchObject({ kind: 'failed', reason: 'timeout' })
     expect(records(agent).map(record => record.data.failure?.reason)).toEqual(['timeout'])
+  })
+
+  it('reports an answer cut off at maxTokens as a failure, not as an answer', async () => {
+    const adapter = new MockAdapter([maxTokensResponse('{"accepted": tr')])
+    const ctx = await harness(adapter)
+    const agent = await ctx.agentLoop.create(SessionId('cut-off'), { provider: 'mock', model: 'mock' })
+
+    const outcome = await ctx.auxLlm.generate(call(agent, AbortSignal.timeout(5000)))
+
+    expect(outcome).toMatchObject({ kind: 'failed', reason: 'max-tokens', message: 'the answer did not finish within maxTokens (50)' })
+    expect(records(agent).map(record => [record.data.output, record.data.failure?.reason])).toEqual([[undefined, 'max-tokens']])
+  })
+
+  it('requests the configured reasoning effort on every call and records it', async () => {
+    const off = ReasoningEffortId('off')
+    const adapter = new MockAdapter([textResponse('{"accepted": true}')], { efforts: [{ id: off, name: 'Off' }, { id: ReasoningEffortId('high'), name: 'High' }], defaultEffort: ReasoningEffortId('high') })
+    const ctx = await harness(adapter, { reasoningEffort: 'off' })
+    const agent = await ctx.agentLoop.create(SessionId('effort'), { provider: 'mock', model: 'mock' })
+
+    await ctx.auxLlm.generate(call(agent, AbortSignal.timeout(5000)))
+
+    expect(adapter.requests[0]?.reasoningEffort).toBe(off)
+    expect(records(agent)[0]?.data.reasoningEffort).toBe('off')
   })
 
   it('propagates the caller\'s abort and records nothing', async () => {
