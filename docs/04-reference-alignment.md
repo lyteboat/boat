@@ -76,7 +76,7 @@ dsh 的核心代码已经在 lyteboat 里跑通。参考实现的大部分能力
 
 其余 dsh 包从 npm 原样安装，版本按 `dsh.upstream.json` 精确钉住。
 
-**内核当前的 carry。** 登记了两项 extend（`compatibility/contract/extensions.yml`），分别来自提交 92698ff 和 4870926。拿 lyteboat 的 agent-loop 与上游 rc.1 做 diff，实测上游文件里多出以下内容：
+**内核当前的 carry。** 登记了两项 extend（`dsh-compat/contract/extensions.yml`），分别来自提交 92698ff 和 4870926。拿 lyteboat 的 agent-loop 与上游 rc.1 做 diff，实测上游文件里多出以下内容：
 
 `dsh/core/agent-loop/src/agent.ts` 多 85 行：
 - preStep 里两个 waterfall 的钩子（276-289 行）；
@@ -111,11 +111,11 @@ dsh 的核心代码已经在 lyteboat 里跑通。参考实现的大部分能力
 | Protocol 加工厂插槽 | capability seam，由 Definition、Provider、Consumer 三个角色组成 | 缺任何一个角色都不算完整的 seam |
 | `app.py` 组合根 | profile 加 bundle patch | 组合就是数据 |
 
-### 1.3 兼容承诺（`compatibility/README.md`）
+### 1.3 兼容承诺（`dsh-compat/README.md`）
 
 | 闸门 | 证明什么 |
 |---|---|
-| G1 契约 | 内核构建出的契约与 `compatibility/contract/dsh-0.1.7-rc.1` 快照一致，所有差异都已在 `extensions.yml` 登记 |
+| G1 契约 | 内核构建出的契约与 `dsh-compat/contract/dsh-0.1.7-rc.1` 快照一致，所有差异都已在 `extensions.yml` 登记 |
 | G2 上游测试 | 上游为内核包写的测试原样在 lyteboat 源码上通过 |
 | G3 跨包测试 | 依赖内核的官方包，在 lyteboat 内核上仍能通过自己的测试 |
 | persistence / typert | 持久化 schema 和发布出去的 Typert 文件，与上游生成器的产物一致 |
@@ -421,7 +421,7 @@ dsh 的 hooks-claude-code 就是这样实现 Stop 钩子的，并且注明监听
 
 **dsh 的做法。** dsh 的官方包里没有长期记忆包。最接近的是 agent-instructions：它把 `$DSH_HOME/AGENTS.md` 和项目里的 AGENTS.md 类文件作为带来源的 user/message 注入，被压缩遮蔽后按原文重新注入（`dsh:packages/context/agent-instructions/src/index.ts:46-63`）；这是人写的静态说明，不会自动学习。session-query 能全文检索历史会话，但 dsh-base 默认不打开它。
 
-**社区插件。** npm 上有 40 多个 dsh 记忆插件（例如 `dsh-memory-vault`、`@max-null/dsh-memory`、`@chenhw7/dsh-memory`、`@openviking/dsh-memory-plugin`），其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在 lyteboat 内核上原样可用。它们的问题是：各自发布自己的服务名（例如 `ctx.memory`、自定义的 provider 注册表），没有公共 seam；多数按全局或工作区分区，面向编码助手，不按业务用户分区，也不支持多实例存储。所以 lyteboat 仍然要自己定义记忆 seam；合适的社区插件可以包成这个 seam 的一个 provider，不必从头写。
+**社区插件。** npm 上有 40 多个 dsh 记忆插件（例如 `dsh-memory-vault`、`@max-null/dsh-memory`、`@chenhw7/dsh-memory`、`@openviking/dsh-memory-plugin`），其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`dsh-compat/tests/canaries/canaries.yml:28`），在 lyteboat 内核上原样可用。它们的问题是：各自发布自己的服务名（例如 `ctx.memory`、自定义的 provider 注册表），没有公共 seam；多数按全局或工作区分区，面向编码助手，不按业务用户分区，也不支持多实例存储。所以 lyteboat 仍然要自己定义记忆 seam；合适的社区插件可以包成这个 seam 的一个 provider，不必从头写。
 
 **建议。**
 1. **seam 与 provider。** `@lyteboat/memory-store` 作为抽象基类放在 lib，方法不超过 7 个。provider 有 local 和 sql 两种，local 版由 `@lyteboat/host` 常驻挂载，理由见 1.5。

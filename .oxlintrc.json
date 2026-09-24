@@ -38,7 +38,7 @@
     {
       "files": [
         "**/tests/**/*.ts",
-        "compatibility/**/*.ts"
+        "dsh-compat/**/*.ts"
       ],
       "rules": {
         "typescript/no-non-null-assertion": "off"

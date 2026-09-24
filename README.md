@@ -37,7 +37,7 @@
   - 外部对话历史导入（`@lyteboat/history-import`）。
   - 拒识门：不请求模型，直接回复一轮（`lyteboat/intake`）。
 - **一个业务 agent 就是一个目录。** 在 `lyteboat/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
-- **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`compatibility/`](compatibility/README.md)）。
+- **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`dsh-compat/`](dsh-compat/README.md)）。
 - **有迹可查。** 模型看到的一切都能从会话日志还原；轻舟记录的事实都放在 dsh 已有的日志信封里。
 
 ## 快速开始
@@ -129,7 +129,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | [发行版约定](docs/02-distribution.md) | 内核与上游线、同步步骤、改动分类、晋升、各道闸门怎么跑、分支与通道、版本与钉法 |
 | [开发业务 agent](docs/03-agent-development.md) | 从零写一个业务 agent（例子 `policy-desk`）：目录、组合、技能、工具、策略、测试、运行 |
 | [参考实现对齐分析](docs/04-reference-alignment.md) | 参考实现的哪些能力要引入，core 怎样在保留 dsh 能力的前提下重新设计 |
-| [兼容性承诺](compatibility/COMPAT.md)、[闸门总表](compatibility/README.md) | 轻舟对 dsh 插件的承诺，以及证明它的 G1–G6 |
+| [兼容性承诺](dsh-compat/COMPAT.md)、[闸门总表](dsh-compat/README.md) | 轻舟对 dsh 插件的承诺，以及证明它的 G1–G6 |
 | [CLAUDE.md](CLAUDE.md) | 在本仓库工作的约定：分层、提交、测试、同步规则 |
 | [CHANGELOG](CHANGELOG.md) | 各里程碑交付了什么 |
 
@@ -144,7 +144,7 @@ lyteboat/                 轻舟自己的包，每层一个目录
   core/               声明与垫片
   agents/             业务 agent
   tooling/            测试支撑
-compatibility/        兼容性承诺与证明：契约快照、扩展登记、G2/G4/G5/G6 测试
+dsh-compat/           兼容性承诺与证明：契约快照、扩展登记、G2/G4/G5/G6 测试
 scripts/              分层检查、版本钉检查；dist/ 是发行版工具
 docs/                 文档
 dsh.upstream.json     所跟踪的 dsh 版本
@@ -175,8 +175,8 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `pnpm run test` | 构建、G1 契约检查、单元/组合/e2e 测试、上游内核测试（G2）；CI 跑的就是它 |
 | `pnpm run lint` | oxlint、knip、分层检查、发行版清单检查 |
 | `pnpm run typecheck` | 源码与测试的类型检查 |
-| `pnpm run compatibility` | G4–G6：在仓库外装官方版与轻舟两棵安装树做对比（需要联网） |
-| `pnpm run check` | lint + test + compatibility |
+| `pnpm run dsh-compat` | G4–G6：在仓库外装官方版与轻舟两棵安装树做对比（需要联网） |
+| `pnpm run check` | lint + test + dsh-compat |
 | `pnpm run dist:delta` | 列出轻舟在所导入的 dsh tag 之上带了哪些改动 |
 
 同步新的 dsh 版本、把包晋升进内核、跑 G3 与持久化闸门，见[发行版约定](docs/02-distribution.md)。
@@ -202,8 +202,8 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 参与贡献
 
-- 先读 [CLAUDE.md](CLAUDE.md)：分层规则、测试要求、提交信息格式。`dsh/` 下的改动必须是带 `Dist-Change:` trailer 的分类提交；动 `dsh/` 之前先读[兼容性承诺](compatibility/COMPAT.md)。
-- 提交前跑 `pnpm run lint`、`pnpm run typecheck`、`pnpm run test`；改了内核或兼容面，再跑 `pnpm run compatibility`。
+- 先读 [CLAUDE.md](CLAUDE.md)：分层规则、测试要求、提交信息格式。`dsh/` 下的改动必须是带 `Dist-Change:` trailer 的分类提交；动 `dsh/` 之前先读[兼容性承诺](dsh-compat/COMPAT.md)。
+- 提交前跑 `pnpm run lint`、`pnpm run typecheck`、`pnpm run test`；改了内核或兼容面，再跑 `pnpm run dsh-compat`。
 - 仓库外的插件如果要用轻舟的扩展，声明 `inject: ['lyteboatDistro']`，这样它在官方 dsh 上不会加载。
 - 合并 PR 请用 merge commit，不要 squash 或 rebase：上游线靠导入提交的 `Dist-Import` trailer 查找。
 

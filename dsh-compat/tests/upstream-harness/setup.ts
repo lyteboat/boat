@@ -3,7 +3,7 @@
  * working directory and address fixtures as `packages/<group>/<package>/…`.
  * lyteboat's kernel sits at `dsh/<group>/<package>`, so each test file runs from a
  * directory whose `packages` entry is a link to `dsh/`.
- * @module compatibility/tests/upstream-harness/setup
+ * @module dsh-compat/tests/upstream-harness/setup
  */
 
 import { mkdirSync, symlinkSync } from 'node:fs'

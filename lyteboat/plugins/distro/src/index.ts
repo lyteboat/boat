@@ -2,7 +2,7 @@
  * @lyteboat/distro — the `lyteboatDistro` marker service. Its presence tells a plugin
  * that it runs on lyteboat's kernel; its content names the dsh release the kernel
  * was imported from and the kernel extensions this build carries
- * (compatibility/contract/extensions.yml, compiled into `distro-manifest.ts`). A plugin that
+ * (dsh-compat/contract/extensions.yml, compiled into `distro-manifest.ts`). A plugin that
  * uses an extension declares `inject: ['lyteboatDistro']`: the official release
  * has no such service, so there the plugin waits instead of calling an
  * extension that is not there.

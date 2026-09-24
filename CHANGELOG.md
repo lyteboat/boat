@@ -6,6 +6,7 @@ lyteboat has no releases yet; this file records what each milestone delivered, n
 
 - The project, its packages (`@lyteboat/*`), its directory (`lyteboat/`), and its CLI (`lyteboat`) share one name; data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`).
 - The protocol follows: log nodes and events `lyteboat/*`, projection keys `lyteboat*`, tool result meta `meta.lyteboat`, SKILL.md frontmatter `metadata.lyteboat`, the distro service `lyteboatDistro`. Nothing ran on the old names, so nothing is migrated.
+- The promise to dsh plugins and its proof live in `dsh-compat/` (was `compatibility/`), and `pnpm run dsh-compat` runs G4–G6.
 
 ## Kernel promotion
 
@@ -16,7 +17,7 @@ lyteboat has no releases yet; this file records what each milestone delivered, n
 
 - The kernel is the rc.1 import plus lyteboat's two extensions, and every gate passes against it.
 - A non-kernel dsh peer of a lyteboat package is the tracked release's exact version, because dsh's startup admission reads peers from the manifest on disk.
-- `compatibility/` holds the promise (`COMPAT.md`, the contract snapshot, the extension registry) and its proof (the G2 harness and the G4–G6 tests); `pnpm run compatibility` runs G4–G6.
+- `dsh-compat/` holds the promise (`COMPAT.md`, the contract snapshot, the extension registry) and its proof (the G2 harness and the G4–G6 tests); `pnpm run dsh-compat` runs G4–G6.
 
 ## D2 — compatibility against the official release
 
@@ -34,7 +35,7 @@ lyteboat has no releases yet; this file records what each milestone delivered, n
 
 ## D0 — distribution tooling
 
-- `scripts/dist`: the contract snapshot of the tracked dsh release (`compatibility/contract/`), the per-tag import commit, the delta report, the overlay gates.
+- `scripts/dist`: the contract snapshot of the tracked dsh release (`dsh-compat/contract/`), the per-tag import commit, the delta report, the overlay gates.
 
 ## M2 — lyteboat's own plugins
 

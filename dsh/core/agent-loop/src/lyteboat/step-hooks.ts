@@ -1,5 +1,5 @@
 /**
- * lyteboat's extensions of the agent loop (compatibility/contract/extensions.yml:
+ * lyteboat's extensions of the agent loop (dsh-compat/contract/extensions.yml:
  * `agent-loop-intake`, `agent-loop-pre-assemble`): the declarations of the two
  * waterfalls the loop dispatches after the inbox claim and before prompt
  * assembly, and of the decision an intake listener returns. The official

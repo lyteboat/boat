@@ -20,7 +20,7 @@
  * - TypeScript sources with standard decorators are lowered before vite parses
  *   them, as upstream's `standardDecoratorPlugin` (vitest.shared.ts) does.
  * - Tests of upstream's repository scripts are excluded.
- * @module compatibility/tests/upstream-harness/harness
+ * @module dsh-compat/tests/upstream-harness/harness
  */
 
 import { existsSync, readFileSync } from 'node:fs'

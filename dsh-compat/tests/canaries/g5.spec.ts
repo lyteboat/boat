@@ -50,8 +50,8 @@ describe('G5: community canaries run the same on the official release and on lyt
   let root: string
 
   beforeAll(() => {
-    vanilla = vanillaTree('compatibility')
-    lyteboat = lyteboatTree('compatibility', packKernel())
+    vanilla = vanillaTree('dsh-compat')
+    lyteboat = lyteboatTree('dsh-compat', packKernel())
     root = suiteRoot('g5')
   }, 600_000)
 

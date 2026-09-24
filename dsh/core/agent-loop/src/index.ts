@@ -240,7 +240,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 export { DEFAULT_MAX_PARALLEL_TOOL_CALLS }
-// lyteboat: the pre-assembly hooks' declarations (compatibility/contract/extensions.yml, agent-loop-*).
+// lyteboat: the pre-assembly hooks' declarations (dsh-compat/contract/extensions.yml, agent-loop-*).
 export { LYTEBOAT_ASSISTANT_PROVIDER } from './lyteboat/step-hooks.ts'
 export type { LyteboatIntakeDecision, LyteboatIntakeReply, LyteboatStepPayload } from './lyteboat/step-hooks.ts'
 

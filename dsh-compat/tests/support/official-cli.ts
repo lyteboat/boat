@@ -3,7 +3,7 @@
  * (scripts/dist/trees.ts) against upstream's scripted model server, and reads
  * the session it wrote. G4, G5, and G6 compare what two trees write for the
  * same run: the official release, and the same release with lyteboat's kernel.
- * @module compatibility/tests/support/official-cli
+ * @module dsh-compat/tests/support/official-cli
  */
 
 import { spawn } from 'node:child_process'
@@ -118,5 +118,5 @@ export function cloneRun(run: Pick<OfficialRun, 'home' | 'cwd'>, root: string, l
 
 /** A per-suite scratch root. */
 export function suiteRoot(name: string): string {
-  return mkdtempSync(join(tmpdir(), `lyteboat-compatibility-${name}-`))
+  return mkdtempSync(join(tmpdir(), `lyteboat-dsh-compat-${name}-`))
 }

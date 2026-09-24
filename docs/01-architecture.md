@@ -55,7 +55,7 @@
 | `BaseAgent.build_compaction()`（参考实现 `base_agent.py:210`） | 内核包 `dsh-compaction` + `dsh-compaction-basic`，后者作为 `agent/pre-step` 监听运行（`dsh/compaction/compaction-basic/src/index.ts:158`） | 压缩不是 Runner 的一个配置项，而是 step 进入前的一层 waterfall；压缩过程写成 `compaction/start` / `compaction/summary` / `compaction/end` 进日志（`dsh/compaction/compaction-basic/src/region.ts:210,237,491`） |
 | Runner 里的重试 | npm `dsh-llm-retry`，监听 `agent/request-error`（`dsh@rc.1:packages/llm/llm-retry/src/index.ts:243`） | 失败的请求在日志里留一条 `assistant/attempt`，重试决定由插件给出 |
 | `SessionHistoryMerger`（`base_agent.py:222`） | `@lyteboat/history-import` + dsh 的 session seed | 外部历史变成会话开头的“已关闭的 turn”，见 [5.7](#57-外部历史导入种子怎么进日志) |
-| memory：`MemoryProvider` Protocol（参考实现 `core/protocol/memory_provider.py:21-`）+ `MemoryWriteTool`（`core/tools/memory.py:40`，由 `create_memory_tools` 在 117 行创建） | dsh `0.1.7-rc.1` 的 `packages/` 下没有 memory 分组，run 组合里也没有对应服务。最接近的机制：`dsh-agent-instructions` 在 `agent/pre-step` 把 AGENTS.md 类文件注入上下文（`dsh@rc.1:packages/context/agent-instructions/src/index.ts:315`，在 run 组合里）；`dsh-session-reference` 做跨会话引用（`dsh@rc.1:packages/context/session-reference/src/index.ts:1-5`，只由 web 组合的 `dsh@rc.1:packages/bundle/web-app/cordis.patch.yml:75-76` 挂上）。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在官方树和 lyteboat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区 | 官方包里没有“长期记忆读写”这一层；社区插件能装，但没有公共接口，lyteboat 需要自己定义 seam（见 [04-reference-alignment.md](04-reference-alignment.md) 1.5、3.4） |
+| memory：`MemoryProvider` Protocol（参考实现 `core/protocol/memory_provider.py:21-`）+ `MemoryWriteTool`（`core/tools/memory.py:40`，由 `create_memory_tools` 在 117 行创建） | dsh `0.1.7-rc.1` 的 `packages/` 下没有 memory 分组，run 组合里也没有对应服务。最接近的机制：`dsh-agent-instructions` 在 `agent/pre-step` 把 AGENTS.md 类文件注入上下文（`dsh@rc.1:packages/context/agent-instructions/src/index.ts:315`，在 run 组合里）；`dsh-session-reference` 做跨会话引用（`dsh@rc.1:packages/context/session-reference/src/index.ts:1-5`，只由 web 组合的 `dsh@rc.1:packages/bundle/web-app/cordis.patch.yml:75-76` 挂上）。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`dsh-compat/tests/canaries/canaries.yml:28`），在官方树和 lyteboat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区 | 官方包里没有“长期记忆读写”这一层；社区插件能装，但没有公共接口，lyteboat 需要自己定义 seam（见 [04-reference-alignment.md](04-reference-alignment.md) 1.5、3.4） |
 
 ---
 
@@ -90,10 +90,10 @@ flowchart TB
 | 业务开发 | 写 `lyteboat/agents/<id>` 目录、`--plugin` 文件、`--patch` 文件的人 | 业务逻辑只放在 agent 目录里，框架包不带业务词汇 | `CLAUDE.md:75` |
 | dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | lyteboat 每个 tag 导入一次内核源码，三方合并 lyteboat 的改动 | `dsh.upstream.json`，`CLAUDE.md:190-191` |
 | npm 官方包 | 除内核外的 `@deepseek-ai/dsh-*` | 原样使用，版本全钉在 `0.1.7-rc.1` | `.pnpmfile.cjs:7-22`，`pnpm-workspace.yaml:64-149` |
-| 社区插件 | 按 dsh 接口写的第三方插件 | 不改代码即可跑在 lyteboat 上；要用 lyteboat 扩展时注入 `lyteboatDistro` | `compatibility/COMPAT.md:46` |
+| 社区插件 | 按 dsh 接口写的第三方插件 | 不改代码即可跑在 lyteboat 上；要用 lyteboat 扩展时注入 `lyteboatDistro` | `dsh-compat/COMPAT.md:46` |
 | 模型服务 | DeepSeek Messages API 兼容端点 | `dsh-llm-deepseek` 适配器 POST 到 `messagesApiRoot(baseURL)/messages`：baseURL 不以 `/v1` 结尾时补上 `/v1`；baseURL 来自 `DEEPSEEK_BASE_URL`，默认值是 `config.ts:115` 的公开端点。本文的运行把它设成脚本化模型的 `http://127.0.0.1:<port>/v1`，请求就落在 `/v1/messages` | `dsh@rc.1:packages/llm/llm-deepseek/src/adapter.ts:113`，`messages-api.ts:11-14`，`config.ts:115-118` |
 
-**为什么这样划边界**：lyteboat 同时对两边负责——对用户，它是一个能跑业务 agent 的 harness；对 dsh 生态，它承诺“协议、接口、行为与跟踪的 release 一致”（`compatibility/COMPAT.md`）。所以 C1 里 dsh 上游和社区插件都是一等的外部系统：前者决定 lyteboat 的内核从哪来，后者决定 lyteboat 的内核不能随便改。
+**为什么这样划边界**：lyteboat 同时对两边负责——对用户，它是一个能跑业务 agent 的 harness；对 dsh 生态，它承诺“协议、接口、行为与跟踪的 release 一致”（`dsh-compat/COMPAT.md`）。所以 C1 里 dsh 上游和社区插件都是一等的外部系统：前者决定 lyteboat 的内核从哪来，后者决定 lyteboat 的内核不能随便改。
 
 ### 1.2 C2 容器
 
@@ -442,7 +442,7 @@ lyteboat-run (@lyteboat/run): pending (waiting for service: historyImport)
 |---|---|---|---|---|
 | 1 | **同名接管**（pnpm `overrides`） | 内核 13 个包的实现 | `pnpm-workspace.yaml:16-29`；`.pnpmfile.cjs:7-22` 对内核名不钉版本 | `node_modules/@deepseek-ai/dsh-llm -> ../../dsh/llm/llm`；npm 包 `dsh-llm-deepseek` 在 `.pnpm` 里依赖的 `dsh-llm` 用 `readlink -f` 看也落到仓库的 `dsh/llm/llm`；store 里没有任何 npm 版的 `dsh-llm`（`3d29a07` 提交说明） |
 | 2 | **patch 层增删改行** | 组合：加行、禁行、换配置 | `lyteboat/bundles/host/cordis.patch.yml`、`lyteboat/bundles/run/cordis.patch.yml` | `@lyteboat/host` 把 `session-log-deepseek` 设为 `enabled: false`（`host/cordis.patch.yml:10-12`，提交 `f2e4e00`：0.1.7 起它默认会把会话日志附到每个官方请求上）。关掉的只是会话日志：dsh-base 的 `plugin-package-inventory-deepseek` 行（`dsh@rc.1:packages/bundle/base/cordis.patch.yml:77-78`）仍然给每个官方请求附上 `dsh_plugin_packages`（已加载的插件包名和版本，含 `@lyteboat/run`、`@lyteboat/agent-demo`、`@lyteboat/skill-router` 等），所以 host bundle 注释里的“lyteboat sends the provider the model request only”（`host/cordis.patch.yml:7-9`）要打这个折扣，见 [5.4](#54-日志怎么映射回模型看到的内容)；`@lyteboat/run` 禁掉 `hmr`（`run/cordis.patch.yml:40-41`）、整体替换 `system-prompt` 和 `tools` 两行的配置（10-18）、插入 3 行代替 dsh-headless（20-37） |
-| 3 | **内核扩展事件** | driver 的行为：在组装提示词之前多派发两个 waterfall | `dsh/core/agent-loop/src/agent.ts:276-289`；声明在 `lyteboat/step-hooks.ts:44-63`；登记在 `compatibility/contract/extensions.yml:16-50` | 提交 `92698ff`（D1-4，`lyteboat/intake`）和 `4870926`（D1-5，`lyteboat/pre-assemble`），都带 `Dist-Change: extend` 和 `Dist-Extension` trailer；每个扩展写明退出条件：上游出现能在组装前改写 step 的事件时移除 |
+| 3 | **内核扩展事件** | driver 的行为：在组装提示词之前多派发两个 waterfall | `dsh/core/agent-loop/src/agent.ts:276-289`；声明在 `lyteboat/step-hooks.ts:44-63`；登记在 `dsh-compat/contract/extensions.yml:16-50` | 提交 `92698ff`（D1-4，`lyteboat/intake`）和 `4870926`（D1-5，`lyteboat/pre-assemble`），都带 `Dist-Change: extend` 和 `Dist-Extension` trailer；每个扩展写明退出条件：上游出现能在组装前改写 step 的事件时移除 |
 | 4 | **`lyteboatDistro` 标记服务** | 让第三方插件只在 lyteboat 上加载 | `lyteboat/plugins/distro/src/index.ts:16-27`；扩展列表由 `scripts/dist/gen-distro-manifest.ts` 生成到 `distro-manifest.ts` | `lyteboat/bundles/run/tests/fixtures/plugins/distro-aware.mjs` 声明 `inject: ['lyteboatDistro']`，实测输出 `lyteboat on dsh 0.1.7-rc.1: agent-loop-intake, agent-loop-pre-assemble`；在官方 dsh 上它会停在 PENDING，不会去调一个不存在的扩展 |
 | 5 | **`--plugin` 行** | 往树里临时插一个本地 ESM 插件 | `lyteboat/apps/cli/src/plugins.ts:52-59`；叠在所有文件 overlay 之上（`profile-boot.ts:168-170`） | `lyteboat run --plugin lyteboat/bundles/run/tests/fixtures/plugins/tools.mjs "帮我调仓"`：注册 `lookup_assets`（always）和 `rebalance`（auto + 需确认），并在 `lyteboat/pre-assemble` 里按用户文字激活 `rebalance`。实测日志：`tool/call rebalance {"target":"股债均衡"}` → `approval/asked {reason: tool "rebalance" requires confirmation}` → `approval/decided {outcome: unavailable}` → `tool/result isError=true`——`lyteboat run` 没有组合审批应答者，默认结果 `unavailable` 按拒绝处理 |
 | 6 | **用户 patch 层** | 某台机器、某次启动的配置 | profile 的 `cordis.patch.yml`、`$LYTEBOAT_HOME/cordis.patch.yml`、`--patch` 文件，按此顺序叠（`dsh@rc.1:packages/boot/app-boot/src/profile-context.ts:63-74`） | 上面 [2.3](#23-dsh-与-lyteboat-的-di-怎么交互) 的 `disable-history.yml` |
@@ -1158,7 +1158,7 @@ fixture 里有 6 条 SA 记录：两轮完整的问答被保留；第三轮“�
 | runtime context | 以 user 消息形式注入的运行时快照（`sandbox:policy`、`lyteboat:state`、`lyteboat:skill`…） |
 | 投影（projection） | 对日志事件的纯折叠，`apply(state, event)` 没变化时返回同一引用 |
 | 信封（envelope） | dsh 已认识的日志字段，如 `tool/result.meta`、assistant 消息的 `source` |
-| 扩展（extension） | lyteboat 对内核契约的新增，登记在 `compatibility/contract/extensions.yml`，带退出条件 |
+| 扩展（extension） | lyteboat 对内核契约的新增，登记在 `dsh-compat/contract/extensions.yml`，带退出条件 |
 | `lyteboatDistro` | 标记“这是 lyteboat”的服务，第三方插件注入它来使用扩展 |
 
 ### 7.4 已知的坑
@@ -1169,7 +1169,7 @@ fixture 里有 6 条 SA 记录：两轮完整的问答被保留；第三轮“�
 | 组合测试和启动器的行为不同 | `bootComposition` 不提供 `profileContext`，所以没有行准入，plugin-manager、config-editor、settings、hmr 被禁，裸名按工作区根解析 | `lyteboat/tooling/testing/src/composition.ts:170-174`；`compatibility-preflight.ts:183` |
 | `config dump` 看不到遥测开关那一层 | `dump-config.ts` 自己拼层，没有调 `resolveTelemetryPatch` | `lyteboat/apps/cli/src/dump-config.ts:36-56` |
 | `lyteboat web` 跑不了 `lyteboat/agents/*` | 只有 `@lyteboat/run` 声明 agent 目录 | 3.3 |
-| 仓库内的 lyteboat 插件监听 `lyteboat/*` 却没注入 `lyteboatDistro` | 只要求第三方插件注入 | `compatibility/COMPAT.md:46` |
+| 仓库内的 lyteboat 插件监听 `lyteboat/*` 却没注入 `lyteboatDistro` | 只要求第三方插件注入 | `dsh-compat/COMPAT.md:46` |
 | `lyteboat web` 热重载的诊断前缀是 `dsh` | dsh-hmr 写死了 `'dsh'` | `dsh@rc.1:packages/boot/hmr/src/index.ts:229-230` |
 | 路由过的会话不能重开 | `lyteboat/*` 节点不在 dsh 的事件目录里 | 5.6 |
 | 拒识路径 turn 内没有持久化点 | reply 在 `agent/pre-step` 之前返回，检查点不触发 | 5.5 |
