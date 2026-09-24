@@ -19,7 +19,7 @@ import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import A2uiService, { lyteboatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@lyteboat/a2ui'
-import type { LyteboatCard, JsonValue } from '@lyteboat/contracts'
+import type { LyteboatCard, LyteboatResultCard, JsonValue } from '@lyteboat/contracts'
 
 const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
 const VARIANTS = fileURLToPath(new URL('./fixtures/templates-variants', import.meta.url))
@@ -82,9 +82,11 @@ describe('render_a2ui', () => {
 
     const [, rendered] = results(agent)
     expect(rendered).toBeDefined()
-    const meta = rendered!.data.meta as unknown as { lyteboat: { card: LyteboatCard }; a2ui: { template: string; event: string; warnings: string[] } }
+    const meta = rendered!.data.meta as unknown as { lyteboat: { cards: LyteboatResultCard[] }; a2ui: { template: string; event: string; warnings: string[] } }
     expect(meta.a2ui).toEqual({ template: 'asset_overview', event: 'beginRendering', warnings: [] })
-    const payload = meta.lyteboat.card.payload as Record<string, unknown>
+    expect(meta.lyteboat.cards).toHaveLength(1)
+    expect(meta.lyteboat.cards[0]).toMatchObject({ area: 'asset_overview', emission: 'immediate' })
+    const payload = meta.lyteboat.cards[0]!.payload as Record<string, unknown>
     expect(payload['surfaceId']).toMatch(/^asset_overview-render-[0-9a-f]{6}$/u)
     const expected = { ...FULL.payload }
     delete expected['surfaceId']
@@ -116,8 +118,8 @@ describe('render_a2ui', () => {
     // The terminal card concluded the turn after the first result: one model request, no text step.
     expect(adapter.requests).toHaveLength(1)
     const [first] = results(agent)
-    const meta = first!.data.meta as unknown as { lyteboat: { card: LyteboatCard } }
-    expect((meta.lyteboat.card.payload as Record<string, unknown>)['event']).toBe('surfaceUpdate')
+    const meta = first!.data.meta as unknown as { lyteboat: { cards: LyteboatResultCard[] } }
+    expect((meta.lyteboat.cards[0]!.payload as Record<string, unknown>)['event']).toBe('surfaceUpdate')
     expect(ctx.a2ui.cardsOf(agent)).toHaveLength(1)
     const turnEnd = agent.session.snapshotEvents().findLast(event => event.type === 'turn/end') as SessionEvent<'turn/end'>
     expect(turnEnd.data.reason.kind).toBe('completed')
@@ -151,7 +153,7 @@ describe('render_a2ui over cards with arguments and hierarchies', () => {
   }
 
   const card = (event: SessionEvent<'tool/result'>): Record<string, unknown> =>
-    (event.data.meta as unknown as { lyteboat: { card: LyteboatCard } }).lyteboat.card.payload as Record<string, unknown>
+    (event.data.meta as unknown as { lyteboat: { cards: LyteboatResultCard[] } }).lyteboat.cards[0]!.payload as Record<string, unknown>
   const componentIds = (payload: Record<string, unknown>): string[] => (payload['components'] as { id: string }[]).map(component => component.id)
   const textOf = (payload: Record<string, unknown>, id: string): unknown =>
     ((payload['components'] as { id: string; component: { Text?: { text?: unknown } } }[]).find(component => component.id === id)?.component.Text?.text)
@@ -221,7 +223,7 @@ describe('helpers', () => {
     const fold = lyteboatCardsProjectionDefinition
     const result = (surfaceOp: unknown): never => ({
       type: 'tool/result', seq: 1, time: 0, surfaceOp,
-      data: { turn: 1, step: 1, message: { toolCallId: 'c1' }, meta: { lyteboat: { card: { surfaceId: 's1', payload: { rootComponentId: 'root' } } } } },
+      data: { turn: 1, step: 1, message: { toolCallId: 'c1' }, meta: { lyteboat: { cards: [{ surfaceId: 's1', area: 'summary', emission: 'immediate', payload: { rootComponentId: 'root' } }] } } },
     }) as never
     const once = fold.apply([], result('append'))
     expect(fold.apply(once, result({ op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(once)

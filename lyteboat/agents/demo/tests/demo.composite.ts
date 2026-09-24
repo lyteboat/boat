@@ -106,11 +106,13 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     const types = records.map(record => record.type)
     expect(invokedSkills(records)).toEqual(['asset-overview'])
     const result = records.find(record => record.type === 'tool/result')
-    const meta = result?.data?.['meta'] as { lyteboat: { card: { surfaceId: string; payload: Record<string, unknown> }; stateDelta: Record<string, unknown> } }
+    const meta = result?.data?.['meta'] as { lyteboat: { cards: { surfaceId: string; area: string; emission: string; payload: Record<string, unknown> }[]; stateDelta: Record<string, unknown> } }
     expect(meta.lyteboat.stateDelta).toMatchObject({ assets_view: { auth_state: 'full', total_display: '300,000.00' } })
-    expect(meta.lyteboat.card.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
-    expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root-container')
-    expect((meta.lyteboat.card.payload['businessPayload'] as Record<string, unknown>)['total_display']).toBe('300,000.00')
+    const [card] = meta.lyteboat.cards
+    expect(card).toMatchObject({ area: 'asset_overview', emission: 'immediate' })
+    expect(card?.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
+    expect(card?.payload['rootComponentId']).toBe('root-container')
+    expect(card?.payload['businessPayload']).toMatchObject({ total_display: '300,000.00' })
     expect(types.indexOf('user/message')).toBeLessThan(types.indexOf('request/header'))
     expect(records.filter(record => record.type.startsWith('lyteboat/')).map(record => [record.type, record.ignorable])).toEqual([['lyteboat/aux-llm-call', true]])
     expect(types.filter(type => type === 'turn/end')).toHaveLength(1)

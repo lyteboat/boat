@@ -164,7 +164,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | Skill load modes and model routing; `./agent` declares the mode in an agent's composition file |
-| `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; `./agent` mounts the tool from a composition file |
+| `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; a result may carry several cards, laid into the turn by emission mode (immediate, deferred, deferred-discard) and the answer's `[[card:<area>]]` markers (`turnParts`); `./agent` mounts the tool from a composition file |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat run --history` |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |

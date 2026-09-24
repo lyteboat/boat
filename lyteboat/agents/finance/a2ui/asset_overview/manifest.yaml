@@ -3,6 +3,11 @@
 # { overview: { total_display, daily_line, steady_line, growth_line,
 #               policy_count, policy_hide, auth_tip_text, auth_tip_hide } }.
 
+# `deferred`: the card sits where the answer writes [[card:asset_overview]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
 paths:
 
   total_display:

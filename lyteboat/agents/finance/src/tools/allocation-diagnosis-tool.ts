@@ -9,6 +9,7 @@
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { LyteboatResultCard } from '@lyteboat/contracts'
 import { FINANCE_BUCKET_LABEL } from '../data/finance-customer.ts'
 import { BUCKET_JUDGE_TEXT, type AllocationDiagnosis, type BucketDiagnosis } from '../capabilities/allocation-diagnosis.ts'
 import { INVESTMENT_HORIZONS } from '../capabilities/allocation-targets.ts'
@@ -17,7 +18,7 @@ import { coverageLine, hasCoverageGap } from '../capabilities/insurance-coverage
 import { pctText } from '../capabilities/money-text.ts'
 import { cardMarker, composeFinanceDigest } from '../digest/finance-digest.ts'
 import type { FinanceState } from '../state/finance-state.ts'
-import { FINANCE_TOOL_OUTPUT, callingAgent, financeStateOf, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue, type PreparedCard } from './finance-tool-support.ts'
+import { FINANCE_TOOL_OUTPUT, callingAgent, financeStateOf, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
 import { diagnoseSession, diagnosisFacts, factsWithArguments, problemsText, type SessionDiagnosis } from './session-diagnosis.ts'
 
 const PLAN_DIRECTION: Readonly<Record<BucketDiagnosis['judge'], string>> = { over: '建议调低', under: '建议调高', ok: '保持', unknown: '未授权，暂不判断' }
@@ -65,7 +66,7 @@ export function planCardData(diagnosis: AllocationDiagnosis): Record<string, unk
   return { plan: { ...lines, note: '以上为按公开理财常识估算的方向性参考，不构成投资建议。' } }
 }
 
-async function cardsFor(deps: FinanceToolDeps, agent: Agent, session: SessionDiagnosis, seq: number): Promise<PreparedCard[]> {
+async function cardsFor(deps: FinanceToolDeps, agent: Agent, session: SessionDiagnosis, seq: number): Promise<LyteboatResultCard[]> {
   const { diagnosis } = session
   if (diagnosis.cardState === 'runway') return []
   const card = await prepareCard(deps, agent, 'allocation_diagnosis', diagnosisCardData(diagnosis, seq, coverageLine(session.customer.coverage)))
@@ -73,7 +74,7 @@ async function cardsFor(deps: FinanceToolDeps, agent: Agent, session: SessionDia
   return [card, await prepareCard(deps, agent, 'allocation_plan', planCardData(diagnosis))]
 }
 
-function guidanceFor(session: SessionDiagnosis, cards: readonly PreparedCard[]): string[] {
+function guidanceFor(session: SessionDiagnosis, cards: readonly LyteboatResultCard[]): string[] {
   const { diagnosis } = session
   const markers = cards.map(card => cardMarker(card.area))
   switch (diagnosis.cardState) {

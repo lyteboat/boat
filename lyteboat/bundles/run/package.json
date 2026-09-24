@@ -29,6 +29,7 @@
     }
   },
   "dependencies": {
+    "@lyteboat/a2ui": "workspace:*",
     "@lyteboat/history-import": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-brand": "catalog:dsh",

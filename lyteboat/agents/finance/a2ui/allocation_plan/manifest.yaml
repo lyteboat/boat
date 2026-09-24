@@ -1,6 +1,11 @@
 # manifest.yaml — allocation_plan: where each bucket should move.
 # The raw data namespace: { plan: { daily_plan, steady_plan, growth_plan, note } }.
 
+# `deferred`: the card sits where the answer writes [[card:allocation_plan]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
 paths:
 
   daily_plan:

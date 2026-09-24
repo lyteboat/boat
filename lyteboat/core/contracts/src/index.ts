@@ -112,12 +112,25 @@ export interface LyteboatSkillMeta {
   tags?: string[]
 }
 
-/** One rendered A2UI card, as `tool/result.meta.lyteboat.card` carries it. */
-export interface LyteboatCard {
-  /** The tool call that produced the card. */
-  callId: string
+/**
+ * When a card is shown: `immediate` as soon as its result arrives; `deferred`
+ * where the answer writes its area's marker, or after the answer when it never
+ * does; `deferred_discard` where the marker is, and nowhere otherwise.
+ */
+export type LyteboatCardEmission = 'immediate' | 'deferred' | 'deferred_discard'
+
+/** One rendered A2UI card, as a tool result's `meta.lyteboat.cards` carries it (a type, so it is JSON). */
+export type LyteboatResultCard = {
   surfaceId: string
+  /** The name an answer places the card with: `[[card:<area>]]`. */
+  area: string
+  emission: LyteboatCardEmission
   payload: JsonValue
+}
+
+/** A card the session prepared, with the tool call that prepared it. */
+export type LyteboatCard = LyteboatResultCard & {
+  callId: string
 }
 
 /** The `lyteboatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.lyteboat.stateDelta`. */
@@ -173,7 +186,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     lyteboatState: LyteboatStateValue
     /** The skill active for the session, folded from skill-invocation messages and `skill` tool calls; owned by `@lyteboat/skill-router`. */
     lyteboatActiveSkill: LyteboatActiveSkillState
-    /** Cards from `tool/result.meta.lyteboat.card`, in log order; a `surfaceUpdate` replaces its surface. Owned by `@lyteboat/a2ui`. */
+    /** Cards from `tool/result.meta.lyteboat.cards`, in log order; a `surfaceUpdate` replaces its surface. Owned by `@lyteboat/a2ui`. */
     lyteboatCards: LyteboatCard[]
   }
   interface SessionProjectionMap {
@@ -181,7 +194,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     lyteboatState: LyteboatStateValue
     /** The active skill as the client sees it; null before any skill is active. */
     lyteboatActiveSkill: string | null
-    /** Every card rendered in the session, as the client sees it. */
+    /** Every card the session prepared, as the client sees it; what a turn shows is `ctx.a2ui.turnParts`. */
     lyteboatCards: LyteboatCard[]
   }
 }

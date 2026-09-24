@@ -5,6 +5,11 @@
 # A single-bucket diagnosis hides the grid and shows the blocked text; a
 # two-bucket one shows the caveat.
 
+# `deferred`: the card sits where the answer writes [[card:allocation_diagnosis]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
 paths:
 
   title:

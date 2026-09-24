@@ -103,14 +103,14 @@ describe('finance agent in the run composition (in process, scripted model)', ()
   }
 
   const resultMeta = (records: LogRecord[]) => records.find(record => record.type === 'tool/result')?.data?.['meta'] as {
-    lyteboat?: { card?: { surfaceId: string } }
-    finance?: { extraCards?: { area: string; surfaceId: string }[]; state?: Record<string, unknown> }
+    lyteboat?: { cards?: { area: string; emission: string; surfaceId: string }[] }
+    finance?: { state?: Record<string, unknown> }
   } | undefined
 
   it('"看看我的资产": the persona is the whole system prompt and only the routed tool reaches the model, at temperature 0', async () => {
     const { requests, records, stdout } = await run('overview', 'young-idle-cash', '看看我的资产')
-    expect(stdout).toContain('FINANCE-OK')
-    expect(stdout).toContain('[[card:asset_overview]]')
+    // The answer's marker became the card's place: the terminal prints it as a line of its own.
+    expect(stdout).toBe('FINANCE-OK\n[card asset_overview]\n')
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(2)
     expect(loop[0]!.body.system).toContain('你是「轻舟金融助手」')
@@ -120,7 +120,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(loop[0]!.body['temperature']).toBe(0)
     expect(lastToolResult(loop[1]!)).toContain('【事实】\n- 已授权资产合计 80,000.00 元（约 8.00 万元）')
     expect(lastToolResult(loop[1]!)).toContain('【不可答】')
-    expect(resultMeta(records)?.lyteboat?.card?.surfaceId).toMatch(/^asset_overview-/u)
+    expect(resultMeta(records)?.lyteboat?.cards).toEqual([expect.objectContaining({ area: 'asset_overview', emission: 'deferred', surfaceId: expect.stringMatching(/^asset_overview-/u) as string })])
   })
 
   it('"我的配置合理吗": a rich diagnosis prepares two cards and asks for the investment horizon', async () => {
@@ -130,17 +130,16 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(digest).toContain('稳健投资 146,000.00 元（约 14.60 万元），占 73.0%，建议 15%–25%，偏高')
     expect(digest).toContain('大概多久用不到')
     const meta = resultMeta(records)
-    expect(meta?.lyteboat?.card?.surfaceId).toMatch(/^allocation_diagnosis-/u)
-    expect(meta?.finance?.extraCards?.map(card => card.area)).toEqual(['allocation_plan'])
+    expect(meta?.lyteboat?.cards?.map(card => [card.area, card.emission])).toEqual([['allocation_diagnosis', 'deferred'], ['allocation_plan', 'deferred']])
     expect(meta?.finance?.state).toMatchObject({ diagnosisSeq: 1, asked: ['investmentHorizon'] })
-    // Without deferred emission the markers stay in the answer text (roadmap gap G3).
-    expect(stdout).toContain('[[card:allocation_plan]]')
+    expect(stdout).toBe('FINANCE-OK\n[card allocation_diagnosis]\n[card allocation_plan]\n')
   })
 
   it('nothing authorized: the unauthorized card ends the turn after one model request', async () => {
-    const { requests, records } = await run('unauthorized', 'none-authorized', '看看我的资产')
+    const { requests, records, stdout } = await run('unauthorized', 'none-authorized', '看看我的资产')
     expect(requests.filter(request => request.purpose === 'loop')).toHaveLength(1)
-    expect(resultMeta(records)?.lyteboat?.card?.surfaceId).toMatch(/^unauthorized-/u)
+    expect(resultMeta(records)?.lyteboat?.cards?.[0]).toMatchObject({ area: 'unauthorized', emission: 'immediate' })
+    expect(stdout).toBe('[card unauthorized]\n')
     expect(records.filter(record => record.type === 'turn/end')).toHaveLength(1)
   })
 

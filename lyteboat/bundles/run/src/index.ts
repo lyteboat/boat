@@ -3,8 +3,9 @@
  * dsh-base; this runner creates one Agent through the core registry — composed
  * from an agent preset when the invocation named one — or resumes a stored
  * session, drives the task to quiescence, streams provider reasoning to stderr,
- * flushes its Session, prints the final assistant text to stdout and the
- * session id to stderr, and exits.
+ * flushes its Session, prints the turn to stdout (the answer with its cards
+ * placed, each as a `[card <area>]` line) and the session id to stderr, and
+ * exits.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
  * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Differences:
@@ -25,6 +26,7 @@ import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentRegistry, AgentSetup, ModelSelectionRef } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
+import type { LyteboatTurnPart } from '@lyteboat/a2ui'
 import type {} from '@lyteboat/history-import'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
@@ -40,7 +42,7 @@ import { readAgentDefinition } from './agent-directory.ts'
 export const name = 'lyteboat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport']
+export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui']
 
 /** Plugin config: the task and preset resolved from the startup provider service. */
 export interface Config {
@@ -107,6 +109,16 @@ function summarize(session: Session, firstSeq: SessionLogOffset): RunOutcome {
     if (event.type === 'turn/end') reason = event.data.reason
   }
   return { text, reason }
+}
+
+/** A turn as the terminal shows it: text as written, each card as its own `[card <area>]` line. */
+function renderTurn(parts: readonly LyteboatTurnPart[]): string {
+  let out = ''
+  for (const part of parts) {
+    if (part.kind === 'text') out += part.text
+    else out += `${out === '' || out.endsWith('\n') ? '' : '\n'}[card ${part.card.area}]\n`
+  }
+  return out.replace(/\n+$/u, '')
 }
 
 /** Project provider-reported reasoning from one owned run to stderr as it streams. */
@@ -242,7 +254,8 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const defaultModel = ctx.get('agentDefaultModel')
   const sessions = ctx.get('sessions')
   const historyImport = ctx.get('historyImport')
-  if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined) return
+  const a2ui = ctx.get('a2ui')
+  if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined || a2ui === undefined) return
 
   const selection = defaultModel.currentSelection()
   const presets = ctx.get('agentPresets')
@@ -290,7 +303,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   }
   await sessions.flush(agent.session)
   const outcome = summarize(agent.session, firstSeq)
-  io.stdout.write(outcome.text + '\n')
+  io.stdout.write(renderTurn(a2ui.turnParts(agent.session, firstSeq)) + '\n')
   io.stderr.write(`lyteboat: session ${agent.session.id}\n`)
   if (outcome.reason?.kind === 'error') {
     io.stderr.write(`lyteboat: ${outcome.reason.error.code}: ${outcome.reason.error.message}\n`)

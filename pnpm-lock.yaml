@@ -956,6 +956,9 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 'catalog:'
         version: 3.18.4
+      '@lyteboat/a2ui':
+        specifier: workspace:*
+        version: link:../../plugins/a2ui
       '@lyteboat/history-import':
         specifier: workspace:*
         version: link:../../plugins/history-import

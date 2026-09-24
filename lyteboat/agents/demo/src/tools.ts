@@ -49,13 +49,14 @@ export async function apply(ctx: Context): Promise<void> {
           status: { type: 'string', required: true },
           auth_state: { type: 'string', required: true },
           digest: { type: 'string', required: true },
+          emission: { type: 'string', required: true },
           card: { type: 'json', required: true },
           stateDelta: { type: 'json', required: true },
         },
       },
       render: (_args, value) => [{ type: 'text', text: `status=${value.status} · ${value.digest}` }],
       presentationMeta: (_args, value) => ({
-        lyteboat: { card: { surfaceId: String((value.card as Record<string, unknown>)['surfaceId'] ?? ''), payload: value.card } },
+        lyteboat: { cards: [{ surfaceId: String((value.card as Record<string, unknown>)['surfaceId'] ?? ''), area: 'asset_overview', emission: value.emission, payload: value.card }] },
       }),
     },
     execute: async (_args, exec) => {
@@ -67,6 +68,7 @@ export async function apply(ctx: Context): Promise<void> {
         status: 'ok',
         auth_state: String(bundle.assets_view['auth_state']),
         digest: rendered.digest,
+        emission: rendered.emission,
         card: rendered.payload as JsonValue,
         stateDelta: bundle as unknown as JsonValue,
       }

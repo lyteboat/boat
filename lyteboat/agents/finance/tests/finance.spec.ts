@@ -104,7 +104,7 @@ async function send(agent: Agent, text: string): Promise<void> {
   await agent.whenIdle()
 }
 
-type ResultMeta = { lyteboat?: { card?: { payload: Record<string, unknown> } }; finance?: { state?: Record<string, unknown>; extraCards?: { area: string; payload: Record<string, unknown> }[] } }
+type ResultMeta = { lyteboat?: { cards?: { area: string; emission: string; payload: Record<string, unknown> }[] }; finance?: { state?: Record<string, unknown> } }
 
 /** Every finance tool result the tools returned (replacement nodes excluded), in order. */
 function results(agent: Agent): { text: string; meta: ResultMeta }[] {
@@ -113,17 +113,13 @@ function results(agent: Agent): { text: string; meta: ResultMeta }[] {
     .map(event => ({ text: textOf(event.data.message), meta: event.data.meta as unknown as ResultMeta }))
 }
 
-/** The surface ids of a result's cards, first card first. */
+/** The surface ids of a result's cards, in answer order. */
 function cardsOf(result: { meta: ResultMeta }): string[] {
-  const first = result.meta.lyteboat?.card?.payload['surfaceId']
-  return [...first === undefined ? [] : [String(first)], ...(result.meta.finance?.extraCards ?? []).map(card => String(card.payload['surfaceId']))]
+  return (result.meta.lyteboat?.cards ?? []).map(card => String(card.payload['surfaceId']))
 }
 
 function payloadsOf(agent: Agent): Record<string, unknown>[] {
-  return results(agent).flatMap(result => [
-    ...result.meta.lyteboat?.card === undefined ? [] : [result.meta.lyteboat.card.payload],
-    ...(result.meta.finance?.extraCards ?? []).map(card => card.payload),
-  ])
+  return results(agent).flatMap(result => (result.meta.lyteboat?.cards ?? []).map(card => card.payload))
 }
 
 describe('the finance agent across turns (in process, scripted model)', () => {
@@ -150,6 +146,7 @@ describe('the finance agent across turns (in process, scripted model)', () => {
     expect(cardsOf(results(agent)[0]!)).toEqual([expect.stringMatching(/^asset_overview-/u) as string])
     expect(state()?.diagnosisSeq).toBe(0)
 
+    const turn2Start = agent.session.seq
     await send(agent, '诊断一下我的配置')
     const diagnosis = results(agent)[1]!
     expect(diagnosis.text).toMatch(/^\[tool:allocation_diagnosis status=ok state=rich seq=1 areas=allocation_diagnosis,allocation_plan\]/u)
@@ -166,7 +163,10 @@ describe('the finance agent across turns (in process, scripted model)', () => {
     const replacements = agent.session.snapshotEvents().filter(event => event.type === 'tool/result' && event.surfaceOp !== 'append')
     expect(replacements).toHaveLength(1)
     // The replacement carries the original's meta; lyteboatCards folds appended results only, so each card shows once.
-    expect(ctx.a2ui.cardsOf(agent).map(card => card.surfaceId.split('-')[0])).toEqual(['asset_overview', 'allocation_diagnosis'])
+    expect(ctx.a2ui.cardsOf(agent).map(card => card.area)).toEqual(['asset_overview', 'allocation_diagnosis', 'allocation_plan'])
+    // Both cards are deferred: they sit where the answer wrote their markers, and the markers are gone.
+    const parts = ctx.a2ui.turnParts(agent.session, turn2Start)
+    expect(parts.map(part => part.kind === 'card' ? part.card.area : part.text)).toEqual(['好的。\n', 'allocation_diagnosis', 'allocation_plan', '以上。'])
 
     await send(agent, '这些钱 5 年以上都用不到')
     const withHorizon = results(agent)[2]!
@@ -218,7 +218,7 @@ describe('the finance agent by customer situation', () => {
   it('one bucket authorized: the diagnosis card says it cannot diagnose, and the drill-down refuses without a card', async () => {
     const single = await diagnoseOnce('one-bucket', '诊断一下我的配置', { skill: 'allocation-diagnosis', tool: 'allocation_diagnosis' })
     expect(results(single.agent)[0]?.text).toMatch(/state=single seq=1 areas=allocation_diagnosis\]/u)
-    const card = results(single.agent)[0]!.meta.lyteboat?.card?.payload
+    const card = results(single.agent)[0]!.meta.lyteboat?.cards?.[0]?.payload
     expect(JSON.stringify(card)).toContain('暂时无法判断配置')
     const drill = await diagnoseOnce('one-bucket', '日常开销细看一下', { skill: 'bucket-diagnosis', tool: 'bucket_diagnosis', args: { bucket: '日常开销' } })
     expect(results(drill.agent)[0]?.text).toMatch(/^\[tool:bucket_diagnosis status=blocked areas=none\]/u)

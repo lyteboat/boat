@@ -2,6 +2,11 @@
 # The raw data namespace: { bucket: { title, share_text, judge, amount_text, accounts_text } },
 # where judge is under / ok / over.
 
+# `deferred`: the card sits where the answer writes [[card:bucket_detail]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
 paths:
 
   title:
