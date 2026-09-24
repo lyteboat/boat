@@ -11,7 +11,7 @@
 
 ### 0.1 agent 就是一个目录
 
-一个业务 agent 是 `lyteboat/agents/<id>/`，目录名就是 id（CLAUDE.md:204-205）。其中唯一必需的文件是 `agent.cordis.yml`。`lyteboat run --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后每个会话由 dsh 创建一个 `Agent` 实例并挂到这个 preset 上（`lyteboat/bundles/run/src/index.ts:188-194`、`:268-299`）。「preset」这个词在 lyteboat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（CLAUDE.md:204）。
+一个业务 agent 是 `lyteboat/agents/<id>/`，目录名就是 id（CLAUDE.md:205-206）。其中唯一必需的文件是 `agent.cordis.yml`。`lyteboat run --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后每个会话由 dsh 创建一个 `Agent` 实例并挂到这个 preset 上（`lyteboat/bundles/run/src/index.ts:188-194`、`:268-299`）。「preset」这个词在 lyteboat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（CLAUDE.md:205）。
 
 ### 0.2 和参考实现的对应
 
@@ -56,7 +56,7 @@ agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPo
 
 - **没有参考实现那种 FastAPI 式的服务模式。** 能通过 HTTP 访问的只有 `lyteboat web`（dsh-web-app），但它的 profile 里没有 `@lyteboat/run`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`）。
 - **多轮靠续会话。** 下一次运行加上 `--session-id <上次打出的 id>`，就在同一个会话上接着聊：dsh 的持久化层重开日志，新的一轮能看到前面的轮次，路由过的技能、它的工具、会话状态和请求上下文都还在（§4.10）。
-- **也可以导入外部历史。** 用 `--history <file>` 把外部系统的几轮对话导入成一个新会话的已结束轮次，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/run/tests/fixtures/history/rounds.json "继续刚才的话题"`（CLAUDE.md:229，`lyteboat/bundles/run/src/index.ts:281-288`）。`--history` 只能开新会话，不能和 `--session-id` 一起用（`lyteboat/bundles/run/src/startup.ts:124`）。
+- **也可以导入外部历史。** 用 `--history <file>` 把外部系统的几轮对话导入成一个新会话的已结束轮次，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/run/tests/fixtures/history/rounds.json "继续刚才的话题"`（CLAUDE.md:230，`lyteboat/bundles/run/src/index.ts:281-288`）。`--history` 只能开新会话，不能和 `--session-id` 一起用（`lyteboat/bundles/run/src/startup.ts:124`）。
 - **路由过的会话现在能重开。** 但 `lyteboat web` 不读 agent 目录（第一条），要在 agent 自己的组合下接着聊，目前只有 `lyteboat run --session-id`。
 
 ### 0.5 五步走
@@ -216,7 +216,7 @@ flowchart LR
 
 **`fixtures/`。** agent 运行时读的业务数据和示例输入。`package.json` 的 `files` 要带上它。
 
-**`src/` → `lib/`。** 行的代码和业务逻辑。行名写 `./lib/x.js`，因为 loader 在 Node 里直接 import 编译产物（CLAUDE.md:209）。部署输入（数据源、persona 选择等）在边缘从 `Config` 或环境变量读，并写进 `package.json` 的 `description`（CLAUDE.md:209）。每个请求各不相同的输入（例如用户是谁）不是部署输入，走请求上下文（§0.3）。
+**`src/` → `lib/`。** 行的代码和业务逻辑。行名写 `./lib/x.js`，因为 loader 在 Node 里直接 import 编译产物（CLAUDE.md:210）。部署输入（数据源、persona 选择等）在边缘从 `Config` 或环境变量读，并写进 `package.json` 的 `description`（CLAUDE.md:210）。每个请求各不相同的输入（例如用户是谁）不是部署输入，走请求上下文（§0.3）。
 
 **`tests/`。** `*.spec.ts` 测纯逻辑，`*.composite.ts` 测组合（§5）。
 
@@ -317,7 +317,7 @@ mkdir -p lyteboat/agents/policy-desk/{src,tests,fixtures,skills/policy-lookup,a2
 |---|---|
 | `name` | `@lyteboat/agent-<id>`，名字带归属（CLAUDE.md:90） |
 | `license` | 和仓库里其他包一样是 `MIT` |
-| `description` | 写明部署输入 `LYTEBOAT_POLICY_DESK_BOOK`（CLAUDE.md:209） |
+| `description` | 写明部署输入 `LYTEBOAT_POLICY_DESK_BOOK`（CLAUDE.md:210） |
 | `exports["./policies"]`、`exports["./intake"]` | 只导出单元测试要 import 的子路径。第一个键 `@lyteboat/source` 指向 `src`，所以 vitest 的 `source` 项目和 typecheck 读本包的源码；Node 和 CLI 走 `default`，读 `lib/`（CLAUDE.md:48，`vitest.config.ts:4-11`） |
 | `files` | 发布时需要的全部运行时文件：`lib`、两个 yml、`skills`、`a2ui`、`fixtures` |
 | `dependencies` | 照金融智能体（`lyteboat/agents/finance/package.json:33-39`，它另有本例用不到的 `zod` 和 `dsh-llm`）：代码里当库用的包。`@deepseek-ai/dsh-tools` 提供纯函数 `defineTool`（内核包，所以是 `workspace:*`）；`@deepseek-ai/dsh-skill-filesystem` 由本行自己 `ctx.plugin` 挂载（npm 包，`catalog:dsh`）；`@lyteboat/contracts` 只提供类型 |
@@ -386,7 +386,7 @@ ls node_modules/@lyteboat/ | grep policy-desk     # 应输出 agent-policy-desk
 git status --short                            # pnpm-lock.yaml 多了 lyteboat/agents/policy-desk 这个 importer，要一起提交
 ```
 
-CI 用 `--frozen-lockfile` 安装（CLAUDE.md:216），所以 `pnpm-lock.yaml` 的改动必须提交。
+CI 用 `--frozen-lockfile` 安装（CLAUDE.md:217），所以 `pnpm-lock.yaml` 的改动必须提交。
 
 ### 2.4 `agent.cordis.yml`
 
@@ -432,7 +432,7 @@ description: 按保单号查询状态、保额与保障期间并出一张保单�
 order: 2
 ```
 
-三个字段都只用于显示（CLAUDE.md:205）；`order` 接着金融智能体的 1 往下排（`lyteboat/agents/finance/preset.yml:3`）。
+三个字段都只用于显示（CLAUDE.md:206）；`order` 接着金融智能体的 1 往下排（`lyteboat/agents/finance/preset.yml:3`）。
 
 ### 2.6 技能：`skills/policy-lookup/SKILL.md`
 
@@ -579,7 +579,7 @@ export function policySummary(policy: PolicyRecord): PolicySummary {
 
 ### 2.9 A2UI 卡片：`a2ui/policy_card/`
 
-卡片分三部分：`template.json` 是设计稿，`manifest.yaml` 规定出卡模式和每个绑定怎么取值，`compute.js` 放代码钩子。渲染结果由工具放进结果的 `meta.lyteboat.cards`，模型只看 digest（CLAUDE.md:208）。
+卡片分三部分：`template.json` 是设计稿，`manifest.yaml` 规定出卡模式和每个绑定怎么取值，`compute.js` 放代码钩子。渲染结果由工具放进结果的 `meta.lyteboat.cards`，模型只看 digest（CLAUDE.md:209）。
 
 `template.json`：
 
@@ -1384,7 +1384,7 @@ pnpm run test        # build + G1 + source/dsh/composite 三个项目
 
 `pnpm run lint` 最后一步是 `scripts/check-sensitive.ts`：它扫描 git 跟踪的（和将要跟踪的）每个文件的路径和内容，找部署方标为敏感的词。词表不进仓库，由环境变量 `LYTEBOAT_SENSITIVE_WORDS`（逗号分隔）或 `LYTEBOAT_SENSITIVE_WORDS_FILE` 提供；两个都没设时它说明跳过并通过（`scripts/check-sensitive.ts:1-14`）。新 agent 的文案、夹具和测试名都在扫描范围里。
 
-提交信息的格式看工作是否属于里程碑（CLAUDE.md:188）：里程碑步骤写 `<milestone-step>: <package> — <交付了什么>`；不属于里程碑时用 conventional 前缀（仓库历史里有 `feat:`、`fix:`、`chore:`、`refactor:`）。正文写现在能跑什么、验收了什么，贴上跑过的命令（CLAUDE.md:153）；没有 eval 数据的 prompt 文本要写明是 working hypothesis（CLAUDE.md:202）；最后是会话给出的署名尾部；任何地方都不写模型标识（CLAUDE.md:189）。下面的步骤号 `M3-1` 只是示意，用设计文档里实际的步骤号：
+提交信息的格式看工作是否属于里程碑（CLAUDE.md:188）：里程碑步骤写 `<milestone-step>: <package> — <交付了什么>`；不属于里程碑时用 conventional 前缀（仓库历史里有 `feat:`、`fix:`、`chore:`、`refactor:`）。正文写现在能跑什么、验收了什么，贴上跑过的命令（CLAUDE.md:153）；没有 eval 数据的 prompt 文本要写明是 working hypothesis（CLAUDE.md:203）；最后是会话给出的署名尾部；任何地方都不写模型标识（CLAUDE.md:190）。下面的步骤号 `M3-1` 只是示意，用设计文档里实际的步骤号：
 
 ```text
 M3-1: @lyteboat/agent-policy-desk — a policy lookup agent: routed skill, policy card, confirmation-gated copy, admission
@@ -1571,7 +1571,7 @@ model requests: router, loop(24), title, loop(26), loop(26)
 
 ### 4.1 参考实现的 agent 设计原则仍然适用
 
-CLAUDE.md:202 要求设计、评审或移植 agent 之前先读参考实现的 `docs/agent_design_principles.md`：原则不变，只是机制换了。
+CLAUDE.md:203 要求设计、评审或移植 agent 之前先读参考实现的 `docs/agent_design_principles.md`：原则不变，只是机制换了。
 
 | 设计原则 | 在 policy-desk 里的落点 |
 |---|---|
@@ -1582,7 +1582,7 @@ CLAUDE.md:202 要求设计、评审或移植 agent 之前先读参考实现的 `
 | 超集工具，一次把状态落齐（§4） | 一次调用同时写状态、出卡 |
 | 业务阈值、常量都在 L4（§5） | 状态文案在 manifest 的 `switch` 里，金额格式在 `compute.js`，数据校验和状态摘要在 `policies.ts`，都不在 SKILL 正文里 |
 | 终态工具要 `always`（§4） | lyteboat 的 `render_a2ui` 默认 `always`，`terminalCards` 调用 `exec.concludeTurn()`（`lyteboat/plugins/a2ui/src/index.ts:350`、`:336`） |
-| 改 prompt 要有 eval 数据（§8） | CLAUDE.md:202：没有 eval 数据的 prompt 改动是 working hypothesis，提交信息要写明（§2.17 的示例） |
+| 改 prompt 要有 eval 数据（§8） | CLAUDE.md:203：没有 eval 数据的 prompt 改动是 working hypothesis，提交信息要写明（§2.17 的示例） |
 
 ### 4.2 业务词汇只出现在 `lyteboat/agents/`
 
@@ -1590,7 +1590,7 @@ CLAUDE.md:202 要求设计、评审或移植 agent 之前先读参考实现的 `
 
 ### 4.3 技能命名
 
-名字必须匹配 `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`（`dsh/skill/skill/src/index.ts:21`）。从参考实现迁过来的下划线 id 要改名（CLAUDE.md:206）。不合法的名字**不会报错**：skill-filesystem 只打一条 warn，然后忽略这个文件（上游 `packages/skill/skill-filesystem/src/index.ts:820-822`；缺 `name` 或 `description` 时同样只 warn，见 `:816-818`），而 `lyteboat run` 默认不打印 warn（§6）。实测把 `name` 改成 `policy_lookup` 以后：退出码 0，stderr 只有 `lyteboat: session <id>` 那一行，**没有路由请求**（候选集为空），请求里只有 24 个工具。
+名字必须匹配 `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`（`dsh/skill/skill/src/index.ts:21`）。从参考实现迁过来的下划线 id 要改名（CLAUDE.md:207）。不合法的名字**不会报错**：skill-filesystem 只打一条 warn，然后忽略这个文件（上游 `packages/skill/skill-filesystem/src/index.ts:820-822`；缺 `name` 或 `description` 时同样只 warn，见 `:816-818`），而 `lyteboat run` 默认不打印 warn（§6）。实测把 `name` 改成 `policy_lookup` 以后：退出码 0，stderr 只有 `lyteboat: session <id>` 那一行，**没有路由请求**（候选集为空），请求里只有 24 个工具。
 
 ### 4.4 waterfall 监听器必须调用 `next()`
 
@@ -1614,7 +1614,7 @@ runtime context（每步作为 user 消息追加）和 system prompt 段是**两
 | section | `lyteboat:skills`（仅 full 模式） | 450 | `lyteboat/plugins/skill-router/src/index.ts:56` |
 | section | `PLAN_POLICY` … persona 后缀 | 500 … 10200 | `dsh/core/system-prompt/src/index.ts:128-158` |
 
-新的 prompt 文本要相对这些值选序号，并在 contracts 里登记（CLAUDE.md:210）。目前已有的 lyteboat 常量放在各自所属的插件里。dynamic 模式下路由到的技能正文不占序号：它是一条技能调用消息，不是段，也不是 runtime context（§3.1）。persona 行设 `includeRuntimeContext: false` 会压掉这个作用域里**所有**的 runtime context 快照，`lyteboat:state` 也在内（上游 `packages/preset/persona/src/index.ts:44-45`、`:74`）；技能调用消息不是快照，不受它影响。
+新的 prompt 文本要相对这些值选序号，并在 contracts 里登记（CLAUDE.md:211）。目前已有的 lyteboat 常量放在各自所属的插件里。dynamic 模式下路由到的技能正文不占序号：它是一条技能调用消息，不是段，也不是 runtime context（§3.1）。persona 行设 `includeRuntimeContext: false` 会压掉这个作用域里**所有**的 runtime context 快照，`lyteboat:state` 也在内（上游 `packages/preset/persona/src/index.ts:44-45`、`:74`）；技能调用消息不是快照，不受它影响。
 
 ### 4.6 agent 行不向根 realm 发布服务
 

@@ -90,7 +90,7 @@ flowchart TB
 |---|---|---|---|
 | 终端用户 | 跑 `lyteboat run "任务"` 或 `lyteboat web` 的人 | 通过命令行参数和浏览器交互 | `lyteboat/apps/cli/src/args.ts:109-129` |
 | 业务开发 | 写 `lyteboat/agents/<id>` 目录、`--plugin` 文件、`--patch` 文件的人 | 业务逻辑只放在 agent 目录里，框架包不带业务词汇 | `CLAUDE.md:78` |
-| dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | lyteboat 每个 tag 导入一次内核源码，三方合并 lyteboat 的改动 | `dsh.upstream.json`，`CLAUDE.md:194-195` |
+| dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | lyteboat 每个 tag 导入一次内核源码，三方合并 lyteboat 的改动 | `dsh.upstream.json`，`CLAUDE.md:195-196` |
 | npm 官方包 | 除内核外的 `@deepseek-ai/dsh-*` | 原样使用，版本全钉在 `0.1.7-rc.1` | `.pnpmfile.cjs:7-22`，`pnpm-workspace.yaml:64-150` |
 | 社区插件 | 按 dsh 接口写的第三方插件 | 不改代码即可跑在 lyteboat 上；要用 lyteboat 扩展时注入 `lyteboatDistro` | `dsh-compat/COMPAT.md:46` |
 | 模型服务 | DeepSeek Messages API 兼容端点 | `dsh-llm-deepseek` 适配器 POST 到 `messagesApiRoot(baseURL)/messages`：baseURL 不以 `/v1` 结尾时补上 `/v1`；baseURL 来自 `DEEPSEEK_BASE_URL`，默认值是 `config.ts:115` 的公开端点。本文的运行把它设成脚本化模型的 `http://127.0.0.1:<port>/v1`，请求就落在 `/v1/messages` | `dsh@rc.1:packages/llm/llm-deepseek/src/adapter.ts:113`，`messages-api.ts:11-14`，`config.ts:115-118` |
@@ -609,7 +609,7 @@ sequenceDiagram
 6. `prepareProfile('run')`（138-143）→ `ensureProfileInitialized`（114-128）：`$LYTEBOAT_HOME/profiles/run/package.json` 不存在就按模板 `['@deepseek-ai/dsh-base','@lyteboat/host','@lyteboat/run']`（`templates.ts:17-20`）调 `initProfile`（`dsh@rc.1:packages/boot/app-boot/src/profile.ts:219`）；存在但 bundle 列表和模板不一致就报错退出。**为什么要报错**：老版本 lyteboat 生成的 profile 可能少一个 bundle，悄悄照旧启动会缺服务。
 7. `loadProfile`（`profile.ts:690`）→ `loadProfileDirectory`（642）对每个 bundle 做**bundle 准入**：`evaluatePluginCompatibility`（`dsh@rc.1:packages/boot/app-boot/src/plugin-compatibility.ts:61-88`）把 bundle 的 `@deepseek-ai/dsh*` peer 和 dsh-app-boot 自己的版本比，`workspace:*` 视为当前版本（76 行），不匹配就跳过这个 bundle 并在 stderr 说明。
 8. 根 `$LYTEBOAT_HOME/profiles/run/cordis.yml` 每次都重写成 `[]`（`profile-boot.ts:94-98,141`）。**为什么**：整棵树只由 patch 层组成；Loader 的回写可能把组合后的行烤进根文件，下次启动就会重复。
-9. `createRuntimeResolution`（`profile.ts:406`）从 `@lyteboat/cli` 的依赖和 peer 广度优先收集包，给后面的裸包名解析用。这就是 `lyteboat/apps/cli/package.json` 要列出所有 dsh 包的原因，也是 `CLAUDE.md:195` 要求“启动器的依赖闭包必须是 dsh 自己 `apps/cli` 的超集”的原因。
+9. `createRuntimeResolution`（`profile.ts:406`）从 `@lyteboat/cli` 的依赖和 peer 广度优先收集包，给后面的裸包名解析用。这就是 `lyteboat/apps/cli/package.json` 要列出所有 dsh 包的原因，也是 `CLAUDE.md:196` 要求“启动器的依赖闭包必须是 dsh 自己 `apps/cli` 的超集”的原因。
 10. overlay 顺序是 `[...--patch 文件, ...--plugin 行]`（`profile-boot.ts:168-171`），`--plugin` 在最上面，用户文件盖不掉它。
 
 **C. `boot()`**
