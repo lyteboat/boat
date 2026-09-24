@@ -1,6 +1,6 @@
 /**
  * Walk a copied designer template, resolving bindings into a literal-only tree.
- * A port of ark's template_engine/walker.py: `text` / `url` / `name` keep the
+ * A port of the reference implementation's template_engine/walker.py: `text` / `url` / `name` keep the
  * `{literalString}` wrapper, `hide` drops a subtree, a binding `dataSource`
  * with a `child` fans the child out once per item (ids suffixed `__i`), a
  * non-binding `dataSource` passes the child subtree through untouched for the

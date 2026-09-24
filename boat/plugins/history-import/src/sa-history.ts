@@ -1,5 +1,5 @@
 /**
- * ark's SA history rules (agents/yinglong/sa_history_merger.py): entries are
+ * The reference SA history rules (agents/yinglong/sa_history_merger.py): entries are
  * `{ role, trace_id, message_desc: [{ module_desc }], create_time?, app_type?, bu_source? }`;
  * a round is one user and one assistant entry sharing a trace id. Half
  * rounds (the in-flight one), empty-text rounds and malformed entries are

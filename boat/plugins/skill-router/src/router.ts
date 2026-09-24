@@ -1,5 +1,5 @@
 /**
- * The routing prompt and decision rules, ported from ark's LLMSkillRouter
+ * The routing prompt and decision rules, ported from the reference LLMSkillRouter
  * (core/skills/router.py) with the runner's sticky rule folded in: the result
  * is the skill that is active AFTER the decision, so a null, an unknown id,
  * a malformed reply, a timeout, or a failure all keep the current skill.
@@ -9,7 +9,7 @@
 import type { ContentBlock, Message } from '@deepseek-ai/dsh-llm'
 import { BOAT_HISTORY_IMPORT_SOURCE } from '@boat/contracts'
 
-/** ark's router system prompt, verbatim (the scripted test model classifies router requests by it). */
+/** The reference router system prompt, verbatim (the scripted test model classifies router requests by it). */
 export const SKILL_ROUTER_SYSTEM_PROMPT = '你是一个 skill 路由器。根据用户对话上下文，从可用 skill 列表中选择最匹配的一个。\n仅输出严格 JSON：{"skill_id": "<id 或 null>", "reason": "<≤30字>"}，不要包含其它文本。'
 
 export interface RouteCandidate {
@@ -30,7 +30,7 @@ export interface RouteDecision {
   readonly reason: string
 }
 
-/** ark's `_build_user_prompt`. */
+/** The reference `_build_user_prompt`. */
 export function buildRoutePrompt(input: RoutePromptInput): string {
   const skills = input.candidates.map(candidate => `  - id: ${candidate.name}\n    description: ${candidate.description}`).join('\n')
   const history = input.history.length === 0 ? '(empty)' : input.history.join('\n')
@@ -56,7 +56,7 @@ export function buildRoutePrompt(input: RoutePromptInput): string {
   ].join('\n')
 }
 
-/** Strip a ```json fence, as ark tolerates. */
+/** Strip a ```json fence, as the reference implementation tolerates. */
 function unfence(text: string): string {
   const trimmed = text.trim()
   if (!trimmed.startsWith('```')) return trimmed
@@ -64,7 +64,7 @@ function unfence(text: string): string {
 }
 
 /**
- * ark's `_parse_decision` plus the runner's sticky rule.
+ * The reference `_parse_decision` plus the runner's sticky rule.
  * @param raw - the model's text.
  * @param candidates - the candidate names offered.
  * @param current - the skill active before the decision.
@@ -97,7 +97,7 @@ function textOf(blocks: readonly ContentBlock[]): string {
 }
 
 /**
- * ark's `render_history_line` over the session's derived messages: the last
+ * The reference `render_history_line` over the session's derived messages: the last
  * `window` user turns, assistant replies and tool results; prompt snapshots,
  * catalogs and other plugin-sourced messages are not conversation.
  * @param messages - the derived model-facing history.

@@ -1,11 +1,11 @@
 /**
  * @boat/a2ui — A2UI cards for boat agents. One host service, `ctx.a2ui`,
- * owns the template engine (ark's template mode, ported), the `render_a2ui`
+ * owns the template engine (the reference template mode, ported), the `render_a2ui`
  * tool a composition registers over a templates root, and the `boatCards`
  * projection that collects every rendered card from `tool/result.meta`.
  *
  * The tool reads its raw data from the session's `boatState` projection (the
- * configured state keys, as ark's `state_keys`), renders the chosen card, and
+ * configured state keys, as the reference `state_keys`), renders the chosen card, and
  * returns the digest as the model-facing text; the card itself rides the
  * result's presentation meta (`meta.boat.card`), never the model transcript.
  * @module @boat/a2ui
@@ -20,7 +20,7 @@ import type { BoatCard, BoatStateValue, JsonValue } from '@boat/contracts'
 import type {} from '@boat/tool-policy'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
-import { ARK_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
+import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
 import type { A2uiComponentCatalog } from './contract.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 
@@ -33,7 +33,7 @@ export { execOne, executeTransforms, resolvePath, TransformError } from './trans
 export type { A2uiLog, RawData } from './transforms.ts'
 export { BoundPathTracker, walk } from './walker.ts'
 export type { TemplateDocument } from './walker.ts'
-export { ARK_A2UI_COMPONENT_CATALOG, rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload } from './contract.ts'
+export { DEFAULT_A2UI_COMPONENT_CATALOG, rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload } from './contract.ts'
 export type { A2uiComponentCatalog, GuardResult, ValidationResult } from './contract.ts'
 export { templateBusinessPayload, BUSINESS_PAYLOAD_KEY } from './business-payload.ts'
 
@@ -49,7 +49,7 @@ export interface RenderToolOptions {
   templates: string
   /** `boatState` keys collected into the raw namespace: `raw[key] = state[key]` and the key's fields flattened beside it. */
   stateKeys?: string[]
-  /** Cards whose successful render concludes the agent's turn (ark's terminal cards). */
+  /** Cards whose successful render concludes the agent's turn (the reference terminal cards). */
   terminalCards?: string[]
   /** Card → one model-facing line for the tool description. */
   cardDescriptions?: Record<string, string>
@@ -59,9 +59,9 @@ export interface RenderToolOptions {
   visibility?: 'always' | 'auto'
   /** boat tool group; defaults to `framework`. */
   group?: string
-  /** Contract violations: `warn` keeps the card and records them (ark's default); `enforce` fails the call. */
+  /** Contract violations: `warn` keeps the card and records them (the reference default); `enforce` fails the call. */
   validation?: 'warn' | 'enforce'
-  /** The client's component catalog the contract is checked against; ark's reference client by default. */
+  /** The client's component catalog the contract is checked against; the reference client by default. */
   components?: A2uiComponentCatalog
 }
 
@@ -112,7 +112,7 @@ export const boatCardsProjectionDefinition = {
   stateVersion: 1,
 } satisfies ProjectionDefinition<'boatCards', BoatCard[]>
 
-/** ark's `_collect_raw_data`: each state key namespaced and flattened. */
+/** The reference `_collect_raw_data`: each state key namespaced and flattened. */
 export function collectRawData(state: BoatStateValue | undefined, stateKeys: readonly string[]): RawData {
   const raw: RawData = {}
   for (const key of stateKeys) {
@@ -133,7 +133,7 @@ export function collectRawData(state: BoatStateValue | undefined, stateKeys: rea
   return raw
 }
 
-/** ark's `_parse_object_args`: an object, a JSON object string, or nothing. */
+/** The reference `_parse_object_args`: an object, a JSON object string, or nothing. */
 export function parseObjectArgs(value: unknown): Record<string, unknown> | undefined {
   if (value === undefined || value === null || value === '') return undefined
   if (isRecord(value)) return value
@@ -208,7 +208,7 @@ export class A2uiService extends Service {
     const stateKeys = options.stateKeys ?? []
     const terminal = new Set(options.terminalCards ?? [])
     const validation = options.validation ?? 'warn'
-    const components = options.components ?? ARK_A2UI_COMPONENT_CATALOG
+    const components = options.components ?? DEFAULT_A2UI_COMPONENT_CATALOG
     const log = this.log
     const projections = this.ctx.sessionProjections
     const tool = defineTool({

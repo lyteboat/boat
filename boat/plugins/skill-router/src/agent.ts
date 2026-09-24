@@ -1,7 +1,7 @@
 /**
  * The agent row: declares the skill router's settings for one agent (its
  * standing scope, mounted by dsh-agent-preset-registry), overriding the host row's
- * defaults for every session of that agent. An agent that wants ark's dynamic routing turns it on
+ * defaults for every session of that agent. An agent that wants dynamic routing turns it on
  * here; the host default is `off`.
  *
  * ```yaml

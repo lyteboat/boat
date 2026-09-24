@@ -1,6 +1,6 @@
 /**
  * The transforms DSL: deterministic declarative data transforms over raw data.
- * A port of ark's core/a2ui/transforms.py; messages and formatting mirror the
+ * A port of the reference implementation's core/a2ui/transforms.py; messages and formatting mirror the
  * original so a manifest behaves the same on either side.
  * @module @boat/a2ui/transforms
  */
@@ -30,7 +30,7 @@ export const SILENT_LOG: A2uiLog = { warn: () => {} }
 export type RawData = Record<string, unknown>
 export type TransformSpec = Record<string, unknown> | string
 
-/** Python's `repr` of a list of strings, as ark's messages print available keys. */
+/** Python's `repr` of a list of strings, as the reference messages print available keys. */
 export function reprList(values: readonly string[]): string {
   return `[${values.map(value => `'${value}'`).join(', ')}]`
 }
@@ -47,7 +47,7 @@ function formatCurrency(value: number): string {
 function formatPercent(value: number): string {
   // Python distinguishes a float below 1 (a ratio) from any other number; JS
   // numbers are one type, so an integer-valued ratio like 0 or 1 renders as
-  // `0%` / `1%` here where ark rendered `0%` / `100%` only for true floats.
+  // `0%` / `1%` here where the reference implementation rendered `0%` / `100%` only for true floats.
   if (!Number.isInteger(value) && value < 1) return `${(value * 100).toFixed(0)}%`
   return `${String(value)}%`
 }

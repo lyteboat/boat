@@ -7,7 +7,7 @@ import { findSessionLogs, readSessionLog } from '@boat/testing/session-log'
 import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@boat/testing/scripted-model'
 import { FIXTURES, runComposition } from './support/run-composition.ts'
 
-/** Card fidelity against ark is plugins/a2ui's job; this fixture only proves the rows are wired. */
+/** Card fidelity against the reference implementation is plugins/a2ui's job; this fixture only proves the rows are wired. */
 const PLUGIN = pluginFileRow(join(FIXTURES, 'plugins', 'a2ui', 'plugin.mjs'))
 const ANSWER = 'A2UI-OK'
 

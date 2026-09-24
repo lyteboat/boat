@@ -1,5 +1,5 @@
 /**
- * @boat/skill-router — ark's skill loading and routing over the dsh skill
+ * @boat/skill-router — the reference skill loading and routing over the dsh skill
  * registry. One host service, `ctx.skillRouter`, with per-scope settings
  * (host row defaults, overridden by a preset's registrar row):
  *
@@ -7,7 +7,7 @@
  * - `full`: every model-invocable skill's body is a system prompt section
  *   (`boat:skills`) and every tool the skills require is activated; no
  *   routing.
- * - `dynamic`: each user input is routed by a side model call (ark's
+ * - `dynamic`: each user input is routed by a side model call (the reference
  *   LLMSkillRouter prompt and rules, sticky on null / errors / timeouts);
  *   the active skill's body reaches the same step through the `boat:skill`
  *   runtime context, its `metadata.boat.requiredTools` are activated
@@ -391,7 +391,7 @@ export class SkillRouterService extends Service {
     this.activateTools(agent, boatSkillMeta(definition.metadata)?.requiredTools ?? [])
   }
 
-  /** ark's rule: visible = always + the active skills' required tools, so earlier activations are replaced. */
+  /** The reference rule: visible = always + the active skills' required tools, so earlier activations are replaced. */
   private activateTools(agent: Agent, required: readonly string[]): void {
     const policy = this.ctx.toolPolicy
     policy.clear(agent)
@@ -407,7 +407,7 @@ export class SkillRouterService extends Service {
    * Keep the in-process state in step with the durable active skill: a
    * resumed session (or one whose activation this process never saw) starts
    * with no body cached and no tools activated, so both are restored from the
-   * projection, the way ark re-derives visibility from
+   * projection, the way the reference implementation re-derives visibility from
    * `current_active_skill_id` every turn.
    */
   private async refreshActive(agent: Agent, lookup: SkillViewOptions): Promise<void> {

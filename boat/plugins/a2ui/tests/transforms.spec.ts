@@ -19,7 +19,7 @@ describe('resolvePath', () => {
     expect(resolvePath(data, 'items.0.name')).toBe('a')
   })
 
-  it("reports missing fields with ark's message", () => {
+  it('reports missing fields with the reference message', () => {
     expect(() => resolvePath(data, 'nested.missing')).toThrow("字段 'nested.missing' 不存在于数据中 (在 'missing' 处失败, 可用字段: ['list'])")
     expect(() => resolvePath(data, 'total.x')).toThrow(TransformError)
   })
@@ -57,7 +57,7 @@ describe('execOne', () => {
 })
 
 describe('contract', () => {
-  it('validates event shapes with ark messages', () => {
+  it('validates event shapes with the reference messages', () => {
     expect(() => validateEventPayload({ event: 'beginRendering', surfaceId: 's', rootComponentId: 'r', components: [], catalogId: 'c' })).toThrow('beginRendering requires exactly one of components or catalogId')
     expect(() => validateEventPayload({ event: 'surfaceUpdate', surfaceId: 's', components: [], data: {} })).toThrow("surfaceUpdate contains unsupported fields: ['data']")
     expect(() => validateEventPayload({ event: 'nope' })).toThrow('Unsupported event: nope')

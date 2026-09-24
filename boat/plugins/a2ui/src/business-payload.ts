@@ -1,7 +1,7 @@
 /**
  * The `businessPayload` layer: the resolved data behind a rendered card,
  * restricted to the manifest keys the walk actually bound, in key order.
- * A port of ark's business_payload.py for template mode.
+ * A port of the reference implementation's business_payload.py for template mode.
  * @module @boat/a2ui/business-payload
  */
 
