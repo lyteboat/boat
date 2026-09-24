@@ -185,7 +185,7 @@ Conventions:
 - One focused fix attempt on a failing new test. Still failing → mark ⚠️ partial, skip the test with a reason, and say so in the commit and the design document.
 - State assumptions in the commit message and the PR description instead of guessing silently; never create a PR unless asked.
 - Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or anything under `dsh/` outside a classified commit without explicit instruction.
-- Commit messages: `<milestone-step>: <package> — <what it delivers>` for milestone work (`M2-3: @lyteboat/tool-policy — …`), conventional `fix:` / `chore:` / `docs:` otherwise, followed by a body that states what runs now and what was accepted. End with the attribution trailers the session provides.
+- Commit messages: `<milestone-step>: <package> — <what it delivers>` for milestone work (`M2-3: @lyteboat/tool-policy — …`), conventional `fix:` / `chore:` / `docs:` otherwise, followed by a body that states what runs now and what was accepted. End with the attribution trailers the session provides, then `Co-authored-by: $GIT_COAUTHOR` so GitHub credits the person the work is for (the PR description carries the same line). Each person sets `GIT_COAUTHOR=Name <email>` as an environment variable in their own Claude Code cloud environment; the email is one their GitHub account has verified, or their `ID+username@users.noreply.github.com` address. If `GIT_COAUTHOR` is unset, ask the user before committing; never guess it.
 - Never put a model identifier in a commit, PR, code comment, or file.
 
 ## Upstream sync (the distribution)
