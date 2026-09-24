@@ -2,6 +2,15 @@
 
 lyteboat has no releases yet; this file records what each milestone delivered, newest first. The tracked dsh release is in `dsh.upstream.json`.
 
+## F2 — request context, admission ahead of the loop, side calls, cards
+
+- Kernel extension `session-append-ignorable` (`@deepseek-ai/dsh-session`): `Session.append(type, data, { ignorable: true })` marks a record of a type the harness does not know, so dsh's persistence, and the official release, read a log past it; a type the harness knows refuses the mark.
+- `@lyteboat/aux-llm`: side model calls (the router's, an admission's classifier), each under its own deadline and recorded as an ignorable `lyteboat/aux-llm-call` (route, system, prompt, answer or failure, duration). A failure is an outcome the caller falls back on, and an answer cut off at `maxTokens` is one; `reasoningEffort` sets the effort every side call requests. The router's calls are recorded again.
+- `@lyteboat/a2ui`: a tool result carries several cards (`meta.lyteboat.cards`), each with its area and emission mode (`immediate`, `deferred`, `deferred_discard`). `turnParts` composes a finished turn: immediate cards first, then the answer with each `[[card:<area>]]` marker replaced by that area's deferred cards, then, when the turn completed, the deferred cards the answer did not place. `lyteboat run` prints a card as a `[card <area>]` line.
+- `@lyteboat/request-context`: the request a human message answers to (request id, context, admission verdict) rides its source (`source.lyteboatRequest`), and the `lyteboatRequest` projection keeps the session's context until a request brings another. `lyteboat run --context <json|file>` passes one.
+- `@lyteboat/intake-guard`: an agent registers an admission function; `lyteboat run` admits a request before it enters the loop and records the verdict on it; a reply verdict (text and cards) answers the turn without a model request, and a message that arrives unadmitted is admitted in the loop.
+- `@lyteboat/agent-finance` drops V1's stand-ins: the request context names the customer (`context.customer`), and cards ride `meta.lyteboat.cards` with their emission modes, placed by markers. Its admission classifies each request with a side call: investor education and small talk pass, a request about the customer's money passes once an account is authorized and otherwise gets the unauthorized card, anything else gets the service scope; a failed classification lets the request through.
+
 ## F1 — multi-turn and reopen
 
 - `@lyteboat/skill-router` writes no node of its own. A routed skill's body enters the step as dsh's skill-invocation message (the record dsh-tool-skill writes when a user invokes a skill), and `lyteboatActiveSkill` folds those messages and successful `skill` tool calls, so a routed session reopens under dsh's persistence and `lyteboat web`, a continued session gets its tools back, and a body the model no longer sees is injected again. The router call leaves a debug log line.

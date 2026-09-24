@@ -67,7 +67,7 @@ export function defineBucketDiagnosisTool(deps: FinanceToolDeps): ToolDefinition
     execute: async (args, exec): Promise<FinanceToolValue> => {
       const agent = callingAgent(exec, 'bucket_diagnosis')
       const bucket = bucketOfLabel(args.bucket)
-      const session = diagnoseSession(deps, financeStateOf(deps, agent))
+      const session = diagnoseSession(deps, agent, financeStateOf(deps, agent))
       const { diagnosis, holdings } = session
       if (diagnosis.cardState === 'zero') return unauthorizedResult(deps, agent, exec, 'bucket_diagnosis', session.customer)
       if (diagnosis.cardState === 'single') return blocked('bucket_diagnosis', 'blocked', '已授权的资产只覆盖一类钱包，暂时无法判断这笔钱是否合理。', ['什么是资产配置'])

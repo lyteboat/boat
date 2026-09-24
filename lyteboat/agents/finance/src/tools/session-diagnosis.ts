@@ -5,6 +5,7 @@
  * @module @lyteboat/agent-finance/tools/session-diagnosis
  */
 
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import { FINANCE_BUCKET_LABEL, type CustomerProfile, type FinanceCustomer } from '../data/finance-customer.ts'
 import { diagnoseAllocation, BUCKET_JUDGE_TEXT, type AllocationDiagnosis } from '../capabilities/allocation-diagnosis.ts'
 import { mergeExternalAssets, type ExternalAssetReport } from '../capabilities/external-assets.ts'
@@ -47,10 +48,11 @@ export function factsWithArguments(facts: FinanceState['facts'], args: Diagnosis
 /**
  * Diagnose the session's customer.
  * @param deps - the finance tool dependencies.
+ * @param agent - the calling agent, whose request context names the customer.
  * @param state - the session state, with the facts to diagnose under.
  */
-export function diagnoseSession(deps: FinanceToolDeps, state: FinanceState): SessionDiagnosis {
-  const customer = deps.customers.customer(deps.customerId())
+export function diagnoseSession(deps: FinanceToolDeps, agent: Agent, state: FinanceState): SessionDiagnosis {
+  const customer = deps.customers.customer(deps.customerId(agent))
   const profile = profileWithFacts(customer, state)
   const holdings = summarizeHoldings(customer, state.facts.externalAssets)
   return { customer, profile, holdings, diagnosis: diagnoseAllocation(holdings, profile, state.facts.investmentHorizon ?? undefined) }

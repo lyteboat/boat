@@ -634,6 +634,12 @@ importers:
       '@lyteboat/host':
         specifier: workspace:*
         version: link:../../bundles/host
+      '@lyteboat/intake-guard':
+        specifier: workspace:*
+        version: link:../../plugins/intake-guard
+      '@lyteboat/request-context':
+        specifier: workspace:*
+        version: link:../../plugins/request-context
       '@lyteboat/run':
         specifier: workspace:*
         version: link:../../bundles/run

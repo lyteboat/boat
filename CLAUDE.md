@@ -34,7 +34,7 @@ lyteboat/
   core/contracts/         @lyteboat/contracts — lyteboat's declarations over the dsh seams: tool/skill metadata, the kernel's lyteboat/* events (re-exported), log nodes, projection keys, LyteboatDistro
   core/cordis-compat/     @lyteboat/cordis-compat — runtime values for const enums the published cordis build erases
   agents/demo/            @lyteboat/agent-demo — an agent directory: agent.cordis.yml, preset.yml (display name, optional), skills/, a2ui/, fixtures/, src/ → lib/
-  agents/finance/         @lyteboat/agent-finance — the finance agent (public knowledge only): four routed skills and tools, six cards, the financeState projection
+  agents/finance/         @lyteboat/agent-finance — the finance agent (public knowledge only): four routed skills and tools, six cards, the financeState projection, an admission ahead of the loop; the request context names the customer
   tooling/testing/        @lyteboat/testing — the test harness lyteboat's packages use: mountDshTestServices + MockAdapter, session-log, scripted-model, process
 dsh-compat/               what lyteboat promises the plugins written against dsh, and the proof; no runtime code; README.md lists the gates
   COMPAT.md               the promise for people: stable surface, behavior invariants, additions, release channels

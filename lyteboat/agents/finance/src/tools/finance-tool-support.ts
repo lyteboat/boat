@@ -20,8 +20,8 @@ import { EMPTY_FINANCE_STATE, type FinanceState, type FinanceStateDelta } from '
 /** Everything a finance tool reads from outside the capability layer. */
 export interface FinanceToolDeps {
   customers: FinanceCustomerSource
-  /** The customer this process serves; an environment variable until requests carry their own context. */
-  customerId: () => string
+  /** The customer the calling session serves: its request context names it. */
+  customerId: (agent: Agent) => string
   /** Absolute path of the agent's a2ui templates root. */
   templates: string
   knowledge: readonly KnowledgeEntry[]
@@ -89,12 +89,12 @@ export function statementAmountOf(spoken: string): string | undefined {
 
 /**
  * Render one card from the agent's templates.
- * @param deps - the tool dependencies.
+ * @param deps - the card renderer and the templates root.
  * @param agent - the calling agent (its session names the surface).
  * @param area - the card, which is also its marker name.
  * @param raw - the card's raw data namespace.
  */
-export async function prepareCard(deps: FinanceToolDeps, agent: Agent, area: string, raw: Record<string, unknown>): Promise<LyteboatResultCard> {
+export async function prepareCard(deps: Pick<FinanceToolDeps, 'a2ui' | 'templates'>, agent: Agent, area: string, raw: Record<string, unknown>): Promise<LyteboatResultCard> {
   const rendered = await deps.a2ui.render(deps.templates, area, raw, { sessionId: agent.session.id })
   // The engine's payload is JSON built from the template file and the raw data, typed loosely at its boundary.
   return { area, surfaceId: String(rendered.payload['surfaceId'] ?? ''), emission: rendered.emission, payload: rendered.payload as unknown as JsonValue }

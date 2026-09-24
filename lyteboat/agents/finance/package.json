@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's finance agent, built from public financial knowledge only: an asset overview, an allocation diagnosis by rules of thumb (an emergency fund of 3 to 6 months of spending, 100 minus age, the C1 to C5 risk tiers), a drill-down into one of the three buckets, and investor education. Deployment input: LYTEBOAT_FINANCE_CUSTOMER, the customer fixture a run reads (defaults to young-idle-cash)",
+  "description": "lyteboat's finance agent, built from public financial knowledge only: an asset overview, an allocation diagnosis by rules of thumb (an emergency fund of 3 to 6 months of spending, 100 minus age, the C1 to C5 risk tiers), a drill-down into one of the three buckets, and investor education. Requests name their customer in the request context (context.customer, a fixture name); an admission ahead of the loop answers out-of-scope requests and unauthorized customers without the model",
   "type": "module",
   "exports": {
     "./agent": {
@@ -15,6 +15,11 @@
       "@lyteboat/source": "./src/capabilities/index.ts",
       "types": "./lib/capabilities/index.d.ts",
       "default": "./lib/capabilities/index.js"
+    },
+    "./intake": {
+      "@lyteboat/source": "./src/intake/finance-admission.ts",
+      "types": "./lib/intake/finance-admission.d.ts",
+      "default": "./lib/intake/finance-admission.js"
     }
   },
   "files": [
@@ -34,6 +39,9 @@
   },
   "peerDependencies": {
     "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/intake-guard": "workspace:*",
+    "@lyteboat/request-context": "workspace:*",
     "@lyteboat/tool-policy": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",
@@ -45,6 +53,8 @@
     "@lyteboat/aux-llm": "workspace:*",
     "@lyteboat/distro": "workspace:*",
     "@lyteboat/host": "workspace:*",
+    "@lyteboat/intake-guard": "workspace:*",
+    "@lyteboat/request-context": "workspace:*",
     "@lyteboat/run": "workspace:*",
     "@lyteboat/skill-router": "workspace:*",
     "@lyteboat/testing": "workspace:*",

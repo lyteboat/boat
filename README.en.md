@@ -80,6 +80,7 @@ Side calls (skill routing, intake classification) use their route's default reas
 ```sh
 lyteboat run "summarize this workspace"                       # one-shot task: answer and exit
 lyteboat run --agents ./lyteboat/agents --agent demo "看看资产"    # the demo agent: routed skill, asset tool, card
+lyteboat run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat web --no-open                                        # browser UI
 ```
 
@@ -128,7 +129,7 @@ The [agent development guide](docs/03-agent-development.md) walks through every 
 ### Data and session logs
 
 - All lyteboat data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`). The launcher exports that directory as `DSH_HOME` before any dsh package loads, so your own `~/.dsh` is never touched.
-- The session log is the single source of truth. A card and a state delta sit on `tool/result.meta.lyteboat`, an intake reply is an assistant message whose `source.provider` is `lyteboat`, and imported history is closed turns of ordinary nodes, so these sessions reopen under dsh's own persistence.
+- The session log is the single source of truth. A card and a state delta sit on `tool/result.meta.lyteboat`, a request's context and admission verdict on the human message's `source.lyteboatRequest`, a routed skill is dsh's own skill-invocation message, an intake reply is an assistant message whose `source.provider` is `lyteboat`, and imported history is closed turns of ordinary nodes; the side-call audit `lyteboat/aux-llm-call` is marked ignorable. So these sessions reopen under dsh's own persistence.
 - `@lyteboat/host` turns off dsh-base's `session-log-deepseek` row: the model provider receives the request and nothing else.
 
 ## Documentation
@@ -180,7 +181,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |
 | `lyteboat/agents/demo` | `@lyteboat/agent-demo` | The demo agent: composition file, two routed skills, an asset tool, card templates, an intake gate |
-| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, built from public financial knowledge only: asset overview, allocation diagnosis, one-bucket drill-down, investor education; four routed skills, six cards, a session-state projection |
+| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, built from public financial knowledge only: asset overview, allocation diagnosis, one-bucket drill-down, investor education; four routed skills, six cards, a session-state projection; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher processes |
 
 ## Development

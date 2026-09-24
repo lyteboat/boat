@@ -31,6 +31,15 @@
     },
     {
       "path": "../../plugins/a2ui"
+    },
+    {
+      "path": "../../plugins/aux-llm"
+    },
+    {
+      "path": "../../plugins/intake-guard"
+    },
+    {
+      "path": "../../plugins/request-context"
     }
   ]
 }

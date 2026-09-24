@@ -1,10 +1,12 @@
 /**
  * The finance agent in the run composition (in process, scripted DeepSeek
- * Messages server): the persona is the whole system prompt, the official
- * tools are narrowed away, the routed skill's tool alone reaches the model at
- * temperature 0, cards ride the tool result, and the unauthorized card ends
- * the turn. A routed session reopens under dsh's persistence, and
- * `--session-id` continues it in a new process.
+ * Messages server): each request names its customer in `--context` and is
+ * admitted before the loop (the unauthorized card and the service scope
+ * answer without the model); the persona is the whole system prompt, the
+ * official tools are narrowed away, the routed skill's tool alone reaches the
+ * model at temperature 0, and the cards are placed where the answer marks
+ * them. A routed session reopens under dsh's persistence, and `--session-id`
+ * continues it in a new process with the context it began with.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -58,7 +60,16 @@ function reopenRefusal(records: LogRecord[]): string | undefined {
   }
 }
 
+/** The finance admission's classifier call: the scripted model sees it as a loop request with its own system text. */
+const isIntake = (request: RecordedRequest): boolean => request.systemText.includes('准入分类器')
+const isLoop = (request: RecordedRequest): boolean => request.purpose === 'loop' && !isIntake(request)
+
 function script(request: RecordedRequest) {
+  if (isIntake(request)) {
+    const latest = /<latest>([\s\S]*?)<\/latest>/u.exec(request.lastUser)?.[1] ?? ''
+    const plan = PLANS[latest]
+    return { text: JSON.stringify({ intent: plan === undefined ? 'other' : plan.skill === 'investor-education' ? 'education' : 'asset', reason: 'test' }) }
+  }
   if (request.purpose === 'router') {
     const latest = /<latest_user_input>([\s\S]*?)<\/latest_user_input>/u.exec(request.lastUser)?.[1] ?? ''
     return { text: JSON.stringify({ skill_id: PLANS[latest]?.skill ?? null, reason: 'test' }) }
@@ -92,10 +103,10 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const before = model.requests.length
     const result = await bootComposition({
       bundles: RUN_BUNDLES,
-      args: ['--agents', AGENTS, '--agent', 'finance', task],
+      args: ['--agents', AGENTS, '--agent', 'finance', '--context', JSON.stringify({ customer }), task],
       cwd: workspace,
       home,
-      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1', LYTEBOAT_FINANCE_CUSTOMER: customer },
+      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
     })
     expect(result.code, result.stderr).toBe(0)
     const [log] = findSessionLogs(home)
@@ -111,7 +122,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const { requests, records, stdout } = await run('overview', 'young-idle-cash', '看看我的资产')
     // The answer's marker became the card's place: the terminal prints it as a line of its own.
     expect(stdout).toBe('FINANCE-OK\n[card asset_overview]\n')
-    const loop = requests.filter(request => request.purpose === 'loop')
+    const loop = requests.filter(isLoop)
     expect(loop).toHaveLength(2)
     expect(loop[0]!.body.system).toContain('你是「轻舟金融助手」')
     expect(loop[0]!.body.system).not.toContain('coding agent')
@@ -125,7 +136,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
 
   it('"我的配置合理吗": a rich diagnosis prepares two cards and asks for the investment horizon', async () => {
     const { requests, records, stdout } = await run('diagnosis', 'midlife-moderate', '我的配置合理吗')
-    const digest = lastToolResult(requests.filter(request => request.purpose === 'loop')[1]!)
+    const digest = lastToolResult(requests.filter(isLoop)[1]!)
     expect(digest).toMatch(/^\[tool:allocation_diagnosis status=ok state=rich seq=1 areas=allocation_diagnosis,allocation_plan\]/u)
     expect(digest).toContain('稳健投资 146,000.00 元（约 14.60 万元），占 73.0%，建议 15%–25%，偏高')
     expect(digest).toContain('大概多久用不到')
@@ -135,25 +146,34 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(stdout).toBe('FINANCE-OK\n[card allocation_diagnosis]\n[card allocation_plan]\n')
   })
 
-  it('nothing authorized: the unauthorized card ends the turn after one model request', async () => {
+  it('nothing authorized: the admission answers with the unauthorized card before the loop', async () => {
     const { requests, records, stdout } = await run('unauthorized', 'none-authorized', '看看我的资产')
-    expect(requests.filter(request => request.purpose === 'loop')).toHaveLength(1)
-    expect(resultMeta(records)?.lyteboat?.cards?.[0]).toMatchObject({ area: 'unauthorized', emission: 'immediate' })
-    expect(stdout).toBe('[card unauthorized]\n')
+    expect(requests.filter(isIntake)).toHaveLength(1)
+    expect(requests.filter(isLoop)).toEqual([])
+    expect(requests.filter(request => request.purpose === 'router')).toEqual([])
+    expect(stdout).toBe('[card unauthorized]\n您还没有授权任何账户，授权后我就能帮您看资产了。\n')
+    const human = records.find(record => record.type === 'user/message' && (record.data?.['source'] as { kind?: unknown } | undefined)?.kind === 'user')
+    expect(human?.data?.['source']).toMatchObject({ lyteboatRequest: { context: { customer: 'none-authorized' }, intake: { by: 'finance-admission', decision: 'reply', verdict: 'unauthorized' } } })
     expect(records.filter(record => record.type === 'turn/end')).toHaveLength(1)
+  })
+
+  it('out of scope: the admission answers with the service scope, no router and no loop request', async () => {
+    const { requests, stdout } = await run('scope', 'healthy', '帮我写一首诗')
+    expect(requests.filter(request => request.purpose === 'router' || isLoop(request))).toEqual([])
+    expect(stdout).toBe('这个问题不在我的服务范围内。我可以帮您看看资产、诊断配置，或者讲讲理财常识。\n')
   })
 
   it('"什么是再平衡": investor education answers from the knowledge base without a card', async () => {
     const { requests, records } = await run('education', 'healthy', '什么是再平衡')
-    expect(lastToolResult(requests.filter(request => request.purpose === 'loop')[1]!)).toContain('再平衡是定期把各类资产的比例调回目标')
+    expect(lastToolResult(requests.filter(isLoop)[1]!)).toContain('再平衡是定期把各类资产的比例调回目标')
     expect(resultMeta(records)?.lyteboat).toBeUndefined()
   })
 
-  it('a routed session reopens under dsh persistence: every fact rides a dsh envelope, the router call an ignorable record', async () => {
+  it('a routed session reopens under dsh persistence: every fact rides a dsh envelope, the side calls ignorable records', async () => {
     const { records } = await run('reopen', 'young-idle-cash', '看看我的资产')
     expect(reopenRefusal(records)).toBeUndefined()
     const own = records.filter(record => record.type.startsWith('lyteboat/'))
-    expect(own.map(record => [record.type, record.ignorable, record.data?.['purpose']])).toEqual([['lyteboat/aux-llm-call', true, 'skill-router']])
+    expect(own.map(record => [record.type, record.ignorable, record.data?.['purpose']])).toEqual([['lyteboat/aux-llm-call', true, 'intake'], ['lyteboat/aux-llm-call', true, 'skill-router']])
   })
 
   it('--session-id continues in a new process: the diagnosis turn sees the overview aged to its facts', async () => {
@@ -166,16 +186,17 @@ describe('finance agent in the run composition (in process, scripted model)', ()
       args: ['--agents', AGENTS, '--agent', 'finance', ...args],
       cwd: workspace,
       home,
-      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1', LYTEBOAT_FINANCE_CUSTOMER: 'young-idle-cash' },
+      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
     })
-    const first = await boot(['看看我的资产'])
+    // Only the first request names the customer: the continued session keeps its context.
+    const first = await boot(['--context', '{"customer":"young-idle-cash"}', '看看我的资产'])
     expect(first.code, first.stderr).toBe(0)
     const id = /^lyteboat: session (\S+)$/mu.exec(first.stderr)?.[1] ?? ''
     const before = model.requests.length
 
     const second = await boot(['--session-id', id, '我的配置合理吗'])
     expect(second.code, second.stderr).toBe(0)
-    const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
+    const loop = model.requests.slice(before).filter(isLoop)
     expect(loop[0]!.toolNames.filter(name => FINANCE_TOOLS.includes(name))).toEqual(['allocation_diagnosis'])
     const earlier = loop[0]!.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result')).map(blockText)
     expect(earlier).toHaveLength(1)

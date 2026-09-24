@@ -57,7 +57,7 @@ export function defineAssetOverviewTool(deps: FinanceToolDeps): ToolDefinition {
     output: FINANCE_TOOL_OUTPUT,
     execute: async (_args, exec): Promise<FinanceToolValue> => {
       const agent = callingAgent(exec, 'asset_overview')
-      const customer = deps.customers.customer(deps.customerId())
+      const customer = deps.customers.customer(deps.customerId(agent))
       // The overview shows what the authorized accounts hold; reported assets join only the diagnosis.
       const holdings = summarizeHoldings(customer)
       if (holdings.authState === 'none') return unauthorizedResult(deps, agent, exec, 'asset_overview', customer)

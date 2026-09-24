@@ -143,7 +143,7 @@ export function defineAllocationDiagnosisTool(deps: FinanceToolDeps): ToolDefini
       const agent = callingAgent(exec, 'allocation_diagnosis')
       const before = financeStateOf(deps, agent)
       const facts = factsWithArguments(before.facts, args)
-      const session = diagnoseSession(deps, { ...before, facts })
+      const session = diagnoseSession(deps, agent, { ...before, facts })
       const seq = before.diagnosisSeq + 1
       if (session.diagnosis.cardState === 'zero') {
         return unauthorizedResult(deps, agent, exec, 'allocation_diagnosis', session.customer, { facts })
