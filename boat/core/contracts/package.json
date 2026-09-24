@@ -2,6 +2,7 @@
   "name": "@boat/contracts",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's contract extensions over the dsh seams: tool and skill metadata, the kernel's boat/* step events, log nodes, and projection keys",
   "type": "module",
   "exports": {
