@@ -3,8 +3,8 @@
  * Messages server): the persona is the whole system prompt, the official
  * tools are narrowed away, the routed skill's tool alone reaches the model at
  * temperature 0, cards ride the tool result, and the unauthorized card ends
- * the turn. The reopen case pins today's limit: a routed session carries the
- * router's own nodes, which dsh's persistence refuses to read.
+ * the turn. A routed session reopens under dsh's persistence, and
+ * `--session-id` continues it in a new process.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -40,6 +40,22 @@ function blockText(block: ChatBlock): string {
 function lastToolResult(request: RecordedRequest): string {
   const results = request.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result'))
   return results.map(blockText).at(-1) ?? ''
+}
+
+/** Why dsh's persistence would refuse to reopen the stored log; undefined when it reopens. */
+function reopenRefusal(records: LogRecord[]): string | undefined {
+  const header = records.find(record => record.type === 'session')
+  try {
+    validateStoredEvents(
+      { id: SessionId(header?.id ?? 'reopen'), version: SESSION_FORMAT_VERSION, createdAt: header?.createdAt ?? 0, isSeeded: header?.isSeeded ?? false },
+      structuredClone(records.filter(record => typeof record.seq === 'number')) as never,
+      undefined,
+    )
+    return undefined
+  } catch (error: unknown) {
+    if (!(error instanceof SessionFormatUnsupportedError)) throw error
+    return error.message
+  }
 }
 
 function script(request: RecordedRequest) {
@@ -134,21 +150,42 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(resultMeta(records)?.lyteboat).toBeUndefined()
   })
 
-  it('a routed session does not reopen yet: the router writes nodes dsh persistence refuses (roadmap gap G4)', async () => {
+  it('a routed session reopens under dsh persistence: every fact rides a dsh envelope', async () => {
     const { records } = await run('reopen', 'young-idle-cash', '看看我的资产')
-    const header = records.find(record => record.type === 'session')
-    const events = records.filter(record => typeof record.seq === 'number')
-    let refusal: string | undefined
-    try {
-      validateStoredEvents(
-        { id: SessionId(header?.id ?? 'reopen'), version: SESSION_FORMAT_VERSION, createdAt: header?.createdAt ?? 0, isSeeded: header?.isSeeded ?? false },
-        structuredClone(events) as never,
-        undefined,
-      )
-    } catch (error: unknown) {
-      if (!(error instanceof SessionFormatUnsupportedError)) throw error
-      refusal = error.message
-    }
-    expect(refusal).toMatch(/"lyteboat\/(skill-routed|route-request)".*not marked ignorable/u)
+    expect(reopenRefusal(records)).toBeUndefined()
+    expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
+  })
+
+  it('--session-id continues in a new process: the diagnosis turn sees the overview aged to its facts', async () => {
+    const home = join(root, 'home-continue')
+    const workspace = join(root, 'workspace-continue')
+    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
+    writeFileSync(join(workspace, 'README.md'), '# finance\n')
+    const boot = (args: string[]) => bootComposition({
+      bundles: RUN_BUNDLES,
+      args: ['--agents', AGENTS, '--agent', 'finance', ...args],
+      cwd: workspace,
+      home,
+      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1', LYTEBOAT_FINANCE_CUSTOMER: 'young-idle-cash' },
+    })
+    const first = await boot(['看看我的资产'])
+    expect(first.code, first.stderr).toBe(0)
+    const id = /^lyteboat: session (\S+)$/mu.exec(first.stderr)?.[1] ?? ''
+    const before = model.requests.length
+
+    const second = await boot(['--session-id', id, '我的配置合理吗'])
+    expect(second.code, second.stderr).toBe(0)
+    const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
+    expect(loop[0]!.toolNames.filter(name => FINANCE_TOOLS.includes(name))).toEqual(['allocation_diagnosis'])
+    const earlier = loop[0]!.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result')).map(blockText)
+    expect(earlier).toHaveLength(1)
+    expect(earlier[0]).toMatch(/^\[tool:asset_overview 已完成 status=ok/u)
+    expect(earlier[0]).toContain('【事实】')
+    expect(earlier[0]).not.toContain('【回答要点】')
+    expect(lastToolResult(loop[1]!)).toMatch(/^\[tool:allocation_diagnosis status=ok /u)
+    const [log] = findSessionLogs(home)
+    const records = readSessionLog(log!) as unknown as LogRecord[]
+    expect(records.filter(record => record.type === 'turn/start')).toHaveLength(2)
+    expect(reopenRefusal(records)).toBeUndefined()
   })
 })

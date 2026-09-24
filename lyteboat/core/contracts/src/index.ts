@@ -11,15 +11,13 @@
  * marked `ignorable`, and `Session.append` cannot set that mark. Every lyteboat
  * fact therefore rides an envelope dsh already knows — `tool/result.meta`
  * for cards and state deltas, the assistant message `source` for a reply's
- * author — except the skill router's two nodes, which have no existing
- * envelope and keep a routed session from reopening until dsh offers a
- * write path for the mark.
+ * author, dsh's own skill-invocation message for a routed skill — so every
+ * lyteboat session reopens.
  * @module @lyteboat/contracts
  */
 
 import type {} from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 
 /** Lossless JSON, the only shape session logs and projections may carry. */
@@ -121,6 +119,14 @@ export interface LyteboatCard {
 /** The `lyteboatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.lyteboat.stateDelta`. */
 export type LyteboatStateValue = { [key: string]: JsonValue }
 
+/** The `lyteboatActiveSkill` fold state. */
+export interface LyteboatActiveSkillState {
+  /** The skill in force; null before any skill is active. */
+  active: string | null
+  /** `skill` tool calls still awaiting their result: the skill each loads, by call id. */
+  loading: { [callId: string]: string }
+}
+
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     /** Imported history rounds, written by `@lyteboat/history-import` into a session seed. */
@@ -130,39 +136,19 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
-  interface SessionEventMap {
-    /**
-     * The skill router's decision for a turn, or a model-initiated activation.
-     * Written before the step's `system/message`; the `lyteboatActiveSkill`
-     * projection and the `lyteboat:skill` runtime context derive from it.
-     */
-    'lyteboat/skill-routed': { turn: number; skill: string | null; reason: string; source: 'router' | 'model' }
-    /** Audit record of one router model call, written before the `lyteboat/skill-routed` it may lead to. */
-    'lyteboat/route-request': {
-      turn: number
-      route: { provider: string; model: string }
-      candidates: string[]
-      decision: string | null
-      reason: string
-      durationMs: number
-    }
-  }
-}
-
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionStateMap {
     /** Session tool state (host fold of `tool/result.meta.lyteboat.stateDelta`), owned by `@lyteboat/tool-policy`. */
     lyteboatState: LyteboatStateValue
-    /** The skill active for the session (the last `lyteboat/skill-routed`), owned by `@lyteboat/skill-router`; null before routing. */
-    lyteboatActiveSkill: string | null
+    /** The skill active for the session, folded from skill-invocation messages and `skill` tool calls; owned by `@lyteboat/skill-router`. */
+    lyteboatActiveSkill: LyteboatActiveSkillState
     /** Cards from `tool/result.meta.lyteboat.card`, in log order; a `surfaceUpdate` replaces its surface. Owned by `@lyteboat/a2ui`. */
     lyteboatCards: LyteboatCard[]
   }
   interface SessionProjectionMap {
     /** Session tool state as the client sees it: the fold state itself. */
     lyteboatState: LyteboatStateValue
-    /** The active skill as the client sees it. */
+    /** The active skill as the client sees it; null before any skill is active. */
     lyteboatActiveSkill: string | null
     /** Every card rendered in the session, as the client sees it. */
     lyteboatCards: LyteboatCard[]

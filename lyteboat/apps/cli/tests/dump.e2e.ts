@@ -4,6 +4,15 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
+/** The dumped YAML of one row, up to the next row or layer marker. */
+function dumpedRow(dump: string, id: string): string {
+  const start = dump.indexOf(`- id: ${id}\n`)
+  expect(start, `row ${id}`).toBeGreaterThanOrEqual(0)
+  const row = dump.slice(start)
+  const end = row.slice(1).search(/\n(?:- id: |# == )/u)
+  return end < 0 ? row : row.slice(0, end + 1)
+}
+
 describe('lyteboat config dump (built bin)', () => {
   let home: string
 
@@ -24,6 +33,14 @@ describe('lyteboat config dump (built bin)', () => {
     expect(result.stdout).toContain('id: agent-loop')
     const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'run', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
     expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run'] })
+  })
+
+  it('keeps dsh-base\'s feedback telemetry export off in both profiles, without DSH_TELEMETRY_DISABLED', async () => {
+    for (const profile of ['run', 'web']) {
+      const result = await runLyteboat(['config', 'dump', '--profile', profile], { env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: undefined } })
+      expect(result.code, result.stderr).toBe(0)
+      expect(dumpedRow(result.stdout, 'session-telemetry-otel')).toMatch(/^ {2}disabled: true$/mu)
+    }
   })
 
   it('prints the version pair', async () => {

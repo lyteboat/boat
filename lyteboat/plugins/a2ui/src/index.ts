@@ -103,13 +103,14 @@ export const lyteboatCardsProjectionDefinition = {
   stateSchema: lyteboatCardsSchema,
   init: (): LyteboatCard[] => [],
   apply(state: LyteboatCard[], event) {
-    if (event.type !== 'tool/result') return state
+    // A surface replacement keeps the original meta; folding it would show the card twice.
+    if (event.type !== 'tool/result' || event.surfaceOp !== 'append') return state
     const card = cardOfMeta(event.data.meta)
     if (card === undefined) return state
     return appendCard(state, { callId: event.data.message.toolCallId, ...card })
   },
   wire: { viewSchema: lyteboatCardsSchema, view: (state: LyteboatCard[]) => state },
-  stateVersion: 1,
+  stateVersion: 2,
 } satisfies ProjectionDefinition<'lyteboatCards', LyteboatCard[]>
 
 /** The reference `_collect_raw_data`: each state key namespaced and flattened. */

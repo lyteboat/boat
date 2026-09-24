@@ -100,6 +100,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | `--agents <目录>` | 存放 agent 的目录（可重复） |
 | `--agent <id>` | 运行其中的某个 agent（`--preset` 是已废弃的别名） |
 | `--history <文件>` | 先导入一份外部对话历史，任务成为它的下一轮 |
+| `--session-id <id>` | 在已存的会话上续聊；每次运行都把会话 id 打到 stderr |
 
 `lyteboat run -h` 列出一次性模式的全部参数。
 
@@ -197,7 +198,6 @@ dsh.upstream.json     所跟踪的 dsh 版本
 - 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的两个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`），上面所有闸门都对它通过。
 - 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、history-import 与拒识门；示例 agent；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
-  - 路由过技能的会话还不能用 `lyteboat web` 打开或续聊：`lyteboat/skill-routed`、`lyteboat/route-request` 还没有 dsh 信封，dsh 的持久化层拒绝读取（`lyteboat/bundles/run/tests/reopen.composite.ts` 钉住了这一点）。
   - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录。
 - 下一步见[对齐分析的路线图](docs/04-reference-alignment.md#6-路线图从-d3-开始)。
 

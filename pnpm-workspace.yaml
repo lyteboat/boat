@@ -110,6 +110,7 @@ catalogs:
     "@deepseek-ai/dsh-scope": "0.1.7-rc.1"
     "@deepseek-ai/dsh-sdk-app": "0.1.7-rc.1"
     "@deepseek-ai/dsh-sdk-minimal": "0.1.7-rc.1"
+    "@deepseek-ai/dsh-session-query": "0.1.7-rc.1"
     "@deepseek-ai/dsh-session-reference": "0.1.7-rc.1"
     "@deepseek-ai/dsh-skill-filesystem": "0.1.7-rc.1"
     "@deepseek-ai/dsh-skill-office": "0.1.7-rc.1"

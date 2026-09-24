@@ -1,7 +1,7 @@
 /**
  * The one-shot app's command-line provider: it parses the task positional and
- * the `--agent` (alias `--preset`), `--agents`, and `--history` flags,
- * resolves the agent to its directory, then publishes
+ * the `--agent` (alias `--preset`), `--agents`, `--history`, and `--session-id`
+ * flags, resolves the agent to its directory, then publishes
  * {@link LYTEBOAT_RUN_STARTUP_SERVICE}. The preset registry and runner rows
  * inject that service and read it from lazy config.
  *
@@ -36,6 +36,8 @@ export interface LyteboatRunStartupValues {
   agentDir: string | undefined
   /** Absolute path of an external history file to seed the session from. */
   history: string | undefined
+  /** A stored session to continue instead of starting a new one. */
+  sessionId: string | undefined
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -56,10 +58,13 @@ function command(): Command {
     .option('--preset <id>', 'deprecated alias of --agent')
     .option('--agents <dir>', 'a directory of agents (repeatable)', collect)
     .option('--history <file>', 'seed the session from an external history file')
+    .option('--session-id <id>', 'continue the stored session with this id (every run prints its id to stderr)')
     .addHelpText('after', `
 Examples:
   lyteboat run "run the tests"                              answer one task and exit
   lyteboat run --agents ./agents --agent demo "看看资产"    run the demo agent from ./agents
+  lyteboat run --agents ./agents --agent demo --session-id session-… "为什么"
+                                                            continue that session
 `)
 }
 
@@ -72,7 +77,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agent?: string; preset?: string; agents?: string[]; history?: string }>()
+    const options = program.opts<{ agent?: string; preset?: string; agents?: string[]; history?: string; sessionId?: string }>()
     const task = program.args.join(' ')
     if (task.trim() === '') program.error('error: a task is required, for example: lyteboat run "run the tests"')
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
@@ -89,8 +94,11 @@ export function apply(ctx: Context): void {
     }
     const history = options.history === undefined ? undefined : resolve(options.history)
     if (history !== undefined && !existsSync(history)) program.error(`error: --history file not found: ${history}`)
+    const sessionId = options.sessionId
+    if (sessionId !== undefined && sessionId.trim() === '') program.error('error: --session-id needs a session id')
+    if (sessionId !== undefined && history !== undefined) program.error('error: --history seeds a new session; it cannot be combined with --session-id')
     ctx.provide(LYTEBOAT_RUN_STARTUP_SERVICE, {
-      task, preset: agent, agentDir, history,
+      task, preset: agent, agentDir, history, sessionId,
     } satisfies LyteboatRunStartupValues)
   })
   parseCmdline(ctx, program)

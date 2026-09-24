@@ -216,4 +216,15 @@ describe('helpers', () => {
     const state: LyteboatCard[] = []
     expect(lyteboatCardsProjectionDefinition.apply(state, { type: 'turn/start', seq: 0, time: 0, data: { turn: 1 } } as never)).toBe(state)
   })
+
+  it('lyteboatCards projection folds appended results only: a replacement keeping the card does not show it twice', () => {
+    const fold = lyteboatCardsProjectionDefinition
+    const result = (surfaceOp: unknown): never => ({
+      type: 'tool/result', seq: 1, time: 0, surfaceOp,
+      data: { turn: 1, step: 1, message: { toolCallId: 'c1' }, meta: { lyteboat: { card: { surfaceId: 's1', payload: { rootComponentId: 'root' } } } } },
+    }) as never
+    const once = fold.apply([], result('append'))
+    expect(fold.apply(once, result({ op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(once)
+    expect(once.map(card => card.surfaceId)).toEqual(['s1'])
+  })
 })

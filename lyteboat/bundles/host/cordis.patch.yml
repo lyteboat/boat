@@ -11,6 +11,13 @@
   config:
     enabled: false
 
+# dsh-base's session-telemetry-otel row exports a session-log prefix to the
+# upstream collector once a user gives feedback. lyteboat sessions carry business
+# conversations, so no lyteboat profile ships them off the machine, whether or not
+# DSH_TELEMETRY_DISABLED is set.
+- id: session-telemetry-otel
+  disabled: true
+
 - insert:
     # Marks the tree as lyteboat's: plugins that use a kernel extension inject it.
     - id: lyteboat-distro

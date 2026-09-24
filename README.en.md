@@ -100,6 +100,7 @@ All three accept:
 | `--agents <dir>` | A directory of agents (repeatable) |
 | `--agent <id>` | Runs one agent from those directories (`--preset` is a deprecated alias) |
 | `--history <file>` | Imports external conversation history first; the task becomes its next turn |
+| `--session-id <id>` | Continues a stored session; every run prints its session id to stderr |
 
 `lyteboat run -h` lists every flag of the one-shot mode.
 
@@ -199,7 +200,6 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 - Tracks dsh **0.1.7-rc.1** (`dsh.upstream.json`). The kernel is its import plus lyteboat's two registered extensions (`lyteboat/intake`, `lyteboat/pre-assemble`), and every gate above passes against it.
 - Delivered: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, history-import, and the intake gate; the demo agent; the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. See the [CHANGELOG](CHANGELOG.md) for each milestone.
 - Known limitations:
-  - A session that routed a skill cannot yet be opened or resumed in `lyteboat web`: `lyteboat/skill-routed` and `lyteboat/route-request` have no dsh envelope, so dsh's persistence refuses the log (`lyteboat/bundles/run/tests/reopen.composite.ts` pins this).
   - There is no server mode yet (`/chat`, multiple users), and `lyteboat web` does not read agent directories.
 - What comes next: the roadmap in the [alignment analysis](docs/04-reference-alignment.md#6-路线图从-d3-开始).
 

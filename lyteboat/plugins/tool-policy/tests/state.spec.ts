@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { mergeStateDelta, renderLyteboatState } from '@lyteboat/tool-policy'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@lyteboat/contracts'
+import { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState } from '@lyteboat/tool-policy'
 
 describe('mergeStateDelta', () => {
   it('assigns dot paths, creating intermediate objects', () => {
@@ -38,5 +40,17 @@ describe('renderLyteboatState', () => {
 
   it('renders the JSON state under a fixed heading', () => {
     expect(renderLyteboatState({ a: 1 })).toBe('Session state, accumulated from tool results (JSON):\n{"a":1}')
+  })
+})
+
+describe('lyteboatStateProjectionDefinition', () => {
+  const result = (seq: number, delta: JsonValue, surfaceOp: unknown): SessionEvent =>
+    ({ type: 'tool/result', seq, time: 0, surfaceOp, data: { turn: 1, step: 1, message: { toolCallId: `c${String(seq)}` }, meta: { lyteboat: { stateDelta: delta } } } }) as never
+
+  it('folds appended results only: a replacement carrying an old delta leaves newer state alone', () => {
+    const fold = lyteboatStateProjectionDefinition
+    const newer = fold.apply(fold.apply(fold.init(), result(1, { stage: 'overview' }, 'append')), result(2, { stage: 'diagnosis' }, 'append'))
+    expect(fold.apply(newer, result(3, { stage: 'overview' }, { op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(newer)
+    expect(newer).toEqual({ stage: 'diagnosis' })
   })
 })

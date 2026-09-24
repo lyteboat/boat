@@ -1,9 +1,8 @@
 /**
- * Every session lyteboat writes through a dsh envelope reopens under dsh's own
- * persistence validator: the intake reply, a tool result carrying a state
- * delta and a card, and an imported history. A routed session is the known
- * exception (`lyteboat/skill-routed` has no dsh envelope) and is pinned here so
- * the limitation is visible the day it disappears.
+ * Every session lyteboat writes reopens under dsh's own persistence validator,
+ * because every lyteboat fact rides a dsh envelope: the intake reply, a tool
+ * result carrying a state delta and a card, an imported history, and a routed
+ * skill (dsh's own skill-invocation message).
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -106,9 +105,10 @@ describe('lyteboat sessions reopen under dsh session persistence (in process, sc
     expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])
   })
 
-  it('a routed session is refused: lyteboat/skill-routed has no dsh envelope yet (known limitation, see @lyteboat/contracts)', async () => {
+  it('a routed session: the skill arrives as a skill-invocation user message', async () => {
     const { types, refusal } = await run('routed', ['--agents', AGENTS, '--agent', 'routed', '看看资产'])
-    expect(types).toContain('lyteboat/skill-routed')
-    expect(refusal).toMatch(/"lyteboat\/(skill-routed|route-request)".*not marked ignorable/u)
+    expect(refusal).toBeUndefined()
+    expect(types).toContain('user/message')
+    expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])
   })
 })

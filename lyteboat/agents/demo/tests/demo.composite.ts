@@ -21,6 +21,15 @@ const ANSWER = 'DEMO-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown> }
 
+/** The skills the log records as injected, in order: dsh's skill-invocation user messages. */
+function invokedSkills(records: LogRecord[]): unknown[] {
+  return records
+    .filter(record => record.type === 'user/message')
+    .map(record => record.data?.['source'] as { kind?: unknown; name?: unknown } | undefined)
+    .filter(source => source?.kind === 'skill-invocation')
+    .map(source => source?.name)
+}
+
 /** The raw text of every message block, tool results included, unescaped (JSON.stringify would escape the quotes in skill tags). */
 function messageTexts(request: RecordedRequest): string {
   const text = (block: ChatBlock): string => block.text ?? (Array.isArray(block.content) ? (block.content as ChatBlock[]).map(text).join('') : '')
@@ -95,14 +104,15 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     expect(digest).toContain('[卡片:资产/full]')
     expect(digest).not.toContain('rootComponentId')
     const types = records.map(record => record.type)
-    expect(records.find(record => record.type === 'lyteboat/skill-routed')?.data).toMatchObject({ skill: 'asset-overview', source: 'router' })
+    expect(invokedSkills(records)).toEqual(['asset-overview'])
     const result = records.find(record => record.type === 'tool/result')
     const meta = result?.data?.['meta'] as { lyteboat: { card: { surfaceId: string; payload: Record<string, unknown> }; stateDelta: Record<string, unknown> } }
     expect(meta.lyteboat.stateDelta).toMatchObject({ assets_view: { auth_state: 'full', total_display: '300,000.00' } })
     expect(meta.lyteboat.card.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
     expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root-container')
     expect((meta.lyteboat.card.payload['businessPayload'] as Record<string, unknown>)['total_display']).toBe('300,000.00')
-    expect(types.indexOf('lyteboat/skill-routed')).toBeLessThan(types.indexOf('request/header'))
+    expect(types.indexOf('user/message')).toBeLessThan(types.indexOf('request/header'))
+    expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])
     expect(types.filter(type => type === 'turn/end')).toHaveLength(1)
   })
 
@@ -113,7 +123,7 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     expect(loop[0]!.toolNames).toContain('diagnose_assets')
     expect(loop[0]!.toolNames).not.toContain('asset_overview')
     expect(messageTexts(loop[0]!)).toContain('<skill_content name="asset-diagnosis">')
-    expect(records.find(record => record.type === 'lyteboat/skill-routed')?.data).toMatchObject({ skill: 'asset-diagnosis' })
+    expect(invokedSkills(records)).toEqual(['asset-diagnosis'])
     expect(JSON.stringify(records.find(record => record.type === 'tool/result'))).toContain('请先查看资产')
     expect(JSON.stringify(records.find(record => record.type === 'tool/result'))).not.toContain('stateDelta')
   })
@@ -125,6 +135,6 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     const types = records.map(record => record.type)
     expect(types).toContain('assistant/message')
     expect(types).not.toContain('request/header')
-    expect(types).not.toContain('lyteboat/route-request')
+    expect(invokedSkills(records)).toEqual([])
   })
 })

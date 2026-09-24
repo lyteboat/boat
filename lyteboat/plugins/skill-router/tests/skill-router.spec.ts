@@ -1,7 +1,7 @@
 /**
  * The skill router at the driver's seams: dynamic routing per user input,
  * same-step body and tool visibility, sticky decisions, model-initiated
- * activation, full mode, and off.
+ * activation, a session continued by a fresh agent, full mode, and off.
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -9,15 +9,16 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import InvariantRegistry from '@deepseek-ai/dsh-invariants'
 import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
 import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
-import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
-import SkillRegistry from '@deepseek-ai/dsh-skill'
+import { createUserMessage, type GenerateOptions, type UserMessage } from '@deepseek-ai/dsh-llm'
+import { SessionId, SessionLogOffset, SessionSeq, buildForkSeed, type SessionEvent } from '@deepseek-ai/dsh-session'
+import SkillRegistry, { renderSkillContent } from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
-import SkillRouterService, { type Config } from '@lyteboat/skill-router'
+import type { LyteboatActiveSkillState } from '@lyteboat/contracts'
+import SkillRouterService, { lyteboatActiveSkillProjectionDefinition, type Config } from '@lyteboat/skill-router'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => {
@@ -60,11 +61,18 @@ const loopRequests = (adapter: MockAdapter): GenerateOptions[] => adapter.reques
 const routerRequests = (adapter: MockAdapter): GenerateOptions[] => adapter.requests.filter(isRouter)
 const toolNames = (request: GenerateOptions): string[] => (request.tools ?? []).map(tool => tool.name).sort()
 const messagesText = (request: GenerateOptions): string => JSON.stringify(request.messages)
-const routed = (agent: Agent): SessionEvent<'lyteboat/skill-routed'>[] =>
-  agent.session.snapshotEvents().filter((event): event is SessionEvent<'lyteboat/skill-routed'> => event.type === 'lyteboat/skill-routed')
+/** The skill-invocation messages the session logged, as `[skill, text]`. */
+const invocations = (agent: Agent): [string, string][] =>
+  agent.session.snapshotEvents()
+    .filter((event): event is SessionEvent<'user/message'> => event.type === 'user/message')
+    .map(event => event.data)
+    .filter((message: UserMessage) => message.source.kind === 'skill-invocation')
+    .map(message => [message.source.kind === 'skill-invocation' ? message.source.name : '', message.content.map(block => block.type === 'text' ? block.text : '').join('\n')])
+const lyteboatTypes = (agent: Agent): string[] => agent.session.snapshotEvents().map(event => event.type).filter(type => type.startsWith('lyteboat/'))
+const countOf = (text: string, part: string): number => text.split(part).length - 1
 
 describe('dynamic mode', () => {
-  it('routes each user input, puts the body and required tools into the same step, and stays sticky', async () => {
+  it('routes each user input, brings the body in as a skill-invocation message with the required tools in the same step, and stays sticky', async () => {
     const adapter = new MockAdapter([
       textResponse('{"skill_id": "asset-overview", "reason": "看资产"}'), textResponse('one'),
       textResponse('{"skill_id": null, "reason": "追问"}'), textResponse('two'),
@@ -87,50 +95,70 @@ describe('dynamic mode', () => {
     expect(messagesText(first)).toContain('<skill_instructions>')
     expect(messagesText(first)).toContain('BODY-ASSET')
     expect(messagesText(first)).not.toContain('BODY-NEWS')
+    expect(invocations(agent).map(([skill]) => skill)).toEqual(['asset-overview'])
     expect(ctx.skillRouter.activeOf(agent)).toBe('asset-overview')
     expect(ctx.sessionProjections.snapshot(agent.session).values['lyteboatActiveSkill']).toBe('asset-overview')
-    const request = agent.session.snapshotEvents().find((event): event is SessionEvent<'lyteboat/route-request'> => event.type === 'lyteboat/route-request')!
-    expect(request.data).toMatchObject({ turn: 1, route: { provider: 'mock', model: 'mock' }, candidates: ['asset-overview', 'market-news'], decision: 'asset-overview', reason: '看资产' })
-    expect(request.data.durationMs).toBeGreaterThanOrEqual(0)
-    expect(routed(agent).map(event => event.data)).toEqual([{ turn: 1, skill: 'asset-overview', reason: '看资产', source: 'router' }])
+    expect(lyteboatTypes(agent)).toEqual([])
 
-    // Router says null: kept, no new activation node.
+    // Router says null: kept, and the body already in view is not injected again.
     await send(agent, '那总额呢')
-    expect(routed(agent)).toHaveLength(1)
+    expect(invocations(agent)).toHaveLength(1)
     expect(ctx.skillRouter.activeOf(agent)).toBe('asset-overview')
     expect(messagesText(routerRequests(adapter)[1]!)).toContain('<current_active_skill>asset-overview</current_active_skill>')
     expect(messagesText(routerRequests(adapter)[1]!)).toContain('user: 看看我的资产')
+    expect(toolNames(loopRequests(adapter)[1]!)).toEqual(['always_tool', 'lookup_assets'])
+    expect(countOf(messagesText(loopRequests(adapter)[1]!), 'BODY-ASSET')).toBe(1)
 
-    // Malformed reply: kept, audited as parse_error.
+    // Malformed reply: kept.
     await send(agent, '再说一遍')
-    const requests = agent.session.snapshotEvents().filter((event): event is SessionEvent<'lyteboat/route-request'> => event.type === 'lyteboat/route-request')
-    expect(requests[2]!.data).toMatchObject({ decision: 'asset-overview', reason: 'parse_error' })
-    expect(routed(agent)).toHaveLength(1)
+    expect(invocations(agent)).toHaveLength(1)
+    expect(ctx.skillRouter.activeOf(agent)).toBe('asset-overview')
 
-    // A valid new id switches: new body, the previous skill's tools hidden.
+    // A valid new id switches: new body with a note on what it replaces, the previous skill's tools hidden.
     await send(agent, '今天行情怎么样')
-    expect(routed(agent).map(event => event.data.skill)).toEqual(['asset-overview', 'market-news'])
+    expect(invocations(agent).map(([skill]) => skill)).toEqual(['asset-overview', 'market-news'])
+    expect(invocations(agent)[1]![1]).toContain('Skill "asset-overview" is no longer active; follow the skill below instead.')
     const fourth = loopRequests(adapter)[3]!
     expect(toolNames(fourth)).toEqual(['always_tool', 'fetch_news'])
     expect(messagesText(fourth)).toContain('BODY-NEWS')
     expect(ctx.skillRouter.activeOf(agent)).toBe('market-news')
   })
 
-  it('keeps the current skill when the router call fails, and skips routing without candidates', async () => {
+  it('keeps the current skill when the router call fails, and injects nothing', async () => {
     const adapter = new MockAdapter([
       () => { throw new Error('boom') }, textResponse('one'),
     ])
     const ctx = await harness(adapter, { mode: 'dynamic' })
     const agent = await ctx.agentLoop.create(SessionId('failing'), { provider: 'mock', model: 'mock' })
     await send(agent, '看看资产')
-    const request = agent.session.snapshotEvents().find((event): event is SessionEvent<'lyteboat/route-request'> => event.type === 'lyteboat/route-request')!
-    expect(request.data.decision).toBeNull()
-    expect(request.data.reason).toBe('Error')
-    expect(routed(agent)).toHaveLength(0)
+    expect(ctx.skillRouter.activeOf(agent)).toBeNull()
+    expect(invocations(agent)).toHaveLength(0)
     expect(loopRequests(adapter)).toHaveLength(1)
+    expect(toolNames(loopRequests(adapter)[0]!)).toEqual(['always_tool'])
   })
 
-  it('records a model-initiated skill load with source model and applies it to the next step', async () => {
+  it('folds a model-initiated skill load and brings its tools into the next step; the body the tool returned is not injected again', async () => {
+    const adapter = new MockAdapter([
+      textResponse('{"skill_id": null, "reason": "闲聊"}'),
+      toolCallResponse('c1', 'skill', { name: 'market-news' }),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter, { mode: 'dynamic' })
+    // Returns the body the way dsh-tool-skill's `skill` tool does.
+    ctx.tools.register(defineContentToolFixture({
+      name: 'skill', description: 'load a skill', parameters: { name: { type: 'string', required: true } },
+      execute: async ({ name }) => [{ type: 'text', text: renderSkillContent((await ctx.skills.get(String(name), {}))!) }],
+    }))
+    const agent = await ctx.agentLoop.create(SessionId('model-load'), { provider: 'mock', model: 'mock' })
+    await send(agent, '你好')
+    expect(ctx.skillRouter.activeOf(agent)).toBe('market-news')
+    const second = loopRequests(adapter)[1]!
+    expect(toolNames(second)).toContain('fetch_news')
+    expect(countOf(messagesText(second), 'BODY-NEWS')).toBe(1)
+    expect(invocations(agent)).toHaveLength(0)
+  })
+
+  it('injects the body of an active skill that is not in view', async () => {
     const adapter = new MockAdapter([
       textResponse('{"skill_id": null, "reason": "闲聊"}'),
       toolCallResponse('c1', 'skill', { name: 'market-news' }),
@@ -141,13 +169,57 @@ describe('dynamic mode', () => {
       name: 'skill', description: 'load a skill', parameters: { name: { type: 'string', required: true } },
       execute: async ({ name }) => [{ type: 'text', text: `loaded ${String(name)}` }],
     }))
-    const agent = await ctx.agentLoop.create(SessionId('model-load'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(SessionId('not-in-view'), { provider: 'mock', model: 'mock' })
     await send(agent, '你好')
-    expect(routed(agent).map(event => event.data)).toEqual([{ turn: 1, skill: 'market-news', reason: 'loaded through the skill tool', source: 'model' }])
-    const second = loopRequests(adapter)[1]!
-    expect(toolNames(second)).toContain('fetch_news')
-    expect(messagesText(second)).toContain('BODY-NEWS')
-    expect(ctx.skillRouter.activeOf(agent)).toBe('market-news')
+    expect(invocations(agent).map(([skill]) => skill)).toEqual(['market-news'])
+    expect(invocations(agent)[0]![1]).not.toContain('no longer active')
+    expect(messagesText(loopRequests(adapter)[1]!)).toContain('BODY-NEWS')
+  })
+
+  it('restores the active skill\'s tools for a fresh agent over the same log, without injecting the body again', async () => {
+    const adapter = new MockAdapter([
+      textResponse('{"skill_id": "asset-overview", "reason": "看资产"}'), textResponse('one'),
+      textResponse('{"skill_id": null, "reason": "追问"}'), textResponse('two'),
+    ])
+    const ctx = await harness(adapter, { mode: 'dynamic' })
+    const before = await ctx.agentLoop.create(SessionId('before'), { provider: 'mock', model: 'mock' })
+    await send(before, '看看我的资产')
+    const events = before.session.snapshotEvents()
+    const { agent } = await ctx.agents.create({
+      sessionId: SessionId('after'),
+      meta: { isSeeded: true, parentSession: before.session.id },
+      seed: buildForkSeed(events, SessionSeq(events.length - 1)),
+      inheritedEventCount: SessionLogOffset(events.length),
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    expect(ctx.skillRouter.activeOf(agent)).toBe('asset-overview')
+
+    await send(agent, '那总额呢')
+    const request = loopRequests(adapter)[1]!
+    expect(toolNames(request)).toEqual(['always_tool', 'lookup_assets'])
+    expect(countOf(messagesText(request), 'BODY-ASSET')).toBe(1)
+    expect(invocations(agent)).toHaveLength(1)
+  })
+})
+
+describe('the lyteboatActiveSkill fold', () => {
+  const fold = (events: object[]): unknown => {
+    const definition = lyteboatActiveSkillProjectionDefinition
+    return events.reduce((state: LyteboatActiveSkillState, event) => definition.apply(state, event as SessionEvent), definition.init())
+  }
+  const call = (callId: string, name: string): object => ({ type: 'tool/call', data: { turn: 1, step: 1, callId, name: 'skill', arguments: JSON.stringify({ name }) } })
+  const result = (callId: string, isError: boolean): object => ({ type: 'tool/result', surfaceOp: 'append', data: { turn: 1, step: 1, message: { toolCallId: callId, isError } } })
+  const invocation = (name: string, surfaceOp: unknown): object => ({ type: 'user/message', surfaceOp, data: { source: { kind: 'skill-invocation', name, form: 'instructions' } } })
+
+  it('activates a skill only when its load succeeds', () => {
+    expect(fold([call('c1', 'market-news'), result('c1', true)])).toEqual({ active: null, loading: {} })
+    expect(fold([call('c1', 'market-news'), result('c1', false)])).toEqual({ active: 'market-news', loading: {} })
+  })
+
+  it('folds appended invocations only: a replacement that keeps an old invocation\'s source does not switch back', () => {
+    const replaced = { op: 'replace', startSeq: 3, endSeq: 3 }
+    expect(fold([invocation('asset-overview', 'append'), invocation('market-news', 'append'), invocation('asset-overview', replaced)]))
+      .toEqual({ active: 'market-news', loading: {} })
   })
 })
 
@@ -164,7 +236,7 @@ describe('full mode', () => {
     expect(system).toContain('BODY-ASSET')
     expect(system).toContain('BODY-NEWS')
     expect(toolNames(request)).toEqual(['always_tool', 'fetch_news', 'lookup_assets'])
-    expect(routed(agent)).toHaveLength(0)
+    expect(invocations(agent)).toHaveLength(0)
   })
 })
 

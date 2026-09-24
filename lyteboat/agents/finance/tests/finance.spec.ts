@@ -161,8 +161,8 @@ describe('the finance agent across turns (in process, scripted model)', () => {
     expect(turn2).not.toContain('先用一句话回应用户')
     const replacements = agent.session.snapshotEvents().filter(event => event.type === 'tool/result' && event.surfaceOp !== 'append')
     expect(replacements).toHaveLength(1)
-    // The replacement must carry the original's meta, and lyteboatCards folds its card a second time: 3, not 2 (roadmap F1).
-    expect(ctx.a2ui.cardsOf(agent)).toHaveLength(3)
+    // The replacement carries the original's meta; lyteboatCards folds appended results only, so each card shows once.
+    expect(ctx.a2ui.cardsOf(agent).map(card => card.surfaceId.split('-')[0])).toEqual(['asset_overview', 'allocation_diagnosis'])
 
     await send(agent, '这些钱 5 年以上都用不到')
     const withHorizon = results(agent)[2]!
