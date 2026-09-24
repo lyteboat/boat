@@ -28,7 +28,7 @@ export type JsonValue = string | number | boolean | null | JsonValue[] | { [key:
 /**
  * The kernel's pre-assembly step events (`lyteboat/intake`, `lyteboat/pre-assemble`)
  * and their payloads are declared by lyteboat's agent loop
- * (dsh/core/agent-loop/src/lyteboat/step-hooks.ts, compatibility/contract/extensions.yml), which
+ * (dsh/core/agent-loop/src/lyteboat/step-hooks.ts, dsh-compat/contract/extensions.yml), which
  * cannot import this package; plugins read them from here.
  * `LYTEBOAT_ASSISTANT_PROVIDER` is the provider of every assistant message lyteboat
  * writes without a model call (intake replies, imported history).
@@ -40,7 +40,7 @@ export type {
   LyteboatStepPayload,
 } from '@deepseek-ai/dsh-agent-loop'
 
-/** One extension of the kernel contract that this lyteboat build carries, as compatibility/contract/extensions.yml registers it. */
+/** One extension of the kernel contract that this lyteboat build carries, as dsh-compat/contract/extensions.yml registers it. */
 export interface LyteboatDistroExtension {
   /** The registry id (`agent-loop-intake`, …). */
   id: string

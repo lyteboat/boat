@@ -24,8 +24,8 @@ describe('G6: sessions cross between the official release and lyteboat', () => {
   let root: string
 
   beforeAll(() => {
-    trees.vanilla = vanillaTree('compatibility')
-    trees.lyteboat = lyteboatTree('compatibility', packKernel())
+    trees.vanilla = vanillaTree('dsh-compat')
+    trees.lyteboat = lyteboatTree('dsh-compat', packKernel())
     root = suiteRoot('g6')
   }, 600_000)
 

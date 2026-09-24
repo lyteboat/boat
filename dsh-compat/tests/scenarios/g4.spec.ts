@@ -16,8 +16,8 @@ describe('G4: the official release and lyteboat write the same session log', () 
   let root: string
 
   beforeAll(() => {
-    vanilla = vanillaTree('compatibility')
-    lyteboat = lyteboatTree('compatibility', packKernel())
+    vanilla = vanillaTree('dsh-compat')
+    lyteboat = lyteboatTree('dsh-compat', packKernel())
     root = suiteRoot('g4')
   }, 600_000)
 

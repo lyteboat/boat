@@ -22,12 +22,12 @@
     "lyteboat/tooling/*/tests/**/*.ts",
     "lyteboat/tooling/*/src/**/*.ts",
     "scripts/**/*.ts",
-    "compatibility/**/*.ts"
+    "dsh-compat/**/*.ts"
   ],
   // Upstream code carried by the G2 harness (it reads cordis const enums, which
   // isolatedModules rejects); upstream type-checks it, lyteboat runs it.
   "exclude": [
-    "compatibility/tests/upstream-harness/test-invariants.ts",
-    "compatibility/tests/upstream-harness/shims/*.ts"
+    "dsh-compat/tests/upstream-harness/test-invariants.ts",
+    "dsh-compat/tests/upstream-harness/shims/*.ts"
   ]
 }

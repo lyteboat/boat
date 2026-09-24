@@ -1,4 +1,4 @@
-# compatibility
+# dsh-compat
 
 What lyteboat promises the plugins written against dsh, and the proof that it keeps the promise. No runtime code lives here.
 
@@ -13,9 +13,9 @@ What lyteboat promises the plugins written against dsh, and the proof that it ke
 | G3 | the official packages that depend on the kernel still pass their tests on lyteboat's kernel | `scripts/dist/overlay.ts g3` | `pnpm run dist:overlay <installed upstream checkout at the tag> g3` | every sync |
 | persistence | the durable-record schema upstream derives from lyteboat's sources equals the release's | `scripts/dist/overlay.ts persistence` | `pnpm run dist:overlay <checkout> persistence` | every sync, and any kernel change that can reach a persisted type |
 | typert | the published Typert files lyteboat builds with (`lib/typert.*`) are what upstream's generator emits from lyteboat's sources, analyzing upstream's whole workspace | `scripts/dist/overlay.ts typert` | `pnpm run dist:overlay <checkout> typert` | every sync, and any change to a kernel package that publishes Typert files |
-| G4 | the official release and lyteboat write the same session log for the same scripted run | `tests/scenarios/` | `pnpm run compatibility` | before a merge to lyteboat-next, every sync |
-| G5 | pinned community plugins run the same on both, installed with `dsh plugin add`, and bind to lyteboat's kernel | `tests/canaries/` | `pnpm run compatibility` | before a merge to lyteboat-next, every sync |
-| G6 | a session one side writes, the other continues exactly as the writer would | `tests/roundtrip/` | `pnpm run compatibility` | before a merge to lyteboat-next, every sync |
+| G4 | the official release and lyteboat write the same session log for the same scripted run | `tests/scenarios/` | `pnpm run dsh-compat` | before a merge to lyteboat-next, every sync |
+| G5 | pinned community plugins run the same on both, installed with `dsh plugin add`, and bind to lyteboat's kernel | `tests/canaries/` | `pnpm run dsh-compat` | before a merge to lyteboat-next, every sync |
+| G6 | a session one side writes, the other continues exactly as the writer would | `tests/roundtrip/` | `pnpm run dsh-compat` | before a merge to lyteboat-next, every sync |
 
 G4–G6 compare two install trees outside the repository (`scripts/dist/trees.ts`, under `$LYTEBOAT_DIST_CACHE`, default `~/.cache/lyteboat-dist`): the release as npm publishes it, and the same manifest with every kernel package replaced by lyteboat's packed build (`<version>+lyteboat.<commit>`). The trees differ only in the kernel, so a difference is the kernel's. Both run the official CLI (`dsh headless`) against upstream's mock model server (`@deepseek-ai/dsh-llm-mock-server`); logs are compared after `@lyteboat/testing`'s normalization, which drops timing values and replaces ids and paths. The trees need registry access on their first install; later runs reuse them while the kernel packs are unchanged.
 

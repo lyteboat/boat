@@ -2,7 +2,7 @@
  * G4's scripted scenarios: each one drives `dsh headless` through a distinct
  * path of the kernel (a plain answer, a tool round trip, reasoning blocks, a
  * retried request, a truncated answer) with upstream's mock model server.
- * @module compatibility/tests/scenarios/scenarios
+ * @module dsh-compat/tests/scenarios/scenarios
  */
 
 import type { OfficialScenario } from '../support/official-cli.ts'

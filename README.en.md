@@ -37,7 +37,7 @@ lyteboat turns that last mile into a reusable chassis for vertical agents. A tea
   - Import of external conversation history (`@lyteboat/history-import`).
   - An intake gate that answers a turn without a model request (`lyteboat/intake`).
 - **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `lyteboat/agents/<id>/`.
-- **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 13 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`compatibility/`](compatibility/README.md)).
+- **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 13 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
 - **Traceable.** Everything a model sees is reconstructable from the session log, and every fact lyteboat records rides an envelope dsh already knows.
 
 ## Quick start
@@ -131,7 +131,7 @@ The guides are written in Chinese.
 | [Distribution conventions](docs/02-distribution.md) | The kernel and the upstream line, a sync step by step, change classes, promotion, how to run each gate, branches and channels, versions and pins |
 | [Agent development](docs/03-agent-development.md) | Building a business agent from scratch (example: `policy-desk`): directory, composition, skills, tools, policy, tests, running it |
 | [Alignment with the reference implementation](docs/04-reference-alignment.md) | Which capabilities of the reference implementation to bring in, and how to redesign the core while keeping dsh's capabilities |
-| [Compatibility promise](compatibility/COMPAT.md), [gate list](compatibility/README.md) | What lyteboat promises dsh plugins, and the gates G1–G6 that prove it |
+| [Compatibility promise](dsh-compat/COMPAT.md), [gate list](dsh-compat/README.md) | What lyteboat promises dsh plugins, and the gates G1–G6 that prove it |
 | [CLAUDE.md](CLAUDE.md) | How to work in this repository: layers, commits, tests, sync rules |
 | [CHANGELOG](CHANGELOG.md) | What each milestone delivered |
 
@@ -146,7 +146,7 @@ lyteboat/                 lyteboat's own packages, one directory per layer
   core/               declarations and shims
   agents/             business agents
   tooling/            test infrastructure
-compatibility/        the compatibility promise and its proof: contract snapshot, extension registry, G2/G4/G5/G6 tests
+dsh-compat/           the compatibility promise and its proof: contract snapshot, extension registry, G2/G4/G5/G6 tests
 scripts/              layer and pin checks; dist/ holds the distribution tooling
 docs/                 the guides
 dsh.upstream.json     the tracked dsh release
@@ -177,8 +177,8 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `pnpm run test` | Build, the G1 contract check, unit, composition, and e2e tests, upstream's kernel tests (G2); what CI runs |
 | `pnpm run lint` | oxlint, knip, the layer check, the distribution manifest check |
 | `pnpm run typecheck` | Type-checks sources and tests |
-| `pnpm run compatibility` | G4–G6: installs the official release and lyteboat side by side outside the repository and compares them (needs the network) |
-| `pnpm run check` | lint + test + compatibility |
+| `pnpm run dsh-compat` | G4–G6: installs the official release and lyteboat side by side outside the repository and compares them (needs the network) |
+| `pnpm run check` | lint + test + dsh-compat |
 | `pnpm run dist:delta` | Lists what lyteboat carries on top of the imported dsh tag |
 
 Syncing a new dsh release, promoting a package into the kernel, and running G3 and the persistence gate are covered in the [distribution conventions](docs/02-distribution.md).
@@ -204,8 +204,8 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 
 ## Contributing
 
-- Read [CLAUDE.md](CLAUDE.md) first: layer rules, test requirements, commit message format. A change under `dsh/` is a classified commit with a `Dist-Change:` trailer; read the [compatibility promise](compatibility/COMPAT.md) before touching `dsh/`.
-- Before committing, run `pnpm run lint`, `pnpm run typecheck`, and `pnpm run test`; after a kernel or compatibility change, also `pnpm run compatibility`.
+- Read [CLAUDE.md](CLAUDE.md) first: layer rules, test requirements, commit message format. A change under `dsh/` is a classified commit with a `Dist-Change:` trailer; read the [compatibility promise](dsh-compat/COMPAT.md) before touching `dsh/`.
+- Before committing, run `pnpm run lint`, `pnpm run typecheck`, and `pnpm run test`; after a kernel or compatibility change, also `pnpm run dsh-compat`.
 - A plugin outside this repository that uses a lyteboat extension declares `inject: ['lyteboatDistro']`, so it stays unloaded on the official release.
 - Merge pull requests with a merge commit, not a squash or a rebase: the upstream line is found through the `Dist-Import` trailer of the import commits.
 

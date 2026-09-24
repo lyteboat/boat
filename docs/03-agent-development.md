@@ -38,7 +38,7 @@
 | tool | 内核 `@deepseek-ai/dsh-tools`（`ctx.tools`）+ lyteboat 的 `ctx.toolPolicy` | `ctx.toolPolicy.register(defineTool(...), meta)`（§2.10） |
 | skill | 内核 `@deepseek-ai/dsh-skill`（`ctx.skills`）+ npm 上的 `dsh-skill-filesystem` provider + lyteboat 的 `ctx.skillRouter` | `skills/<name>/SKILL.md`，在自己的行里挂 skill-filesystem（§2.6、§2.10） |
 | session | 内核 `dsh-session`、`dsh-session-persistence*`、`dsh-session-projection` | 工具里用 `exec.agent.session`；日志落在 `$LYTEBOAT_HOME/sessions/…`（§3.2） |
-| memory | 只有会话内的：`lyteboatState`（工具状态增量折成的投影，每步作为 `lyteboat:state` 发给模型，§4.8）加上会话历史本身 | 没有跨会话记忆。dsh 0.1.7-rc.1 的 `packages/` 下没有 memory 包；最接近的是 session-query（`session_search` 工具，用 SQLite FTS 检索历史会话），但 dsh-base 把它配成 `path: ':memory:'`、`openAt: never`（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:149-153`），run 组合给模型的 24 个工具里也没有 `session_search`。另外，`dsh-agent-instructions` 会把 `$LYTEBOAT_HOME/AGENTS.md` 和项目里的 AGENTS.md/CLAUDE.md 注入第一次请求，这是人写的静态说明，不会自动学习。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`compatibility/tests/canaries/canaries.yml:28`），在官方树和 lyteboat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区；可以在自己的 agent 行里挂一个试用，但要先确认它的分区方式和写入内容符合业务要求 |
+| memory | 只有会话内的：`lyteboatState`（工具状态增量折成的投影，每步作为 `lyteboat:state` 发给模型，§4.8）加上会话历史本身 | 没有跨会话记忆。dsh 0.1.7-rc.1 的 `packages/` 下没有 memory 包；最接近的是 session-query（`session_search` 工具，用 SQLite FTS 检索历史会话），但 dsh-base 把它配成 `path: ':memory:'`、`openAt: never`（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:149-153`），run 组合给模型的 24 个工具里也没有 `session_search`。另外，`dsh-agent-instructions` 会把 `$LYTEBOAT_HOME/AGENTS.md` 和项目里的 AGENTS.md/CLAUDE.md 注入第一次请求，这是人写的静态说明，不会自动学习。社区有现成的记忆插件：npm 上有 40 多个 dsh 记忆插件，其中 `@zzerx/dsh-plugin-memory` 0.3.1 是 G5 金丝雀之一（`dsh-compat/tests/canaries/canaries.yml:28`），在官方树和 lyteboat 树上表现相同。但它们各自发布自己的服务名，没有公共 seam，而且多按全局或工作区分区，不按业务用户分区；可以在自己的 agent 行里挂一个试用，但要先确认它的分区方式和写入内容符合业务要求 |
 
 五个能力的包都在 `dsh/kernel.json` 里（llm、skill 刚在 `3d29a07` 晋升进内核，CLAUDE.md:73），所以任何 lyteboat 组合都一定带着它们。
 
@@ -808,7 +808,7 @@ export function apply(ctx: Context): void {
 - 返回 `REPLY` 时，内核把这一步写成一条不请求模型的助手消息。代码只传 `{ provider: 'lyteboat', model: reply.plugin }`（`dsh/core/agent-loop/src/agent.ts:438-460`，`:455`；`src/lyteboat/step-hooks.ts:16`），日志里记下的 `source` 是 `{ kind: 'model', provider: 'lyteboat', model: 'policy-desk-intake' }`。
 - 不命中时**必须** `return next()`，否则会挡住排在后面的所有监听器（§4.4）。
 - `lyteboat/intake` 在**每一步**都会触发，包括工具之后的续步，那时 `messages` 是 `[]`（`agent.ts:277-283`）。所以这里只看 `source.kind === 'user'` 的文本。
-- 在本仓库里，这个行只从 `@lyteboat/contracts` import 类型。仓库外的插件如果用 `lyteboat/intake`，要声明 `inject: ['lyteboatDistro']`，这样在官方 dsh 上它不会加载（`compatibility/COMPAT.md:46`，CLAUDE.md:71）。
+- 在本仓库里，这个行只从 `@lyteboat/contracts` import 类型。仓库外的插件如果用 `lyteboat/intake`，要声明 `inject: ['lyteboatDistro']`，这样在官方 dsh 上它不会加载（`dsh-compat/COMPAT.md:46`，CLAUDE.md:71）。
 
 ### 2.12 构建
 
@@ -1475,7 +1475,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 `lyteboat/route-request` 和 `lyteboat/skill-routed` 不在 dsh 的事件目录里，也没有 `ignorable` 标记，所以 dsh 的持久化层拒绝重开路由过的会话：`lyteboat web` 打不开，也不能续会话（README「状态与路线图」，`lyteboat/bundles/run/tests/reopen.composite.ts:109-113`）。拒识回复、状态、卡片、导入的历史都走已有的 envelope，这些会话可以重开。
 
-修复方案在发行版蓝图里。蓝图是一份不在仓库里的 HTML 设计文档，仓库里的发行版约定见 [02-distribution.md](02-distribution.md)。蓝图 §8 的例子 E1：dsh 的读路径其实接受带 `ignorable: true` 的未知事件，缺的只是写入口；所以给 `Session.append` 加一个可选参数 `{ ignorable: true }`，作为 `extend` 类改动登记进 `compatibility/contract/extensions.yml`。蓝图 §11 的路线图把它排在 D3，Web 和续会话排在 D4。另外，`lyteboat web` 目前不读 agent 目录（§0.4，`lyteboat/apps/cli/src/templates.ts:21-23`）。
+修复方案在发行版蓝图里。蓝图是一份不在仓库里的 HTML 设计文档，仓库里的发行版约定见 [02-distribution.md](02-distribution.md)。蓝图 §8 的例子 E1：dsh 的读路径其实接受带 `ignorable: true` 的未知事件，缺的只是写入口；所以给 `Session.append` 加一个可选参数 `{ ignorable: true }`，作为 `extend` 类改动登记进 `dsh-compat/contract/extensions.yml`。蓝图 §11 的路线图把它排在 D3，Web 和续会话排在 D4。另外，`lyteboat web` 目前不读 agent 目录（§0.4，`lyteboat/apps/cli/src/templates.ts:21-23`）。
 
 ### 4.11 收窄继承来的编码工具面
 
@@ -1728,7 +1728,7 @@ export interface LyteboatStepPayload {
 | `lyteboat/intake` | `(payload: LyteboatStepPayload, next) => Promise<IntakeDecision>` | `{ kind: 'pass' }` | 确定性的拒识或固定回复，不请求模型（完整例子：§2.11） |
 | `lyteboat/pre-assemble` | `(payload: LyteboatStepPayload, next) => Promise<void>` | 什么也不做 | 在本步组装 prompt 之前激活工具、路由（写法：§4.4） |
 
-两者都注册为内核扩展 `agent-loop-intake` / `agent-loop-pre-assemble`（`compatibility/contract/extensions.yml`），都按 agent 作用域过滤：挂在 agent 作用域里的监听器只收到自己 agent 的事件（`step-hooks.ts:44-62`）。
+两者都注册为内核扩展 `agent-loop-intake` / `agent-loop-pre-assemble`（`dsh-compat/contract/extensions.yml`），都按 agent 作用域过滤：挂在 agent 作用域里的监听器只收到自己 agent 的事件（`step-hooks.ts:44-62`）。
 
 ### 7.6 投影（`lyteboat/core/contracts/src/index.ts:153-170`）
 

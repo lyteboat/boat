@@ -1,11 +1,11 @@
 /**
  * G1, the contract gate: lyteboat's kernel build keeps every promise the pinned
  * release makes. The contract of the workspace build (see `contract-gen.ts`)
- * is compared key by key with `compatibility/contract/dsh-<version>/`:
+ * is compared key by key with `dsh-compat/contract/dsh-<version>/`:
  *
  * - a key upstream has and lyteboat's build lacks fails, always;
  * - a key whose value changed, or a key only lyteboat's build has, fails unless an
- *   entry of `compatibility/contract/extensions.yml` lists it (or a prefix of it);
+ *   entry of `dsh-compat/contract/extensions.yml` lists it (or a prefix of it);
  * - a listed key that shows no difference fails too, so the registry never
  *   outlives the extension it describes.
  *
@@ -27,7 +27,7 @@ import { canonicalJson, readUpstreamPin, repoRoot } from './kernel.ts'
 /** Separator of the path segments in a contract key; event names and subpaths contain `/`. */
 export const KEY_SEPARATOR = ' › '
 
-/** One entry of `compatibility/contract/extensions.yml`. */
+/** One entry of `dsh-compat/contract/extensions.yml`. */
 export interface ContractExtension {
   id: string
   package: string
@@ -40,15 +40,15 @@ export interface ContractExtension {
 }
 
 export function readExtensions(): ContractExtension[] {
-  const parsed = parse(readFileSync(join(repoRoot, 'compatibility/contract/extensions.yml'), 'utf8')) as { extensions?: ContractExtension[] | null }
+  const parsed = parse(readFileSync(join(repoRoot, 'dsh-compat/contract/extensions.yml'), 'utf8')) as { extensions?: ContractExtension[] | null }
   const extensions = parsed.extensions ?? []
   const ids = new Set<string>()
   for (const extension of extensions) {
     for (const field of ['id', 'package', 'kind', 'surface', 'since', 'exit'] as const) {
-      if (typeof extension[field] !== 'string' || extension[field] === '') throw new Error(`compatibility/contract/extensions.yml: an entry lacks "${field}"`)
+      if (typeof extension[field] !== 'string' || extension[field] === '') throw new Error(`dsh-compat/contract/extensions.yml: an entry lacks "${field}"`)
     }
-    if (!Array.isArray(extension.contract) || !Array.isArray(extension.tests)) throw new Error(`compatibility/contract/extensions.yml: ${extension.id} needs "contract" and "tests" lists`)
-    if (ids.has(extension.id)) throw new Error(`compatibility/contract/extensions.yml: duplicate id ${extension.id}`)
+    if (!Array.isArray(extension.contract) || !Array.isArray(extension.tests)) throw new Error(`dsh-compat/contract/extensions.yml: ${extension.id} needs "contract" and "tests" lists`)
+    if (ids.has(extension.id)) throw new Error(`dsh-compat/contract/extensions.yml: duplicate id ${extension.id}`)
     ids.add(extension.id)
   }
   return extensions
@@ -73,7 +73,7 @@ export function flattenContract(contract: Contract): Map<string, string> {
 export function readSnapshot(version: string): Map<string, string> {
   const out = new Map<string, string>()
   for (const file of CONTRACT_FILES) {
-    flatten(JSON.parse(readFileSync(join(repoRoot, 'compatibility/contract', `dsh-${version}`, `${file}.json`), 'utf8')), [file], out)
+    flatten(JSON.parse(readFileSync(join(repoRoot, 'dsh-compat/contract', `dsh-${version}`, `${file}.json`), 'utf8')), [file], out)
   }
   return out
 }

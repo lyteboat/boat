@@ -9,7 +9,7 @@
  *
  * - every non-merge commit that touches a kernel package after the first import carries
  *   a `Dist-Change` trailer with a known class;
- * - an `extend` commit names its `compatibility/contract/extensions.yml` entry in
+ * - an `extend` commit names its `dsh-compat/contract/extensions.yml` entry in
  *   `Dist-Extension`, and every entry is named by at least one commit;
  * - `fix` carries `Dist-Tests`, `backport` carries `Dist-Upstream`, `compat`
  *   and `drop` carry `Dist-Exit`.
@@ -77,11 +77,11 @@ function violations(commits: readonly DistCommit[]): string[] {
     const required = CHANGE_CLASSES[changeClass]
     if (required !== undefined && !commit.trailers.has(required)) found.push(`${where}: a ${changeClass} change needs a ${required} trailer`)
     for (const id of commit.trailers.get('Dist-Extension') ?? []) {
-      if (!extensionIds.has(id)) found.push(`${where}: Dist-Extension ${id} is not in compatibility/contract/extensions.yml`)
+      if (!extensionIds.has(id)) found.push(`${where}: Dist-Extension ${id} is not in dsh-compat/contract/extensions.yml`)
       named.add(id)
     }
   }
-  for (const id of extensionIds) if (!named.has(id)) found.push(`compatibility/contract/extensions.yml: ${id} is named by no Dist-Extension commit`)
+  for (const id of extensionIds) if (!named.has(id)) found.push(`dsh-compat/contract/extensions.yml: ${id} is named by no Dist-Extension commit`)
   return found
 }
 
