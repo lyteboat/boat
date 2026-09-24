@@ -26,6 +26,10 @@
     - id: lyteboat-tool-policy
       name: '@lyteboat/tool-policy'
 
+    # Side model calls (the router's, an intake classifier's), each recorded ignorable.
+    - id: lyteboat-aux-llm
+      name: '@lyteboat/aux-llm'
+
     - id: lyteboat-skill-router
       name: '@lyteboat/skill-router'
 

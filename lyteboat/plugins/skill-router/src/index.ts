@@ -19,7 +19,8 @@
  * `lyteboatActiveSkill` projection folds skill-invocation messages and
  * successful `skill` tool calls from the log, so a resumed session restores
  * its tools, and a body compaction has shadowed is injected again. The router
- * call itself leaves a logger line; the activation it leads to is the log's.
+ * call goes through `ctx.auxLlm`, which records it (prompt, answer or failure)
+ * as an ignorable `lyteboat/aux-llm-call`.
  * @module @lyteboat/skill-router
  */
 
@@ -27,18 +28,17 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { BlockAssembler, createUserMessage, type ContentBlock, type GenerateOptions, type UserMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type { Session } from '@deepseek-ai/dsh-session'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { isModelInvocable, renderSkillContent } from '@deepseek-ai/dsh-skill'
 import type { SkillDefinition, SkillInvocationSource, SkillViewOptions } from '@deepseek-ai/dsh-skill'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
+import type { AuxLlmRoute } from '@lyteboat/aux-llm'
 import type {} from '@lyteboat/tool-policy'
-import { LYTEBOAT_SKILL_ROUTER_SOURCE } from '@lyteboat/contracts'
 import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
@@ -54,8 +54,8 @@ declare module '@deepseek-ai/cordis' {
 
 /** Where the full-mode skill bodies sit among the system prompt sections (before PLAN_POLICY at 500). */
 export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
-/** Timeout reason code of one router call. */
-export const SKILL_ROUTE_TIMEOUT_CODE = 'LYTEBOAT_SKILL_ROUTE_TIMEOUT'
+/** The router call's `purpose` in its `lyteboat/aux-llm-call` record. */
+export const SKILL_ROUTER_PURPOSE = 'skill-router'
 /** Output budget of one router call: strict JSON with a ≤30-character reason. */
 const ROUTE_MAX_TOKENS = 200
 /** The dsh tool through which the model loads a skill itself. */
@@ -208,7 +208,7 @@ function userText(messages: LyteboatStepPayload['messages']): string {
 
 /** Host service: skill load modes, LLM routing, and the active skill's presence in the conversation. */
 export class SkillRouterService extends Service {
-  static inject = ['skills', 'llm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy']
+  static inject = ['skills', 'auxLlm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy']
 
   private readonly layers = new ScopedLayers(() => new SettingsLayer(), () => {})
   private readonly agents = new WeakMap<Agent, AgentSkillState>()
@@ -289,7 +289,7 @@ export class SkillRouterService extends Service {
   }
 
   private async prepare(payload: LyteboatStepPayload): Promise<void> {
-    const { agent, messages, signal, turn } = payload
+    const { agent, messages, signal } = payload
     const settings = this.settingsFor(agent)
     if (settings.mode === 'off') return
     // A step aborted between pre-assembly and pre-step leaves its body behind; it is not this step's.
@@ -302,7 +302,7 @@ export class SkillRouterService extends Service {
     }
     const previous = this.activeOf(agent)
     const input = userText(messages)
-    const chosen = input === '' ? previous : await this.route(agent, settings, lookup, input, turn, signal)
+    const chosen = input === '' ? previous : await this.route(agent, settings, lookup, input, signal)
     await this.applyActive(agent, chosen, previous, lookup)
   }
 
@@ -333,7 +333,6 @@ export class SkillRouterService extends Service {
     settings: SkillRouterSettings,
     lookup: SkillViewOptions,
     userInput: string,
-    turn: number,
     signal: AbortSignal,
   ): Promise<string | null> {
     const current = this.activeOf(agent)
@@ -342,66 +341,43 @@ export class SkillRouterService extends Service {
     const candidates: RouteCandidate[] = snapshot.skills.filter(isModelInvocable)
       .map(skill => ({ name: skill.name, description: skill.description }))
     if (candidates.length === 0) return current
-    const provider = settings.provider ?? agent.options.provider
-    const model = settings.model ?? agent.options.model
-    if (provider === undefined || model === undefined) {
-      this.ctx.logger.warn('lyteboat skill router: no route for the router call (set provider and model, or give the agent a model)')
-      return current
-    }
     const prompt = buildRoutePrompt({
       candidates,
       history: renderHistory(agent.session.deriveMessages(), settings.historyWindow),
       current,
       userInput,
     })
-    const started = performance.now()
-    const decision = await this.decide(agent, { provider, model }, prompt, candidates.map(candidate => candidate.name), current, settings.timeoutMs, signal)
-    this.ctx.logger.debug(`lyteboat skill router: turn ${String(turn)} routed by ${provider}/${model} to ${decision.skill ?? 'none'} (${decision.reason}, ${String(Math.round(performance.now() - started))} ms)`)
+    const route: AuxLlmRoute | undefined = settings.provider !== undefined && settings.model !== undefined
+      ? { provider: settings.provider, model: settings.model }
+      : undefined
+    const decision = await this.decide(agent, route, prompt, candidates.map(candidate => candidate.name), current, settings.timeoutMs, signal)
     return decision.skill
   }
 
-  /** One router call under its own deadline; every failure keeps the current skill. */
+  /** One router call through `ctx.auxLlm`; every failure keeps the current skill. */
   private async decide(
     agent: Agent,
-    route: { provider: string; model: string },
+    route: AuxLlmRoute | undefined,
     prompt: string,
     candidates: readonly string[],
     current: string | null,
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<RouteDecision> {
-    using callDeadline = deadline(signal, timeoutMs, SKILL_ROUTE_TIMEOUT_CODE)
-    try {
-      const text = await this.generate(agent, route, prompt, callDeadline.signal)
-      return resolveRouteDecision(text, candidates, current)
-    } catch (error: unknown) {
-      signal.throwIfAborted()
-      const timeout = timeoutOf(callDeadline.signal, SKILL_ROUTE_TIMEOUT_CODE)
-      const reason = timeout !== undefined ? 'timeout' : error instanceof Error ? error.name : 'error'
-      this.ctx.logger.warn(`lyteboat skill router: router call failed (${reason}): ${error instanceof Error ? error.message : String(error)}`)
-      return { skill: current, reason }
-    }
-  }
-
-  private async generate(agent: Agent, route: { provider: string; model: string }, prompt: string, signal: AbortSignal): Promise<string> {
-    const options: GenerateOptions = {
-      provider: route.provider,
-      model: route.model,
-      messages: [createUserMessage({ content: [{ type: 'text', text: prompt }], source: { kind: LYTEBOAT_SKILL_ROUTER_SOURCE } })],
+    const outcome = await this.ctx.auxLlm.generate({
+      agent,
+      purpose: SKILL_ROUTER_PURPOSE,
+      ...route === undefined ? {} : { route },
       system: SKILL_ROUTER_SYSTEM_PROMPT,
+      prompt,
       maxTokens: ROUTE_MAX_TOKENS,
       temperature: 0,
-      sessionId: agent.session.id,
+      timeoutMs,
       signal,
-    }
-    const assembler = new BlockAssembler()
-    for await (const chunk of this.ctx.llm.stream(options)) {
-      signal.throwIfAborted()
-      assembler.push(chunk)
-    }
-    const finish = assembler.finish
-    if (finish.kind === 'error' || finish.kind === 'aborted') throw new Error(finish.failure.message)
-    return assembler.blocks().filter(block => block.type === 'text').map(block => block.text).join('')
+    })
+    if (outcome.kind === 'answer') return resolveRouteDecision(outcome.text, candidates, current)
+    this.ctx.logger.warn(`lyteboat skill router: router call failed (${outcome.reason}): ${outcome.message}`)
+    return { skill: current, reason: outcome.reason }
   }
 
   /**

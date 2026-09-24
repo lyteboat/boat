@@ -30,7 +30,7 @@ const PLANS: Record<string, { skill: string; tool: string; args?: Record<string,
 
 const FINANCE_TOOLS = ['asset_overview', 'allocation_diagnosis', 'bucket_diagnosis', 'lookup_knowledge']
 
-interface LogRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean; data?: Record<string, unknown> }
+interface LogRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean; ignorable?: true; data?: Record<string, unknown> }
 
 function blockText(block: ChatBlock): string {
   return block.text ?? (Array.isArray(block.content) ? (block.content as ChatBlock[]).map(blockText).join('') : '')
@@ -150,10 +150,11 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(resultMeta(records)?.lyteboat).toBeUndefined()
   })
 
-  it('a routed session reopens under dsh persistence: every fact rides a dsh envelope', async () => {
+  it('a routed session reopens under dsh persistence: every fact rides a dsh envelope, the router call an ignorable record', async () => {
     const { records } = await run('reopen', 'young-idle-cash', '看看我的资产')
     expect(reopenRefusal(records)).toBeUndefined()
-    expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
+    const own = records.filter(record => record.type.startsWith('lyteboat/'))
+    expect(own.map(record => [record.type, record.ignorable, record.data?.['purpose']])).toEqual([['lyteboat/aux-llm-call', true, 'skill-router']])
   })
 
   it('--session-id continues in a new process: the diagnosis turn sees the overview aged to its facts', async () => {

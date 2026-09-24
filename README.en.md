@@ -162,6 +162,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/bundles/run` | `@lyteboat/run` | The one-shot bundle behind `lyteboat run`: task, `--agent`, `--agents`, `--history` |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file |
+| `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | Skill load modes and model routing; `./agent` declares the mode in an agent's composition file |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; `./agent` mounts the tool from a composition file |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat run --history` |

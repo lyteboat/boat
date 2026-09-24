@@ -19,11 +19,11 @@
   },
   "files": ["lib"],
   "dependencies": {
+    "@lyteboat/aux-llm": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/tool-policy": "workspace:*",
     "@deepseek-ai/dsh-scope": "catalog:dsh",
     "@deepseek-ai/dsh-skill": "workspace:*",
-    "@deepseek-ai/dsh-timeout": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
     "zod": "catalog:"
   },
@@ -37,6 +37,7 @@
     "@deepseek-ai/dsh-tools": "workspace:*"
   },
   "devDependencies": {
+    "@lyteboat/distro": "workspace:*",
     "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",

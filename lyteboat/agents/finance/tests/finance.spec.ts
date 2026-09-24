@@ -18,6 +18,8 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
+import AuxLlmService from '@lyteboat/aux-llm'
+import LyteboatDistroService from '@lyteboat/distro'
 import SkillRouterService from '@lyteboat/skill-router'
 import A2uiService, { validateFullPayload } from '@lyteboat/a2ui'
 import * as financeAgent from '@lyteboat/agent-finance/agent'
@@ -86,6 +88,8 @@ async function harness(plans: ReadonlyMap<string, TurnPlan>): Promise<{ ctx: Con
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(ToolPolicyService)
+  await ctx.plugin(LyteboatDistroService)
+  await ctx.plugin(AuxLlmService)
   await ctx.plugin(SkillRouterService, { mode: 'dynamic', historyWindow: 6 })
   await ctx.plugin(A2uiService)
   await ctx.plugin(financeAgent)

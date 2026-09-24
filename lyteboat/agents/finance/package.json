@@ -42,6 +42,8 @@
   },
   "devDependencies": {
     "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/distro": "workspace:*",
     "@lyteboat/host": "workspace:*",
     "@lyteboat/run": "workspace:*",
     "@lyteboat/skill-router": "workspace:*",

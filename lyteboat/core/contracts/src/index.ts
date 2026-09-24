@@ -12,12 +12,16 @@
  * fact therefore rides an envelope dsh already knows — `tool/result.meta`
  * for cards and state deltas, the assistant message `source` for a reply's
  * author, dsh's own skill-invocation message for a routed skill — so every
- * lyteboat session reopens.
+ * lyteboat session reopens. The one record type of lyteboat's own,
+ * `lyteboat/aux-llm-call`, is informational and appended ignorable (the kernel
+ * extension `session-append-ignorable`), so a reader that does not know it
+ * skips it.
  * @module @lyteboat/contracts
  */
 
 import type {} from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-projection/types'
 
 /** Lossless JSON, the only shape session logs and projections may carry. */
@@ -77,8 +81,8 @@ declare module '@deepseek-ai/cordis' {
  */
 export const LYTEBOAT_HISTORY_IMPORT_SOURCE = 'plugin:lyteboat-history-import'
 
-/** `source.kind` of the skill router's own request message (a side model call, never logged). */
-export const LYTEBOAT_SKILL_ROUTER_SOURCE = 'plugin:lyteboat-skill-router'
+/** `source.kind` of the one user message a side model call sends (`@lyteboat/aux-llm`; the call is recorded, the message is not). */
+export const LYTEBOAT_AUX_LLM_SOURCE = 'plugin:lyteboat-aux-llm'
 
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type LyteboatToolVisibility = 'always' | 'auto'
@@ -119,6 +123,23 @@ export interface LyteboatCard {
 /** The `lyteboatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.lyteboat.stateDelta`. */
 export type LyteboatStateValue = { [key: string]: JsonValue }
 
+/** One side model call, as its `lyteboat/aux-llm-call` record keeps it. */
+export interface LyteboatAuxLlmCallRecord {
+  /** What the call was for: `skill-router`, `intake`, … */
+  purpose: string
+  route: { provider: string; model: string }
+  system: string
+  /** The one user message the call sent. */
+  prompt: string
+  maxTokens: number
+  temperature: number
+  /** The model's text; absent when the call failed. */
+  output?: string
+  /** Why the call has no answer: `timeout`, or the error's name, with its message. */
+  failure?: { reason: string; message: string }
+  durationMs: number
+}
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */
@@ -131,8 +152,18 @@ declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
     /** Imported history rounds, written by `@lyteboat/history-import` into a session seed. */
     'plugin:lyteboat-history-import': { kind: typeof LYTEBOAT_HISTORY_IMPORT_SOURCE }
-    /** The skill router's request to its route model, owned by `@lyteboat/skill-router`. */
-    'plugin:lyteboat-skill-router': { kind: typeof LYTEBOAT_SKILL_ROUTER_SOURCE }
+    /** A side model call's prompt, owned by `@lyteboat/aux-llm`. */
+    'plugin:lyteboat-aux-llm': { kind: typeof LYTEBOAT_AUX_LLM_SOURCE }
+  }
+}
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /**
+     * One side model call a plugin made for the agent, appended ignorable by
+     * `@lyteboat/aux-llm`: no reader needs it to rebuild the session.
+     */
+    'lyteboat/aux-llm-call': LyteboatAuxLlmCallRecord
   }
 }
 

@@ -51,6 +51,9 @@
       "path": "./lyteboat/plugins/tool-policy"
     },
     {
+      "path": "./lyteboat/plugins/aux-llm"
+    },
+    {
       "path": "./lyteboat/plugins/skill-router"
     },
     {

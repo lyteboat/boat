@@ -19,7 +19,7 @@ const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
 const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
 const ANSWER = 'DEMO-OK'
 
-interface LogRecord { type: string; data?: Record<string, unknown> }
+interface LogRecord { type: string; ignorable?: true; data?: Record<string, unknown> }
 
 /** The skills the log records as injected, in order: dsh's skill-invocation user messages. */
 function invokedSkills(records: LogRecord[]): unknown[] {
@@ -112,7 +112,7 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root-container')
     expect((meta.lyteboat.card.payload['businessPayload'] as Record<string, unknown>)['total_display']).toBe('300,000.00')
     expect(types.indexOf('user/message')).toBeLessThan(types.indexOf('request/header'))
-    expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])
+    expect(records.filter(record => record.type.startsWith('lyteboat/')).map(record => [record.type, record.ignorable])).toEqual([['lyteboat/aux-llm-call', true]])
     expect(types.filter(type => type === 'turn/end')).toHaveLength(1)
   })
 

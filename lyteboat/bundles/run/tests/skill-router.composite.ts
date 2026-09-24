@@ -9,7 +9,7 @@ import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel
 const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'SKILL-ROUTER-OK'
 
-type SessionRecord = { type: string; data?: Record<string, unknown> }
+type SessionRecord = { type: string; ignorable?: true; data?: Record<string, unknown> }
 const isSkillInvocation = (record: SessionRecord): boolean =>
   record.type === 'user/message' && (record.data?.['source'] as { kind?: unknown } | undefined)?.kind === 'skill-invocation'
 
@@ -86,7 +86,10 @@ describe('@lyteboat/skill-router in the run composition (in process, scripted mo
     expect(messages).not.toContain('MARKET-NEWS-BODY')
     const [log] = findSessionLogs(home)
     const records = readSessionLog(log!) as SessionRecord[]
-    expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
+    // The router call is lyteboat's one record of its own: audited, and ignorable for other readers.
+    const own = records.filter(record => record.type.startsWith('lyteboat/'))
+    expect(own.map(record => [record.type, record.ignorable])).toEqual([['lyteboat/aux-llm-call', true]])
+    expect(own[0]?.data).toMatchObject({ purpose: 'skill-router', route: { provider: 'deepseek-official' }, output: '{"skill_id": "asset-overview", "reason": "看资产"}' })
     const invocations = records.filter(isSkillInvocation)
     expect(invocations.map(record => record.data?.['source'])).toEqual([{ kind: 'skill-invocation', name: 'asset-overview', form: 'instructions' }])
     expect(records.indexOf(invocations[0]!)).toBeLessThan(records.findIndex(record => record.type === 'request/header'))
