@@ -19,7 +19,7 @@ describe('@lyteboat/distro', () => {
 
   it('answers false for an extension this build does not carry, and its list cannot be changed', async () => {
     const ctx = await mounted()
-    expect(ctx.lyteboatDistro.has('session-append-ignorable')).toBe(false)
+    expect(ctx.lyteboatDistro.has('no-such-extension')).toBe(false)
     expect(Object.isFrozen(ctx.lyteboatDistro.extensions)).toBe(true)
   })
 

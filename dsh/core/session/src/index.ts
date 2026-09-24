@@ -21,6 +21,8 @@ import type { SessionSurface, SessionMessageProjection } from './surface.ts'
 import { foldRequestHeader } from './request-header.ts'
 
 import { buildForkSeed } from './fork.ts'
+import { lyteboatAppendOptions } from './lyteboat/append-ignorable.ts'
+import type { LyteboatAppendOptions } from './lyteboat/append-ignorable.ts'
 
 export { buildForkSeed } from './fork.ts'
 export * from './types.ts'
@@ -32,6 +34,8 @@ export type { SessionSurface, SurfaceFoldReplacement, SurfaceFoldResult, Session
 export { deriveEventMessage, foldSurface, isAppendSurfaceEvent, isReplacementSurfaceEvent, isSurfaceEvent, isSurfaceEligibleType } from './surface.ts'
 export { canonicalHeader, foldRequestHeader, headerEquals } from './request-header.ts'
 export { KNOWN_SESSION_EVENT_TYPES } from './known-event-types.ts'
+// lyteboat: the ignorable marker's write path (dsh-compat/contract/extensions.yml, session-append-ignorable).
+export type { LyteboatAppendOptions } from './lyteboat/append-ignorable.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -720,9 +724,11 @@ export class Session {
   append<T extends SessionEventType>(
     type: T,
     data: SessionEventMap[T],
-    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : []
+    // lyteboat: a non-surface type may carry the ignorable marker (dsh-compat/contract/extensions.yml, session-append-ignorable).
+    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent<T>] : [opts?: LyteboatAppendOptions]
   ): SessionEvent<T> {
-    const surfaceOpts: SurfaceIntent | undefined = opts[0]
+    const lyteboatOptions = lyteboatAppendOptions(type, opts[0])
+    const surfaceOpts: SurfaceIntent | undefined = lyteboatOptions.surface
     const surfaceMetadata = {
       ...surfaceOpts?.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: surfaceOpts.sourceEventSeqs },
       ...surfaceOpts?.surfaceOp === undefined ? {} : { surfaceOp: surfaceOpts.surfaceOp },
@@ -745,6 +751,7 @@ export class Session {
       time: Date.now(),
       data: dataSnapshot,
       ...(surfaceMetadataSnapshot as { surfaceOp?: unknown; sourceEventSeqs?: unknown }),
+      ...lyteboatOptions.marker,
     } as unknown as SessionEvent<T>)
     validateSessionEventData(event, `session event "${type}" at seq ${event.seq}`)
     this.surfaceManager.validateNext(event as SessionEvent)
