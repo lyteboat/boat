@@ -15,7 +15,7 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { A2uiService } from '@lyteboat/a2ui'
 import type { AuxLlmService } from '@lyteboat/aux-llm'
-import type { JsonValue } from '@lyteboat/contracts'
+import { LYTEBOAT_HISTORY_IMPORT_SOURCE, type JsonValue } from '@lyteboat/contracts'
 import type { LyteboatAdmission } from '@lyteboat/intake-guard'
 import type { FinanceCustomerSource } from '../data/finance-customer.ts'
 import { summarizeHoldings } from '../capabilities/finance-holdings.ts'
@@ -57,6 +57,9 @@ export function customerOfContext(context: { readonly [key: string]: JsonValue }
   return typeof customer === 'string' && customer !== '' ? customer : undefined
 }
 
+/** A user message a person wrote: in this session, or imported from the conversation before it. */
+const PERSON_SOURCES: ReadonlySet<string> = new Set(['user', LYTEBOAT_HISTORY_IMPORT_SOURCE])
+
 /**
  * The classifier's prompt: the last few lines of the conversation, for
  * follow-ups, then the request.
@@ -65,7 +68,7 @@ export function customerOfContext(context: { readonly [key: string]: JsonValue }
  */
 export function financeIntakePrompt(agent: Agent, text: string): string {
   const history = agent.session.deriveMessages()
-    .filter(message => (message.role === 'user' && message.source.kind === 'user') || message.role === 'assistant')
+    .filter(message => (message.role === 'user' && PERSON_SOURCES.has(message.source.kind)) || message.role === 'assistant')
     .map(message => `${message.role === 'user' ? '用户' : '助手'}：${message.content.filter(block => block.type === 'text').map(block => block.text).join('').slice(0, 200)}`)
     .filter(line => !line.endsWith('：'))
     .slice(-4)

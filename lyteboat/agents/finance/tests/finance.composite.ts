@@ -95,7 +95,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function run(label: string, customer: string | undefined, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
+  async function run(label: string, customer: string | undefined, task: string, extra: string[] = []): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
     const home = join(root, `home-${label}`)
     const workspace = join(root, `workspace-${label}`)
     for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
@@ -103,7 +103,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const before = model.requests.length
     const result = await bootComposition({
       bundles: RUN_BUNDLES,
-      args: ['--agents', AGENTS, '--agent', 'finance', ...customer === undefined ? [] : ['--context', JSON.stringify({ customer })], task],
+      args: ['--agents', AGENTS, '--agent', 'finance', ...customer === undefined ? [] : ['--context', JSON.stringify({ customer })], ...extra, task],
       cwd: workspace,
       home,
       env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
@@ -179,6 +179,16 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const { requests, records } = await run('education', 'midlife-moderate', '什么是再平衡')
     expect(lastToolResult(requests.filter(isLoop)[1]!)).toContain('再平衡是定期把各类资产的比例调回目标')
     expect(resultMeta(records)?.lyteboat).toBeUndefined()
+  })
+
+  it('imported history: the admission classifier sees the imported questions beside their answers', async () => {
+    const history = join(root, 'history.json')
+    writeFileSync(history, JSON.stringify({ context: { history: [
+      { channel: 'app', createTime: '2026-09-20 10:00:00', role: 'user', traceId: 'trace-0001', parts: [{ type: 'text', text: '帮我看看我的资产' }] },
+      { channel: 'app', createTime: '2026-09-20 10:00:06', role: 'assistant', traceId: 'trace-0001', parts: [{ type: 'text', text: '您的资产合计 8 万元。' }] },
+    ] } }))
+    const { requests } = await run('history', 'young-idle-cash', '我的配置合理吗', ['--history', history])
+    expect(requests.find(isIntake)?.lastUser).toContain('<conversation>\n用户：帮我看看我的资产\n助手：您的资产合计 8 万元。\n</conversation>')
   })
 
   it('a routed session reopens under dsh persistence: every fact rides a dsh envelope, the side calls ignorable records', async () => {
