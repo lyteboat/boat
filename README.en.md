@@ -101,6 +101,7 @@ All three accept:
 | `--agent <id>` | Runs one agent from those directories (`--preset` is a deprecated alias) |
 | `--history <file>` | Imports external conversation history first; the task becomes its next turn |
 | `--session-id <id>` | Continues a stored session; every run prints its session id to stderr |
+| `--context <json>` | The request context: a JSON object, inline or in a file; logged with the request, read by tools, not shown to the model |
 
 `lyteboat run -h` lists every flag of the one-shot mode.
 
@@ -163,6 +164,8 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record |
+| `lyteboat/plugins/request-context` | `@lyteboat/request-context` | The request context: the request a human message answers to (request id, context, admission verdict) rides its own source; the `lyteboatRequest` projection keeps the session's context |
+| `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | Admission ahead of the loop: an agent registers an admission function, the caller records its verdict on the request before the loop; the loop answers a recorded reply verdict directly and admits in the loop what arrives unadmitted |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | Skill load modes and model routing; `./agent` declares the mode in an agent's composition file |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; a result may carry several cards, laid into the turn by emission mode (immediate, deferred, deferred-discard) and the answer's `[[card:<area>]]` markers (`turnParts`); `./agent` mounts the tool from a composition file |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat run --history` |

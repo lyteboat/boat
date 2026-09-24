@@ -1,7 +1,7 @@
 # The @lyteboat/run bundle patch: one-shot task mode over dsh-base and @lyteboat/host,
 # lyteboat's replacement for dsh-headless. The startup row parses the task and the
-# `--agent` / `--agents` / `--history` / `--session-id` flags from the inner
-# arguments, resolves the agent to its directory, and publishes them as the
+# `--agent` / `--agents` / `--history` / `--session-id` / `--context` flags from
+# the inner arguments, resolves the agent to its directory, and publishes them as the
 # `lyteboatRunStartup` service; the runner row declares that directory to the
 # agent preset registry, creates one agent composed from it (or resumes the
 # stored session), drives the task to quiescence, prints the final answer, and
@@ -37,6 +37,7 @@
         agentDir: !!js ctx.lyteboatRunStartup.agentDir
         history: !!js ctx.lyteboatRunStartup.history
         sessionId: !!js ctx.lyteboatRunStartup.sessionId
+        context: !!js ctx.lyteboatRunStartup.context
 
 # A one-shot run applies the user layers at startup only, as dsh-headless does.
 - id: hmr

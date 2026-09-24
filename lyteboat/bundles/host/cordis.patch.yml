@@ -30,6 +30,14 @@
     - id: lyteboat-aux-llm
       name: '@lyteboat/aux-llm'
 
+    # The request a human message answers to, carried on its source; then the
+    # admission registry that records its verdict there and replies from it.
+    - id: lyteboat-request-context
+      name: '@lyteboat/request-context'
+
+    - id: lyteboat-intake-guard
+      name: '@lyteboat/intake-guard'
+
     - id: lyteboat-skill-router
       name: '@lyteboat/skill-router'
 

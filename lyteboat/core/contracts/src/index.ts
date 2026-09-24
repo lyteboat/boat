@@ -128,7 +128,7 @@ export type LyteboatResultCard = {
   payload: JsonValue
 }
 
-/** A card the session prepared, with the tool call that prepared it. */
+/** A card the session prepared, with what prepared it: the tool call, or the admission reply's message. */
 export type LyteboatCard = LyteboatResultCard & {
   callId: string
 }
@@ -153,6 +153,44 @@ export interface LyteboatAuxLlmCallRecord {
   durationMs: number
 }
 
+/**
+ * An admission function's decision on one request, made before the request
+ * enters the loop and recorded on the request's human message.
+ */
+export type LyteboatIntakeVerdict = {
+  /** The admission function that decided. */
+  by: string
+  /** `pass`: the model answers. `reply`: `text` answers without a model request, with `cards` if any. */
+  decision: 'pass' | 'reply'
+  /** The agent's label for the decision (`out_of_scope`, `unauthorized`, …). */
+  verdict?: string
+  text?: string
+  cards?: LyteboatResultCard[]
+}
+
+/**
+ * The request a human message answers to, carried on its `source` beside
+ * `kind: 'user'`, so every dsh consumer still reads the message as human
+ * input. `@lyteboat/request-context` reads it back.
+ */
+export type LyteboatRequest = {
+  /** The caller's id for the request, when it gave one. */
+  requestId?: string
+  /** The request context as the caller passed it; absent keeps the session's earlier context. */
+  context?: { [key: string]: JsonValue }
+  intake?: LyteboatIntakeVerdict
+}
+
+/** The `lyteboatRequest` fold state: the session's request context and the latest request's verdict. */
+export type LyteboatRequestState = {
+  /** Human messages that carried a request. */
+  requests: number
+  /** The latest context a request carried; empty before any. */
+  context: { [key: string]: JsonValue }
+  /** The latest request's verdict, when an admission function ran on it. */
+  intake: LyteboatIntakeVerdict | null
+}
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */
@@ -167,6 +205,8 @@ declare module '@deepseek-ai/dsh-llm' {
     'plugin:lyteboat-history-import': { kind: typeof LYTEBOAT_HISTORY_IMPORT_SOURCE }
     /** A side model call's prompt, owned by `@lyteboat/aux-llm`. */
     'plugin:lyteboat-aux-llm': { kind: typeof LYTEBOAT_AUX_LLM_SOURCE }
+    /** A human message that carries its request (context, verdict), written by the caller through `@lyteboat/request-context`. */
+    'lyteboat-request': { kind: 'user'; lyteboatRequest: LyteboatRequest }
   }
 }
 
@@ -186,8 +226,10 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     lyteboatState: LyteboatStateValue
     /** The skill active for the session, folded from skill-invocation messages and `skill` tool calls; owned by `@lyteboat/skill-router`. */
     lyteboatActiveSkill: LyteboatActiveSkillState
-    /** Cards from `tool/result.meta.lyteboat.cards`, in log order; a `surfaceUpdate` replaces its surface. Owned by `@lyteboat/a2ui`. */
+    /** Cards from `tool/result.meta.lyteboat.cards` and admission replies, in log order; a `surfaceUpdate` replaces its surface. Owned by `@lyteboat/a2ui`. */
     lyteboatCards: LyteboatCard[]
+    /** The request context and the latest verdict, folded from human messages that carry a request. Owned by `@lyteboat/request-context`. */
+    lyteboatRequest: LyteboatRequestState
   }
   interface SessionProjectionMap {
     /** Session tool state as the client sees it: the fold state itself. */
@@ -196,5 +238,7 @@ declare module '@deepseek-ai/dsh-session-projection/types' {
     lyteboatActiveSkill: string | null
     /** Every card the session prepared, as the client sees it; what a turn shows is `ctx.a2ui.turnParts`. */
     lyteboatCards: LyteboatCard[]
+    /** The request state as the client sees it. */
+    lyteboatRequest: LyteboatRequestState
   }
 }

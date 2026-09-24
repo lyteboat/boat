@@ -101,6 +101,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | `--agent <id>` | 运行其中的某个 agent（`--preset` 是已废弃的别名） |
 | `--history <文件>` | 先导入一份外部对话历史，任务成为它的下一轮 |
 | `--session-id <id>` | 在已存的会话上续聊；每次运行都把会话 id 打到 stderr |
+| `--context <json>` | 请求上下文：一个 JSON 对象，内联或放在文件里；随请求落日志，工具读取，模型看不到 |
 
 `lyteboat run -h` 列出一次性模式的全部参数。
 
@@ -161,6 +162,8 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略 |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | 旁路模型调用（技能路由、准入分类）：各自带超时，每次调用在会话里留一条可忽略的审计记录 |
+| `lyteboat/plugins/request-context` | `@lyteboat/request-context` | 请求上下文：一条人类消息所回应的请求（请求 id、上下文、准入判定）记在它自己的 source 上；`lyteboatRequest` 投影保存会话的上下文 |
+| `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | 准入前移：agent 登记准入函数，调用方在请求进入循环前取得判定并记到请求上；循环里按记录的回复判定直接作答，没有经过准入的消息在循环内补做 |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由；`./agent` 在 agent 的组合文件里声明模式 |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具 |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |

@@ -30,7 +30,10 @@
   },
   "dependencies": {
     "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/contracts": "workspace:*",
     "@lyteboat/history-import": "workspace:*",
+    "@lyteboat/intake-guard": "workspace:*",
+    "@lyteboat/request-context": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-brand": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
@@ -46,7 +49,6 @@
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",
     "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.1",
-    "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*"
   },
   "devDependencies": {

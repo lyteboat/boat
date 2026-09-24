@@ -54,6 +54,12 @@
       "path": "./lyteboat/plugins/aux-llm"
     },
     {
+      "path": "./lyteboat/plugins/request-context"
+    },
+    {
+      "path": "./lyteboat/plugins/intake-guard"
+    },
+    {
       "path": "./lyteboat/plugins/skill-router"
     },
     {

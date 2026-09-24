@@ -1,0 +1,35 @@
+{
+  "name": "@lyteboat/request-context",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's request context: the request a human message answers to (request id, context, admission verdict) rides the message's own source, and the lyteboatRequest projection keeps the session's context",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
+  }
+}
