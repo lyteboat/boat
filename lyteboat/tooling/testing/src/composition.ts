@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import { boot, initProfile, loadLayeredEnv, loadProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { boot, initProfile, loadLayeredEnv, loadProfile, reportSkippedBundles, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 
@@ -137,6 +137,7 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
   const dir = resolveProfileDir(PROFILE, home)
   initProfile(dir, options.bundles)
   const profile = loadProfile(BIN_NAME, PROFILE, WORKSPACE_ANCHOR, home)
+  reportSkippedBundles(BIN_NAME, profile)
   const root = join(dir, 'cordis.yml')
   writeFileSync(root, '[]\n')
   const patches = [...profile.layers.flatMap(layer => layer.patches), ...QUIET, ...options.patches ?? []]

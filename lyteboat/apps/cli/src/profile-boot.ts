@@ -14,7 +14,7 @@
  * are provided to the tree through `ctx.cmdlineArgs`.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/profile-boot.ts
- * @ dsh-v0.1.7-rc.1 (46a7f68b), MIT — see THIRD_PARTY_NOTICES.md. Changes:
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Changes:
  * lyteboat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
  * dropped, the launcher's own overlays (`--plugin`) sit above the
@@ -34,6 +34,7 @@ import {
   installFailLoud,
   loadOverlayPatches,
   loadProfile,
+  reportSkippedBundles,
   PluginPackages,
   PROFILE_PATCH_FILENAME,
   readProfileManifest,
@@ -138,6 +139,7 @@ export function ensureProfileInitialized(name: string, home: string = resolveDsh
 export function prepareProfile(name: string, userLayer = true): Profile {
   ensureProfileInitialized(name)
   const profile = loadProfile(NAME, name, INSTALL_ANCHOR, undefined, { userLayer })
+  reportSkippedBundles(NAME, profile)
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   return profile
 }
