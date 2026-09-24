@@ -2,6 +2,7 @@
   "name": "@boat/distro",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's distribution marker: the boatDistro service naming the dsh release boat's kernel was imported from and the kernel extensions it carries",
   "type": "module",
   "exports": {

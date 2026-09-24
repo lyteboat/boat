@@ -2,6 +2,7 @@
   "name": "@boat/cordis-compat",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "Runtime values for the const enums that the published @deepseek-ai/cordis build erases",
   "type": "module",
   "exports": {

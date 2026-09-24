@@ -2,6 +2,7 @@
   "name": "@boat/agent-demo",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "boat's demo agent preset: a persona, two routed skills, an asset tool that fills the session state and renders the asset card, a diagnosis tool, and an intake gate",
   "type": "module",
   "exports": {

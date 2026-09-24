@@ -116,3 +116,7 @@ The repository root separates what boat owns from what it takes over and what it
 - `.pnpmfile.cjs` — published dsh packages depend on each other with caret ranges, so an unpinned install drifts to a newer prerelease than the tag boat was developed against. It leaves the kernel names alone: it runs after the overrides and would undo them.
 - dsh peers — a boat package writes a non-kernel dsh peer as the tracked release's exact version, not `catalog:dsh`: dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm never resolves `catalog:`, and disables a row whose peers it cannot match. `scripts/upstream-pins.spec.ts` keeps them equal to `dsh.upstream.json`.
 - `allowBuilds` — pnpm 11 blocks install scripts unless listed; only the node-pty helper chmod is needed on Linux/macOS.
+
+## License
+
+boat is released under the [MIT License](LICENSE). The kernel packages under `dsh/` and the files marked "Adapted from deepseek-ai/deepseek-harness" keep DeepSeek's MIT copyright notice; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
