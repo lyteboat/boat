@@ -14,7 +14,7 @@ export const FINANCE_BOUNDARY = '收益预测、具体产品推荐、个股能�
 export interface FinanceDigest {
   tool: string
   status: string
-  /** Extra header fields in order (`state=rich`, `seq=2`). */
+  /** Extra header fields in order (`verdict=cautious`). */
   tags?: Readonly<Record<string, string | number>>
   /** The cards this result prepared, by marker name; none leaves `areas=none`. */
   areas: readonly string[]
@@ -30,29 +30,6 @@ export function cardMarker(area: string): string {
 
 function section(title: string, lines: readonly string[]): string[] {
   return lines.length === 0 ? [] : [`【${title}】`, ...lines.map(line => `- ${line}`)]
-}
-
-const HEADER = /^\[tool:(\S+) ([^\]]*?) areas=[^\]]*\]$/u
-
-/**
- * A digest from an earlier turn, as later turns should see it: the header
- * without its cards and the facts, marked as done. How-to-answer guidance and
- * follow-ups belonged to that turn; left in view they compete with the current
- * turn's. Undefined when `text` is not a current finance digest.
- * @param text - a tool result's text.
- */
-export function pastFinanceDigest(text: string): string | undefined {
-  const [header, ...lines] = text.split('\n')
-  const match = HEADER.exec(header ?? '')
-  if (match === null) return undefined
-  const facts: string[] = []
-  let current = ''
-  for (const line of lines) {
-    const title = /^【(.+)】$/u.exec(line)?.[1]
-    if (title !== undefined) current = title
-    else if (current === '事实') facts.push(line)
-  }
-  return [`[tool:${match[1] ?? ''} 已完成 ${match[2] ?? ''}]`, ...facts.length === 0 ? [] : ['【事实】', ...facts]].join('\n')
 }
 
 /**

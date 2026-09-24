@@ -1,10 +1,10 @@
 ---
 name: investor-education
-description: 解释投资理财概念，比如资产配置、应急金、再平衡、复利、分散投资、定投、风险等级、通货膨胀、流动性。用户问「什么是… / …是什么意思 / 怎么理解…」这类概念问题归此；问题涉及用户自己的资产时归其他技能。
+description: 解释投资理财概念：资产配置、再平衡、分散投资。用户问「什么是… / …是什么意思 / 怎么理解…」这类概念问题归此；问题涉及用户自己的资产时归其他技能。
 metadata:
   lyteboat:
     group: finance
-    version: "1.0"
+    version: "2.0"
     requiredTools: [lookup_knowledge]
 ---
 

@@ -78,9 +78,6 @@
       "path": "./lyteboat/apps/cli"
     },
     {
-      "path": "./lyteboat/agents/demo"
-    },
-    {
       "path": "./lyteboat/agents/finance"
     },
     {

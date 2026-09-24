@@ -2,7 +2,7 @@
 # scope, so it reaches exactly the sessions of this agent: the persona, which
 # is the whole system prompt; the router's dynamic mode; the official tools
 # made `auto`, so only the routed skill's tool (and `skill`) reach the model;
-# and ./lib/agent.js with the skills, the state projection, and the tools.
+# and ./lib/agent.js with the skills, the admission, and the tools.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:

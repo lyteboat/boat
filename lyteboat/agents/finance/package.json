@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's finance agent, built from public financial knowledge only: an asset overview, an allocation diagnosis by rules of thumb (an emergency fund of 3 to 6 months of spending, 100 minus age, the C1 to C5 risk tiers), a drill-down into one of the three buckets, and investor education. Requests name their customer in the request context (context.customer, a fixture name); an admission ahead of the loop answers out-of-scope requests and unauthorized customers without the model",
+  "description": "lyteboat's finance agent, deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule with two cards, and investor education on three concepts. Requests name their customer in the request context (context.customer, a fixture name); an admission ahead of the loop answers out-of-scope requests and unauthorized customers without the model",
   "type": "module",
   "exports": {
     "./agent": {
@@ -44,9 +44,7 @@
     "@lyteboat/request-context": "workspace:*",
     "@lyteboat/tool-policy": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
-    "@deepseek-ai/dsh-agent": "workspace:*",
-    "@deepseek-ai/dsh-session": "workspace:*",
-    "@deepseek-ai/dsh-session-projection": "workspace:*"
+    "@deepseek-ai/dsh-agent": "workspace:*"
   },
   "devDependencies": {
     "@lyteboat/a2ui": "workspace:*",

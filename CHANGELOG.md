@@ -2,6 +2,11 @@
 
 lyteboat has no releases yet; this file records what each milestone delivered, newest first. The tracked dsh release is in `dsh.upstream.json`.
 
+## One minimal example agent
+
+- `lyteboat/agents/demo` is removed; `lyteboat/agents/finance` is the one example agent, and the run bundle's help, the README, and the guides use it.
+- The finance agent keeps only what exercises the end-to-end flow: an asset overview (one card), an allocation diagnosis by the 100-minus-age rule (two cards the answer places by markers), investor education on three concepts, and its admission ahead of the loop. A customer is an age and a list of holdings, each at market risk or not. The three-bucket model, the one-bucket drill-down, reported assets and follow-up questions, insurance coverage, the session-state projection, and digest aging are gone.
+
 ## F2 — request context, admission ahead of the loop, side calls, cards
 
 - Kernel extension `session-append-ignorable` (`@deepseek-ai/dsh-session`): `Session.append(type, data, { ignorable: true })` marks a record of a type the harness does not know, so dsh's persistence, and the official release, read a log past it; a type the harness knows refuses the mark.

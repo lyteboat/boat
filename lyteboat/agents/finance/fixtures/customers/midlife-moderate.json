@@ -1,55 +1,27 @@
 {
   "id": "midlife-moderate",
-  "note": "40 岁，风险等级 C3，有孩子；稳健部分过多，进取部分偏少。",
-  "profile": {
-    "age": 40,
-    "riskTier": "C3",
-    "monthlyExpense": "12000.00",
-    "hasChild": true
-  },
-  "institutions": [
+  "note": "45 岁，稳健和风险资产大致各半。",
+  "age": 45,
+  "holdings": [
     {
-      "name": "示例银行",
-      "kind": "bank",
-      "authorized": true,
-      "accounts": [
-        {
-          "bucket": "daily",
-          "name": "活期",
-          "amount": "40000.00"
-        },
-        {
-          "bucket": "steady",
-          "name": "银行理财",
-          "amount": "146000.00"
-        }
-      ]
+      "institution": "示例银行",
+      "name": "定期存款",
+      "amount": "80000.00",
+      "risky": false
     },
     {
-      "name": "示例基金",
-      "kind": "fund",
-      "authorized": true,
-      "accounts": [
-        {
-          "bucket": "growth",
-          "name": "指数基金",
-          "amount": "14000.00"
-        }
-      ]
+      "institution": "示例银行",
+      "name": "债券基金",
+      "amount": "30000.00",
+      "risky": false
     },
     {
-      "name": "示例保险",
-      "kind": "insurance",
-      "authorized": true,
-      "accounts": [],
-      "policyCount": 3
+      "institution": "示例证券",
+      "name": "股票基金",
+      "amount": "90000.00",
+      "risky": true
     }
   ],
-  "coverage": {
-    "criticalIllness": "covered",
-    "medical": "covered",
-    "accident": "covered"
-  },
   "links": {
     "authorize": "https://example.invalid/authorize"
   }

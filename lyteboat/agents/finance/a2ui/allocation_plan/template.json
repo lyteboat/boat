@@ -14,9 +14,7 @@
           "children": {
             "explicitList": [
               "title-text",
-              "daily-plan",
-              "steady-plan",
-              "growth-plan",
+              "direction-text",
               "note-text"
             ]
           }
@@ -37,31 +35,11 @@
       }
     },
     {
-      "id": "daily-plan",
+      "id": "direction-text",
       "component": {
         "Text": {
           "text": {
-            "path": "daily_plan"
-          }
-        }
-      }
-    },
-    {
-      "id": "steady-plan",
-      "component": {
-        "Text": {
-          "text": {
-            "path": "steady_plan"
-          }
-        }
-      }
-    },
-    {
-      "id": "growth-plan",
-      "component": {
-        "Text": {
-          "text": {
-            "path": "growth_plan"
+            "path": "direction"
           }
         }
       }

@@ -33,8 +33,7 @@ lyteboat/
   plugins/history-import/ @lyteboat/history-import — external conversation history (rounds by trace id) → session seed of closed turns
   core/contracts/         @lyteboat/contracts — lyteboat's declarations over the dsh seams: tool/skill metadata, the kernel's lyteboat/* events (re-exported), log nodes, projection keys, LyteboatDistro
   core/cordis-compat/     @lyteboat/cordis-compat — runtime values for const enums the published cordis build erases
-  agents/demo/            @lyteboat/agent-demo — an agent directory: agent.cordis.yml, preset.yml (display name, optional), skills/, a2ui/, fixtures/, src/ → lib/
-  agents/finance/         @lyteboat/agent-finance — the finance agent (public knowledge only): four routed skills and tools, six cards, the financeState projection, an admission ahead of the loop; the request context names the customer
+  agents/finance/         @lyteboat/agent-finance — an agent directory, kept minimal (public knowledge only): agent.cordis.yml, preset.yml, skills/ (three routed), a2ui/ (four cards), fixtures/, src/ → lib/ (three tools, an admission ahead of the loop); the request context names the customer
   tooling/testing/        @lyteboat/testing — the test harness lyteboat's packages use: mountDshTestServices + MockAdapter, session-log, scripted-model, process
 dsh-compat/               what lyteboat promises the plugins written against dsh, and the proof; no runtime code; README.md lists the gates
   COMPAT.md               the promise for people: stable surface, behavior invariants, additions, release channels
@@ -226,8 +225,8 @@ Read the reference implementation's `docs/agent_design_principles.md` before des
 | Show one test's console output | `npx vitest run <file> --silent=false --reporter=verbose` |
 | One-shot task | `node lyteboat/apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
 | A plugin file | `node lyteboat/apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
-| An agent | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo "看看资产"` |
-| Imported history | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo --history lyteboat/agents/demo/fixtures/history/rounds.json "继续刚才的话题"` |
+| An agent | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"` |
+| Imported history | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/run/tests/fixtures/history/rounds.json "继续刚才的话题"` |
 | Browser UI | `node lyteboat/apps/cli/lib/bin.js web --no-open` |
 | Composed plugin tree | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` |
 | G1 contract check (after a build) | `pnpm run contract:check` |

@@ -15,13 +15,7 @@
       "path": "../../../dsh/core/agent"
     },
     {
-      "path": "../../../dsh/core/session"
-    },
-    {
       "path": "../../../dsh/core/tools"
-    },
-    {
-      "path": "../../../dsh/session/session-projection"
     },
     {
       "path": "../../core/contracts"

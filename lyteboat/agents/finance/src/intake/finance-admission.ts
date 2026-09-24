@@ -29,7 +29,7 @@ export type FinanceIntent = 'asset' | 'education' | 'chat' | 'other'
 
 export const FINANCE_INTAKE_SYSTEM = [
   '你是理财助手的准入分类器。判断用户最新一句话属于哪一类，只输出一行 JSON：{"intent": "asset" | "education" | "chat" | "other", "reason": "不超过 20 字"}。',
-  '- asset：想看自己的资产、持仓、配置诊断、某一笔钱的明细，问自己的配置该怎么调整，或补充、更正自己的资产、支出、投资期限。',
+  '- asset：想看自己的资产、持仓，问自己的配置合不合理、该怎么调整。',
   '- education：问理财常识或概念（什么是再平衡、基金和股票有什么区别），不涉及自己的具体资产。',
   '- chat：打招呼、道谢、道别，或问助手能做什么。',
   '- other：明显与个人理财无关的请求（写代码、写诗、查天气），或要求预测收益、推荐具体产品、判断个股能不能买、给买卖时点。',
@@ -113,7 +113,7 @@ export function financeAdmission(deps: FinanceAdmissionDeps): LyteboatAdmission 
       const customerId = customerOfContext(context)
       const customer = customerId === undefined ? undefined : deps.customers.findCustomer(customerId)
       if (customer === undefined) return { decision: 'reply', verdict: 'no_customer', text: REPLY_NO_CUSTOMER }
-      if (summarizeHoldings(customer).authState !== 'none') return { decision: 'pass', verdict: 'asset' }
+      if (summarizeHoldings(customer).authorized) return { decision: 'pass', verdict: 'asset' }
       return { decision: 'reply', verdict: 'unauthorized', text: REPLY_UNAUTHORIZED, cards: [await prepareCard(deps, agent, 'unauthorized', { access: { authorize_link: customer.links.authorize } })] }
     },
   }

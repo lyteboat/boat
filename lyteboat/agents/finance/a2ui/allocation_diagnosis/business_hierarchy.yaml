@@ -1,4 +1,4 @@
-# business_hierarchy.yaml — allocation_diagnosis: one shape; the blocked and two-bucket variants are data-driven hides
+# business_hierarchy.yaml — allocation_diagnosis: one shape
 
 default: allocation_diagnosis
 
@@ -7,8 +7,6 @@ hierarchies:
     root: root-container
     ui_ids:
       - title-text
-      - summary-text
-      - grid
-      - blocked-text
-      - caveat-text
-      - coverage-text
+      - verdict-text
+      - risky-text
+      - steady-text

@@ -1,21 +1,18 @@
 /**
- * What the four finance tools share: their dependencies, their output shape
- * (status, digest, prepared cards, the state keys they change), how a card is
- * prepared through the a2ui service, and the unauthorized answer every data
- * tool falls back to when the agent can see no account at all.
+ * What the finance tools share: their dependencies, their output shape
+ * (status, digest, prepared cards), how a card is prepared through the a2ui
+ * service, and the unauthorized answer the data tools fall back to when the
+ * agent can see no holding at all.
  * @module @lyteboat/agent-finance/tools/finance-tool-support
  */
 
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection'
 import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { A2uiService } from '@lyteboat/a2ui'
 import type { JsonValue, LyteboatResultCard } from '@lyteboat/contracts'
-import type { CustomerProfile, FinanceCustomer, FinanceCustomerSource } from '../data/finance-customer.ts'
+import type { FinanceCustomer, FinanceCustomerSource } from '../data/finance-customer.ts'
 import type { KnowledgeEntry } from '../capabilities/investor-knowledge.ts'
-import { centsOfSpoken, amountOf } from '../capabilities/money-text.ts'
 import { cardMarker, composeFinanceDigest } from '../digest/finance-digest.ts'
-import { EMPTY_FINANCE_STATE, type FinanceState, type FinanceStateDelta } from '../state/finance-state.ts'
 
 /** Everything a finance tool reads from outside the capability layer. */
 export interface FinanceToolDeps {
@@ -26,13 +23,12 @@ export interface FinanceToolDeps {
   templates: string
   knowledge: readonly KnowledgeEntry[]
   a2ui: A2uiService
-  projections: SessionProjectionRegistry
 }
 
 /** The value every finance tool returns. */
-export type FinanceToolValue = { status: string; digest: string; cards: LyteboatResultCard[]; state?: FinanceStateDelta }
+export type FinanceToolValue = { status: string; digest: string; cards: LyteboatResultCard[] }
 
-/** The output schema and presentation every finance tool shares. */
+/** The output schema and presentation every finance tool shares: the digest for the model, the cards where a2ui reads them. */
 export const FINANCE_TOOL_OUTPUT = {
   schema: {
     type: 'object',
@@ -41,50 +37,20 @@ export const FINANCE_TOOL_OUTPUT = {
       status: { type: 'string', required: true },
       digest: { type: 'string', required: true },
       cards: { type: 'array', required: true, items: { type: 'json' } },
-      state: { type: 'json' },
     },
   },
   render: (_args: unknown, value: { digest: string }) => [{ type: 'text' as const, text: value.digest }],
-  presentationMeta: (_args: unknown, value: { cards: JsonValue[]; state?: JsonValue }): JsonValue => financeResultMeta(value.cards, value.state),
+  presentationMeta: (_args: unknown, value: { cards: JsonValue[] }): JsonValue => value.cards.length === 0 ? {} : { lyteboat: { cards: [...value.cards] } },
 } as const
 
 /**
- * The result's presentation meta: its cards where a2ui reads them
- * (`lyteboat.cards`), the state delta under `finance`.
- * @param cards - the prepared cards, in answer order.
- * @param state - the state keys this result changes.
- */
-export function financeResultMeta(cards: readonly JsonValue[], state: JsonValue | undefined): JsonValue {
-  return {
-    ...cards.length === 0 ? {} : { lyteboat: { cards: [...cards] } },
-    ...state === undefined ? {} : { finance: { state } },
-  }
-}
-
-/**
- * The calling agent; a finance tool reads the session it runs in.
+ * The calling agent; a finance tool reads the customer its session serves.
  * @param exec - the tool's run context.
  * @param tool - the tool name, for the error.
  */
 export function callingAgent(exec: ToolRunContext, tool: string): Agent {
-  if (exec.agent === undefined) throw new Error(`${tool} needs a calling agent: the finance state lives on its session`)
+  if (exec.agent === undefined) throw new Error(`${tool} needs a calling agent: its request context names the customer`)
   return exec.agent
-}
-
-/** The session's finance state, empty before any finance tool ran. */
-export function financeStateOf(deps: FinanceToolDeps, agent: Agent): FinanceState {
-  return deps.projections.stateOf(agent.session, 'financeState') ?? EMPTY_FINANCE_STATE
-}
-
-/** The profile with the monthly spending the user corrected in this session. */
-export function profileWithFacts(customer: FinanceCustomer, state: FinanceState): CustomerProfile {
-  return state.facts.monthlyExpense === null ? customer.profile : { ...customer.profile, monthlyExpense: state.facts.monthlyExpense }
-}
-
-/** A spoken monthly-spending amount as a statement amount; undefined when it is not one. */
-export function statementAmountOf(spoken: string): string | undefined {
-  const cents = centsOfSpoken(spoken)
-  return cents === undefined || cents <= 0 ? undefined : amountOf(cents)
 }
 
 /**
@@ -107,9 +73,8 @@ export async function prepareCard(deps: Pick<FinanceToolDeps, 'a2ui' | 'template
  * @param exec - the tool's run context, whose turn the card concludes.
  * @param tool - the tool answering.
  * @param customer - the customer, for the authorization link.
- * @param state - state keys to keep from this call (facts the user gave on the way).
  */
-export async function unauthorizedResult(deps: FinanceToolDeps, agent: Agent, exec: ToolRunContext, tool: string, customer: FinanceCustomer, state?: FinanceStateDelta): Promise<FinanceToolValue> {
+export async function unauthorizedResult(deps: FinanceToolDeps, agent: Agent, exec: ToolRunContext, tool: string, customer: FinanceCustomer): Promise<FinanceToolValue> {
   const card = await prepareCard(deps, agent, 'unauthorized', { access: { authorize_link: customer.links.authorize } })
   exec.concludeTurn()
   return {
@@ -123,6 +88,5 @@ export async function unauthorizedResult(deps: FinanceToolDeps, agent: Agent, ex
       leads: [],
     }),
     cards: [card],
-    ...state === undefined ? {} : { state },
   }
 }

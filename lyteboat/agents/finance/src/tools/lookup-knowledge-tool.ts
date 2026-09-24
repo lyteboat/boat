@@ -17,9 +17,9 @@ import { FINANCE_TOOL_OUTPUT, type FinanceToolDeps, type FinanceToolValue } from
 export function defineLookupKnowledgeTool(deps: FinanceToolDeps): ToolDefinition {
   return defineTool({
     name: 'lookup_knowledge',
-    description: '查投资者教育知识库，解释一个理财概念（如再平衡、复利、应急金、分散投资、定投、风险等级、通货膨胀）。只讲概念，不涉及用户本人的资产。',
+    description: '查投资者教育知识库，解释一个理财概念（资产配置、再平衡、分散投资）。只讲概念，不涉及用户本人的资产。',
     parameters: {
-      topic: { type: 'string', required: true, description: '用户想了解的概念，如「再平衡」「定投」。' },
+      topic: { type: 'string', required: true, description: '用户想了解的概念，如「再平衡」。' },
     },
     output: FINANCE_TOOL_OUTPUT,
     execute: async (args): Promise<FinanceToolValue> => {

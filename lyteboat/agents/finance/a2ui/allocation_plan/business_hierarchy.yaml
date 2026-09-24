@@ -7,7 +7,5 @@ hierarchies:
     root: root-container
     ui_ids:
       - title-text
-      - daily-plan
-      - steady-plan
-      - growth-plan
+      - direction-text
       - note-text

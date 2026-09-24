@@ -1,4 +1,4 @@
-# business_hierarchy.yaml — asset_overview: one shape; every show/hide is data-driven
+# business_hierarchy.yaml — asset_overview: one shape
 
 default: asset_overview
 
@@ -8,10 +8,5 @@ hierarchies:
     ui_ids:
       - title-text
       - total-text
-      - bucket-divider
-      - daily-row
-      - steady-row
-      - growth-row
-      - policy-text
-      - auth-tip-text
-      - diag-btn
+      - steady-text
+      - risky-text

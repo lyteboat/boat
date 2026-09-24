@@ -81,7 +81,6 @@ alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 
 ```sh
 lyteboat run "总结一下这个工作区"                              # 一次性任务：答完即退出
-lyteboat run --agents ./lyteboat/agents --agent demo "看看资产"    # 示例 agent：技能路由、资产工具、卡片
 lyteboat run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
 lyteboat web --no-open                                         # 浏览器界面
 ```
@@ -126,7 +125,7 @@ lyteboat web --no-open                                         # 浏览器界面
 - `a2ui/`：卡片模板。
 - `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
 
-完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/demo`](lyteboat/agents/demo)（最小）和 [`lyteboat/agents/finance`](lyteboat/agents/finance)（接近真实规模的金融智能体）。
+完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/finance`](lyteboat/agents/finance)：一个刻意做到最小、只为跑通端到端流程的金融智能体。
 
 ### 数据与会话日志
 
@@ -180,8 +179,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、`LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | cordis 发布物里被擦除的 const enum 的运行时取值 |
-| `lyteboat/agents/demo` | `@lyteboat/agent-demo` | 示例 agent：组合文件、两个路由技能、资产工具、卡片模板、拒识门 |
-| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：只用公开理财常识的业务 agent，资产总览、配置诊断、单项下钻、投资者教育，四个路由技能、六张卡片、会话状态投影；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
+| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：dsh 服务挂载与 `MockAdapter`、会话日志读取、脚本化模型、启动器进程 |
 
 ## 开发
@@ -211,7 +209,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 ## 状态与路线图
 
 - 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的三个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`、`session-append-ignorable`），上面所有闸门都对它通过。
-- 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；示例 agent 与金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
+- 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
   - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
   - 还没有记忆、推荐问，也不能按 agent 分别配置业务模型和旁路模型。

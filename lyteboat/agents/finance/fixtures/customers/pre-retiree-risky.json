@@ -1,48 +1,27 @@
 {
   "id": "pre-retiree-risky",
-  "note": "57 岁，风险等级 C2；进取部分超过了风险等级能承受的上限。",
-  "profile": {
-    "age": 57,
-    "riskTier": "C2",
-    "monthlyExpense": "10000.00",
-    "hasChild": false
-  },
-  "institutions": [
+  "note": "58 岁，临近退休，风险资产占比偏高。",
+  "age": 58,
+  "holdings": [
     {
-      "name": "示例银行",
-      "kind": "bank",
-      "authorized": true,
-      "accounts": [
-        {
-          "bucket": "daily",
-          "name": "活期",
-          "amount": "188000.00"
-        },
-        {
-          "bucket": "steady",
-          "name": "大额存单",
-          "amount": "1222000.00"
-        }
-      ]
+      "institution": "示例银行",
+      "name": "活期",
+      "amount": "30000.00",
+      "risky": false
     },
     {
-      "name": "示例证券",
-      "kind": "securities",
-      "authorized": true,
-      "accounts": [
-        {
-          "bucket": "growth",
-          "name": "股票账户",
-          "amount": "940000.00"
-        }
-      ]
+      "institution": "示例证券",
+      "name": "股票账户",
+      "amount": "120000.00",
+      "risky": true
+    },
+    {
+      "institution": "示例证券",
+      "name": "股票基金",
+      "amount": "50000.00",
+      "risky": true
     }
   ],
-  "coverage": {
-    "criticalIllness": "covered",
-    "medical": "covered",
-    "accident": "unknown"
-  },
   "links": {
     "authorize": "https://example.invalid/authorize"
   }

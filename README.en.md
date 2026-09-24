@@ -81,7 +81,6 @@ Side calls (skill routing, intake classification) use their route's default reas
 
 ```sh
 lyteboat run "summarize this workspace"                       # one-shot task: answer and exit
-lyteboat run --agents ./lyteboat/agents --agent demo "看看资产"    # the demo agent: routed skill, asset tool, card
 lyteboat run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat web --no-open                                        # browser UI
 ```
@@ -126,7 +125,7 @@ A business agent is a directory `lyteboat/agents/<id>/`, named by its id:
 - `a2ui/`: card templates.
 - `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
 
-The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`lyteboat/agents/demo`](lyteboat/agents/demo) is the smallest working agent and [`lyteboat/agents/finance`](lyteboat/agents/finance) one closer to real scale.
+The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`lyteboat/agents/finance`](lyteboat/agents/finance) is a working agent kept deliberately minimal, there to exercise the end-to-end flow.
 
 ### Data and session logs
 
@@ -182,8 +181,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat run --history` |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |
-| `lyteboat/agents/demo` | `@lyteboat/agent-demo` | The demo agent: composition file, two routed skills, an asset tool, card templates, an intake gate |
-| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, built from public financial knowledge only: asset overview, allocation diagnosis, one-bucket drill-down, investor education; four routed skills, six cards, a session-state projection; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
+| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher processes |
 
 ## Development
@@ -213,7 +211,7 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 ## Status and roadmap
 
 - Tracks dsh **0.1.7-rc.1** (`dsh.upstream.json`). The kernel is its import plus lyteboat's three registered extensions (`lyteboat/intake`, `lyteboat/pre-assemble`, `session-append-ignorable`), and every gate above passes against it.
-- Delivered: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the demo and finance agents; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. See the [CHANGELOG](CHANGELOG.md) for each milestone.
+- Delivered: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the finance agent; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. See the [CHANGELOG](CHANGELOG.md) for each milestone.
 - Known limitations:
   - There is no server mode yet (`/chat`, multiple users). `lyteboat web` does not read agent directories, and a message arriving through it is admitted in the loop without a recorded verdict.
   - There is no memory, no suggested questions, and no per-agent choice of business and side-call models.

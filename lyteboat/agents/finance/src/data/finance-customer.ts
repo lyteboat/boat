@@ -1,9 +1,9 @@
 /**
  * The finance agent's data contract: what a customer source hands the capability
- * layer. A customer holds accounts at institutions, each institution authorized
- * (its accounts visible to the agent) or not; every account sits in one of the
- * three buckets. Amounts are decimal strings in yuan with two fraction digits,
- * as a statement prints them.
+ * layer. A customer has an age and the holdings the agent can see; an empty
+ * list means nothing is authorized yet. Each holding is either at market risk
+ * (stocks, equity funds) or not (deposits, money funds, bonds). Amounts are
+ * decimal strings in yuan with two fraction digits, as a statement prints them.
  * @module @lyteboat/agent-finance/data/finance-customer
  */
 
@@ -11,72 +11,25 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 
-/** The three buckets (「三笔钱」): money to spend, money to keep, money to grow. */
-export const FINANCE_BUCKETS = ['daily', 'steady', 'growth'] as const
-export type FinanceBucket = (typeof FINANCE_BUCKETS)[number]
-
-export const FINANCE_BUCKET_LABEL: Readonly<Record<FinanceBucket, string>> = {
-  daily: '日常开销',
-  steady: '稳健投资',
-  growth: '进取收益',
-}
-
-/** Investor risk tiers as suitability rules publish them, most cautious first. */
-export const RISK_TIERS = ['C1', 'C2', 'C3', 'C4', 'C5'] as const
-export type RiskTier = (typeof RISK_TIERS)[number]
-
-/** The three basic covers a household plan starts from. */
-export const INSURANCE_KINDS = ['criticalIllness', 'medical', 'accident'] as const
-export type InsuranceKind = (typeof INSURANCE_KINDS)[number]
-
-export const INSURANCE_LABEL: Readonly<Record<InsuranceKind, string>> = {
-  criticalIllness: '重疾险',
-  medical: '医疗险',
-  accident: '意外险',
-}
-
-export const COVERAGE_STATUSES = ['covered', 'gap', 'unknown'] as const
-export type CoverageStatus = (typeof COVERAGE_STATUSES)[number]
-
 const amountSchema = z.string().regex(/^\d+\.\d{2}$/u, 'an amount is a decimal string with two fraction digits')
 
-const financeAccountSchema = z.object({
-  bucket: z.enum(FINANCE_BUCKETS),
+const financeHoldingSchema = z.object({
+  institution: z.string().min(1),
   name: z.string().min(1),
   amount: amountSchema,
-}).strict()
-
-const financeInstitutionSchema = z.object({
-  name: z.string().min(1),
-  kind: z.enum(['bank', 'securities', 'fund', 'insurance']),
-  authorized: z.boolean(),
-  accounts: z.array(financeAccountSchema),
-  policyCount: z.number().int().min(0).optional(),
-}).strict()
-
-const customerProfileSchema = z.object({
-  age: z.number().int().min(18).max(100),
-  riskTier: z.enum(RISK_TIERS),
-  monthlyExpense: amountSchema,
-  hasChild: z.boolean(),
+  /** Whether the holding moves with the market. */
+  risky: z.boolean(),
 }).strict()
 
 const financeCustomerSchema = z.object({
   id: z.string().min(1),
   note: z.string(),
-  profile: customerProfileSchema,
-  institutions: z.array(financeInstitutionSchema),
-  coverage: z.object({
-    criticalIllness: z.enum(COVERAGE_STATUSES),
-    medical: z.enum(COVERAGE_STATUSES),
-    accident: z.enum(COVERAGE_STATUSES),
-  }).strict(),
+  age: z.number().int().min(18).max(100),
+  holdings: z.array(financeHoldingSchema),
   links: z.object({ authorize: z.string().url() }).strict(),
 }).strict()
 
-export type FinanceAccount = z.infer<typeof financeAccountSchema>
-export type FinanceInstitution = z.infer<typeof financeInstitutionSchema>
-export type CustomerProfile = z.infer<typeof customerProfileSchema>
+export type FinanceHolding = z.infer<typeof financeHoldingSchema>
 export type FinanceCustomer = z.infer<typeof financeCustomerSchema>
 
 /** Where the agent reads a customer from; a deployment replaces the fixture source with its own. */

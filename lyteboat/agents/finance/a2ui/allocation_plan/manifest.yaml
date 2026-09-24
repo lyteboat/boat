@@ -1,5 +1,5 @@
-# manifest.yaml — allocation_plan: where each bucket should move.
-# The raw data namespace: { plan: { daily_plan, steady_plan, growth_plan, note } }.
+# manifest.yaml — allocation_plan: which way to move
+# The raw data namespace: { plan: { direction, note } }.
 
 # `deferred`: the card sits where the answer writes [[card:allocation_plan]],
 # or follows the answer when it never does.
@@ -8,17 +8,9 @@ emission_mode: deferred
 
 paths:
 
-  daily_plan:
+  direction:
     kind: state
-    path: "plan.daily_plan"
-
-  steady_plan:
-    kind: state
-    path: "plan.steady_plan"
-
-  growth_plan:
-    kind: state
-    path: "plan.growth_plan"
+    path: "plan.direction"
 
   note:
     kind: state
