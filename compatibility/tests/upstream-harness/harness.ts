@@ -35,8 +35,8 @@ const require = createRequire(join(repoRoot, 'package.json'))
 
 /** Test files that exercise upstream's repository tooling (`scripts/`), not the package. */
 export const UPSTREAM_TEST_EXCLUDES: readonly { file: string; reason: string }[] = [
-  { file: 'dsh/core/tools/tests/gen-tool-catalog.spec.ts', reason: 'tests upstream scripts/gen-tool-catalog.ts, which boat does not carry' },
-  { file: 'dsh/core/session/tests/gen-persistence-catalog.spec.ts', reason: 'tests upstream scripts/gen-persistence-catalog.ts; the overlay persistence gate runs that script on boat\'s sources' },
+  { file: 'dsh/core/tools/tests/gen-tool-catalog.spec.ts', reason: 'tests upstream scripts/gen-tool-catalog.ts, which lyteboat does not carry' },
+  { file: 'dsh/core/session/tests/gen-persistence-catalog.spec.ts', reason: 'tests upstream scripts/gen-persistence-catalog.ts; the overlay persistence gate runs that script on lyteboat\'s sources' },
   { file: 'dsh/core/agent/tests/verify-export-jsdoc.spec.ts', reason: 'tests upstream scripts/verify-export-jsdoc.ts, a repository lint' },
 ]
 
@@ -46,7 +46,7 @@ const SHIMS: Readonly<Record<string, string>> = {
   '@deepseek-ai/dsh-llm-pi-ai/src/context.ts': 'shims/pi-context.ts',
 }
 
-const CORDIS_SHIM = '\0boat-upstream-tests:cordis'
+const CORDIS_SHIM = '\0lyteboat-upstream-tests:cordis'
 
 const DECORATOR_SYNTAX = /^\s*@[A-Za-z_$][\w$]*/mu
 
@@ -94,7 +94,7 @@ export function upstreamTestsPlugin(): Plugin {
   const cordisEntry = require.resolve('@deepseek-ai/cordis')
   const shimDir = fileURLToPath(new URL('.', import.meta.url))
   return {
-    name: 'boat-upstream-tests',
+    name: 'lyteboat-upstream-tests',
     enforce: 'pre',
     resolveId(source, importer) {
       if (source === '@deepseek-ai/cordis') return importer === CORDIS_SHIM ? null : CORDIS_SHIM

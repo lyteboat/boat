@@ -43,7 +43,7 @@ async function main(): Promise<void> {
   writeContract(await generateContract(vanillaTree('contract', {}, release)), out)
   const fingerprint = persistenceFingerprint(readFileSync(join(checkout, 'docs/persistence-schema.json'), 'utf8'))
   writeFileSync(join(out, 'persistence.json'), stableJson({
-    $comment: 'Fingerprint of upstream docs/persistence-schema.json at this tag: the durable-record vocabulary (session header, event envelopes, payload types). The full schema stays upstream; scripts/dist/overlay.ts regenerates it from boat\'s kernel sources and compares against these digests.',
+    $comment: 'Fingerprint of upstream docs/persistence-schema.json at this tag: the durable-record vocabulary (session header, event envelopes, payload types). The full schema stays upstream; scripts/dist/overlay.ts regenerates it from lyteboat\'s kernel sources and compares against these digests.',
     source: 'docs/persistence-schema.json',
     ...fingerprint,
   }))

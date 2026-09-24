@@ -4,7 +4,7 @@
   // Kept as upstream has them (no isolatedModules), so tsc inlines the const enums
   // of the published cordis build (FiberState) the way upstream's build does;
   // upstream's `paths` facade is replaced by the workspace links pnpm makes.
-  // boat's own packages extend boat/tsconfig.base.json instead.
+  // lyteboat's own packages extend lyteboat/tsconfig.base.json instead.
   "compilerOptions": {
     "target": "es2024",
     "module": "esnext",

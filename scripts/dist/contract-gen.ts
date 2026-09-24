@@ -19,7 +19,7 @@
  *   node --import tsx scripts/dist/contract-gen.ts <tree root> <out dir>
  *
  * A tree root is any directory from which the kernel packages resolve by name:
- * the workspace root (boat's build) or a tree from `trees.ts` (the release).
+ * the workspace root (lyteboat's build) or a tree from `trees.ts` (the release).
  * @module scripts/dist/contract-gen
  */
 

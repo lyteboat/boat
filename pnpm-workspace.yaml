@@ -1,17 +1,17 @@
 packages:
-  # boat/<layer>/<package>: one directory per architecture layer; dependencies point
-  # down only (scripts/check-layers.ts enforces it): apps own processes (the `boat`
+  # lyteboat/<layer>/<package>: one directory per architecture layer; dependencies point
+  # down only (scripts/check-layers.ts enforces it): apps own processes (the `lyteboat`
   # bin), bundles are compositions a profile includes by name, plugins are
   # capabilities on the dsh seams, core are declarations and the driver fork, agents
   # are the business agents, tooling is test infrastructure.
-  - boat/*/*
-  # dsh/<group>/<package>: the kernel, the dsh packages boat owns (dsh/kernel.json),
+  - lyteboat/*/*
+  # dsh/<group>/<package>: the kernel, the dsh packages lyteboat owns (dsh/kernel.json),
   # imported per tag by scripts/dist/import-upstream.ts under their published names.
   - dsh/*/*
 
-# Every kernel package resolves to its workspace copy, for boat's packages and for
+# Every kernel package resolves to its workspace copy, for lyteboat's packages and for
 # every npm package that depends on it (dsh-base, the other dsh plugins, a community
-# plugin), so the whole graph shares one instance: boat's. scripts/upstream-pins.spec.ts
+# plugin), so the whole graph shares one instance: lyteboat's. scripts/upstream-pins.spec.ts
 # keeps this list equal to dsh/kernel.json.
 overrides:
   "@deepseek-ai/dsh-llm": "workspace:*"
@@ -31,15 +31,15 @@ overrides:
   # bundles (lib/index.js, lib/worker.cjs) come out byte for byte as npm publishes them.
   "rolldown": "1.1.1"
 
-# An agent directory (`boat run --agents`) names its rows by bare package name, and they
+# An agent directory (`lyteboat run --agents`) names its rows by bare package name, and they
 # resolve from the agent directory upward; the composition tests resolve rows from the
-# workspace root. Under pnpm's isolated layout both only reach the dsh and boat packages
-# at the root node_modules, so every @deepseek-ai and @boat package is hoisted there. All
+# workspace root. Under pnpm's isolated layout both only reach the dsh and lyteboat packages
+# at the root node_modules, so every @deepseek-ai and @lyteboat package is hoisted there. All
 # of them are pinned to one version by .pnpmfile.cjs, so hoisting cannot produce a
 # version conflict.
 publicHoistPattern:
   - "@deepseek-ai/*"
-  - "@boat/*"
+  - "@lyteboat/*"
 
 # Install scripts are opt-in in pnpm 11. Only the node-pty helper chmod is needed on
 # Linux/macOS; the rest ship prebuilt binaries or are Windows-only.

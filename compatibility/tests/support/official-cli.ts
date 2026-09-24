@@ -2,7 +2,7 @@
  * Runs the official dsh CLI (`dsh headless`) of an install tree
  * (scripts/dist/trees.ts) against upstream's scripted model server, and reads
  * the session it wrote. G4, G5, and G6 compare what two trees write for the
- * same run: the official release, and the same release with boat's kernel.
+ * same run: the official release, and the same release with lyteboat's kernel.
  * @module compatibility/tests/support/official-cli
  */
 
@@ -11,7 +11,7 @@ import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockLlmServer, type MockLlmBehavior, type MockLlmServerOptions } from '@deepseek-ai/dsh-llm-mock-server'
-import { findSessionLogs, normalizeSessionLog, readSessionLog, type SessionLogRecord } from '@boat/testing/session-log'
+import { findSessionLogs, normalizeSessionLog, readSessionLog, type SessionLogRecord } from '@lyteboat/testing/session-log'
 
 /** One scripted run: the task, the model's behaviors in order, and the workspace it runs in. */
 export interface OfficialScenario {
@@ -118,5 +118,5 @@ export function cloneRun(run: Pick<OfficialRun, 'home' | 'cwd'>, root: string, l
 
 /** A per-suite scratch root. */
 export function suiteRoot(name: string): string {
-  return mkdtempSync(join(tmpdir(), `boat-compatibility-${name}-`))
+  return mkdtempSync(join(tmpdir(), `lyteboat-compatibility-${name}-`))
 }

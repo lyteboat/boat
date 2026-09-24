@@ -1,5 +1,5 @@
 {
-  "extends": "./boat/tsconfig.base.json",
+  "extends": "./lyteboat/tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
     "incremental": false,
@@ -9,23 +9,23 @@
     "rootDir": "."
   },
   "include": [
-    "boat/apps/*/tests/**/*.ts",
-    "boat/apps/*/src/**/*.ts",
-    "boat/bundles/*/tests/**/*.ts",
-    "boat/bundles/*/src/**/*.ts",
-    "boat/plugins/*/tests/**/*.ts",
-    "boat/plugins/*/src/**/*.ts",
-    "boat/core/*/tests/**/*.ts",
-    "boat/core/*/src/**/*.ts",
-    "boat/agents/*/tests/**/*.ts",
-    "boat/agents/*/src/**/*.ts",
-    "boat/tooling/*/tests/**/*.ts",
-    "boat/tooling/*/src/**/*.ts",
+    "lyteboat/apps/*/tests/**/*.ts",
+    "lyteboat/apps/*/src/**/*.ts",
+    "lyteboat/bundles/*/tests/**/*.ts",
+    "lyteboat/bundles/*/src/**/*.ts",
+    "lyteboat/plugins/*/tests/**/*.ts",
+    "lyteboat/plugins/*/src/**/*.ts",
+    "lyteboat/core/*/tests/**/*.ts",
+    "lyteboat/core/*/src/**/*.ts",
+    "lyteboat/agents/*/tests/**/*.ts",
+    "lyteboat/agents/*/src/**/*.ts",
+    "lyteboat/tooling/*/tests/**/*.ts",
+    "lyteboat/tooling/*/src/**/*.ts",
     "scripts/**/*.ts",
     "compatibility/**/*.ts"
   ],
   // Upstream code carried by the G2 harness (it reads cordis const enums, which
-  // isolatedModules rejects); upstream type-checks it, boat runs it.
+  // isolatedModules rejects); upstream type-checks it, lyteboat runs it.
   "exclude": [
     "compatibility/tests/upstream-harness/test-invariants.ts",
     "compatibility/tests/upstream-harness/shims/*.ts"

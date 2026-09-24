@@ -1,5 +1,5 @@
 {
-  "extends": "./boat/tsconfig.base.json",
+  "extends": "./lyteboat/tsconfig.base.json",
   "files": [],
   "references": [
     {
@@ -42,37 +42,37 @@
       "path": "./dsh/test-support/agent-loop-testkit"
     },
     {
-      "path": "./boat/core/cordis-compat"
+      "path": "./lyteboat/core/cordis-compat"
     },
     {
-      "path": "./boat/core/contracts"
+      "path": "./lyteboat/core/contracts"
     },
     {
-      "path": "./boat/plugins/tool-policy"
+      "path": "./lyteboat/plugins/tool-policy"
     },
     {
-      "path": "./boat/plugins/skill-router"
+      "path": "./lyteboat/plugins/skill-router"
     },
     {
-      "path": "./boat/plugins/a2ui"
+      "path": "./lyteboat/plugins/a2ui"
     },
     {
-      "path": "./boat/plugins/history-import"
+      "path": "./lyteboat/plugins/history-import"
     },
     {
-      "path": "./boat/plugins/distro"
+      "path": "./lyteboat/plugins/distro"
     },
     {
-      "path": "./boat/bundles/run"
+      "path": "./lyteboat/bundles/run"
     },
     {
-      "path": "./boat/apps/cli"
+      "path": "./lyteboat/apps/cli"
     },
     {
-      "path": "./boat/agents/demo"
+      "path": "./lyteboat/agents/demo"
     },
     {
-      "path": "./boat/tooling/testing"
+      "path": "./lyteboat/tooling/testing"
     }
   ]
 }

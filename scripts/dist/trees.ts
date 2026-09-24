@@ -1,11 +1,11 @@
 /**
- * Install trees outside the workspace, for the gates that compare boat with
+ * Install trees outside the workspace, for the gates that compare lyteboat with
  * the official release. A vanilla tree is dsh exactly as npm publishes it; a
- * boat tree is the same manifest with every kernel package replaced by boat's
+ * lyteboat tree is the same manifest with every kernel package replaced by lyteboat's
  * packed build (`packKernel`), the way a consumer of a private registry would
  * receive it. Both pin every dsh and cordis package to `dsh.upstream.json` and
  * hoist `@deepseek-ai/*` like the workspace does, so bare row names resolve.
- * Trees live under `$BOAT_DIST_CACHE` (default `~/.cache/boat-dist`), never
+ * Trees live under `$LYTEBOAT_DIST_CACHE` (default `~/.cache/lyteboat-dist`), never
  * inside the repository, so Node's upward lookup cannot fall back to the
  * workspace's own node_modules.
  * @module scripts/dist/trees
@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { stringify } from 'yaml'
 import { git, kernelPackages, readUpstreamPin, repoRoot } from './kernel.ts'
 
-export const distCache = process.env['BOAT_DIST_CACHE'] ?? join(homedir(), '.cache', 'boat-dist')
+export const distCache = process.env['LYTEBOAT_DIST_CACHE'] ?? join(homedir(), '.cache', 'lyteboat-dist')
 
 /** A dsh release as a tree pins it: the dsh version and the cordis versions its tag vendors. */
 export interface DshRelease {
@@ -56,7 +56,7 @@ export function releaseOfCheckout(checkout: string): DshRelease {
 const PACKAGE_MANAGER = (JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }).packageManager
 
 /**
- * The pnpmfile every tree gets: the same pinning boat's workspace does, except
+ * The pnpmfile every tree gets: the same pinning lyteboat's workspace does, except
  * for overridden names, whose override must win over the pin.
  */
 function pnpmfile(release: DshRelease, overridden: readonly string[]): string {
@@ -85,11 +85,11 @@ module.exports = { hooks: { readPackage(pkg) { pin(pkg.dependencies); pin(pkg.op
  * @returns the tree directory.
  */
 export function installTree(dir: string, spec: TreeSpec): string {
-  const manifest = { name: 'boat-dist-tree', private: true, type: 'module', packageManager: PACKAGE_MANAGER, dependencies: spec.dependencies }
+  const manifest = { name: 'lyteboat-dist-tree', private: true, type: 'module', packageManager: PACKAGE_MANAGER, dependencies: spec.dependencies }
   const overrides = spec.overrides ?? {}
   const workspace = {
     packages: [],
-    // A tree installs the release boat pins, published within the last day or not.
+    // A tree installs the release lyteboat pins, published within the last day or not.
     minimumReleaseAge: 0,
     publicHoistPattern: ['@deepseek-ai/*'],
     overrides,
@@ -101,7 +101,7 @@ export function installTree(dir: string, spec: TreeSpec): string {
     '.pnpmfile.cjs': pnpmfile(spec.release, Object.keys(overrides)),
   }
   const key = createHash('sha256').update(JSON.stringify(files)).update(overrideDigests(overrides)).digest('hex')
-  const stamp = join(dir, '.boat-dist-tree')
+  const stamp = join(dir, '.lyteboat-dist-tree')
   if (existsSync(stamp) && readFileSync(stamp, 'utf8') === key) return dir
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(dir, { recursive: true })
@@ -128,11 +128,11 @@ export function vanillaTree(name: string, extra: Record<string, string> = {}, re
   })
 }
 
-/** The same tree with every kernel package taken from boat's packs (see `packKernel`). */
-export function boatTree(name: string, packs: Record<string, string>, extra: Record<string, string> = {}): string {
+/** The same tree with every kernel package taken from lyteboat's packs (see `packKernel`). */
+export function lyteboatTree(name: string, packs: Record<string, string>, extra: Record<string, string> = {}): string {
   const release = pinnedRelease()
   const overrides = Object.fromEntries(Object.entries(packs).map(([pkg, file]) => [pkg, `file:${file}`]))
-  return installTree(join(distCache, `boat-${release.dsh}-${name}`), {
+  return installTree(join(distCache, `lyteboat-${release.dsh}-${name}`), {
     release,
     dependencies: { '@deepseek-ai/dsh': release.dsh, ...overrides, ...extra },
     overrides,
@@ -141,9 +141,9 @@ export function boatTree(name: string, packs: Record<string, string>, extra: Rec
 
 /**
  * Pack every built kernel package as npm would publish it, with the version
- * stamped `<upstream>+boat.<commit>`. Build metadata is ignored by semver range
+ * stamped `<upstream>+lyteboat.<commit>`. Build metadata is ignored by semver range
  * matching, so every peer range written against the upstream version still
- * matches, while the installed manifest says it is boat's build.
+ * matches, while the installed manifest says it is lyteboat's build.
  * @returns package name → tarball path.
  */
 export function packKernel(): Record<string, string> {
@@ -162,7 +162,7 @@ export function packKernel(): Record<string, string> {
     execFileSync('tar', ['-xzf', tarball], { cwd: scratch })
     const manifestPath = join(scratch, 'package', 'package.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { version: string }
-    manifest.version = `${manifest.version}+boat.${commit}`
+    manifest.version = `${manifest.version}+lyteboat.${commit}`
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
     const target = join(out, `${name.replace('@', '').replace('/', '-')}.tgz`)
     // A reproducible archive (fixed order, times, and owners; gzip without a timestamp), so

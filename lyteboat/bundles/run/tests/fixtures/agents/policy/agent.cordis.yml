@@ -1,0 +1,18 @@
+# Declares lyteboat tool policy for tools the host composition registers: the
+# registrar row runs in the preset's standing scope, so the policy covers every
+# agent joined to this preset and no other.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      You are POLICY-PRESET-PERSONA, a test agent powered by the {{model}} model.
+    suffix: Your working directory is {{cwd}}.
+
+- id: lyteboat-tool-policy
+  name: '@lyteboat/tool-policy/agent'
+  config:
+    tools:
+      bash:
+        requiresConfirmation: true
+      todo_write:
+        visibility: auto

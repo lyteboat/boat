@@ -8,23 +8,23 @@
  * every import is reachable from the branch through the merge that took it in,
  * and the next import finds its parent by the `Dist-Import` trailer. Merging a
  * new import is then an ordinary three-way merge (previous tag, new tag,
- * boat's branch), so boat's commits under `dsh/` survive every sync and
+ * lyteboat's branch), so lyteboat's commits under `dsh/` survive every sync and
  * conflict only where upstream changed the same lines.
  *
  * Each file is imported byte for byte from the tag, with two normalizations
- * that make the packages build inside boat's workspace:
+ * that make the packages build inside lyteboat's workspace:
  *
  * - `package.json` is the manifest npm publishes for that version (pnpm
  *   publish's resolution of `workspace:` ranges), read from a vanilla tree;
  * - `tsconfig.json` keeps only the `references` that point at other kernel
- *   packages (the rest are dsh packages boat installs from npm).
+ *   packages (the rest are dsh packages lyteboat installs from npm).
  *
  * A package that exports a Typert Host face (`./typert`) or Remote client
  * (`./remote`) also gets those published files (`lib/typert.*`): upstream's
  * generator emits them from a whole-workspace analysis that cannot run inside
- * boat, so the build uses the published ones while the package's source equals
+ * lyteboat, so the build uses the published ones while the package's source equals
  * the import (scripts/dist/bundle-kernel.ts) and `dist:overlay … typert`
- * regenerates them from boat's source in an upstream checkout.
+ * regenerates them from lyteboat's source in an upstream checkout.
  *
  *   node --import tsx scripts/dist/import-upstream.ts <dsh checkout at a tag> [--trailer "Key: value"]…
  * @module scripts/dist/import-upstream
@@ -92,11 +92,11 @@ function stage(checkout: string, staging: string, publishedRoot: string): void {
 }
 
 function commitTree(staging: string, message: string, parent: string | undefined): { commit: string; tree: string } {
-  const index = join(mkdtempSync(join(tmpdir(), 'boat-import-index-')), 'index')
+  const index = join(mkdtempSync(join(tmpdir(), 'lyteboat-import-index-')), 'index')
   const env = { ...process.env, GIT_INDEX_FILE: index }
   const gitDir = git(repoRoot, ['rev-parse', '--absolute-git-dir'])
   const run = (args: string[]): string => execFileSync('git', [`--git-dir=${gitDir}`, `--work-tree=${staging}`, ...args], { cwd: staging, env, encoding: 'utf8' }).trim()
-  // --force: the import is the tag's file set, whatever boat's .gitignore says about it.
+  // --force: the import is the tag's file set, whatever lyteboat's .gitignore says about it.
   run(['add', '--all', '--force', '.'])
   const tree = run(['write-tree'])
   rmSync(dirname(index), { recursive: true, force: true })
@@ -120,7 +120,7 @@ function main(): void {
   const upstreamCommit = git(checkout, ['rev-parse', 'HEAD'])
   const release = releaseOfCheckout(checkout)
   const publishedRoot = vanillaTree('import', {}, release)
-  const staging = mkdtempSync(join(tmpdir(), 'boat-import-'))
+  const staging = mkdtempSync(join(tmpdir(), 'lyteboat-import-'))
   try {
     stage(checkout, staging, publishedRoot)
     const parent = lastImport()

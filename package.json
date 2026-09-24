@@ -1,5 +1,5 @@
 {
-  "name": "boat-root",
+  "name": "lyteboat-root",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,7 @@
     "contract:check": "node --import tsx scripts/dist/contract-check.ts"
   },
   "devDependencies": {
-    "@boat/testing": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-invariants": "catalog:dsh",

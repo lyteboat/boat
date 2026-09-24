@@ -1,10 +1,10 @@
 /**
- * G1, the contract gate: boat's kernel build keeps every promise the pinned
+ * G1, the contract gate: lyteboat's kernel build keeps every promise the pinned
  * release makes. The contract of the workspace build (see `contract-gen.ts`)
  * is compared key by key with `compatibility/contract/dsh-<version>/`:
  *
- * - a key upstream has and boat's build lacks fails, always;
- * - a key whose value changed, or a key only boat's build has, fails unless an
+ * - a key upstream has and lyteboat's build lacks fails, always;
+ * - a key whose value changed, or a key only lyteboat's build has, fails unless an
  *   entry of `compatibility/contract/extensions.yml` lists it (or a prefix of it);
  * - a listed key that shows no difference fails too, so the registry never
  *   outlives the extension it describes.
@@ -81,23 +81,23 @@ export function readSnapshot(version: string): Map<string, string> {
 /** The outcome of comparing a build with a snapshot under a registry. */
 export interface ContractComparison {
   removed: string[]
-  unregistered: { key: string; upstream: string | undefined; boat: string }[]
+  unregistered: { key: string; upstream: string | undefined; lyteboat: string }[]
   registered: { key: string; extension: string }[]
   stale: { extension: string; entry: string }[]
 }
 
-export function compareContract(upstream: Map<string, string>, boat: Map<string, string>, extensions: readonly ContractExtension[]): ContractComparison {
+export function compareContract(upstream: Map<string, string>, lyteboat: Map<string, string>, extensions: readonly ContractExtension[]): ContractComparison {
   const owner = (key: string): string | undefined => extensions.find(extension =>
     extension.contract.some(entry => key === entry || key.startsWith(`${entry}${KEY_SEPARATOR}`)))?.id
   const result: ContractComparison = { removed: [], unregistered: [], registered: [], stale: [] }
   const used = new Set<string>()
-  for (const key of upstream.keys()) if (!boat.has(key)) result.removed.push(key)
-  for (const [key, value] of boat) {
+  for (const key of upstream.keys()) if (!lyteboat.has(key)) result.removed.push(key)
+  for (const [key, value] of lyteboat) {
     const before = upstream.get(key)
     if (before === value) continue
     const extension = owner(key)
     if (extension === undefined) {
-      result.unregistered.push({ key, upstream: before, boat: value })
+      result.unregistered.push({ key, upstream: before, lyteboat: value })
       continue
     }
     result.registered.push({ key, extension })
@@ -123,8 +123,8 @@ async function main(): Promise<void> {
   const { dsh } = readUpstreamPin()
   const comparison = compareContract(readSnapshot(dsh), flattenContract(await generateContract(root)), readExtensions())
   for (const key of comparison.removed) console.error(`G1 removed: ${key}`)
-  for (const { key, upstream, boat } of comparison.unregistered) {
-    console.error(`G1 unregistered ${upstream === undefined ? 'addition' : 'change'}: ${key}\n  upstream: ${clip(upstream)}\n  boat:     ${clip(boat)}`)
+  for (const { key, upstream, lyteboat } of comparison.unregistered) {
+    console.error(`G1 unregistered ${upstream === undefined ? 'addition' : 'change'}: ${key}\n  upstream: ${clip(upstream)}\n  lyteboat:     ${clip(lyteboat)}`)
   }
   for (const { extension, entry } of comparison.stale) console.error(`G1 stale registration: ${extension} lists ${entry}, which does not differ from upstream`)
   const failures = comparison.removed.length + comparison.unregistered.length + comparison.stale.length

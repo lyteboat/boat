@@ -1,10 +1,10 @@
-# boat compatibility definition
+# lyteboat compatibility definition
 
-boat is a distribution of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It owns the source of a set of dsh packages, the **kernel** (`dsh/kernel.json`), and keeps their published names, so every dsh package and every community plugin that imports them binds to boat's implementation. This document states what boat promises to those plugins, and names the check that holds each promise. It plays the role Android's CDD plays for the CTS: this file says what must hold; `scripts/dist/` and `compatibility/tests/` prove it.
+lyteboat is a distribution of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh). It owns the source of a set of dsh packages, the **kernel** (`dsh/kernel.json`), and keeps their published names, so every dsh package and every community plugin that imports them binds to lyteboat's implementation. This document states what lyteboat promises to those plugins, and names the check that holds each promise. It plays the role Android's CDD plays for the CTS: this file says what must hold; `scripts/dist/` and `compatibility/tests/` prove it.
 
 ## 1. Scope
 
-For the dsh release pinned in `dsh.upstream.json` (today `0.1.7-rc.1`), boat promises that a plugin written against that release observes the same **protocol, interface, and behavior** from boat's kernel as from the official packages, except where §4 lists an addition. Packages outside the kernel are installed from npm at the pinned version, unchanged; boat's promise about them is only that it does not patch them.
+For the dsh release pinned in `dsh.upstream.json` (today `0.1.7-rc.1`), lyteboat promises that a plugin written against that release observes the same **protocol, interface, and behavior** from lyteboat's kernel as from the official packages, except where §4 lists an addition. Packages outside the kernel are installed from npm at the pinned version, unchanged; lyteboat's promise about them is only that it does not patch them.
 
 ## 2. Stable surface
 
@@ -20,11 +20,11 @@ Each item is snapshotted per release under `compatibility/contract/dsh-<version>
 | The durable-record vocabulary: session header, event envelopes, payload types, by upstream's own fingerprints | `persistence.json` | overlay `persistence` |
 | The JSONL files a session writes, read by the other side | — | G6 (`compatibility/tests/roundtrip`) |
 
-A key upstream has and boat lacks always fails. A changed or added key fails unless `compatibility/contract/extensions.yml` registers it.
+A key upstream has and lyteboat lacks always fails. A changed or added key fails unless `compatibility/contract/extensions.yml` registers it.
 
 ## 3. Behavior invariants
 
-Every invariant is held by a test that runs against boat's kernel. Upstream's own tests of the kernel packages run unmodified under G2 (`dsh/*/*/tests`, vitest project `dsh`); the test harness adaptations that make them run outside upstream's monorepo are listed in `compatibility/tests/upstream-harness/README.md`.
+Every invariant is held by a test that runs against lyteboat's kernel. Upstream's own tests of the kernel packages run unmodified under G2 (`dsh/*/*/tests`, vitest project `dsh`); the test harness adaptations that make them run outside upstream's monorepo are listed in `compatibility/tests/upstream-harness/README.md`.
 
 | Invariant | Held by |
 |---|---|
@@ -34,16 +34,16 @@ Every invariant is held by a test that runs against boat's kernel. Upstream's ow
 | Waterfall events (`agent/pre-step`, `agent/request`, `tools/pre-execute`, …) short-circuit when a listener does not call `next()`, and see rewritten payloads in listener order | G2 `dsh/core/agent-loop/tests/interception.spec.ts` |
 | A projection that ignores an event returns the same state reference | G2 `dsh/session/session-projection/tests/registry.spec.ts` |
 | Persistence refuses a stored log with an event type outside the compiled catalog unless the event is `ignorable` | G2 `dsh/session/session-persistence-jsonl/tests`, overlay `persistence` |
-| For the same scripted model and the same plugins, a session log written on boat equals one written on the official release, event by event after normalization | G4 `compatibility/tests/scenarios` |
-| Pinned community plugins that run on the official release run on boat and write the same log | G5 `compatibility/tests/canaries` |
-| A session boat writes opens on the official release, and the reverse | G6 `compatibility/tests/roundtrip` |
-| Official packages that depend on the kernel keep passing their own tests on boat's kernel | G3 (overlay `g3`) |
+| For the same scripted model and the same plugins, a session log written on lyteboat equals one written on the official release, event by event after normalization | G4 `compatibility/tests/scenarios` |
+| Pinned community plugins that run on the official release run on lyteboat and write the same log | G5 `compatibility/tests/canaries` |
+| A session lyteboat writes opens on the official release, and the reverse | G6 `compatibility/tests/roundtrip` |
+| Official packages that depend on the kernel keep passing their own tests on lyteboat's kernel | G3 (overlay `g3`) |
 
-## 4. What boat adds
+## 4. What lyteboat adds
 
 `compatibility/contract/extensions.yml` is the registry; this section is its reading guide. An extension only adds: a new export, event, option, or service. A plugin that does not use it cannot tell it exists. Each entry names the contract keys it adds (G1 accepts exactly those), the tests that prove it, and its exit condition: the upstream change that makes it redundant, after which the extension is removed at the next sync.
 
-A third-party plugin that wants a boat extension declares `inject: ['boatDistro']` (the service `@boat/distro` provides, listing this build's extensions by id) and imports the extension's types from `@boat/contracts`. On the official release that service does not exist, so the plugin waits instead of calling an option that is not there.
+A third-party plugin that wants a lyteboat extension declares `inject: ['lyteboatDistro']` (the service `@lyteboat/distro` provides, listing this build's extensions by id) and imports the extension's types from `@lyteboat/contracts`. On the official release that service does not exist, so the plugin waits instead of calling an option that is not there.
 
 ## 5. Transitional interfaces
 
@@ -55,9 +55,9 @@ A third-party plugin that wants a boat extension declares `inject: ['boatDistro'
 - Unexported symbols, and private or `#private` class members.
 - Performance characteristics, timing, and the order of events the dispatch mode does not order.
 - Caches and files other than the session log and the files dsh documents as persistent.
-- The version string: boat's packed builds carry `<upstream version>+boat.<commit>`. semver ignores build metadata, so every peer range written against the upstream version matches.
+- The version string: lyteboat's packed builds carry `<upstream version>+lyteboat.<commit>`. semver ignores build metadata, so every peer range written against the upstream version matches.
 
 ## 7. Release channels
 
-- **boat-next** follows every dsh tag: a sync merges the tag's import and must pass G1–G6. Syncs are batched weekly; one sync may cross several tags.
-- **boat-stable** is cut only from a dsh release candidate (`-rc.N`) and afterwards takes backports only. None exists yet: dsh has published no release candidate since boat's first import.
+- **lyteboat-next** follows every dsh tag: a sync merges the tag's import and must pass G1–G6. Syncs are batched weekly; one sync may cross several tags.
+- **lyteboat-stable** is cut only from a dsh release candidate (`-rc.N`) and afterwards takes backports only. None exists yet: dsh has published no release candidate since lyteboat's first import.

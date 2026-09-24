@@ -8,8 +8,8 @@
  * A package's Typert files (`lib/typert.*`) are not built here: they come with
  * the import (scripts/dist/import-upstream.ts), because upstream's generator
  * needs its whole workspace. They are valid only while the package's source is
- * the imported source, so the build stops when boat has changed it; then
- * `pnpm run dist:overlay <checkout> typert --write` regenerates them from boat's
+ * the imported source, so the build stops when lyteboat has changed it; then
+ * `pnpm run dist:overlay <checkout> typert --write` regenerates them from lyteboat's
  * source in an upstream checkout.
  *
  *   node --import tsx scripts/dist/bundle-kernel.ts

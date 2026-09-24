@@ -38,11 +38,11 @@ test('the dsh catalog lists no kernel package', () => {
 })
 
 // dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm leaves
-// `catalog:` unresolved, so a boat package writes them as the exact version a publish would.
-test('every dsh peer of a boat package is the dsh.upstream.json release, or the workspace kernel', () => {
-  const manifests = readdirSync(new URL('../boat', import.meta.url), { withFileTypes: true })
+// `catalog:` unresolved, so a lyteboat package writes them as the exact version a publish would.
+test('every dsh peer of a lyteboat package is the dsh.upstream.json release, or the workspace kernel', () => {
+  const manifests = readdirSync(new URL('../lyteboat', import.meta.url), { withFileTypes: true })
     .filter(layer => layer.isDirectory())
-    .flatMap(layer => readdirSync(new URL(`../boat/${layer.name}`, import.meta.url)).map(name => new URL(`../boat/${layer.name}/${name}/package.json`, import.meta.url)))
+    .flatMap(layer => readdirSync(new URL(`../lyteboat/${layer.name}`, import.meta.url)).map(name => new URL(`../lyteboat/${layer.name}/${name}/package.json`, import.meta.url)))
     .filter(url => existsSync(url))
   for (const url of manifests) {
     const { name, peerDependencies = {} } = JSON.parse(readFileSync(url, 'utf8')) as { name: string; peerDependencies?: Record<string, string> }
