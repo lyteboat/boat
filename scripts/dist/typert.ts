@@ -1,10 +1,10 @@
 /**
  * The Typert files of kernel packages. A dsh package that exports a Typert Host
  * face (`./typert`) or Remote client (`./remote`) publishes `lib/typert.*`, which
- * upstream's generator emits from an analysis of its whole workspace; boat's
+ * upstream's generator emits from an analysis of its whole workspace; lyteboat's
  * workspace cannot host that analysis. So the import carries the published files
  * (import-upstream.ts), the build accepts them only while they match the source
- * (bundle-kernel.ts), and `dist:overlay … typert` regenerates them from boat's
+ * (bundle-kernel.ts), and `dist:overlay … typert` regenerates them from lyteboat's
  * source inside an upstream checkout, recording the source digest they were
  * generated from in `dsh/typert.json`.
  * @module scripts/dist/typert

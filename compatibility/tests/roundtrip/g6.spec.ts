@@ -6,7 +6,7 @@
  */
 import { rmSync } from 'node:fs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { boatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
+import { lyteboatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
 import { cloneRun, freshRun, runScenario, suiteRoot, type OfficialScenario } from '../support/official-cli.ts'
 
 const FILES = { 'README.md': '# roundtrip workspace\n' }
@@ -19,13 +19,13 @@ const FIRST: OfficialScenario = {
 }
 const CONTINUE: OfficialScenario = { name: 'continue', task: 'and now summarize', sequence: ['success'], mock: { successText: 'G6-CONTINUED' } }
 
-describe('G6: sessions cross between the official release and boat', () => {
-  const trees: Record<'vanilla' | 'boat', string> = { vanilla: '', boat: '' }
+describe('G6: sessions cross between the official release and lyteboat', () => {
+  const trees: Record<'vanilla' | 'lyteboat', string> = { vanilla: '', lyteboat: '' }
   let root: string
 
   beforeAll(() => {
     trees.vanilla = vanillaTree('compatibility')
-    trees.boat = boatTree('compatibility', packKernel())
+    trees.lyteboat = lyteboatTree('compatibility', packKernel())
     root = suiteRoot('g6')
   }, 600_000)
 
@@ -33,7 +33,7 @@ describe('G6: sessions cross between the official release and boat', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
-  it.each([['vanilla', 'boat'], ['boat', 'vanilla']] as const)('%s writes, %s continues as the writer would', async (writer, reader) => {
+  it.each([['vanilla', 'lyteboat'], ['lyteboat', 'vanilla']] as const)('%s writes, %s continues as the writer would', async (writer, reader) => {
     const written = await runScenario(trees[writer], FIRST, freshRun(root, `${writer}-writes`, FILES))
     expect(written.code, written.stderr).toBe(0)
     expect(written.sessionId).toBeDefined()

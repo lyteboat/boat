@@ -1,5 +1,5 @@
 {
-  "$comment": "Fingerprint of upstream docs/persistence-schema.json at this tag: the durable-record vocabulary (session header, event envelopes, payload types). The full schema stays upstream; scripts/dist/overlay.ts regenerates it from boat's kernel sources and compares against these digests.",
+  "$comment": "Fingerprint of upstream docs/persistence-schema.json at this tag: the durable-record vocabulary (session header, event envelopes, payload types). The full schema stays upstream; scripts/dist/overlay.ts regenerates it from lyteboat's kernel sources and compares against these digests.",
   "formatVersion": 2,
   "roots": {
     "JsonlHeaderLine": {

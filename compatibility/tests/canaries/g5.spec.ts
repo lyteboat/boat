@@ -1,18 +1,18 @@
 /**
  * G5: pinned community plugins, installed the way users install them
  * (`dsh plugin --profile headless add <pkg>@<version>`), run the same scripted
- * task on the official release and on boat's kernel. Each canary was admitted
+ * task on the official release and on lyteboat's kernel. Each canary was admitted
  * only after it ran clean on the official release (canaries.yml records how it
- * was chosen); on boat it must run clean too, print the same answer, and write
+ * was chosen); on lyteboat it must run clean too, print the same answer, and write
  * the same session log. The profile install must hold no copy of a kernel
- * package: a runtime-installed plugin binds to the host's kernel, boat's.
+ * package: a runtime-installed plugin binds to the host's kernel, lyteboat's.
  */
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { kernelPackages } from '../../../scripts/dist/kernel.ts'
-import { boatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
+import { lyteboatTree, packKernel, vanillaTree } from '../../../scripts/dist/trees.ts'
 import { freshRun, runDsh, runScenario, suiteRoot, type OfficialRun } from '../support/official-cli.ts'
 
 interface Canary {
@@ -44,14 +44,14 @@ async function runCanary(tree: string, canary: Canary, root: string, label: stri
   return runScenario(tree, { name: canary.name, task: 'say hello', sequence: ['success'], mock: { successText: 'G5-OK', repeatLast: true }, patch }, place)
 }
 
-describe('G5: community canaries run the same on the official release and on boat', () => {
+describe('G5: community canaries run the same on the official release and on lyteboat', () => {
   let vanilla: string
-  let boat: string
+  let lyteboat: string
   let root: string
 
   beforeAll(() => {
     vanilla = vanillaTree('compatibility')
-    boat = boatTree('compatibility', packKernel())
+    lyteboat = lyteboatTree('compatibility', packKernel())
     root = suiteRoot('g5')
   }, 600_000)
 
@@ -62,7 +62,7 @@ describe('G5: community canaries run the same on the official release and on boa
   it.each(canaries.map(canary => [`${canary.name}@${canary.version} (${canary.risk})`, canary] as const))('%s', async (_label, canary) => {
     const slug = canary.name.replace(/[@/]/gu, '_')
     const official = await runCanary(vanilla, canary, root, `${slug}-vanilla`)
-    const ours = await runCanary(boat, canary, root, `${slug}-boat`)
+    const ours = await runCanary(lyteboat, canary, root, `${slug}-lyteboat`)
     expect(official.code, official.stderr).toBe(0)
     expect(official.stderr).not.toContain('did not activate')
     expect(ours.code, ours.stderr).toBe(0)

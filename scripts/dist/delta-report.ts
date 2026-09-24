@@ -1,8 +1,8 @@
 /**
- * The delta report: what boat carries on top of the last imported dsh tag,
- * read from git alone. For every kernel package, the lines boat changed in
- * upstream files (carried hunks) and the lines of boat's own modules
- * (`src/boat/`, `tests/boat/`); for every boat commit under `dsh/`, its
+ * The delta report: what lyteboat carries on top of the last imported dsh tag,
+ * read from git alone. For every kernel package, the lines lyteboat changed in
+ * upstream files (carried hunks) and the lines of lyteboat's own modules
+ * (`src/lyteboat/`, `tests/lyteboat/`); for every lyteboat commit under `dsh/`, its
  * `Dist-Change` class, the extension it serves, and its exit condition.
  *
  * It also enforces the commit discipline, so it doubles as a gate:
@@ -102,15 +102,15 @@ function numstat(from: string, paths: readonly string[]): { added: number; remov
 
 function report(base: string, commits: readonly DistCommit[]): string[] {
   const tag = git(repoRoot, ['log', '-1', '--format=%(trailers:key=Dist-Import,valueonly)', base]).trim()
-  const lines = [`# Delta report: boat on ${tag} (import ${base.slice(0, 10)})`, '', '## Per package', '',
-    '| package | carried hunks (files, +/−) | boat modules (files, +/−) | commits by class | oldest carry |', '|---|---|---|---|---|']
-  const boatCommits = commits.filter(commit => !commit.trailers.has(IMPORT_TRAILER))
+  const lines = [`# Delta report: lyteboat on ${tag} (import ${base.slice(0, 10)})`, '', '## Per package', '',
+    '| package | carried hunks (files, +/−) | lyteboat modules (files, +/−) | commits by class | oldest carry |', '|---|---|---|---|---|']
+  const lyteboatCommits = commits.filter(commit => !commit.trailers.has(IMPORT_TRAILER))
   for (const { name, dir } of kernelPackages()) {
     const root = `dsh/${dir}`
-    const owned = [`${root}/src/boat`, `${root}/tests/boat`]
+    const owned = [`${root}/src/lyteboat`, `${root}/tests/lyteboat`]
     const carried = numstat(base, [root, ...owned.map(path => `:(exclude)${path}`)])
     const own = numstat(base, owned)
-    const mine = boatCommits.filter(commit => commit.files.some(file => file.startsWith(`${root}/`)))
+    const mine = lyteboatCommits.filter(commit => commit.files.some(file => file.startsWith(`${root}/`)))
     const byClass = new Map<string, number>()
     for (const commit of mine) {
       const changeClass = commit.trailers.get('Dist-Change')?.[0] ?? 'unclassified'
@@ -121,7 +121,7 @@ function report(base: string, commits: readonly DistCommit[]): string[] {
     lines.push(`| ${name} | ${String(carried.files)}, +${String(carried.added)}/−${String(carried.removed)} | ${String(own.files)}, +${String(own.added)}/−${String(own.removed)} | ${classes} | ${oldest} |`)
   }
   lines.push('', '## Commits', '', '| commit | date | class | extension | exit | subject |', '|---|---|---|---|---|---|')
-  for (const commit of boatCommits) {
+  for (const commit of lyteboatCommits) {
     const cell = (key: string): string => (commit.trailers.get(key) ?? []).join('; ') || '—'
     lines.push(`| ${commit.sha.slice(0, 10)} | ${commit.date} | ${cell('Dist-Change')} | ${cell('Dist-Extension')} | ${cell('Dist-Exit')} | ${commit.subject} |`)
   }
@@ -141,7 +141,7 @@ function main(): void {
     return
   }
   const first = git(repoRoot, ['log', '--format=%H', `--grep=^${IMPORT_TRAILER}: `, '--reverse', 'HEAD']).split('\n')[0] ?? base
-  // Everything on the branch after the first import touches the kernel as boat, whichever sync it follows.
+  // Everything on the branch after the first import touches the kernel as lyteboat, whichever sync it follows.
   const commits = readCommits(`${first}..HEAD`)
   const found = violations(commits)
   if (!check) console.log(report(base, commits).join('\n'))

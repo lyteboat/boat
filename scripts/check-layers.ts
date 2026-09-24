@@ -1,11 +1,11 @@
 /**
- * Enforce the layer rule: a boat package's layer is its directory under
- * `boat/`, and dependencies point down only. Runtime edges (dependencies,
+ * Enforce the layer rule: a lyteboat package's layer is its directory under
+ * `lyteboat/`, and dependencies point down only. Runtime edges (dependencies,
  * peerDependencies) follow RUNTIME; devDependencies may also reach DEV_ONLY
  * (tests only). Between plugins the only allowed source import is
  * `import type`, the service declaration a plugin merges onto the cordis
  * Context. The kernel under `dsh/` is below every layer and never names a
- * boat package. Exits non-zero with one line per violation.
+ * lyteboat package. Exits non-zero with one line per violation.
  *
  *   node --import tsx scripts/check-layers.ts
  * @module scripts/check-layers
@@ -58,7 +58,7 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 function workspacePackages(): WorkspacePackage[] {
   const found: WorkspacePackage[] = []
   for (const layer of LAYERS) {
-    const layerDir = join(root, 'boat', layer)
+    const layerDir = join(root, 'lyteboat', layer)
     if (!existsSync(layerDir)) continue
     for (const entry of readdirSync(layerDir, { withFileTypes: true })) {
       const file = join(layerDir, entry.name, 'package.json')
@@ -94,7 +94,7 @@ function checkManifest(pkg: WorkspacePackage, layerOf: ReadonlyMap<string, Layer
   return problems
 }
 
-const IMPORT = /^import\s+(type\s+)?[^'"]*from\s+'(@boat\/[a-z0-9-]+)(?:\/[a-z0-9/-]+)?'/gmu
+const IMPORT = /^import\s+(type\s+)?[^'"]*from\s+'(@lyteboat\/[a-z0-9-]+)(?:\/[a-z0-9/-]+)?'/gmu
 
 function checkPluginImports(pkg: WorkspacePackage, layerOf: ReadonlyMap<string, Layer>): string[] {
   if (pkg.layer !== 'plugins') return []
@@ -110,8 +110,8 @@ function checkPluginImports(pkg: WorkspacePackage, layerOf: ReadonlyMap<string, 
 }
 
 /**
- * The kernel (dsh/kernel.json) sits below every boat layer: a boat package may
- * depend on it like on any dsh seam, but no kernel package may name a boat
+ * The kernel (dsh/kernel.json) sits below every lyteboat layer: a lyteboat package may
+ * depend on it like on any dsh seam, but no kernel package may name a lyteboat
  * package, in its manifest or in any source or test file.
  */
 function checkKernel(): string[] {
@@ -121,9 +121,9 @@ function checkKernel(): string[] {
     const packageDir = join(root, 'dsh', dir)
     const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as Manifest
     const deps = { ...manifest.dependencies, ...manifest.peerDependencies, ...manifest.devDependencies }
-    for (const dep of Object.keys(deps)) if (dep.startsWith('@boat/')) problems.push(`kernel package ${name} depends on ${dep}`)
+    for (const dep of Object.keys(deps)) if (dep.startsWith('@lyteboat/')) problems.push(`kernel package ${name} depends on ${dep}`)
     for (const file of [...sourceFiles(join(packageDir, 'src')), ...sourceFiles(join(packageDir, 'tests'))]) {
-      if (/from\s+'@boat\/|import\s+'@boat\//u.test(readFileSync(file, 'utf8'))) problems.push(`${relative(root, file)} imports a boat package; the kernel knows no boat package`)
+      if (/from\s+'@lyteboat\/|import\s+'@lyteboat\//u.test(readFileSync(file, 'utf8'))) problems.push(`${relative(root, file)} imports a lyteboat package; the kernel knows no lyteboat package`)
     }
   }
   return problems

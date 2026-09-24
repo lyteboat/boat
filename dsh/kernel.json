@@ -1,5 +1,5 @@
 {
-  "$comment": "The dsh packages boat takes over. Keys are package names (kept as upstream publishes them); values are the directory under upstream packages/ and under dsh/ here. Promotion adds a row; nothing else in the repository lists the kernel.",
+  "$comment": "The dsh packages lyteboat takes over. Keys are package names (kept as upstream publishes them); values are the directory under upstream packages/ and under dsh/ here. Promotion adds a row; nothing else in the repository lists the kernel.",
   "packages": {
     "@deepseek-ai/dsh-llm": "llm/llm",
     "@deepseek-ai/dsh-session": "core/session",

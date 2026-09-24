@@ -1,5 +1,5 @@
 /**
- * boat adaptation: upstream imports `toPiContext` from the pi-ai adapter's
+ * lyteboat adaptation: upstream imports `toPiContext` from the pi-ai adapter's
  * source (`@deepseek-ai/dsh-llm-pi-ai/src/context.ts`), which the published
  * package does not ship. The admission spec only inspects the single system
  * prompt slot and the user-role message contents, so this stand-in derives

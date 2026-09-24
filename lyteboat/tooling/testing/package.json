@@ -1,0 +1,62 @@
+{
+  "name": "@lyteboat/testing",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's test harness: dsh service mounting and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, the session-log reader, the scripted DeepSeek Messages model, and launcher spawning for e2e tests",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./session-log": {
+      "@lyteboat/source": "./src/session-log.ts",
+      "types": "./lib/session-log.d.ts",
+      "default": "./lib/session-log.js"
+    },
+    "./scripted-model": {
+      "@lyteboat/source": "./src/scripted-model.ts",
+      "types": "./lib/scripted-model.d.ts",
+      "default": "./lib/scripted-model.js"
+    },
+    "./process": {
+      "@lyteboat/source": "./src/process.ts",
+      "types": "./lib/process.d.ts",
+      "default": "./lib/process.js"
+    },
+    "./composition": {
+      "@lyteboat/source": "./src/composition.ts",
+      "types": "./lib/composition.d.ts",
+      "default": "./lib/composition.js"
+    }
+  },
+  "files": ["lib"],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-app-boot": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-cmdline": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-app-boot": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

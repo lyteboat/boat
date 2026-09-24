@@ -1,0 +1,38 @@
+{
+  "name": "@lyteboat/agent-demo",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's demo agent preset: a persona, two routed skills, an asset tool that fills the session state and renders the asset card, a diagnosis tool, and an intake gate",
+  "type": "module",
+  "exports": {
+    "./assets": {
+      "@lyteboat/source": "./src/assets.ts",
+      "types": "./lib/assets.d.ts",
+      "default": "./lib/assets.js"
+    }
+  },
+  "files": ["lib", "preset.yml", "agent.cordis.yml", "skills", "a2ui", "fixtures"],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*",
+    "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "peerDependencies": {
+    "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/host": "workspace:*",
+    "@lyteboat/run": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
+  }
+}

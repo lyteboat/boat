@@ -1,5 +1,5 @@
 /**
- * boat adaptation: upstream's settings spec imports `liveConfig` from another
+ * lyteboat adaptation: upstream's settings spec imports `liveConfig` from another
  * package's tests (`packages/settings/settings/tests/live-config.ts`), which no
  * published package ships. This is that helper, copied from
  * deepseek-ai/deepseek-harness @ dsh-v0.1.7-rc.1 (46a7f68b), MIT: mount a

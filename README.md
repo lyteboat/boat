@@ -1,4 +1,4 @@
-# 轻舟 boat
+# 轻舟 lyteboat
 
 [![CI](https://github.com/lyteboat/boat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lyteboat/boat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -7,7 +7,7 @@
 
 > **轻舟智能体底座 —— 赋能行业穿越 AI 万重山。**
 
-轻舟（boat）是构建在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）之上的业务智能体底座。它不是 coding agent，而是生产级就绪、开箱即用的业务 harness：让 AI 能干活、干得对、有迹可查。
+轻舟（lyteboat）是构建在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）之上的业务智能体底座。它不是 coding agent，而是生产级就绪、开箱即用的业务 harness：让 AI 能干活、干得对、有迹可查。
 
 - [为什么是轻舟](#为什么是轻舟)
 - [特性](#特性)
@@ -31,12 +31,12 @@
 ## 特性
 
 - **业务能力开箱即用。** 都以 Cordis 插件的形式挂在 dsh 的接缝上，框架包不含任何业务词汇：
-  - 技能路由：`full` 把全部技能正文放进提示；`dynamic` 每轮用一次旁路模型调用选出技能，并在同一步生效（`@boat/skill-router`）。
-  - 工具可见性、调用前确认、工具结果里的状态增量（`@boat/tool-policy`）。
-  - A2UI 模板卡片（`@boat/a2ui`）。
-  - 外部对话历史导入（`@boat/history-import`）。
-  - 拒识门：不请求模型，直接回复一轮（`boat/intake`）。
-- **一个业务 agent 就是一个目录。** 在 `boat/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
+  - 技能路由：`full` 把全部技能正文放进提示；`dynamic` 每轮用一次旁路模型调用选出技能，并在同一步生效（`@lyteboat/skill-router`）。
+  - 工具可见性、调用前确认、工具结果里的状态增量（`@lyteboat/tool-policy`）。
+  - A2UI 模板卡片（`@lyteboat/a2ui`）。
+  - 外部对话历史导入（`@lyteboat/history-import`）。
+  - 拒识门：不请求模型，直接回复一轮（`lyteboat/intake`）。
+- **一个业务 agent 就是一个目录。** 在 `lyteboat/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
 - **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`compatibility/`](compatibility/README.md)）。
 - **有迹可查。** 模型看到的一切都能从会话日志还原；轻舟记录的事实都放在 dsh 已有的日志信封里。
 
@@ -51,28 +51,28 @@
 
 ```sh
 git clone https://github.com/lyteboat/boat.git
-cd boat
+cd lyteboat
 corepack enable
 pnpm install
 pnpm run build
 ```
 
-启动器是 `boat/apps/cli/lib/bin.js`，下文用 `boat` 指代它，可以先设一个别名：
+启动器是 `lyteboat/apps/cli/lib/bin.js`，下文用 `lyteboat` 指代它，可以先设一个别名：
 
 ```sh
-alias boat="node $PWD/boat/apps/cli/lib/bin.js"
+alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 ```
 
 ### 配置模型
 
-轻舟沿用 dsh 的模型配置：在环境变量或 `$BOAT_HOME/.env` 里设置 `DEEPSEEK_API_KEY`。`DEEPSEEK_BASE_URL` 可选，指向一个兼容 DeepSeek Anthropic Messages API 的端点。
+轻舟沿用 dsh 的模型配置：在环境变量或 `$LYTEBOAT_HOME/.env` 里设置 `DEEPSEEK_API_KEY`。`DEEPSEEK_BASE_URL` 可选，指向一个兼容 DeepSeek Anthropic Messages API 的端点。
 
 ### 运行
 
 ```sh
-boat run "总结一下这个工作区"                              # 一次性任务：答完即退出
-boat run --agents ./boat/agents --agent demo "看看资产"    # 示例 agent：技能路由、资产工具、卡片
-boat web --no-open                                         # 浏览器界面
+lyteboat run "总结一下这个工作区"                              # 一次性任务：答完即退出
+lyteboat run --agents ./lyteboat/agents --agent demo "看看资产"    # 示例 agent：技能路由、资产工具、卡片
+lyteboat web --no-open                                         # 浏览器界面
 ```
 
 ## 使用
@@ -81,19 +81,19 @@ boat web --no-open                                         # 浏览器界面
 
 | 命令 | 作用 |
 |---|---|
-| `boat run [选项] "任务"` | 回答一个任务，打印结果后退出（profile `run`） |
-| `boat web [选项]` | 启动浏览器界面（profile `web`）；`boat web --help` 查看它自己的参数 |
-| `boat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
+| `lyteboat run [选项] "任务"` | 回答一个任务，打印结果后退出（profile `run`） |
+| `lyteboat web [选项]` | 启动浏览器界面（profile `web`）；`lyteboat web --help` 查看它自己的参数 |
+| `lyteboat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
 
 三个命令都接受：
 
 | 选项 | 作用 |
 |---|---|
-| `--profile <名字>` | 启动 `$BOAT_HOME/profiles` 下的哪个 profile |
+| `--profile <名字>` | 启动 `$LYTEBOAT_HOME/profiles` 下的哪个 profile |
 | `--patch <路径>` | 在 profile 层之后再叠一层 patch（可重复） |
 | `--plugin <文件>` | 把一个本地 ESM 插件文件插进插件树（可重复） |
 
-`boat run` 另有：
+`lyteboat run` 另有：
 
 | 选项 | 作用 |
 |---|---|
@@ -101,11 +101,11 @@ boat web --no-open                                         # 浏览器界面
 | `--agent <id>` | 运行其中的某个 agent（`--preset` 是已废弃的别名） |
 | `--history <文件>` | 先导入一份外部对话历史，任务成为它的下一轮 |
 
-`boat run -h` 列出一次性模式的全部参数。
+`lyteboat run -h` 列出一次性模式的全部参数。
 
 ### 编写业务 agent
 
-一个业务 agent 是一个目录 `boat/agents/<id>/`，目录名就是 id：
+一个业务 agent 是一个目录 `lyteboat/agents/<id>/`，目录名就是 id：
 
 - `agent.cordis.yml`（必需）：persona、技能路由、工具与策略等插件行；每一行只作用于这个 agent 的会话。
 - `preset.yml`：显示名等展示信息。
@@ -113,13 +113,13 @@ boat web --no-open                                         # 浏览器界面
 - `a2ui/`：卡片模板。
 - `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
 
-完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`boat/agents/demo`](boat/agents/demo)。
+完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/demo`](lyteboat/agents/demo)。
 
 ### 数据与会话日志
 
-- 轻舟的全部数据在 `$BOAT_HOME` 下（默认 `~/.boat`）。启动器在加载任何 dsh 包之前把它导出为 `DSH_HOME`，不会碰你自己的 `~/.dsh`。
-- 会话日志是唯一的事实来源。卡片和状态增量记在 `tool/result.meta.boat` 上，拒识回复是 `source.provider` 为 `boat` 的助手消息，导入的历史是一串已关闭的普通 turn，所以这些会话可以被 dsh 自己的持久化层重新打开。
-- `@boat/host` 关掉了 dsh-base 的 `session-log-deepseek` 行：模型服务只收到请求本身。
+- 轻舟的全部数据在 `$LYTEBOAT_HOME` 下（默认 `~/.lyteboat`）。启动器在加载任何 dsh 包之前把它导出为 `DSH_HOME`，不会碰你自己的 `~/.dsh`。
+- 会话日志是唯一的事实来源。卡片和状态增量记在 `tool/result.meta.lyteboat` 上，拒识回复是 `source.provider` 为 `lyteboat` 的助手消息，导入的历史是一串已关闭的普通 turn，所以这些会话可以被 dsh 自己的持久化层重新打开。
+- `@lyteboat/host` 关掉了 dsh-base 的 `session-log-deepseek` 行：模型服务只收到请求本身。
 
 ## 文档
 
@@ -137,9 +137,9 @@ boat web --no-open                                         # 浏览器界面
 
 ```
 dsh/                  内核：dsh/kernel.json 列出的 13 个 dsh 包，沿用 @deepseek-ai/* 包名
-boat/                 轻舟自己的包，每层一个目录
-  apps/               进程：boat 启动器
-  bundles/            组合：每个 profile 都带的 host，boat run 用的 run
+lyteboat/                 轻舟自己的包，每层一个目录
+  apps/               进程：lyteboat 启动器
+  bundles/            组合：每个 profile 都带的 host，lyteboat run 用的 run
   plugins/            能力插件
   core/               声明与垫片
   agents/             业务 agent
@@ -154,18 +154,18 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 | 路径 | 包 | 作用 |
 |---|---|---|
-| `boat/apps/cli` | `@boat/cli` | `boat` 启动器：profile 模板、patch 叠加、启动（改编自 dsh 的 CLI） |
-| `boat/bundles/host` | `@boat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
-| `boat/bundles/run` | `@boat/run` | `boat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history` |
-| `boat/plugins/distro` | `@boat/distro` | `boatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
-| `boat/plugins/tool-policy` | `@boat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略 |
-| `boat/plugins/skill-router` | `@boat/skill-router` | 技能加载模式与模型路由；`./agent` 在 agent 的组合文件里声明模式 |
-| `boat/plugins/a2ui` | `@boat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`boatCards` 投影；`./agent` 在组合文件里挂上这个工具 |
-| `boat/plugins/history-import` | `@boat/history-import` | 外部对话历史的解析，以及 `boat run --history` 用的会话种子 |
-| `boat/core/contracts` | `@boat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `boat/*` 事件（再导出）、日志节点、`BoatDistro` |
-| `boat/core/cordis-compat` | `@boat/cordis-compat` | cordis 发布物里被擦除的 const enum 的运行时取值 |
-| `boat/agents/demo` | `@boat/agent-demo` | 示例 agent：组合文件、两个路由技能、资产工具、卡片模板、拒识门 |
-| `boat/tooling/testing` | `@boat/testing` | 测试支撑：dsh 服务挂载与 `MockAdapter`、会话日志读取、脚本化模型、启动器进程 |
+| `lyteboat/apps/cli` | `@lyteboat/cli` | `lyteboat` 启动器：profile 模板、patch 叠加、启动（改编自 dsh 的 CLI） |
+| `lyteboat/bundles/host` | `@lyteboat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
+| `lyteboat/bundles/run` | `@lyteboat/run` | `lyteboat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history` |
+| `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
+| `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略 |
+| `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由；`./agent` 在 agent 的组合文件里声明模式 |
+| `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；`./agent` 在组合文件里挂上这个工具 |
+| `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |
+| `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、`LyteboatDistro` |
+| `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | cordis 发布物里被擦除的 const enum 的运行时取值 |
+| `lyteboat/agents/demo` | `@lyteboat/agent-demo` | 示例 agent：组合文件、两个路由技能、资产工具、卡片模板、拒识门 |
+| `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：dsh 服务挂载与 `MockAdapter`、会话日志读取、脚本化模型、启动器进程 |
 
 ## 开发
 
@@ -184,7 +184,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 ### pnpm 设置为什么和常见项目不同
 
 - **增删或移动工作区包之后，从干净的 `node_modules` 重装。** 增量 `pnpm install` 会留下过期的提升链接。
-- **`publicHoistPattern: ['@deepseek-ai/*', '@boat/*']`。** agent 的组合文件按裸包名引用插件行，从 agent 目录向上解析；组合测试从仓库根解析。在 pnpm 的隔离布局下，两者都只能在根 `node_modules` 找到 dsh 与轻舟的包。启动器自己则通过 dsh 的运行时解析，按 `boat/apps/cli` 的依赖图找插件行。
+- **`publicHoistPattern: ['@deepseek-ai/*', '@lyteboat/*']`。** agent 的组合文件按裸包名引用插件行，从 agent 目录向上解析；组合测试从仓库根解析。在 pnpm 的隔离布局下，两者都只能在根 `node_modules` 找到 dsh 与轻舟的包。启动器自己则通过 dsh 的运行时解析，按 `lyteboat/apps/cli` 的依赖图找插件行。
 - **`overrides`。** 每个内核包名都指向 `dsh/` 下的工作区副本，轻舟自己的包和依赖它的每个 npm 包都一样，所以依赖图里每个内核包只有一份，就是轻舟的。`rolldown` 固定在上游 lockfile 解析出的版本，内核打包才能和 npm 发布物逐字节相同。
 - **`.pnpmfile.cjs`。** 发布的 dsh 包之间用 `^` 范围互相依赖，不钉的话会漂到比所跟踪 tag 更新的预发布版本。它不碰内核包名：它在 overrides 之后运行，会把 overrides 撤掉。
 - **dsh peer 写精确版本。** 轻舟的包对非内核 dsh 包的 peer 写所跟踪版本的精确版本号，不写 `catalog:dsh`：dsh 启动时从磁盘上的清单读插件行的 dsh peer，pnpm 不会解析那里的 `catalog:`，对不上的行会被禁用。`scripts/upstream-pins.spec.ts` 保证它们等于 `dsh.upstream.json`。
@@ -193,18 +193,18 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 状态与路线图
 
-- 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的两个扩展（`boat/intake`、`boat/pre-assemble`），上面所有闸门都对它通过。
+- 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的两个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`），上面所有闸门都对它通过。
 - 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、history-import 与拒识门；示例 agent；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
-  - 路由过技能的会话还不能用 `boat web` 打开或续聊：`boat/skill-routed`、`boat/route-request` 还没有 dsh 信封，dsh 的持久化层拒绝读取（`boat/bundles/run/tests/reopen.composite.ts` 钉住了这一点）。
-  - 还没有对外服务模式（`/chat`、多用户）；`boat web` 不读 agent 目录。
+  - 路由过技能的会话还不能用 `lyteboat web` 打开或续聊：`lyteboat/skill-routed`、`lyteboat/route-request` 还没有 dsh 信封，dsh 的持久化层拒绝读取（`lyteboat/bundles/run/tests/reopen.composite.ts` 钉住了这一点）。
+  - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录。
 - 下一步见[对齐分析的路线图](docs/04-reference-alignment.md#6-路线图从-d3-开始)。
 
 ## 参与贡献
 
 - 先读 [CLAUDE.md](CLAUDE.md)：分层规则、测试要求、提交信息格式。`dsh/` 下的改动必须是带 `Dist-Change:` trailer 的分类提交；动 `dsh/` 之前先读[兼容性承诺](compatibility/COMPAT.md)。
 - 提交前跑 `pnpm run lint`、`pnpm run typecheck`、`pnpm run test`；改了内核或兼容面，再跑 `pnpm run compatibility`。
-- 仓库外的插件如果要用轻舟的扩展，声明 `inject: ['boatDistro']`，这样它在官方 dsh 上不会加载。
+- 仓库外的插件如果要用轻舟的扩展，声明 `inject: ['lyteboatDistro']`，这样它在官方 dsh 上不会加载。
 - 合并 PR 请用 merge commit，不要 squash 或 rebase：上游线靠导入提交的 `Dist-Import` trailer 查找。
 
 ## 许可证

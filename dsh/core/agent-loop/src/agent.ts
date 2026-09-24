@@ -33,8 +33,8 @@ import { joinContextSections, renderContextSections, renderPrompt } from '@deeps
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
-import { BOAT_ASSISTANT_PROVIDER } from './boat/step-hooks.ts'
-import type { BoatIntakeDecision, BoatIntakeReply } from './boat/step-hooks.ts'
+import { LYTEBOAT_ASSISTANT_PROVIDER } from './lyteboat/step-hooks.ts'
+import type { LyteboatIntakeDecision, LyteboatIntakeReply } from './lyteboat/step-hooks.ts'
 import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
@@ -55,8 +55,8 @@ type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }
 
 type PreparedStep =
   | { kind: 'reject' }
-  // boat: an intake listener answered the claimed messages without a model call.
-  | { kind: 'reply'; messages: UserMessage[]; reply: BoatIntakeReply }
+  // lyteboat: an intake listener answered the claimed messages without a model call.
+  | { kind: 'reply'; messages: UserMessage[]; reply: LyteboatIntakeReply }
   | {
     kind: 'enter'
     messages: UserMessage[]
@@ -273,17 +273,17 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
-    // boat: the intake gate and the pre-assembly hook run before the prompt is
+    // lyteboat: the intake gate and the pre-assembly hook run before the prompt is
     // assembled, so a reply spends no assembly and routing done here shapes
     // this very step's request. The official driver has neither event.
     const intake = await this.dispatch.waterfall(
-      'boat/intake', { messages: claimed, ...position, signal },
-      (): Promise<BoatIntakeDecision> => Promise.resolve<BoatIntakeDecision>({ kind: 'pass' }),
+      'lyteboat/intake', { messages: claimed, ...position, signal },
+      (): Promise<LyteboatIntakeDecision> => Promise.resolve<LyteboatIntakeDecision>({ kind: 'pass' }),
     )
     signal.throwIfAborted()
     if (intake.kind === 'reply') return { kind: 'reply', messages: claimed, reply: intake }
     await this.dispatch.waterfall(
-      'boat/pre-assemble', { messages: claimed, ...position, signal },
+      'lyteboat/pre-assemble', { messages: claimed, ...position, signal },
       (): Promise<void> => Promise.resolve(),
     )
     signal.throwIfAborted()
@@ -337,7 +337,7 @@ export class ReactLoopAgent implements Agent {
           return false
         }
         if (decision.kind === 'reply') {
-          // boat: a fixed reply is one step without a request: the claimed
+          // lyteboat: a fixed reply is one step without a request: the claimed
           // messages and the reply land in the log inside an open step so the
           // invariants and token accounting see an ordinary shape.
           signal.throwIfAborted()
@@ -429,11 +429,11 @@ export class ReactLoopAgent implements Agent {
   }
 
   /**
-   * boat: commit an intake reply inside the open step. An empty system head is
+   * lyteboat: commit an intake reply inside the open step. An empty system head is
    * appended first when none exists, so the next real step's prompt replaces
    * node 0 instead of trailing the history; the claimed messages are admitted
    * as they would be on a model step; the reply is an assistant message whose
-   * provider is boat and whose model names the deciding plugin.
+   * provider is lyteboat and whose model names the deciding plugin.
    */
   private replyStep(turn: number, step: number, decision: Extract<PreparedStep, { kind: 'reply' }>): void {
     if (!this.hasSystemNode()) {
@@ -452,7 +452,7 @@ export class ReactLoopAgent implements Agent {
       step,
       message: createAssistantMessage({
         content: reply.content,
-        source: { provider: BOAT_ASSISTANT_PROVIDER, model: reply.plugin },
+        source: { provider: LYTEBOAT_ASSISTANT_PROVIDER, model: reply.plugin },
       }),
       stream: [],
     }, { surfaceOp: 'append' })
@@ -470,7 +470,7 @@ export class ReactLoopAgent implements Agent {
     while (true) {
       const { config, preparedCall } = await this.prepareRequest(turn, step, signal)
       const startsRequestSeries = firstAttempt && decision.startsRequestSeries === true
-      // boat: before the first request there is no series to continue, so an
+      // lyteboat: before the first request there is no series to continue, so an
       // empty head left by an intake reply or a history seed is replaced on
       // every route; upstream only ever meets a head it wrote itself.
       const commits = this.systemPrompt.project(renderedPrompt, {

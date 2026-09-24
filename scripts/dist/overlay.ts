@@ -1,28 +1,28 @@
 /**
- * Gates that need upstream's own repository: boat's kernel is laid over a
+ * Gates that need upstream's own repository: lyteboat's kernel is laid over a
  * checkout of the pinned tag (one with `pnpm install` done), and upstream's
  * tooling runs against it.
  *
  * - `persistence`: upstream's `gen-persistence-catalog` regenerates the
  *   durable-record schema from the overlaid sources; its fingerprint must equal
  *   `compatibility/contract/dsh-<version>/persistence.json` except for keys an extension
- *   registers, and the regenerated `known-event-types.ts` must equal boat's.
+ *   registers, and the regenerated `known-event-types.ts` must equal lyteboat's.
  * - `g3`: G3, the cross-package gate. The tests of every upstream package that
  *   depends on a kernel package run on the pristine checkout (the baseline,
  *   cached per tag) and on the overlay; a test that passes on the baseline and
  *   fails on the overlay fails the gate.
- * - `typert`: upstream's Typert generator emits, from boat's sources, the
+ * - `typert`: upstream's Typert generator emits, from lyteboat's sources, the
  *   `lib/typert.*` files of every kernel package that publishes them; they must
- *   equal the files boat builds with. `--write` replaces boat's files and records
+ *   equal the files lyteboat builds with. `--write` replaces lyteboat's files and records
  *   the source digest in `dsh/typert.json` (scripts/dist/typert.ts).
  *
  *   node --import tsx scripts/dist/overlay.ts <upstream checkout> persistence
  *   node --import tsx scripts/dist/overlay.ts <upstream checkout> g3 [--match <regex on package dir>]
  *   node --import tsx scripts/dist/overlay.ts <upstream checkout> typert [--write]
  *
- * The overlay copies every file boat has under `dsh/<dir>/` onto
- * `packages/<dir>/` and removes the upstream files boat deleted; `package.json`
- * and `tsconfig.json` stay upstream's, because boat's are normalized for its
+ * The overlay copies every file lyteboat has under `dsh/<dir>/` onto
+ * `packages/<dir>/` and removes the upstream files lyteboat deleted; `package.json`
+ * and `tsconfig.json` stay upstream's, because lyteboat's are normalized for its
  * own workspace. The checkout is reset before and after.
  * @module scripts/dist/overlay
  */
@@ -55,14 +55,14 @@ function applyOverlay(checkout: string): void {
   if (head !== pin.commit) throw new Error(`${checkout} is at ${head}; dsh.upstream.json pins ${pin.commit} (${pin.tag})`)
   reset(checkout)
   for (const { dir } of kernelPackages()) {
-    const boatFiles = new Set(git(repoRoot, ['ls-files', '--cached', '--others', '--exclude-standard', '--', `dsh/${dir}`]).split('\n')
+    const lyteboatFiles = new Set(git(repoRoot, ['ls-files', '--cached', '--others', '--exclude-standard', '--', `dsh/${dir}`]).split('\n')
       .filter(file => file !== '' && existsSync(join(repoRoot, file)))
       .map(file => relative(`dsh/${dir}`, file)))
     for (const file of git(checkout, ['ls-files', '--', `packages/${dir}`]).split('\n').filter(line => line !== '')) {
       const rel = relative(`packages/${dir}`, file)
-      if (!boatFiles.has(rel) && !NORMALIZED.has(rel)) rmSync(join(checkout, file))
+      if (!lyteboatFiles.has(rel) && !NORMALIZED.has(rel)) rmSync(join(checkout, file))
     }
-    for (const rel of boatFiles) {
+    for (const rel of lyteboatFiles) {
       if (NORMALIZED.has(rel)) continue
       const destination = join(checkout, 'packages', dir, rel)
       mkdirSync(dirname(destination), { recursive: true })
@@ -109,7 +109,7 @@ function persistence(checkout: string): number {
     for (const { extension, entry } of comparison.stale) console.error(`persistence stale registration: ${extension} lists ${entry}`)
     const generatedKnown = readFileSync(join(checkout, 'packages/core/session/src/known-event-types.ts'), 'utf8')
     if (generatedKnown !== readFileSync(join(repoRoot, 'dsh/core/session/src/known-event-types.ts'), 'utf8')) {
-      console.error('persistence: dsh/core/session/src/known-event-types.ts differs from what upstream generates from boat\'s sources; regenerate it')
+      console.error('persistence: dsh/core/session/src/known-event-types.ts differs from what upstream generates from lyteboat\'s sources; regenerate it')
       failures += 1
     }
     console.log(`persistence vs dsh ${dsh}: ${String(Object.keys(regenerated.roots).length)} roots, ${String(regenerated.typeDigests.length)} types, `
@@ -194,7 +194,7 @@ function g3(checkout: string, match: RegExp): number {
     console.error(`G3 regression: ${test} (${now ?? 'missing'})`)
   }
   const passed = [...baseline.values()].filter(status => status === 'passed').length
-  console.log(`G3 vs dsh ${dsh}: ${String(files.length)} test files of kernel dependents, ${String(passed)} passing on the pristine tag, ${String(regressions)} regression(s) on boat's kernel`)
+  console.log(`G3 vs dsh ${dsh}: ${String(files.length)} test files of kernel dependents, ${String(passed)} passing on the pristine tag, ${String(regressions)} regression(s) on lyteboat's kernel`)
   return regressions
 }
 
@@ -235,13 +235,13 @@ function typert(checkout: string, write: boolean): number {
         const text = generated.get(file)
         const path = join(repoRoot, 'dsh', dir, file)
         if (text === undefined) {
-          console.error(`typert: ${name} publishes ${file}, but upstream's generator emits none from boat's source`)
+          console.error(`typert: ${name} publishes ${file}, but upstream's generator emits none from lyteboat's source`)
           failures += 1
         } else if (!existsSync(path) || readFileSync(path, 'utf8') !== text) {
           if (write) {
             writeFileSync(path, text)
           } else {
-            console.error(`typert: dsh/${dir}/${file} differs from what upstream's generator emits from boat's source`)
+            console.error(`typert: dsh/${dir}/${file} differs from what upstream's generator emits from lyteboat's source`)
             failures += 1
           }
         }

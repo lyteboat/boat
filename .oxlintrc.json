@@ -15,10 +15,10 @@
     "**/*.config.ts",
     "dsh/*/*/src/*.ts",
     "dsh/*/*/src/*/**",
-    "!dsh/*/*/src/boat/**",
+    "!dsh/*/*/src/lyteboat/**",
     "dsh/*/*/tests/*.ts",
     "dsh/*/*/tests/*/**",
-    "!dsh/*/*/tests/boat/**"
+    "!dsh/*/*/tests/lyteboat/**"
   ],
   "rules": {
     "no-var": "error",
