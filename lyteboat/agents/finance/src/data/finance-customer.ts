@@ -7,7 +7,7 @@
  * @module @lyteboat/agent-finance/data/finance-customer
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 
@@ -87,15 +87,32 @@ export interface FinanceCustomerSource {
    * @throws when the customer is unknown or its record is malformed.
    */
   customer(id: string): FinanceCustomer
+  /**
+   * One customer's snapshot, when the source knows the id.
+   * @param id - the customer id.
+   * @throws when the record exists but is malformed.
+   */
+  findCustomer(id: string): FinanceCustomer | undefined
 }
+
+/** A fixture file name: a customer id is one, so it can never reach outside the fixture directory. */
+const FIXTURE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u
 
 /** Customers as JSON files, one per id, validated when read. */
 export class FixtureCustomerSource implements FinanceCustomerSource {
   constructor(private readonly dir: string) {}
 
   customer(id: string): FinanceCustomer {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(id)) throw new Error(`finance: customer id ${JSON.stringify(id)} is not a fixture name`)
+    if (!FIXTURE_ID.test(id)) throw new Error(`finance: customer id ${JSON.stringify(id)} is not a fixture name`)
+    const customer = this.findCustomer(id)
+    if (customer === undefined) throw new Error(`finance: cannot read customer ${JSON.stringify(id)} from ${join(this.dir, `${id}.json`)}: no such file`)
+    return customer
+  }
+
+  findCustomer(id: string): FinanceCustomer | undefined {
+    if (!FIXTURE_ID.test(id)) return undefined
     const path = join(this.dir, `${id}.json`)
+    if (!existsSync(path)) return undefined
     let raw: unknown
     try {
       raw = JSON.parse(readFileSync(path, 'utf8'))

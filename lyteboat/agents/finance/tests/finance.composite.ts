@@ -95,7 +95,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function run(label: string, customer: string, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
+  async function run(label: string, customer: string | undefined, task: string): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
     const home = join(root, `home-${label}`)
     const workspace = join(root, `workspace-${label}`)
     for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
@@ -103,7 +103,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const before = model.requests.length
     const result = await bootComposition({
       bundles: RUN_BUNDLES,
-      args: ['--agents', AGENTS, '--agent', 'finance', '--context', JSON.stringify({ customer }), task],
+      args: ['--agents', AGENTS, '--agent', 'finance', ...customer === undefined ? [] : ['--context', JSON.stringify({ customer })], task],
       cwd: workspace,
       home,
       env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
@@ -161,6 +161,22 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const { requests, stdout } = await run('scope', 'healthy', '帮我写一首诗')
     expect(requests.filter(request => request.purpose === 'router' || isLoop(request))).toEqual([])
     expect(stdout).toBe('这个问题不在我的服务范围内。我可以帮您看看资产、诊断配置，或者讲讲理财常识。\n')
+  })
+
+  it('no customer in the context: investor education is still admitted, a question about money gets the no-customer reply', async () => {
+    const education = await run('education-anonymous', undefined, '什么是再平衡')
+    expect(education.stdout).toBe('FINANCE-OK\n')
+    expect(lastToolResult(education.requests.filter(isLoop)[1]!)).toContain('再平衡是定期把各类资产的比例调回目标')
+
+    const money = await run('money-anonymous', undefined, '看看我的资产')
+    expect(money.requests.filter(isLoop)).toEqual([])
+    expect(money.stdout).toBe('暂时没能识别您的身份，请从已登录的入口进来后再试。\n')
+  })
+
+  it('a customer the source does not know gets the no-customer reply instead of a failed run', async () => {
+    const { requests, stdout } = await run('unknown-customer', 'nobody-here', '看看我的资产')
+    expect(requests.filter(isLoop)).toEqual([])
+    expect(stdout).toBe('暂时没能识别您的身份，请从已登录的入口进来后再试。\n')
   })
 
   it('"什么是再平衡": investor education answers from the knowledge base without a card', async () => {

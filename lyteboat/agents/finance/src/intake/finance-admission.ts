@@ -1,12 +1,14 @@
 /**
  * The finance agent's admission, run before a request enters the loop. A side
  * call classifies the request: the customer's own money, investor education,
- * small talk, or none of these. Education and small talk are always admitted;
- * a request about the customer's money is admitted once the agent can see an
- * authorized account, and otherwise answered with the unauthorized card;
- * anything else is answered with the service scope. A classification that
- * fails admits the request: the persona's boundary still holds in the loop,
- * and the tools fall back to the unauthorized card themselves.
+ * small talk, or none of these. Education and small talk are always admitted,
+ * with or without a customer; a request about the customer's money needs a
+ * customer the context names and the source knows, and is admitted once the
+ * agent can see an authorized account, otherwise answered with the
+ * unauthorized card; anything else is answered with the service scope. A
+ * classification that fails admits the request: the persona's boundary still
+ * holds in the loop, and the tools fall back to the unauthorized card
+ * themselves.
  * @module @lyteboat/agent-finance/intake/finance-admission
  */
 
@@ -101,8 +103,6 @@ export function financeAdmission(deps: FinanceAdmissionDeps): LyteboatAdmission 
   return {
     name: FINANCE_ADMISSION,
     admit: async ({ agent, text, context, signal }) => {
-      const customerId = customerOfContext(context)
-      if (customerId === undefined) return { decision: 'reply', verdict: 'no_customer', text: REPLY_NO_CUSTOMER }
       const outcome = await deps.auxLlm.generate({
         agent, purpose: 'intake', system: FINANCE_INTAKE_SYSTEM, prompt: financeIntakePrompt(agent, text), maxTokens: FINANCE_INTAKE_MAX_TOKENS, timeoutMs: FINANCE_INTAKE_TIMEOUT_MS, signal,
       })
@@ -110,7 +110,9 @@ export function financeAdmission(deps: FinanceAdmissionDeps): LyteboatAdmission 
       if (intent === undefined) return { decision: 'pass', verdict: 'unclassified' }
       if (intent === 'other') return { decision: 'reply', verdict: 'out_of_scope', text: REPLY_OUT_OF_SCOPE }
       if (intent === 'education' || intent === 'chat') return { decision: 'pass', verdict: intent }
-      const customer = deps.customers.customer(customerId)
+      const customerId = customerOfContext(context)
+      const customer = customerId === undefined ? undefined : deps.customers.findCustomer(customerId)
+      if (customer === undefined) return { decision: 'reply', verdict: 'no_customer', text: REPLY_NO_CUSTOMER }
       if (summarizeHoldings(customer).authState !== 'none') return { decision: 'pass', verdict: 'asset' }
       return { decision: 'reply', verdict: 'unauthorized', text: REPLY_UNAUTHORIZED, cards: [await prepareCard(deps, agent, 'unauthorized', { access: { authorize_link: customer.links.authorize } })] }
     },

@@ -40,7 +40,7 @@ dsh-compat/               what lyteboat promises the plugins written against dsh
   COMPAT.md               the promise for people: stable surface, behavior invariants, additions, release channels
   contract/               the promise for machines: dsh-<version>/ snapshots (api, services, events, config, persistence), extensions.yml
   tests/                  the proof: upstream-harness/ (G2), scenarios/ (G4), canaries/ (G5), roundtrip/ (G6)
-scripts/                  check-layers.ts, upstream-pins.spec.ts; dist/ (import, snapshot, G1, delta, overlay gates, bundling, trees)
+scripts/                  check-layers.ts, check-sensitive.ts, upstream-pins.spec.ts; dist/ (import, snapshot, G1, delta, overlay gates, bundling, trees)
 dsh.upstream.json         the tracked dsh release; .pnpmfile.cjs pins every non-kernel dsh and cordis package to it
 ```
 

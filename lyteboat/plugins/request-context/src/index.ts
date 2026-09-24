@@ -61,7 +61,8 @@ const requestStateSchema: z.ZodType<LyteboatRequestState> = z.object({
 /**
  * The request a message source carries, when it carries a valid one. The
  * field sits beside `kind: 'user'` (dsh's human-input kind), so it is read as
- * data and validated here, the one place that reads it.
+ * data and validated here; a2ui reads the admission's cards from the same
+ * field with its own check.
  * @param source - a user message's source.
  */
 export function lyteboatRequestOf(source: MessageSource): LyteboatRequest | undefined {

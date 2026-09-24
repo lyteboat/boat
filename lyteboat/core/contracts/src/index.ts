@@ -8,8 +8,8 @@
  *
  * Session log vocabulary: dsh's persistence layer refuses to reopen a log
  * that carries an event type outside its compiled catalog unless the event is
- * marked `ignorable`, and `Session.append` cannot set that mark. Every lyteboat
- * fact therefore rides an envelope dsh already knows — `tool/result.meta`
+ * marked `ignorable`, and a reader skips a marked event. Every lyteboat fact a
+ * reader needs therefore rides an envelope dsh already knows — `tool/result.meta`
  * for cards and state deltas, the assistant message `source` for a reply's
  * author, dsh's own skill-invocation message for a routed skill — so every
  * lyteboat session reopens. The one record type of lyteboat's own,
