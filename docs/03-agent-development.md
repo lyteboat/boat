@@ -340,7 +340,7 @@ README 的包表要在同一个提交里跟上（CLAUDE.md:138）。在 `README.
 | `lyteboat/agents/policy-desk` | `@lyteboat/agent-policy-desk` | the policy-desk agent: one routed skill, a lookup tool that fills the session state and renders the policy card, a copy tool behind confirmation, an intake gate |
 ```
 
-然后**从干净的 `node_modules`** 重装。增量 `pnpm install` 会留下旧的提升链接，新包不会出现在根 `node_modules/@lyteboat/` 下（README.md:100）；实测增量安装后根目录确实没有 `agent-policy-desk`，删掉根 `node_modules` 再装才有：
+然后**从干净的 `node_modules`** 重装。增量 `pnpm install` 会留下旧的提升链接，新包不会出现在根 `node_modules/@lyteboat/` 下（README「pnpm 设置为什么和常见项目不同」）；实测增量安装后根目录确实没有 `agent-policy-desk`，删掉根 `node_modules` 再装才有：
 
 ```sh
 rm -rf node_modules && pnpm install
@@ -808,7 +808,7 @@ export function apply(ctx: Context): void {
 - 返回 `REPLY` 时，内核把这一步写成一条不请求模型的助手消息。代码只传 `{ provider: 'lyteboat', model: reply.plugin }`（`dsh/core/agent-loop/src/agent.ts:438-460`，`:455`；`src/lyteboat/step-hooks.ts:16`），日志里记下的 `source` 是 `{ kind: 'model', provider: 'lyteboat', model: 'policy-desk-intake' }`。
 - 不命中时**必须** `return next()`，否则会挡住排在后面的所有监听器（§4.4）。
 - `lyteboat/intake` 在**每一步**都会触发，包括工具之后的续步，那时 `messages` 是 `[]`（`agent.ts:277-283`）。所以这里只看 `source.kind === 'user'` 的文本。
-- 在本仓库里，这个行只从 `@lyteboat/contracts` import 类型。仓库外的插件如果用 `lyteboat/intake`，要声明 `inject: ['lyteboatDistro']`，这样在官方 dsh 上它不会加载（README.md:62，CLAUDE.md:71）。
+- 在本仓库里，这个行只从 `@lyteboat/contracts` import 类型。仓库外的插件如果用 `lyteboat/intake`，要声明 `inject: ['lyteboatDistro']`，这样在官方 dsh 上它不会加载（`compatibility/COMPAT.md:46`，CLAUDE.md:71）。
 
 ### 2.12 构建
 
@@ -821,7 +821,7 @@ ls lyteboat/agents/policy-desk/lib     # intake.js policies.js tools.js 及其 .
 
 ### 2.13 从 CLI 运行
 
-**用真实模型**（`DEEPSEEK_API_KEY` 放在环境或 `$LYTEBOAT_HOME/.env` 里，数据写到 `$LYTEBOAT_HOME`，默认 `~/.lyteboat`，README.md:64）：
+**用真实模型**（`DEEPSEEK_API_KEY` 放在环境或 `$LYTEBOAT_HOME/.env` 里，数据写到 `$LYTEBOAT_HOME`，默认 `~/.lyteboat`，README「配置模型」「数据与会话日志」）：
 
 ```sh
 DEEPSEEK_API_KEY=<你的 key> node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent policy-desk "保单 P-1001 还有效吗"
@@ -1473,7 +1473,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 ### 4.10 路由过的会话目前不能重开
 
-`lyteboat/route-request` 和 `lyteboat/skill-routed` 不在 dsh 的事件目录里，也没有 `ignorable` 标记，所以 dsh 的持久化层拒绝重开路由过的会话：`lyteboat web` 打不开，也不能续会话（README.md:68，`lyteboat/bundles/run/tests/reopen.composite.ts:109-113`）。拒识回复、状态、卡片、导入的历史都走已有的 envelope，这些会话可以重开。
+`lyteboat/route-request` 和 `lyteboat/skill-routed` 不在 dsh 的事件目录里，也没有 `ignorable` 标记，所以 dsh 的持久化层拒绝重开路由过的会话：`lyteboat web` 打不开，也不能续会话（README「状态与路线图」，`lyteboat/bundles/run/tests/reopen.composite.ts:109-113`）。拒识回复、状态、卡片、导入的历史都走已有的 envelope，这些会话可以重开。
 
 修复方案在发行版蓝图里。蓝图是一份不在仓库里的 HTML 设计文档，仓库里的发行版约定见 [02-distribution.md](02-distribution.md)。蓝图 §8 的例子 E1：dsh 的读路径其实接受带 `ignorable: true` 的未知事件，缺的只是写入口；所以给 `Session.append` 加一个可选参数 `{ ignorable: true }`，作为 `extend` 类改动登记进 `compatibility/contract/extensions.yml`。蓝图 §11 的路线图把它排在 D3，Web 和续会话排在 D4。另外，`lyteboat web` 目前不读 agent 目录（§0.4，`lyteboat/apps/cli/src/templates.ts:21-23`）。
 
@@ -1542,7 +1542,7 @@ agent 行只能声明、注册、监听。实测一个行调用 `ctx.provide('he
 
 - **loop 模型不由 agent 决定。** `@lyteboat/run` 创建 Agent 时读一次 `agentDefaultModel.currentSelection()`，作为 `agentOptions` 的 provider 和 model 传进去（`lyteboat/bundles/run/src/index.ts:187`、`:192`、`:218`）。preset 定义里没有模型字段（上游 `packages/preset/agent-preset-registry/src/types.ts`、`definition.ts` 里没有 `model`），所以一个 run 进程里所有 agent 用同一个 loop 模型。
 - **默认选择来自 dsh-base 的 `agent-default-model` 行。** 它的配置是 provider `deepseek-official` 加一个模型 id；如果 dsh settings（在 `$LYTEBOAT_HOME` 下）里保存了选择，就用保存的（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:80-86`，上游 `packages/core/agent-default-model/src/index.ts:23-31`）。要换模型，就在 settings 或 profile patch 层改这一行，不是在 agent 目录里改。
-- **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README.md:64）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（§2.13）。
+- **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README「配置模型」）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（§2.13）。
 - **路由器可以单独选模型。** `@lyteboat/skill-router/agent` 的 `provider` + `model`（必须成对）只影响路由的旁路调用；没给时用 agent 的 provider 和 model（`lyteboat/plugins/skill-router/src/index.ts:305-306`）。§3.2 的 `lyteboat/route-request` 记录了路由实际用的 `route`。
 
 ---
@@ -1629,7 +1629,7 @@ node lyteboat/apps/cli/lib/bin.js run --plugin /path/to/log-to-stderr.mjs --agen
 | 删了 `lib/` 之后构建报 `Cannot find entry: ["lib/types/{index,invariant,startup}.js"]`，或者 TS6305 `Output file … has not been built from source` | 陈旧的 `*.tsbuildinfo`（被 gitignore）让 `tsc -b` 以为各项目都是最新的，什么也不产出 | `find . -name '*.tsbuildinfo' -not -path './node_modules/*' -delete`，再 `pnpm run build` |
 | `error: agent "policy_desk" not found in the --agents directories (available: demo, policy-desk)`，退出 1 | id 写错了（id 就是目录名），或者目录里没有 `agent.cordis.yml` | 用列出来的 id；确认文件存在（`lyteboat/bundles/run/src/startup.ts:86-89`） |
 | `lyteboat: policy-desk-tools (./lib/tools.js): never started`，退出 1 | 没有构建，`lib/` 不存在；或者行的 `inject` 里有服务不可用 | `pnpm run build`；检查 `inject` |
-| `lyteboat: persona (@deepseek-ai/dsh-persona): never started` | agent 目录不在仓库里，行名从目录向上找不到 `node_modules` | agent 放在 `lyteboat/agents/` 下；包按名字解析依赖根目录提升的 `@deepseek-ai/*`、`@lyteboat/*`（README.md:101） |
+| `lyteboat: persona (@deepseek-ai/dsh-persona): never started` | agent 目录不在仓库里，行名从目录向上找不到 `node_modules` | agent 放在 `lyteboat/agents/` 下；包按名字解析依赖根目录提升的 `@deepseek-ai/*`、`@lyteboat/*`（README「pnpm 设置为什么和常见项目不同」） |
 | 路由器从不调用，`auto` 工具从不出现，退出 0 | 技能名不合法（下划线、大写），文件被静默忽略 | 改成连字符小写；打开 warn 确认 |
 | 路由到了技能，但某个工具仍然不在请求里 | `requiredTools` 拼错，或者那个工具没有经 tool-policy 注册 | 打开 warn，会看到 `lyteboat skill router: required tool "query_polcy" not declared to the tool policy; skipped`（实测） |
 | 第一步就失败，退出 1：`lyteboat: UNKNOWN: lyteboat tool policy: declared tool "no_such_tool" registered by no row reachable from agent "session-…"`（实测） | `@lyteboat/tool-policy/agent` 声明了没有任何行注册的工具；这个检查在每一步的 `lyteboat/pre-assemble` 之后做 | 修正名字，或者把注册工具的行加上（`lyteboat/plugins/tool-policy/src/index.ts:244-249`）。§4.11 的名单换 profile 时也会触发 |

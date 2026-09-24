@@ -2,6 +2,7 @@
   "name": "@lyteboat/contracts",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "lyteboat's contract extensions over the dsh seams: tool and skill metadata, the kernel's lyteboat/* step events, log nodes, and projection keys",
   "type": "module",
   "exports": {

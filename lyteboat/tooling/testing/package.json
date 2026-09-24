@@ -2,6 +2,7 @@
   "name": "@lyteboat/testing",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "lyteboat's test harness: dsh service mounting and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, the session-log reader, the scripted DeepSeek Messages model, and launcher spawning for e2e tests",
   "type": "module",
   "exports": {

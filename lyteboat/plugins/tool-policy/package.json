@@ -2,6 +2,7 @@
   "name": "@lyteboat/tool-policy",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "lyteboat's tool policy over the dsh tool registry: visibility (always/auto + activation), confirmation, and tool-result state deltas folded into the lyteboatState projection",
   "type": "module",
   "exports": {

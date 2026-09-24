@@ -2,6 +2,7 @@
   "name": "@lyteboat/host",
   "version": "0.0.1",
   "private": true,
+  "license": "MIT",
   "description": "lyteboat's host bundle over dsh-base: lyteboat's host services (distro marker, tool policy, skill router, a2ui, history import) for every profile that lists it",
   "type": "module",
   "exports": {
