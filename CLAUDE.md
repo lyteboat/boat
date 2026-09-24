@@ -182,6 +182,7 @@ Conventions:
 - State assumptions in the commit message and the PR description instead of guessing silently; never create a PR unless asked.
 - Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or anything under `dsh/` outside a classified commit without explicit instruction.
 - Commit messages: `<milestone-step>: <package> — <what it delivers>` for milestone work (`M2-3: @lyteboat/tool-policy — …`), conventional `fix:` / `chore:` / `docs:` otherwise, followed by a body that states what runs now and what was accepted. End with the attribution trailers the session provides.
+- Every commit also carries `Co-authored-by: $GIT_COAUTHOR` in its closing trailers, the value read from the environment, so GitHub credits the person who asked for the change. Each contributor sets `GIT_COAUTHOR` in their own cloud environment as `Name <email>`, the email bound to their GitHub account or their `ID+username@users.noreply.github.com` address. If `GIT_COAUTHOR` is unset, ask the user for it before committing.
 - Never put a model identifier in a commit, PR, code comment, or file.
 
 ## Upstream sync (the distribution)
