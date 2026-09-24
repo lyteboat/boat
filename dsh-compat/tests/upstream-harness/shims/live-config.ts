@@ -2,7 +2,7 @@
  * lyteboat adaptation: upstream's settings spec imports `liveConfig` from another
  * package's tests (`packages/settings/settings/tests/live-config.ts`), which no
  * published package ships. This is that helper, copied from
- * deepseek-ai/deepseek-harness @ dsh-v0.1.7-rc.1 (46a7f68b), MIT: mount a
+ * deepseek-ai/deepseek-harness @ dsh-v0.1.7-rc.2 (477b4f42), MIT: mount a
  * plugin behind a Loader and edit its raw configuration the way profile
  * reconciliation does.
  */

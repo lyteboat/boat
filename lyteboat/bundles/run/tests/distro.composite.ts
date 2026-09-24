@@ -29,7 +29,7 @@ describe('@lyteboat/distro in the run composition (in process, mock model)', () 
       env: { DEEPSEEK_BASE_URL: `${mock.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
     }, [{ id: 'session-title-llm', disabled: true }, PLUGIN])
     expect(result.code, result.stderr).toBe(0)
-    expect(result.stdout).toContain('lyteboat on dsh 0.1.7-rc.1: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable')
+    expect(result.stdout).toContain('lyteboat on dsh 0.1.7-rc.2: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable')
     expect(mock.requests).toHaveLength(0)
   })
 })

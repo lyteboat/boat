@@ -37,6 +37,7 @@
     "@deepseek-ai/dsh-compaction-tool-result-pruner": "catalog:dsh",
     "@deepseek-ai/dsh-cordis-client-runner": "catalog:dsh",
     "@deepseek-ai/dsh-experimental-agent-team-profile": "catalog:dsh",
+    "@deepseek-ai/dsh-experimental-auto-review": "catalog:dsh",
     "@deepseek-ai/dsh-experimental-voice-input-bundle": "catalog:dsh",
     "@deepseek-ai/dsh-fs-local": "catalog:dsh",
     "@deepseek-ai/dsh-goal": "catalog:dsh",

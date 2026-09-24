@@ -1,5 +1,5 @@
 /**
- * Adapted from deepseek-ai/deepseek-harness @ dsh-v0.1.7-rc.1 (46a7f68b),
+ * Adapted from deepseek-ai/deepseek-harness @ dsh-v0.1.7-rc.2 (477b4f42),
  * scripts/test-invariants.ts, MIT. lyteboat changes: companions are globbed from
  * the kernel (`dsh/<group>/<package>/src/invariant.ts`), test owners are
  * matched under `dsh/` instead of `packages/`, and the two exception lists that

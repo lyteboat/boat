@@ -6,7 +6,7 @@ Read [README.md](README.md) for what runs today and [dsh-compat/COMPAT.md](dsh-c
 
 ## Stack
 
-TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`lyteboat/*/*`, `dsh/*/*`; `overrides` route the kernel names to `dsh/`) · `tsc -b` with project references, then tsdown for the kernel bundles (upstream's own build) · vitest 4 (unit, composite, e2e, and upstream's kernel tests in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-rc.1: the kernel from `dsh/`, every other dsh package from npm as a peer dependency · `@deepseek-ai/schemastery` for plugin `Config`, zod for projection state schemas.
+TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`lyteboat/*/*`, `dsh/*/*`; `overrides` route the kernel names to `dsh/`) · `tsc -b` with project references, then tsdown for the kernel bundles (upstream's own build) · vitest 4 (unit, composite, e2e, and upstream's kernel tests in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-rc.2: the kernel from `dsh/`, every other dsh package from npm as a peer dependency · `@deepseek-ai/schemastery` for plugin `Config`, zod for projection state schemas.
 
 ## Repository layout
 
