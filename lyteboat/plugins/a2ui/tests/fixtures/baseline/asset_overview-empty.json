@@ -17,7 +17,7 @@
     "component": {
      "Text": {
       "text": {
-       "literalString": "集团全景资产(元)"
+       "literalString": "全部资产(元)"
       },
       "fontSize": "14px",
       "color": "rgba(0, 0, 0, 0.6)"
@@ -313,13 +313,13 @@
    "diag_btn_hide": true,
    "insurance_auth_hide": true,
    "insurance_unauth_hide": false,
-   "summary_label": "集团全景资产(元)",
+   "summary_label": "全部资产(元)",
    "total_display": "0.00"
   }
  },
  "warnings": [
-  "[MANIFEST] state 'auth_link' path 'yl_assets.auth_link' 解析失败: 字段 'yl_assets.auth_link' 不存在于数据中 (在 'yl_assets' 处失败, 可用字段: [])",
-  "[MANIFEST] state 'insurance_sub_page_link' path 'yl_assets.assets_sub_page_link' 解析失败: 字段 'yl_assets.assets_sub_page_link' 不存在于数据中 (在 'yl_assets' 处失败, 可用字段: [])"
+  "[MANIFEST] state 'auth_link' path 'assets_view.auth_link' 解析失败: 字段 'assets_view.auth_link' 不存在于数据中 (在 'assets_view' 处失败, 可用字段: [])",
+  "[MANIFEST] state 'insurance_sub_page_link' path 'assets_view.assets_sub_page_link' 解析失败: 字段 'assets_view.assets_sub_page_link' 不存在于数据中 (在 'assets_view' 处失败, 可用字段: [])"
  ],
  "digest": "[卡片:资产/none] 总额0.00元 · 保单0份 · 已授权0/3桶 · 卡后一句简短收尾（≤25字），不复述卡内数字",
  "stateDelta": null,

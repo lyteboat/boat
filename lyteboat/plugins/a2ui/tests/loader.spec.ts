@@ -30,6 +30,15 @@ describe('loadBundle', () => {
     expect(bundle.argSpecs).toEqual({})
   })
 
+  it('reads each emission mode a manifest may declare, and ignores any other value', async () => {
+    for (const mode of ['immediate', 'deferred', 'deferred_discard'] as const) {
+      const { root } = card({ 'template.json': TEMPLATE, 'manifest.yaml': `emission_mode: ${mode}\n` })
+      expect((await loadBundle(root, 'card')).emissionMode).toBe(mode)
+    }
+    const { root } = card({ 'template.json': TEMPLATE, 'manifest.yaml': 'emission_mode: later\n' })
+    expect((await loadBundle(root, 'card')).emissionMode).toBeUndefined()
+  })
+
   it('rejects a manifest that is a list instead of a mapping, naming the file', async () => {
     const { root } = card({ 'template.json': TEMPLATE, 'manifest.yaml': '- paths:\n    title:\n      kind: state\n' })
     await expect(loadBundle(root, 'card')).rejects.toThrow(/manifest\.yaml 必须是 YAML 映射，实际是 list/u)

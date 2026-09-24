@@ -16,8 +16,10 @@ import type { A2uiLog } from './transforms.ts'
 import { SILENT_LOG } from './transforms.ts'
 import type { ComputeModule, ManifestPaths } from './resolver.ts'
 import type { TemplateDocument } from './walker.ts'
+import type { LyteboatCardEmission } from '@lyteboat/contracts'
 
-export type EmissionMode = 'immediate' | 'deferred'
+/** A card's `manifest.emission_mode`: when the card is shown (the contract's LyteboatCardEmission). */
+export type EmissionMode = LyteboatCardEmission
 
 export type ComputeHook = (raw: Record<string, unknown>, flat: Record<string, unknown>) => unknown
 
@@ -133,8 +135,8 @@ export async function loadBundle(root: string, card: string, log: A2uiLog = SILE
   const rawMode = manifestDoc['emission_mode']
   if (rawMode !== undefined && rawMode !== null) {
     const text = String(rawMode).trim()
-    if (text === 'immediate' || text === 'deferred') emissionMode = text
-    else log.warn(`template '${card}' manifest.emission_mode=${JSON.stringify(rawMode)} not in {immediate,deferred}; ignoring`)
+    if (text === 'immediate' || text === 'deferred' || text === 'deferred_discard') emissionMode = text
+    else log.warn(`template '${card}' manifest.emission_mode=${JSON.stringify(rawMode)} not in {immediate,deferred,deferred_discard}; ignoring`)
   }
   const hierarchyPath = join(cardDir, 'business_hierarchy.yaml')
   const hierarchyDoc = readYaml(hierarchyPath)

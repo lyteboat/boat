@@ -58,11 +58,11 @@ describe('@lyteboat/a2ui in the run composition (in process, scripted model)', (
       const [queried, rendered] = records.filter(record => record.type === 'tool/result')
       expect(queried?.data?.['meta']).toMatchObject({ lyteboat: { stateDelta: { profile: { name: 'Composite Tester' } } } })
       expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
-      const meta = rendered?.data?.['meta'] as { lyteboat: { card: { surfaceId: string; payload: Record<string, unknown> } }; a2ui: { warnings: string[] } }
+      const meta = rendered?.data?.['meta'] as { lyteboat: { cards: { surfaceId: string; payload: Record<string, unknown> }[] }; a2ui: { warnings: string[] } }
       expect(meta.a2ui.warnings).toEqual([])
-      expect(meta.lyteboat.card.surfaceId).toMatch(/^summary-/u)
-      expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root')
-      expect(JSON.stringify(meta.lyteboat.card.payload)).toContain('Composite Tester')
+      expect(meta.lyteboat.cards[0]?.surfaceId).toMatch(/^summary-/u)
+      expect(meta.lyteboat.cards[0]?.payload['rootComponentId']).toBe('root')
+      expect(JSON.stringify(meta.lyteboat.cards[0]?.payload)).toContain('Composite Tester')
     } finally {
       await model.close()
     }
@@ -77,8 +77,8 @@ describe('@lyteboat/a2ui in the run composition (in process, scripted model)', (
       expect(model.loopRequests()).toHaveLength(1)
       const records = readSessionLog(findSessionLogs(home)[0] ?? '') as unknown as LogRecord[]
       const rendered = records.find(record => record.type === 'tool/result')
-      const meta = rendered?.data?.['meta'] as { lyteboat: { card: { payload: Record<string, unknown> } } }
-      expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root')
+      const meta = rendered?.data?.['meta'] as { lyteboat: { cards: { payload: Record<string, unknown> }[] } }
+      expect(meta.lyteboat.cards[0]?.payload['rootComponentId']).toBe('root')
       expect(records.filter(record => record.type === 'turn/end').at(-1)?.data?.['reason']).toEqual({ kind: 'completed' })
     } finally {
       await model.close()

@@ -1,0 +1,28 @@
+{
+  "id": "midlife-moderate",
+  "note": "45 岁，稳健和风险资产大致各半。",
+  "age": 45,
+  "holdings": [
+    {
+      "institution": "示例银行",
+      "name": "定期存款",
+      "amount": "80000.00",
+      "risky": false
+    },
+    {
+      "institution": "示例银行",
+      "name": "债券基金",
+      "amount": "30000.00",
+      "risky": false
+    },
+    {
+      "institution": "示例证券",
+      "name": "股票基金",
+      "amount": "90000.00",
+      "risky": true
+    }
+  ],
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

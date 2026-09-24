@@ -1,0 +1,12 @@
+# business_hierarchy.yaml — allocation_diagnosis: one shape
+
+default: allocation_diagnosis
+
+hierarchies:
+  allocation_diagnosis:
+    root: root-container
+    ui_ids:
+      - title-text
+      - verdict-text
+      - risky-text
+      - steady-text

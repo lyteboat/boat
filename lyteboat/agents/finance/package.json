@@ -1,0 +1,69 @@
+{
+  "name": "@lyteboat/agent-finance",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's finance agent, deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule with two cards, and investor education on three concepts. Requests name their customer in the request context (context.customer, a fixture name); an admission ahead of the loop answers out-of-scope requests and unauthorized customers without the model",
+  "type": "module",
+  "exports": {
+    "./agent": {
+      "@lyteboat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    },
+    "./capabilities": {
+      "@lyteboat/source": "./src/capabilities/index.ts",
+      "types": "./lib/capabilities/index.d.ts",
+      "default": "./lib/capabilities/index.js"
+    },
+    "./intake": {
+      "@lyteboat/source": "./src/intake/finance-admission.ts",
+      "types": "./lib/intake/finance-admission.d.ts",
+      "default": "./lib/intake/finance-admission.js"
+    }
+  },
+  "files": [
+    "lib",
+    "preset.yml",
+    "agent.cordis.yml",
+    "skills",
+    "a2ui",
+    "fixtures"
+  ],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*",
+    "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
+    "@deepseek-ai/dsh-tools": "workspace:*",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/intake-guard": "workspace:*",
+    "@lyteboat/request-context": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/distro": "workspace:*",
+    "@lyteboat/host": "workspace:*",
+    "@lyteboat/intake-guard": "workspace:*",
+    "@lyteboat/request-context": "workspace:*",
+    "@lyteboat/run": "workspace:*",
+    "@lyteboat/skill-router": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-agent-loop": "workspace:*",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-skill": "workspace:*"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-asset-overview",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "total-text",
+              "steady-text",
+              "risky-text"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "资产总览"
+          },
+          "fontSize": "18px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "total-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "total_line"
+          },
+          "fontSize": "24px",
+          "fontWeight": 600
+        }
+      }
+    },
+    {
+      "id": "steady-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_line"
+          }
+        }
+      }
+    },
+    {
+      "id": "risky-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "risky_line"
+          }
+        }
+      }
+    }
+  ]
+}

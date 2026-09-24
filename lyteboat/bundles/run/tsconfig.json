@@ -11,8 +11,12 @@
     { "path": "../../../dsh/core/agent" },
     { "path": "../../../dsh/core/session" },
     { "path": "../../../dsh/llm/llm" },
+    { "path": "../../core/contracts" },
+    { "path": "../../plugins/a2ui" },
     {
       "path": "../../plugins/history-import"
-    }
+    },
+    { "path": "../../plugins/intake-guard" },
+    { "path": "../../plugins/request-context" }
   ]
 }

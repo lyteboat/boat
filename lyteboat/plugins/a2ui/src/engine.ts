@@ -30,6 +30,8 @@ export interface TemplateRenderResult {
   warnings: string[]
   digest: string
   stateDelta: Record<string, JsonValue> | undefined
+  /** When the card is shown: its manifest's `emission_mode`, `immediate` when it declares none. */
+  emission: EmissionMode
 }
 
 export interface TemplateRenderOptions {
@@ -103,7 +105,7 @@ export class TemplateEngine {
     if (surfaceId !== '') payload = asSurfaceUpdate(payload, surfaceId)
     else payload['surfaceId'] = mintSurfaceId(card, options.sessionId ?? '')
     const { digest, stateDelta } = this.enrichment(bundle, raw, flat)
-    return { payload, warnings, digest, stateDelta }
+    return { payload, warnings, digest, stateDelta, emission: bundle.emissionMode ?? 'immediate' }
   }
 
   private resolveHierarchy(bundle: TemplateBundle, name: string | undefined): HierarchyShape {

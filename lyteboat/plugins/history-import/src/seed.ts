@@ -4,8 +4,8 @@
  * head on node 0, `user/message` and `assistant/message` with `surfaceOp:
  * 'append'`, provider `lyteboat`, model `history-import`, empty stream). Seq is
  * contiguous from 0, so the result satisfies `CreateAgentOptions.seed`. The
- * trace ids the seed carries are returned, not logged: dsh's persistence
- * refuses a log with a lyteboat-specific node.
+ * trace ids the seed carries are returned, not logged: the seed holds only
+ * node types dsh's persistence reads, so a seeded session reopens anywhere.
  * @module @lyteboat/history-import/seed
  */
 
@@ -13,7 +13,7 @@ import { createAssistantMessage, createSystemMessage, createUserMessage } from '
 import type { SessionEvent, SessionEventMap, SessionEventType } from '@deepseek-ai/dsh-session'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import { LYTEBOAT_ASSISTANT_PROVIDER, LYTEBOAT_HISTORY_IMPORT_SOURCE } from '@lyteboat/contracts'
-import type { HistoryRound } from './sa-history.ts'
+import type { HistoryRound } from './round-history.ts'
 
 /** The model recorded on imported assistant messages. */
 export const HISTORY_IMPORT_MODEL = 'history-import'

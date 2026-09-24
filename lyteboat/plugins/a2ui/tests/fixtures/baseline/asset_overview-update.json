@@ -1,15 +1,15 @@
 {
  "card": "asset_overview",
  "raw": {
-  "yl_assets": {
+  "assets_view": {
    "total_display": "293,828.93",
    "auth_state": "full",
    "policy_count": 3,
    "is_aigc": true,
    "unauth_main_group_count": 0,
    "insurance_authorized": true,
-   "auth_link": "https://pama/auth",
-   "assets_sub_page_link": "https://pama/policies",
+   "auth_link": "https://example.invalid/authorize",
+   "assets_sub_page_link": "https://example.invalid/policies",
    "buckets": {
     "日常": {
      "pct": 62.0,
@@ -31,23 +31,23 @@
     }
    }
   },
-  "yl_assets_raw": {
+  "assets_raw": {
    "accounts": [
     {
      "bucket": "日常",
-     "bu": "平安银行",
+     "bu": "示例银行",
      "name": "活期",
      "amount": "82173.94"
     },
     {
      "bucket": "日常",
-     "bu": "平安证券",
+     "bu": "示例证券",
      "name": "可用",
      "amount": "100000"
     },
     {
      "bucket": "稳健",
-     "bu": "平安银行",
+     "bu": "示例银行",
      "name": "理财",
      "amount": "38197.76"
     }
@@ -68,7 +68,7 @@
     "component": {
      "Text": {
       "text": {
-       "literalString": "集团全景资产(元)"
+       "literalString": "全部资产(元)"
       },
       "fontSize": "14px",
       "color": "rgba(0, 0, 0, 0.6)"
@@ -118,14 +118,14 @@
         "amount": "182,173.94",
         "color": "#FFB759",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": [
          {
-          "name": "平安银行",
+          "name": "示例银行",
           "amount": "82,173.94"
          },
          {
-          "name": "平安证券",
+          "name": "示例证券",
           "amount": "100,000.00"
          }
         ]
@@ -136,10 +136,10 @@
         "amount": "38,197.76",
         "color": "#4872D6",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": [
          {
-          "name": "平安银行",
+          "name": "示例银行",
           "amount": "38,197.76"
          }
         ]
@@ -150,7 +150,7 @@
         "amount": "73,457.23",
         "color": "#E51414",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": []
        }
       ]
@@ -168,14 +168,14 @@
         "amount": "182,173.94",
         "color": "#FFB759",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": [
          {
-          "name": "平安银行",
+          "name": "示例银行",
           "amount": "82,173.94"
          },
          {
-          "name": "平安证券",
+          "name": "示例证券",
           "amount": "100,000.00"
          }
         ]
@@ -186,10 +186,10 @@
         "amount": "38,197.76",
         "color": "#4872D6",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": [
          {
-          "name": "平安银行",
+          "name": "示例银行",
           "amount": "38,197.76"
          }
         ]
@@ -200,7 +200,7 @@
         "amount": "73,457.23",
         "color": "#E51414",
         "authorization": true,
-        "auth_url": "https://pama/auth",
+        "auth_url": "https://example.invalid/authorize",
         "children": []
        }
       ]
@@ -235,7 +235,7 @@
        {
         "name": "openLink",
         "args": {
-         "url": "https://pama/policies"
+         "url": "https://example.invalid/policies"
         }
        }
       ]
@@ -371,14 +371,14 @@
      "amount": "182,173.94",
      "color": "#FFB759",
      "authorization": true,
-     "auth_url": "https://pama/auth",
+     "auth_url": "https://example.invalid/authorize",
      "children": [
       {
-       "name": "平安银行",
+       "name": "示例银行",
        "amount": "82,173.94"
       },
       {
-       "name": "平安证券",
+       "name": "示例证券",
        "amount": "100,000.00"
       }
      ]
@@ -389,10 +389,10 @@
      "amount": "38,197.76",
      "color": "#4872D6",
      "authorization": true,
-     "auth_url": "https://pama/auth",
+     "auth_url": "https://example.invalid/authorize",
      "children": [
       {
-       "name": "平安银行",
+       "name": "示例银行",
        "amount": "38,197.76"
       }
      ]
@@ -403,7 +403,7 @@
      "amount": "73,457.23",
      "color": "#E51414",
      "authorization": true,
-     "auth_url": "https://pama/auth",
+     "auth_url": "https://example.invalid/authorize",
      "children": []
     }
    ],
@@ -412,9 +412,9 @@
    "diag_btn_hide": false,
    "insurance_auth_hide": false,
    "insurance_policy_text": "3份保单",
-   "insurance_sub_page_link": "https://pama/policies",
+   "insurance_sub_page_link": "https://example.invalid/policies",
    "insurance_unauth_hide": true,
-   "summary_label": "集团全景资产(元)",
+   "summary_label": "全部资产(元)",
    "total_display": "293,828.93"
   }
  },

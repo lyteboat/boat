@@ -1,0 +1,12 @@
+# business_hierarchy.yaml — asset_overview: one shape
+
+default: asset_overview
+
+hierarchies:
+  asset_overview:
+    root: root-container
+    ui_ids:
+      - title-text
+      - total-text
+      - steady-text
+      - risky-text

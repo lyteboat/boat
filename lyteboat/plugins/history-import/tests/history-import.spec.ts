@@ -13,7 +13,7 @@ import { SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import { MockAdapter, mountDshTestServices, textResponse } from '@lyteboat/testing'
-import HistoryImportService, { saHistoryOf } from '@lyteboat/history-import'
+import HistoryImportService, { historyEntriesOf } from '@lyteboat/history-import'
 import type { HistoryRound } from '@lyteboat/history-import'
 
 const cleanups: (() => Promise<void>)[] = []
@@ -76,9 +76,9 @@ describe('a seeded session', () => {
   })
 
   it('reads the entry list out of a bare array or an envelope', () => {
-    expect(saHistoryOf([1])).toEqual([1])
-    expect(saHistoryOf({ sa_history: [2] })).toEqual([2])
-    expect(saHistoryOf({ context: { sa_history: [3] } })).toEqual([3])
-    expect(saHistoryOf({ other: [] })).toBeUndefined()
+    expect(historyEntriesOf([1])).toEqual([1])
+    expect(historyEntriesOf({ history: [2] })).toEqual([2])
+    expect(historyEntriesOf({ context: { history: [3] } })).toEqual([3])
+    expect(historyEntriesOf({ other: [] })).toBeUndefined()
   })
 })

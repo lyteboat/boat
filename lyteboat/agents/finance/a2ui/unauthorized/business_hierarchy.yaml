@@ -1,0 +1,10 @@
+# business_hierarchy.yaml — unauthorized: the prompt and the authorize button
+
+default: unauthorized
+
+hierarchies:
+  unauthorized:
+    root: root-container
+    ui_ids:
+      - auth-text
+      - auth-btn

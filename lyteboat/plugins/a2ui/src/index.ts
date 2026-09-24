@@ -1,28 +1,34 @@
 /**
  * @lyteboat/a2ui — A2UI cards for lyteboat agents. One host service, `ctx.a2ui`,
  * owns the template engine (the reference template mode, ported), the `render_a2ui`
- * tool a composition registers over a templates root, and the `lyteboatCards`
- * projection that collects every rendered card from `tool/result.meta`.
+ * tool a composition registers over a templates root, the `lyteboatCards`
+ * projection that collects every prepared card from `tool/result.meta`, and
+ * `turnParts`, which lays one finished turn out as a client shows it.
  *
  * The tool reads its raw data from the session's `lyteboatState` projection (the
  * configured state keys, as the reference `state_keys`), renders the chosen card, and
- * returns the digest as the model-facing text; the card itself rides the
- * result's presentation meta (`meta.lyteboat.card`), never the model transcript.
+ * returns the digest as the model-facing text; the cards ride the result's
+ * presentation meta (`meta.lyteboat.cards`), never the model transcript. A card's
+ * manifest names when it is shown (`emission_mode`): at once, or where the answer
+ * writes `[[card:<area>]]`.
  * @module @lyteboat/a2ui
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import { z as zod } from 'zod'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import type { UserMessage } from '@deepseek-ai/dsh-llm'
+import { SessionSeq, type Session, type SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type { LyteboatCard, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
+import type { LyteboatCard, LyteboatCardEmission, LyteboatResultCard, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
 import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
 import type { A2uiComponentCatalog } from './contract.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
+import { composeTurnParts, type LyteboatTurnPart } from './turn-parts.ts'
 
 export { TemplateEngine, TemplateModeError, mintSurfaceId, renderTemplate } from './engine.ts'
 export type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
@@ -36,6 +42,8 @@ export type { TemplateDocument } from './walker.ts'
 export { DEFAULT_A2UI_COMPONENT_CATALOG, rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload } from './contract.ts'
 export type { A2uiComponentCatalog, GuardResult, ValidationResult } from './contract.ts'
 export { templateBusinessPayload, BUSINESS_PAYLOAD_KEY } from './business-payload.ts'
+export { composeTurnParts } from './turn-parts.ts'
+export type { LyteboatTurnPart } from './turn-parts.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -69,9 +77,13 @@ const jsonValueSchema: zod.ZodType<JsonValue> = zod.lazy(() => zod.union([
   zod.string(), zod.number(), zod.boolean(), zod.null(), zod.array(jsonValueSchema), zod.record(zod.string(), jsonValueSchema),
 ]))
 
+const CARD_EMISSIONS = ['immediate', 'deferred', 'deferred_discard'] as const
+
 const lyteboatCardSchema: zod.ZodType<LyteboatCard> = zod.object({
   callId: zod.string(),
   surfaceId: zod.string(),
+  area: zod.string(),
+  emission: zod.enum(CARD_EMISSIONS),
   payload: jsonValueSchema,
 })
 
@@ -81,12 +93,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** The card a tool result's presentation meta carries, when it is one. */
-export function cardOfMeta(meta: JsonValue | undefined): { surfaceId: string; payload: JsonValue } | undefined {
-  if (!isRecord(meta) || !isRecord(meta['lyteboat']) || !isRecord(meta['lyteboat']['card'])) return undefined
-  const card = meta['lyteboat']['card']
-  if (typeof card['surfaceId'] !== 'string' || card['payload'] === undefined) return undefined
-  return { surfaceId: card['surfaceId'], payload: card['payload'] as JsonValue }
+function isCardEmission(value: unknown): value is LyteboatCardEmission {
+  return CARD_EMISSIONS.some(emission => emission === value)
+}
+
+/** The cards in a logged card list, skipping any entry that is not one. */
+function resultCardsOf(cards: unknown): LyteboatResultCard[] {
+  if (!Array.isArray(cards)) return []
+  return cards.flatMap((card): LyteboatResultCard[] => {
+    if (!isRecord(card)) return []
+    const { surfaceId, area, emission, payload } = card
+    if (typeof surfaceId !== 'string' || typeof area !== 'string' || !isCardEmission(emission) || payload === undefined) return []
+    return [{ surfaceId, area, emission, payload: payload as JsonValue }]
+  })
+}
+
+/** The cards a tool result's presentation meta carries (`lyteboat.cards`). */
+export function cardsOfMeta(meta: JsonValue | undefined): LyteboatResultCard[] {
+  if (!isRecord(meta) || !isRecord(meta['lyteboat'])) return []
+  return resultCardsOf(meta['lyteboat']['cards'])
+}
+
+/**
+ * The cards an admission verdict recorded on a human message carries
+ * (`source.lyteboatRequest.intake.cards`, the `@lyteboat/request-context`
+ * contract), read from the log as data.
+ */
+export function cardsOfRequest(message: UserMessage): LyteboatResultCard[] {
+  const request = (message.source as { lyteboatRequest?: unknown }).lyteboatRequest
+  if (message.source.kind !== 'user' || !isRecord(request) || !isRecord(request['intake'])) return []
+  return resultCardsOf(request['intake']['cards'])
 }
 
 function appendCard(state: LyteboatCard[], card: LyteboatCard): LyteboatCard[] {
@@ -103,13 +139,15 @@ export const lyteboatCardsProjectionDefinition = {
   stateSchema: lyteboatCardsSchema,
   init: (): LyteboatCard[] => [],
   apply(state: LyteboatCard[], event) {
+    // A surface replacement keeps the original meta; folding it would show the card twice.
+    if (event.surfaceOp !== 'append') return state
+    if (event.type === 'user/message') return cardsOfRequest(event.data).reduce((cards, card) => appendCard(cards, { callId: event.data.id, ...card }), state)
     if (event.type !== 'tool/result') return state
-    const card = cardOfMeta(event.data.meta)
-    if (card === undefined) return state
-    return appendCard(state, { callId: event.data.message.toolCallId, ...card })
+    const callId = event.data.message.toolCallId
+    return cardsOfMeta(event.data.meta).reduce((cards, card) => appendCard(cards, { callId, ...card }), state)
   },
   wire: { viewSchema: lyteboatCardsSchema, view: (state: LyteboatCard[]) => state },
-  stateVersion: 1,
+  stateVersion: 4,
 } satisfies ProjectionDefinition<'lyteboatCards', LyteboatCard[]>
 
 /** The reference `_collect_raw_data`: each state key namespaced and flattened. */
@@ -189,9 +227,38 @@ export class A2uiService extends Service {
     return this.engine(templates).render(card, raw, options)
   }
 
-  /** The cards one agent's session has rendered, in log order. */
+  /** The cards one agent's session has prepared, in log order. */
   cardsOf(agent: Agent): LyteboatCard[] {
     return this.ctx.sessionProjections.stateOf(agent.session, 'lyteboatCards') ?? []
+  }
+
+  /**
+   * One finished turn as a client shows it: its answer with the cards its
+   * results (and an admission reply) prepared, placed by their markers and
+   * emission modes.
+   * @param session - the session the turn ran in.
+   * @param fromSeq - the log position the turn starts at.
+   */
+  turnParts(session: Session, fromSeq: SessionLogOffset): LyteboatTurnPart[] {
+    const cards: LyteboatCard[] = []
+    let text = ''
+    let completed = false
+    for (let seq = fromSeq; seq < session.seq; seq++) {
+      const event = session.eventAt(SessionSeq(seq))
+      if (event?.type === 'user/message' && event.surfaceOp === 'append') {
+        const callId = event.data.id
+        cards.push(...cardsOfRequest(event.data).map(card => ({ callId, ...card })))
+      } else if (event?.type === 'tool/result' && event.surfaceOp === 'append') {
+        const callId = event.data.message.toolCallId
+        cards.push(...cardsOfMeta(event.data.meta).map(card => ({ callId, ...card })))
+      } else if (event?.type === 'assistant/message') {
+        const answer = event.data.message.content.filter(block => block.type === 'text').map(block => block.text).join('')
+        if (answer !== '') text = answer
+      } else if (event?.type === 'turn/end') {
+        completed = event.data.reason.kind === 'completed'
+      }
+    }
+    return composeTurnParts(text, cards, completed)
   }
 
   /**
@@ -231,6 +298,7 @@ export class A2uiService extends Service {
           properties: {
             template: { type: 'string', required: true },
             event: { type: 'string', required: true },
+            emission: { type: 'string', required: true, enum: [...CARD_EMISSIONS] },
             surfaceId: { type: 'string', required: true },
             digest: { type: 'string', required: true },
             warnings: { type: 'array', required: true, items: { type: 'string' } },
@@ -240,7 +308,7 @@ export class A2uiService extends Service {
         },
         render: (_args, value) => [{ type: 'text', text: value.digest !== '' ? value.digest : `[卡片:${value.template}] 已渲染` }],
         presentationMeta: (_args, value) => ({
-          lyteboat: { card: { surfaceId: value.surfaceId, payload: value.card } },
+          lyteboat: { cards: [{ surfaceId: value.surfaceId, area: value.template, emission: value.emission, payload: value.card }] },
           a2ui: { template: value.template, event: value.event, warnings: value.warnings },
         }),
       },
@@ -269,6 +337,7 @@ export class A2uiService extends Service {
         return {
           template: card,
           event: String(result.payload['event'] ?? 'beginRendering'),
+          emission: result.emission,
           surfaceId: String(result.payload['surfaceId'] ?? ''),
           digest: result.digest,
           warnings: [...result.warnings, ...guard.errors, ...guard.warnings],

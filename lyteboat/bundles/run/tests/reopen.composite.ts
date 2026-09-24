@@ -1,9 +1,9 @@
 /**
- * Every session lyteboat writes through a dsh envelope reopens under dsh's own
- * persistence validator: the intake reply, a tool result carrying a state
- * delta and a card, and an imported history. A routed session is the known
- * exception (`lyteboat/skill-routed` has no dsh envelope) and is pinned here so
- * the limitation is visible the day it disappears.
+ * Every session lyteboat writes reopens under dsh's own persistence validator,
+ * because every lyteboat fact rides a dsh envelope: the intake reply, a tool
+ * result carrying a state delta and a card, an imported history, and a routed
+ * skill (dsh's own skill-invocation message). The router call's audit record
+ * is lyteboat's own type, appended ignorable, so the validator skips it.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -25,7 +25,7 @@ description: 资产总览。
 ASSET-OVERVIEW-BODY
 `
 
-interface StoredRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean }
+interface StoredRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean; ignorable?: true }
 
 /** The loop calls each named tool once, in order, then answers; the router always picks the first candidate. */
 function script(tools: string[]) {
@@ -37,7 +37,7 @@ function script(tools: string[]) {
 }
 
 /** Reopen the stored log the way dsh's persistence does before it interprets one. */
-function reopen(home: string): { types: string[]; refusal: string | undefined } {
+function reopen(home: string): { types: string[]; ignorable: string[]; refusal: string | undefined } {
   const [log] = findSessionLogs(home)
   const records = readSessionLog(log!) as unknown as StoredRecord[]
   const header = records.find(record => record.type === 'session')
@@ -48,10 +48,10 @@ function reopen(home: string): { types: string[]; refusal: string | undefined } 
       structuredClone(events) as never,
       undefined,
     )
-    return { types: events.map(event => event.type), refusal: undefined }
+    return { types: events.map(event => event.type), ignorable: events.filter(event => event.ignorable === true).map(event => event.type), refusal: undefined }
   } catch (error: unknown) {
     if (!(error instanceof SessionFormatUnsupportedError)) throw error
-    return { types: events.map(event => event.type), refusal: error.message }
+    return { types: events.map(event => event.type), ignorable: events.filter(event => event.ignorable === true).map(event => event.type), refusal: error.message }
   }
 }
 
@@ -69,7 +69,7 @@ describe('lyteboat sessions reopen under dsh session persistence (in process, sc
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function run(label: string, args: string[], patches: PatchOptions[] = []): Promise<{ types: string[]; refusal: string | undefined }> {
+  async function run(label: string, args: string[], patches: PatchOptions[] = []): Promise<{ types: string[]; ignorable: string[]; refusal: string | undefined }> {
     const home = join(root, `home-${label}`)
     const workspace = join(root, `workspace-${label}`)
     for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
@@ -100,15 +100,17 @@ describe('lyteboat sessions reopen under dsh session persistence (in process, sc
   })
 
   it('an imported history: the seed is closed turns of dsh nodes', async () => {
-    const { types, refusal } = await run('history', ['--history', join(FIXTURES, 'history', 'sa.json'), '继续刚才的话题'])
+    const { types, refusal } = await run('history', ['--history', join(FIXTURES, 'history', 'rounds.json'), '继续刚才的话题'])
     expect(refusal).toBeUndefined()
     expect(types).toContain('session/end-seed')
     expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])
   })
 
-  it('a routed session is refused: lyteboat/skill-routed has no dsh envelope yet (known limitation, see @lyteboat/contracts)', async () => {
-    const { types, refusal } = await run('routed', ['--agents', AGENTS, '--agent', 'routed', '看看资产'])
-    expect(types).toContain('lyteboat/skill-routed')
-    expect(refusal).toMatch(/"lyteboat\/(skill-routed|route-request)".*not marked ignorable/u)
+  it('a routed session: the skill arrives as a skill-invocation user message, the router call as an ignorable record', async () => {
+    const { types, ignorable, refusal } = await run('routed', ['--agents', AGENTS, '--agent', 'routed', '看看资产'])
+    expect(refusal).toBeUndefined()
+    expect(types).toContain('user/message')
+    expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual(['lyteboat/aux-llm-call'])
+    expect(ignorable).toEqual(['lyteboat/aux-llm-call'])
   })
 })

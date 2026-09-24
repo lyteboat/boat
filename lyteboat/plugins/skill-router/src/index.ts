@@ -1,41 +1,45 @@
 /**
  * @lyteboat/skill-router — the reference skill loading and routing over the dsh skill
  * registry. One host service, `ctx.skillRouter`, with per-scope settings
- * (host row defaults, overridden by a preset's registrar row):
+ * (host row defaults, overridden by an agent's registrar row):
  *
  * - `off`: nothing.
  * - `full`: every model-invocable skill's body is a system prompt section
  *   (`lyteboat:skills`) and every tool the skills require is activated; no
  *   routing.
  * - `dynamic`: each user input is routed by a side model call (the reference
- *   LLMSkillRouter prompt and rules, sticky on null / errors / timeouts);
- *   the active skill's body reaches the same step through the `lyteboat:skill`
- *   runtime context, its `metadata.lyteboat.requiredTools` are activated
- *   through `ctx.toolPolicy` (replacing the previous skill's), and the model
- *   loading a skill through the `skill` tool switches the active skill too.
+ *   LLMSkillRouter prompt and rules, sticky on null / errors / timeouts). The
+ *   chosen skill's `metadata.lyteboat.requiredTools` are activated through
+ *   `ctx.toolPolicy` for the same step, replacing the previous skill's, and
+ *   its body enters the step as dsh's own skill-invocation message, the
+ *   record dsh-tool-skill writes when a user invokes a skill. The model
+ *   loading a skill through the `skill` tool activates it too.
  *
- * Decisions are durable: `lyteboat/route-request` audits every router call,
- * `lyteboat/skill-routed` records every activation (source `router` or
- * `model`), and the `lyteboatActiveSkill` projection folds the latter.
+ * Activation is durable in vocabulary every dsh reader knows: the
+ * `lyteboatActiveSkill` projection folds skill-invocation messages and
+ * successful `skill` tool calls from the log, so a resumed session restores
+ * its tools, and a body compaction has shadowed is injected again. The router
+ * call goes through `ctx.auxLlm`, which records it (prompt, answer or failure)
+ * as an ignorable `lyteboat/aux-llm-call`.
  * @module @lyteboat/skill-router
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { BlockAssembler, createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
+import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
+import type { Session } from '@deepseek-ai/dsh-session'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { isModelInvocable, renderSkillContent } from '@deepseek-ai/dsh-skill'
-import type { SkillDefinition, SkillViewOptions } from '@deepseek-ai/dsh-skill'
+import type { SkillDefinition, SkillInvocationSource, SkillViewOptions } from '@deepseek-ai/dsh-skill'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
+import type { AuxLlmRoute } from '@lyteboat/aux-llm'
 import type {} from '@lyteboat/tool-policy'
-import { LYTEBOAT_SKILL_ROUTER_SOURCE } from '@lyteboat/contracts'
-import type { LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
+import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
 
@@ -48,14 +52,14 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Where the active skill's body sits among the runtime contexts (after lyteboat:state at 130). */
-export const LYTEBOAT_SKILL_CONTEXT_ORDER = 140
 /** Where the full-mode skill bodies sit among the system prompt sections (before PLAN_POLICY at 500). */
 export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
-/** Timeout reason code of one router call. */
-export const SKILL_ROUTE_TIMEOUT_CODE = 'LYTEBOAT_SKILL_ROUTE_TIMEOUT'
+/** The router call's `purpose` in its `lyteboat/aux-llm-call` record. */
+export const SKILL_ROUTER_PURPOSE = 'skill-router'
 /** Output budget of one router call: strict JSON with a ≤30-character reason. */
 const ROUTE_MAX_TOKENS = 200
+/** The dsh tool through which the model loads a skill itself. */
+const SKILL_TOOL = 'skill'
 
 export type SkillLoadMode = 'off' | 'full' | 'dynamic'
 
@@ -113,28 +117,85 @@ export function lyteboatSkillMeta(metadata: Readonly<Record<string, unknown>> | 
   }
 }
 
-const activeSkillSchema = zod.string().nullable()
+/** The skill a `skill` tool call loads, from the call's JSON arguments. */
+function loadedSkillOf(argumentsJson: string): string | undefined {
+  let args: unknown
+  try {
+    args = JSON.parse(argumentsJson)
+  } catch {
+    // Malformed arguments fail the call's own validation; there is no load to fold.
+    return undefined
+  }
+  if (typeof args !== 'object' || args === null || Array.isArray(args)) return undefined
+  const name = (args as Record<string, unknown>)['name']
+  return typeof name === 'string' ? name : undefined
+}
+
+const activeSkillStateSchema: zod.ZodType<LyteboatActiveSkillState> = zod.object({
+  active: zod.string().nullable(),
+  loading: zod.record(zod.string(), zod.string()),
+})
+
+const activeSkillViewSchema = zod.string().nullable()
 
 export const lyteboatActiveSkillProjectionDefinition = {
   key: 'lyteboatActiveSkill',
-  stateSchema: activeSkillSchema,
-  init: (): string | null => null,
-  apply(state: string | null, event) {
-    return event.type === 'lyteboat/skill-routed' ? event.data.skill : state
+  stateSchema: activeSkillStateSchema,
+  init: (): LyteboatActiveSkillState => ({ active: null, loading: {} }),
+  apply(state: LyteboatActiveSkillState, event) {
+    switch (event.type) {
+      case 'user/message': {
+        const source = event.data.source
+        if (event.surfaceOp !== 'append' || source.kind !== 'skill-invocation') return state
+        return source.name === state.active ? state : { ...state, active: source.name }
+      }
+      case 'tool/call': {
+        if (event.data.name !== SKILL_TOOL) return state
+        const name = loadedSkillOf(event.data.arguments)
+        return name === undefined ? state : { ...state, loading: { ...state.loading, [event.data.callId]: name } }
+      }
+      case 'tool/result': {
+        const callId = event.data.message.toolCallId
+        const name = state.loading[callId]
+        if (event.surfaceOp !== 'append' || name === undefined) return state
+        const { [callId]: _settled, ...loading } = state.loading
+        return { active: event.data.message.isError === true ? state.active : name, loading }
+      }
+      default:
+        return state
+    }
   },
-  wire: { viewSchema: activeSkillSchema, view: (state: string | null) => state },
-  stateVersion: 1,
-} satisfies ProjectionDefinition<'lyteboatActiveSkill', string | null>
+  wire: { viewSchema: activeSkillViewSchema, view: (state: LyteboatActiveSkillState) => state.active },
+  stateVersion: 2,
+} satisfies ProjectionDefinition<'lyteboatActiveSkill', LyteboatActiveSkillState>
+
+/**
+ * Whether a rendered skill body is in the model's view: an invocation message
+ * or a `skill` tool result, both of which carry `renderSkillContent` verbatim.
+ */
+function bodyOnSurface(session: Session, rendered: string): boolean {
+  return session.deriveMessages().some(message =>
+    (message.role === 'user' || message.role === 'tool')
+    && message.content.some(block => block.type === 'text' && block.text.includes(rendered)))
+}
+
+/** The skill-invocation message that brings a skill's body into the step; a switch says what it replaces. */
+function invocationMessage(name: string, rendered: string, replaced: string | undefined): UserMessage {
+  const source: SkillInvocationSource = { kind: 'skill-invocation', name, form: 'instructions' }
+  const content: ContentBlock[] = [
+    ...replaced === undefined ? [] : [{ type: 'text' as const, text: `Skill "${replaced}" is no longer active; follow the skill below instead.` }],
+    { type: 'text', text: rendered },
+  ]
+  return createUserMessage({ content, source })
+}
 
 interface AgentSkillState {
-  /** The rendered body of the active skill, when loaded. */
-  body: { name: string; text: string } | undefined
   /** Full mode: the rendered bodies of every skill, keyed by the catalog digest that produced them. */
   full: { digest: string; text: string } | undefined
-  /** The turn last seen at pre-assembly, for nodes appended outside a step payload. */
-  turn: number
-  /** A model-initiated activation still loading; awaited before the next assembly. */
-  pending: Promise<void> | undefined
+  /** The skill whose required tools this process applied to the agent. */
+  toolsFor: string | undefined
+  /** A skill body due in this step's messages: set at pre-assembly, taken at pre-step. */
+  injection: UserMessage | undefined
 }
 
 function userText(messages: LyteboatStepPayload['messages']): string {
@@ -145,9 +206,9 @@ function userText(messages: LyteboatStepPayload['messages']): string {
     .join('\n')
 }
 
-/** Host service: skill load modes, LLM routing, and the active skill's presence in the prompt. */
+/** Host service: skill load modes, LLM routing, and the active skill's presence in the conversation. */
 export class SkillRouterService extends Service {
-  static inject = ['skills', 'llm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy']
+  static inject = ['skills', 'auxLlm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy']
 
   private readonly layers = new ScopedLayers(() => new SettingsLayer(), () => {})
   private readonly agents = new WeakMap<Agent, AgentSkillState>()
@@ -156,16 +217,6 @@ export class SkillRouterService extends Service {
     super(ctx, 'skillRouter')
     this.layers.global.entries.append(compact(config))
     ctx.sessionProjections.register(lyteboatActiveSkillProjectionDefinition)
-    ctx.systemPrompt.context({
-      name: 'lyteboat:skill',
-      order: LYTEBOAT_SKILL_CONTEXT_ORDER,
-      text: (context) => {
-        const agent = context.agent
-        if (agent === undefined) return ''
-        const body = this.agents.get(agent)?.body
-        return body === undefined ? '' : `The following skill is active for the current task. Follow its instructions.\n${body.text}`
-      },
-    })
     ctx.systemPrompt.section({
       name: 'lyteboat:skills',
       order: LYTEBOAT_SKILLS_SECTION_ORDER,
@@ -182,26 +233,14 @@ export class SkillRouterService extends Service {
       await this.prepare(payload)
       return next()
     })
-    ctx.on('tools/result', (exec, result) => {
-      if (exec.name !== 'skill' || result.isError || exec.agent === undefined || exec.parent !== undefined) return
-      const agent = exec.agent
-      if (this.settingsFor(agent).mode !== 'dynamic') return
-      const args = exec.arguments as { name?: unknown }
-      if (typeof args.name !== 'string' || this.activeOf(agent) === args.name) return
-      const skillName = args.name
-      const state = this.stateOf(agent)
-      // The call's own signal ends with the call, so the lookup runs without one;
-      // the next assembly awaits `pending` and checks its own signal.
-      const lookup: SkillViewOptions = { cwd: agent.session.header.cwd, scope: agent }
-      // Chained, not replaced: two skill loads in one step activate in order,
-      // and the next assembly waits for both.
-      const pending: Promise<void> = (state.pending ?? Promise.resolve())
-        .then(() => this.activate(agent, skillName, 'model', 'loaded through the skill tool', state.turn, lookup))
-        .catch((error: unknown) => {
-          ctx.logger.warn(`lyteboat skill router: model-initiated activation of "${skillName}" failed: ${error instanceof Error ? error.message : String(error)}`)
-        })
-        .finally(() => { if (state.pending === pending) state.pending = undefined })
-      state.pending = pending
+    // After `next()`, so a rejection still wins and the body follows the step's own messages.
+    ctx.on('agent/pre-step', async (payload, next): Promise<PreStepDecision> => {
+      const decision = await next()
+      const state = this.agents.get(payload.agent)
+      const injection = state?.injection
+      if (state === undefined || injection === undefined) return decision
+      state.injection = undefined
+      return decision.kind === 'reject' ? decision : { ...decision, messages: [...decision.messages, injection] }
     })
   }
 
@@ -237,34 +276,34 @@ export class SkillRouterService extends Service {
 
   /** The skill active for one agent, as the log records it. */
   activeOf(agent: Agent): string | null {
-    return this.ctx.sessionProjections.stateOf(agent.session, 'lyteboatActiveSkill') ?? null
+    return this.ctx.sessionProjections.stateOf(agent.session, 'lyteboatActiveSkill')?.active ?? null
   }
 
   private stateOf(agent: Agent): AgentSkillState {
     let state = this.agents.get(agent)
     if (state === undefined) {
-      state = { body: undefined, full: undefined, turn: 0, pending: undefined }
+      state = { full: undefined, toolsFor: undefined, injection: undefined }
       this.agents.set(agent, state)
     }
     return state
   }
 
   private async prepare(payload: LyteboatStepPayload): Promise<void> {
-    const { agent, messages, signal, turn } = payload
+    const { agent, messages, signal } = payload
     const settings = this.settingsFor(agent)
     if (settings.mode === 'off') return
-    const state = this.stateOf(agent)
-    state.turn = turn
-    if (state.pending !== undefined) await state.pending
+    // A step aborted between pre-assembly and pre-step leaves its body behind; it is not this step's.
+    this.stateOf(agent).injection = undefined
     signal.throwIfAborted()
     const lookup: SkillViewOptions = { cwd: agent.session.header.cwd, signal, scope: agent }
     if (settings.mode === 'full') {
       await this.prepareFull(agent, lookup)
       return
     }
+    const previous = this.activeOf(agent)
     const input = userText(messages)
-    if (input !== '') await this.route(agent, settings, lookup, input, turn, signal)
-    await this.refreshActive(agent, lookup)
+    const chosen = input === '' ? previous : await this.route(agent, settings, lookup, input, signal)
+    await this.applyActive(agent, chosen, previous, lookup)
   }
 
   /** Full mode: every model-invocable skill's body in one section, every required tool activated. */
@@ -288,107 +327,83 @@ export class SkillRouterService extends Service {
     this.activateTools(agent, definitions.flatMap(definition => lyteboatSkillMeta(definition.metadata)?.requiredTools ?? []))
   }
 
-  /** Dynamic mode: one router call per user input, sticky on everything but a valid new id. */
+  /** Dynamic mode: one router call per user input; sticky on everything but a valid new id. */
   private async route(
     agent: Agent,
     settings: SkillRouterSettings,
     lookup: SkillViewOptions,
     userInput: string,
-    turn: number,
     signal: AbortSignal,
-  ): Promise<void> {
+  ): Promise<string | null> {
+    const current = this.activeOf(agent)
     const snapshot = await this.ctx.skills.snapshot(lookup)
     signal.throwIfAborted()
     const candidates: RouteCandidate[] = snapshot.skills.filter(isModelInvocable)
       .map(skill => ({ name: skill.name, description: skill.description }))
-    if (candidates.length === 0) return
-    const provider = settings.provider ?? agent.options.provider
-    const model = settings.model ?? agent.options.model
-    if (provider === undefined || model === undefined) {
-      this.ctx.logger.warn('lyteboat skill router: no route for the router call (set provider and model, or give the agent a model)')
-      return
-    }
-    const current = this.activeOf(agent)
+    if (candidates.length === 0) return current
     const prompt = buildRoutePrompt({
       candidates,
       history: renderHistory(agent.session.deriveMessages(), settings.historyWindow),
       current,
       userInput,
     })
-    const names = candidates.map(candidate => candidate.name)
-    const started = performance.now()
-    const decision = await this.decide(agent, { provider, model }, prompt, names, current, settings.timeoutMs, signal)
-    const durationMs = Math.round(performance.now() - started)
-    agent.session.append('lyteboat/route-request', {
-      turn, route: { provider, model }, candidates: names, decision: decision.skill, reason: decision.reason, durationMs,
-    })
-    if (decision.skill !== null && decision.skill !== current) {
-      await this.activate(agent, decision.skill, 'router', decision.reason, turn, lookup)
-    }
+    const route: AuxLlmRoute | undefined = settings.provider !== undefined && settings.model !== undefined
+      ? { provider: settings.provider, model: settings.model }
+      : undefined
+    const decision = await this.decide(agent, route, prompt, candidates.map(candidate => candidate.name), current, settings.timeoutMs, signal)
+    return decision.skill
   }
 
-  /** One router call under its own deadline; every failure keeps the current skill. */
+  /** One router call through `ctx.auxLlm`; every failure keeps the current skill. */
   private async decide(
     agent: Agent,
-    route: { provider: string; model: string },
+    route: AuxLlmRoute | undefined,
     prompt: string,
     candidates: readonly string[],
     current: string | null,
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<RouteDecision> {
-    using callDeadline = deadline(signal, timeoutMs, SKILL_ROUTE_TIMEOUT_CODE)
-    try {
-      const text = await this.generate(agent, route, prompt, callDeadline.signal)
-      return resolveRouteDecision(text, candidates, current)
-    } catch (error: unknown) {
-      signal.throwIfAborted()
-      const timeout = timeoutOf(callDeadline.signal, SKILL_ROUTE_TIMEOUT_CODE)
-      const reason = timeout !== undefined ? 'timeout' : error instanceof Error ? error.name : 'error'
-      this.ctx.logger.warn(`lyteboat skill router: router call failed (${reason}): ${error instanceof Error ? error.message : String(error)}`)
-      return { skill: current, reason }
-    }
-  }
-
-  private async generate(agent: Agent, route: { provider: string; model: string }, prompt: string, signal: AbortSignal): Promise<string> {
-    const options: GenerateOptions = {
-      provider: route.provider,
-      model: route.model,
-      messages: [createUserMessage({ content: [{ type: 'text', text: prompt }], source: { kind: LYTEBOAT_SKILL_ROUTER_SOURCE } })],
+    const outcome = await this.ctx.auxLlm.generate({
+      agent,
+      purpose: SKILL_ROUTER_PURPOSE,
+      ...route === undefined ? {} : { route },
       system: SKILL_ROUTER_SYSTEM_PROMPT,
+      prompt,
       maxTokens: ROUTE_MAX_TOKENS,
       temperature: 0,
-      sessionId: agent.session.id,
+      timeoutMs,
       signal,
-    }
-    const assembler = new BlockAssembler()
-    for await (const chunk of this.ctx.llm.stream(options)) {
-      signal.throwIfAborted()
-      assembler.push(chunk)
-    }
-    const finish = assembler.finish
-    if (finish.kind === 'error' || finish.kind === 'aborted') throw new Error(finish.failure.message)
-    return assembler.blocks().filter(block => block.type === 'text').map(block => block.text).join('')
+    })
+    if (outcome.kind === 'answer') return resolveRouteDecision(outcome.text, candidates, current)
+    this.ctx.logger.warn(`lyteboat skill router: router call failed (${outcome.reason}): ${outcome.message}`)
+    return { skill: current, reason: outcome.reason }
   }
 
-  /** Make one skill the active skill: body cached, node appended, its required tools replacing the previous set. */
-  private async activate(
-    agent: Agent,
-    name: string,
-    source: 'router' | 'model',
-    reason: string,
-    turn: number,
-    lookup: SkillViewOptions,
-  ): Promise<void> {
+  /**
+   * Put one skill in force for this step: its required tools replace the
+   * previous set, and its body is injected unless it is already on the
+   * surface. A switch always injects, so the newest body in view is the
+   * active skill's; a body compaction shadowed comes back.
+   */
+  private async applyActive(agent: Agent, name: string | null, previous: string | null, lookup: SkillViewOptions): Promise<void> {
+    if (name === null) return
     const definition = await this.ctx.skills.get(name, lookup)
     lookup.signal?.throwIfAborted()
     if (definition === undefined) {
       this.ctx.logger.warn(`lyteboat skill router: skill "${name}" is not available to this agent; activation skipped`)
       return
     }
-    this.stateOf(agent).body = { name, text: renderSkillContent(definition) }
-    agent.session.append('lyteboat/skill-routed', { turn, skill: name, reason, source })
-    this.activateTools(agent, lyteboatSkillMeta(definition.metadata)?.requiredTools ?? [])
+    const state = this.stateOf(agent)
+    if (state.toolsFor !== name) {
+      this.activateTools(agent, lyteboatSkillMeta(definition.metadata)?.requiredTools ?? [])
+      state.toolsFor = name
+    }
+    const rendered = renderSkillContent(definition)
+    const switched = name !== previous
+    if (switched || !bodyOnSurface(agent.session, rendered)) {
+      state.injection = invocationMessage(name, rendered, switched && previous !== null ? previous : undefined)
+    }
   }
 
   /** The reference rule: visible = always + the active skills' required tools, so earlier activations are replaced. */
@@ -401,32 +416,6 @@ export class SkillRouterService extends Service {
       this.ctx.logger.warn(`lyteboat skill router: required tool${unknown.length > 1 ? 's' : ''} ${unknown.map(name => JSON.stringify(name)).join(', ')} not declared to the tool policy; skipped`)
     }
     if (known.length > 0) policy.activate(agent, known)
-  }
-
-  /**
-   * Keep the in-process state in step with the durable active skill: a
-   * resumed session (or one whose activation this process never saw) starts
-   * with no body cached and no tools activated, so both are restored from the
-   * projection, the way the reference implementation re-derives visibility from
-   * `current_active_skill_id` every turn.
-   */
-  private async refreshActive(agent: Agent, lookup: SkillViewOptions): Promise<void> {
-    const state = this.stateOf(agent)
-    const active = this.activeOf(agent)
-    if (active === null) {
-      state.body = undefined
-      return
-    }
-    if (state.body?.name === active) return
-    const definition = await this.ctx.skills.get(active, lookup)
-    lookup.signal?.throwIfAborted()
-    if (definition === undefined) {
-      state.body = undefined
-      this.ctx.logger.warn(`lyteboat skill router: active skill "${active}" is not available to this agent; its body and tools are not restored`)
-      return
-    }
-    state.body = { name: active, text: renderSkillContent(definition) }
-    this.activateTools(agent, lyteboatSkillMeta(definition.metadata)?.requiredTools ?? [])
   }
 }
 

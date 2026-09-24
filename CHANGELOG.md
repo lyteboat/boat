@@ -2,6 +2,32 @@
 
 lyteboat has no releases yet; this file records what each milestone delivered, newest first. The tracked dsh release is in `dsh.upstream.json`.
 
+## One minimal example agent
+
+- `lyteboat/agents/demo` is removed; `lyteboat/agents/finance` is the one example agent, and the run bundle's help, the README, and the guides use it.
+- The finance agent keeps only what exercises the end-to-end flow: an asset overview (one card), an allocation diagnosis by the 100-minus-age rule (two cards the answer places by markers), investor education on three concepts, and its admission ahead of the loop. A customer is an age and a list of holdings, each at market risk or not. The three-bucket model, the one-bucket drill-down, reported assets and follow-up questions, insurance coverage, the session-state projection, and digest aging are gone.
+
+## F2 — request context, admission ahead of the loop, side calls, cards
+
+- Kernel extension `session-append-ignorable` (`@deepseek-ai/dsh-session`): `Session.append(type, data, { ignorable: true })` marks a record of a type the harness does not know, so dsh's persistence, and the official release, read a log past it; a type the harness knows refuses the mark.
+- `@lyteboat/aux-llm`: side model calls (the router's, an admission's classifier), each under its own deadline and recorded as an ignorable `lyteboat/aux-llm-call` (route, system, prompt, answer or failure, duration). A failure is an outcome the caller falls back on, and an answer cut off at `maxTokens` is one; `reasoningEffort` sets the effort every side call requests. The router's calls are recorded again.
+- `@lyteboat/a2ui`: a tool result carries several cards (`meta.lyteboat.cards`), each with its area and emission mode (`immediate`, `deferred`, `deferred_discard`). `turnParts` composes a finished turn: immediate cards first, then the answer with each `[[card:<area>]]` marker replaced by that area's deferred cards, then, when the turn completed, the deferred cards the answer did not place. `lyteboat run` prints a card as a `[card <area>]` line.
+- `@lyteboat/request-context`: the request a human message answers to (request id, context, admission verdict) rides its source (`source.lyteboatRequest`), and the `lyteboatRequest` projection keeps the session's context until a request brings another. `lyteboat run --context <json|file>` passes one.
+- `@lyteboat/intake-guard`: an agent registers an admission function; `lyteboat run` admits a request before it enters the loop and records the verdict on it; a reply verdict (text and cards) answers the turn without a model request, and a message that arrives unadmitted is admitted in the loop.
+- `@lyteboat/agent-finance` drops V1's stand-ins: the request context names the customer (`context.customer`), and cards ride `meta.lyteboat.cards` with their emission modes, placed by markers. Its admission classifies each request with a side call: investor education and small talk pass, a request about the customer's money passes once an account is authorized and otherwise gets the unauthorized card, anything else gets the service scope; a failed classification lets the request through.
+
+## F1 — multi-turn and reopen
+
+- `@lyteboat/skill-router` writes no node of its own. A routed skill's body enters the step as dsh's skill-invocation message (the record dsh-tool-skill writes when a user invokes a skill), and `lyteboatActiveSkill` folds those messages and successful `skill` tool calls, so a routed session reopens under dsh's persistence and `lyteboat web`, a continued session gets its tools back, and a body the model no longer sees is injected again. The router call leaves a debug log line.
+- `lyteboat run --session-id <id>` continues a stored session under the agent it ran with; every run prints its session id to stderr.
+- `@lyteboat/host` turns off dsh-base's `session-telemetry-otel` export, which would send a session-log prefix upstream after user feedback.
+- `lyteboatState` and `lyteboatCards` fold appended tool results only: a surface replacement keeps the original meta and no longer applies its delta or card a second time.
+
+## V1 — a finance agent on the core as it stands
+
+- `@lyteboat/agent-finance`, built from public financial knowledge only: asset overview, allocation diagnosis, a one-bucket drill-down, and investor education; four routed skills, six cards, the session's facts in an agent-level projection, and tool results aged to their facts once their turn is over. It ran with no kernel change, with three stand-ins for what the core lacked: the customer comes from an environment variable, a result's extra cards ride private meta, and card markers stay in the answer text.
+- `scripts/check-sensitive.ts` keeps a word list supplied through the environment out of every tracked path and file; `pnpm run lint` runs it.
+
 ## One name: lyteboat
 
 - The project, its packages (`@lyteboat/*`), its directory (`lyteboat/`), and its CLI (`lyteboat`) share one name; data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`).

@@ -51,6 +51,15 @@
       "path": "./lyteboat/plugins/tool-policy"
     },
     {
+      "path": "./lyteboat/plugins/aux-llm"
+    },
+    {
+      "path": "./lyteboat/plugins/request-context"
+    },
+    {
+      "path": "./lyteboat/plugins/intake-guard"
+    },
+    {
       "path": "./lyteboat/plugins/skill-router"
     },
     {
@@ -69,7 +78,7 @@
       "path": "./lyteboat/apps/cli"
     },
     {
-      "path": "./lyteboat/agents/demo"
+      "path": "./lyteboat/agents/finance"
     },
     {
       "path": "./lyteboat/tooling/testing"

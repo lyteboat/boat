@@ -11,6 +11,13 @@
   config:
     enabled: false
 
+# dsh-base's session-telemetry-otel row exports a session-log prefix to the
+# upstream collector once a user gives feedback. lyteboat sessions carry business
+# conversations, so no lyteboat profile ships them off the machine, whether or not
+# DSH_TELEMETRY_DISABLED is set.
+- id: session-telemetry-otel
+  disabled: true
+
 - insert:
     # Marks the tree as lyteboat's: plugins that use a kernel extension inject it.
     - id: lyteboat-distro
@@ -18,6 +25,18 @@
 
     - id: lyteboat-tool-policy
       name: '@lyteboat/tool-policy'
+
+    # Side model calls (the router's, an intake classifier's), each recorded ignorable.
+    - id: lyteboat-aux-llm
+      name: '@lyteboat/aux-llm'
+
+    # The request a human message answers to, carried on its source; then the
+    # admission registry that records its verdict there and replies from it.
+    - id: lyteboat-request-context
+      name: '@lyteboat/request-context'
+
+    - id: lyteboat-intake-guard
+      name: '@lyteboat/intake-guard'
 
     - id: lyteboat-skill-router
       name: '@lyteboat/skill-router'

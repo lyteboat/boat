@@ -1,0 +1,71 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-allocation-diagnosis",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 12,
+          "children": {
+            "explicitList": [
+              "title-text",
+              "verdict-text",
+              "risky-text",
+              "steady-text"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "title-text",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "配置诊断"
+          },
+          "fontSize": "18px",
+          "fontWeight": 600,
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "verdict-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "verdict_line"
+          },
+          "fontSize": "16px",
+          "fontWeight": 600
+        }
+      }
+    },
+    {
+      "id": "risky-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "risky_line"
+          }
+        }
+      }
+    },
+    {
+      "id": "steady-text",
+      "component": {
+        "Text": {
+          "text": {
+            "path": "steady_line"
+          }
+        }
+      }
+    }
+  ]
+}

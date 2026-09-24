@@ -1,5 +1,5 @@
 // compute.js — the asset_overview card's imperative escape hatch, ported from
-// the reference implementation's templates_v2/asset_overview/compute.py (with the yinglong helpers it
+// the reference implementation's templates_v2/asset_overview/compute.py (with the helpers it
 // imported inlined: fmt_plain, fmt_money_llm, ASSET_BUCKETS, BUCKET_LABEL,
 // ASSET_BUCKET_COLOR). Named exports are referenced by manifest.yaml
 // `computed.fn`; `digest` is the card's LLM digest hook.
@@ -88,7 +88,7 @@ function missingBucketCount(bundle) {
 }
 
 export function digest(raw, _flat) {
-  const bundle = (raw ?? {}).yl_assets ?? {}
+  const bundle = (raw ?? {}).assets_view ?? {}
   const missing = missingBucketCount(bundle)
   return `[卡片:资产/${bundle.auth_state ?? 'none'}] 总额${fmtMoneyLlm(bundle.total ?? '0')} · 保单${Number(bundle.policy_count) || 0}份 · 已授权${ASSET_BUCKETS.length - missing}/${ASSET_BUCKETS.length}桶 · 卡后一句简短收尾（≤25字），不复述卡内数字`
 }

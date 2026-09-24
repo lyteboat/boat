@@ -9,6 +9,10 @@ import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel
 const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'SKILL-ROUTER-OK'
 
+type SessionRecord = { type: string; ignorable?: true; data?: Record<string, unknown> }
+const isSkillInvocation = (record: SessionRecord): boolean =>
+  record.type === 'user/message' && (record.data?.['source'] as { kind?: unknown } | undefined)?.kind === 'skill-invocation'
+
 const ASSET_SKILL = `---
 name: asset-overview
 description: 资产总览与配置诊断：查看总资产、持仓结构与配置建议。
@@ -81,16 +85,17 @@ describe('@lyteboat/skill-router in the run composition (in process, scripted mo
     expect(messages).toContain('ASSET-OVERVIEW-BODY')
     expect(messages).not.toContain('MARKET-NEWS-BODY')
     const [log] = findSessionLogs(home)
-    const records = readSessionLog(log!) as { type: string; data?: Record<string, unknown> }[]
-    const routeRequest = records.find(record => record.type === 'lyteboat/route-request')
-    expect(routeRequest?.data).toMatchObject({ turn: 1, candidates: ['asset-overview', 'market-news'], decision: 'asset-overview', reason: '看资产' })
-    expect(routeRequest?.data?.['route']).toMatchObject({ provider: 'deepseek-official', model: expect.any(String) })
-    const routedNode = records.find(record => record.type === 'lyteboat/skill-routed')
-    expect(routedNode?.data).toEqual({ turn: 1, skill: 'asset-overview', reason: '看资产', source: 'router' })
-    expect(records.map(record => record.type).indexOf('lyteboat/skill-routed')).toBeLessThan(records.map(record => record.type).indexOf('request/header'))
+    const records = readSessionLog(log!) as SessionRecord[]
+    // The router call is lyteboat's one record of its own: audited, and ignorable for other readers.
+    const own = records.filter(record => record.type.startsWith('lyteboat/'))
+    expect(own.map(record => [record.type, record.ignorable])).toEqual([['lyteboat/aux-llm-call', true]])
+    expect(own[0]?.data).toMatchObject({ purpose: 'skill-router', route: { provider: 'deepseek-official' }, output: '{"skill_id": "asset-overview", "reason": "看资产"}' })
+    const invocations = records.filter(isSkillInvocation)
+    expect(invocations.map(record => record.data?.['source'])).toEqual([{ kind: 'skill-invocation', name: 'asset-overview', form: 'instructions' }])
+    expect(records.indexOf(invocations[0]!)).toBeLessThan(records.findIndex(record => record.type === 'request/header'))
   })
 
-  it('leaves the host composition alone without the preset: no router call, no lyteboat nodes', async () => {
+  it('leaves the host composition alone without the preset: no router call, no skill injected', async () => {
     const { home, workspace } = fresh('off')
     const before = model.requests.length
     const result = await runComposition(['看看我的资产'], { cwd: workspace, home, env: env() })
@@ -101,8 +106,8 @@ describe('@lyteboat/skill-router in the run composition (in process, scripted mo
     expect(loop).toHaveLength(1)
     expect(JSON.stringify(loop[0]!.body.messages)).not.toContain('ASSET-OVERVIEW-BODY')
     const [log] = findSessionLogs(home)
-    const types = readSessionLog(log!).map(record => (record as { type: string }).type)
-    expect(types).not.toContain('lyteboat/route-request')
-    expect(types).not.toContain('lyteboat/skill-routed')
+    const records = readSessionLog(log!) as SessionRecord[]
+    expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
+    expect(records.filter(isSkillInvocation)).toEqual([])
   })
 })

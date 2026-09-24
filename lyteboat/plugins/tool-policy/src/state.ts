@@ -82,7 +82,10 @@ export const lyteboatStateProjectionDefinition = {
   apply(state: LyteboatStateValue, event) {
     // dsh computes presentation meta for top-level calls only, so a subagent's
     // tool never reaches here; an errored result carries no delta worth folding.
-    if (event.type !== 'tool/result') return state
+    // A surface replacement (compaction pruning, an agent shortening an old
+    // result) must keep the original meta, so folding it would apply an old delta
+    // over newer state: only the appended result counts.
+    if (event.type !== 'tool/result' || event.surfaceOp !== 'append') return state
     if (event.data.message.isError === true) return state
     const delta = stateDeltaOfMeta(event.data.meta)
     if (delta === undefined) return state
@@ -94,7 +97,7 @@ export const lyteboatStateProjectionDefinition = {
     }
   },
   wire: { viewSchema: lyteboatStateSchema, view: (state: LyteboatStateValue) => state },
-  stateVersion: 1,
+  stateVersion: 2,
 } satisfies ProjectionDefinition<'lyteboatState', LyteboatStateValue>
 
 /** The model-facing rendering of the current state; empty when there is none. */

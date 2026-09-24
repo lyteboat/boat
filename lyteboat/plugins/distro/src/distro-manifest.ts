@@ -9,4 +9,5 @@ export const DSH_BASE = '0.1.7-rc.1'
 export const DISTRO_EXTENSIONS: readonly LyteboatDistroExtension[] = Object.freeze([
   { id: 'agent-loop-intake', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'lyteboat on dsh 0.1.7-rc.1 (carried from the lyteboat driver fork since M2)' },
   { id: 'agent-loop-pre-assemble', package: '@deepseek-ai/dsh-agent-loop', kind: 'event', since: 'lyteboat on dsh 0.1.7-rc.1 (carried from the lyteboat driver fork since M2)' },
+  { id: 'session-append-ignorable', package: '@deepseek-ai/dsh-session', kind: 'api-option', since: 'lyteboat on dsh 0.1.7-rc.1' },
 ])

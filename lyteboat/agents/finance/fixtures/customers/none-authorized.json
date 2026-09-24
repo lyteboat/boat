@@ -1,0 +1,9 @@
+{
+  "id": "none-authorized",
+  "note": "35 岁，还没有授权任何账户。",
+  "age": 35,
+  "holdings": [],
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

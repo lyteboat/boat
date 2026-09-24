@@ -23,7 +23,7 @@
       "component": {
         "Text": {
           "text": {
-            "literalString": "暂未获取到可用于分析的资产。请点击下方按钮完成账户授权，授权后即可查看您的全景资产分布。"
+            "literalString": "暂未获取到可用于分析的资产。请点击下方按钮完成账户授权，授权后即可查看您的资产分布。"
           },
           "fontSize": "16px",
           "lineHeight": "24px",

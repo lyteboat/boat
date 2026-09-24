@@ -14,5 +14,5 @@ paths:
     default: "未指定"
   detail:
     kind: state
-    path: "yl_assets.total_display"
+    path: "assets_view.total_display"
     default: "-"
