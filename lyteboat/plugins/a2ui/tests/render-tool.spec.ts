@@ -51,7 +51,7 @@ async function harness(adapter: MockAdapter): Promise<Context> {
     output: { schema: { type: 'json' }, render: () => [{ type: 'text', text: 'assets loaded' }] },
     execute: async () => FULL.raw as JsonValue,
   }), { stateDelta: (_args, value) => value as JsonValue })
-  await ctx.a2ui.registerRenderTool({ templates: TEMPLATES, stateKeys: ['yl_assets', 'yl_assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' } })
+  await ctx.a2ui.registerRenderTool({ templates: TEMPLATES, stateKeys: ['assets_view', 'assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' } })
   return ctx
 }
 
@@ -101,7 +101,7 @@ describe('render_a2ui', () => {
     expect(cards[0]).toMatchObject({ callId: 'c2', surfaceId: payload['surfaceId'] })
     expect(ctx.sessionProjections.snapshot(agent.session).values['lyteboatCards']).toEqual(cards)
     expect(JSON.stringify(adapter.requests[2]!.messages)).toContain(FULL.digest)
-    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')).toMatchObject({ yl_assets: { auth_state: 'full' } })
+    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')).toMatchObject({ assets_view: { auth_state: 'full' } })
   })
 
   it('replaces a surface in lyteboatCards on surfaceUpdate and concludes the turn on a terminal card', async () => {
@@ -145,7 +145,7 @@ describe('render_a2ui', () => {
 describe('render_a2ui over cards with arguments and hierarchies', () => {
   async function variants(adapter: MockAdapter): Promise<Context> {
     const ctx = await harness(adapter)
-    await ctx.a2ui.registerRenderTool({ templates: VARIANTS, name: 'render_variant', stateKeys: ['yl_assets'] })
+    await ctx.a2ui.registerRenderTool({ templates: VARIANTS, name: 'render_variant', stateKeys: ['assets_view'] })
     await ctx.a2ui.registerRenderTool({ templates: VARIANTS, name: 'render_strict', validation: 'enforce' })
     return ctx
   }

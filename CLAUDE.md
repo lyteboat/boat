@@ -27,7 +27,7 @@ lyteboat/
   plugins/tool-policy/    @lyteboat/tool-policy — visibility always/auto + activation, confirmation, state deltas → lyteboatState projection
   plugins/skill-router/   @lyteboat/skill-router — skill load modes full/dynamic, the reference LLM router, lyteboatActiveSkill projection
   plugins/a2ui/           @lyteboat/a2ui — the reference A2UI template engine, the render_a2ui tool, lyteboatCards projection
-  plugins/history-import/ @lyteboat/history-import — SA history → session seed of closed turns
+  plugins/history-import/ @lyteboat/history-import — external conversation history (rounds by trace id) → session seed of closed turns
   core/contracts/         @lyteboat/contracts — lyteboat's declarations over the dsh seams: tool/skill metadata, the kernel's lyteboat/* events (re-exported), log nodes, projection keys, LyteboatDistro
   core/cordis-compat/     @lyteboat/cordis-compat — runtime values for const enums the published cordis build erases
   agents/demo/            @lyteboat/agent-demo — an agent directory: agent.cordis.yml, preset.yml (display name, optional), skills/, a2ui/, fixtures/, src/ → lib/
@@ -83,7 +83,7 @@ Hard rules:
 
 - **Tooling**: `pnpm` only (never `npm install`/`yarn`). New dependencies are added to the owning package; dsh and cordis packages are `peerDependencies` (+ `devDependencies`) written as `catalog:dsh` / `catalog:cordis`, never a literal version, with one exception: a non-kernel dsh peer is the tracked release's exact version, because dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm leaves `catalog:` unresolved, and refuses a row it cannot match. The catalogs in `pnpm-workspace.yaml` and those peers mirror `dsh.upstream.json` (`scripts/upstream-pins.spec.ts` enforces both). Third-party packages used by more than one workspace package go through the default `catalog:`. Workspace packages use `workspace:*`.
 - **ESM everywhere.** Package names across packages, `.ts` extensions in local relative imports (`rewriteRelativeImportExtensions` turns them into `.js` in `lib/`). No CJS-only exports; `.pnpmfile.cjs` is the one CommonJS file and pnpm requires it.
-- **Names carry their owner.** `LyteboatToolMeta` not `Meta`, `lyteboatActiveSkill` not `activeSkill`, `SkillRouterSettings` not `Settings`. Files are named for what they define (`business-payload.ts`, `sa-history.ts`), never `utils.ts` / `helpers.ts` / `types.ts`. Services publish under an unambiguous key (`toolPolicy`, `skillRouter`, `a2ui`, `historyImport`); log nodes and events are `lyteboat/<noun>`; projection keys are `lyteboat<Noun>`.
+- **Names carry their owner.** `LyteboatToolMeta` not `Meta`, `lyteboatActiveSkill` not `activeSkill`, `SkillRouterSettings` not `Settings`. Files are named for what they define (`business-payload.ts`, `round-history.ts`), never `utils.ts` / `helpers.ts` / `types.ts`. Services publish under an unambiguous key (`toolPolicy`, `skillRouter`, `a2ui`, `historyImport`); log nodes and events are `lyteboat/<noun>`; projection keys are `lyteboat<Noun>`.
 - **The reference implementation stays unnamed.** The Python framework lyteboat is ported from is an internal project: its name, any short form of it, and any translation of it (in Chinese as well as English) never appear in code, identifiers, comments, documents, test titles, fixtures, commit messages, PR descriptions, or explanations to the user. Call it *the reference implementation* (参考实现); when a port needs provenance, cite the file path (`template_engine/walker.py`), not the project.
 - **No capability probing.** Never test `'x' in obj` or `typeof obj.x === 'function'` to discover what a value can do. Declare the dependency (`static inject`) or narrow on a discriminant field (`block.type === 'tool_result'`, `decision.kind === 'reply'`). Closed unions end in `assertNever`; merge-extensible unions fall through a documented default.
 - **Types are strict.** No `any`; no non-null assertions in `src/` (oxlint enforces both). An `as unknown as` cast in `src/` is a boundary crossing (cordis's untyped `baseUrl`, a session envelope built by hand, a business object entering `JsonValue`) and carries a one-line comment naming the boundary. Opaque ids that cross a process or wire boundary keep dsh's branded types.
@@ -222,7 +222,7 @@ Read the reference implementation's `docs/agent_design_principles.md` before des
 | One-shot task | `node lyteboat/apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
 | A plugin file | `node lyteboat/apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
 | An agent | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo "看看资产"` |
-| Imported history | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo --history lyteboat/agents/demo/fixtures/history/sa.json "继续刚才的话题"` |
+| Imported history | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo --history lyteboat/agents/demo/fixtures/history/rounds.json "继续刚才的话题"` |
 | Browser UI | `node lyteboat/apps/cli/lib/bin.js web --no-open` |
 | Composed plugin tree | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` |
 | G1 contract check (after a build) | `pnpm run contract:check` |

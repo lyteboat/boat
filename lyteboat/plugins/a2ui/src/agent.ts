@@ -9,7 +9,7 @@
  *   name: '@lyteboat/a2ui/agent'
  *   config:
  *     templates: ./a2ui
- *     stateKeys: [yl_assets, yl_assets_raw]
+ *     stateKeys: [assets_view, assets_raw]
  *     terminalCards: [unauthorized]
  * ```
  * @module @lyteboat/a2ui/agent

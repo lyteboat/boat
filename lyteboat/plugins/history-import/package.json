@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's external history import: the reference SA history merge rules (rounds, half rounds, dedup by trace id) turned into a session seed of closed turns",
+  "description": "lyteboat's external history import: entries grouped into rounds by trace id (half rounds dropped, the first duplicate role kept, ordered by create time) turned into a session seed of closed turns",
   "type": "module",
   "exports": {
     ".": {

@@ -1,6 +1,6 @@
 ---
 name: asset-overview
-description: 查全景资产，只出 1 张资产卡，不诊断、不给配置建议。用户想看全部资产的观察类问题（资产分布 / 总资产多少 / 有多少钱 / 钱在哪 / 看看资产）归此；评价类（合不合理 / 健康吗 / 怎么优化）归 asset-diagnosis。
+description: 查看资产总览，只出 1 张资产卡，不诊断、不给配置建议。用户想看全部资产的观察类问题（资产分布 / 总资产多少 / 有多少钱 / 钱在哪 / 看看资产）归此；评价类（合不合理 / 健康吗 / 怎么优化）归 asset-diagnosis。
 metadata:
   lyteboat:
     group: demo
@@ -8,7 +8,7 @@ metadata:
     requiredTools: [asset_overview]
 ---
 
-# 全景资产总览
+# 资产总览
 
 本 skill 激活的每一轮，第一个动作都是调用 `asset_overview()` 一次：它重新取数、重新备卡，并把资产状态写进会话。
 

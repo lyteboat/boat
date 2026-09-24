@@ -6,7 +6,7 @@ import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { FIXTURES, runComposition } from './support/run-composition.ts'
 import { startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
-const HISTORY = join(FIXTURES, 'history', 'sa.json')
+const HISTORY = join(FIXTURES, 'history', 'rounds.json')
 const ANSWER = 'HISTORY-OK'
 
 interface LogRecord { type: string; data?: Record<string, unknown>; isSeeded?: boolean }
@@ -43,7 +43,7 @@ describe('lyteboat run --history (in process, scripted model)', () => {
     const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: env() })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
-    expect(result.stderr).toContain('imported 2 history round(s) from sa.json')
+    expect(result.stderr).toContain('imported 2 history round(s) from rounds.json')
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(1)
     const roles = loop[0]!.body.messages.map(message => message.role)

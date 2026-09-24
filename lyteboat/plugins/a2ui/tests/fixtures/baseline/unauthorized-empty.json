@@ -16,7 +16,7 @@
     "component": {
      "Text": {
       "text": {
-       "literalString": "暂未获取到可用于分析的资产。请点击下方按钮完成账户授权，授权后即可查看您的全景资产分布。"
+       "literalString": "暂未获取到可用于分析的资产。请点击下方按钮完成账户授权，授权后即可查看您的资产分布。"
       },
       "fontSize": "16px",
       "lineHeight": "24px",
@@ -101,7 +101,7 @@
   }
  },
  "warnings": [
-  "[MANIFEST] state 'auth_link' path 'yl_assets.auth_link' 解析失败: 字段 'yl_assets.auth_link' 不存在于数据中 (在 'yl_assets' 处失败, 可用字段: [])"
+  "[MANIFEST] state 'auth_link' path 'assets_view.auth_link' 解析失败: 字段 'assets_view.auth_link' 不存在于数据中 (在 'assets_view' 处失败, 可用字段: [])"
  ],
  "digest": "[卡片:资产/未授权] 已出示未授权提示与去授权按钮，本轮到此为止",
  "stateDelta": null,

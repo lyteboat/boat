@@ -98,7 +98,7 @@ describe('demo agent in the run composition (in process, scripted model)', () =>
     expect(records.find(record => record.type === 'lyteboat/skill-routed')?.data).toMatchObject({ skill: 'asset-overview', source: 'router' })
     const result = records.find(record => record.type === 'tool/result')
     const meta = result?.data?.['meta'] as { lyteboat: { card: { surfaceId: string; payload: Record<string, unknown> }; stateDelta: Record<string, unknown> } }
-    expect(meta.lyteboat.stateDelta).toMatchObject({ yl_assets: { auth_state: 'full', total_display: '300,000.00' } })
+    expect(meta.lyteboat.stateDelta).toMatchObject({ assets_view: { auth_state: 'full', total_display: '300,000.00' } })
     expect(meta.lyteboat.card.surfaceId).toMatch(/^asset_overview-session--[0-9a-f]{6}$/u)
     expect(meta.lyteboat.card.payload['rootComponentId']).toBe('root-container')
     expect((meta.lyteboat.card.payload['businessPayload'] as Record<string, unknown>)['total_display']).toBe('300,000.00')

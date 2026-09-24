@@ -47,7 +47,7 @@
 只有两处会加载 agent 目录：`lyteboat run`，以及 composite 测试里的 `bootComposition`（§2.15）。`lyteboat run` 是一次性的：一个任务、一轮，打印最后一条助手文本后退出（`lyteboat/bundles/run/src/index.ts:221-239`）。
 
 - **没有参考实现那种 FastAPI 式的服务模式。** 能通过 HTTP 访问的只有 `lyteboat web`（dsh-web-app），但它的 profile 里没有 `@lyteboat/run`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`）。
-- **多轮只能靠导入历史来模拟。** 用 `--history <file>` 先塞进几轮已结束的对话，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo --history lyteboat/agents/demo/fixtures/history/sa.json "继续刚才的话题"`（CLAUDE.md:225，`lyteboat/bundles/run/src/index.ts:205-212`）。
+- **多轮只能靠导入历史来模拟。** 用 `--history <file>` 先塞进几轮已结束的对话，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent demo --history lyteboat/agents/demo/fixtures/history/rounds.json "继续刚才的话题"`（CLAUDE.md:225，`lyteboat/bundles/run/src/index.ts:205-212`）。
 - **Web 和续会话在路线图 D4**，路由过的会话目前不能重开（§4.10）。
 
 ### 0.5 五步走
@@ -441,8 +441,8 @@ metadata:
     },
     {
       "policy_no": "P-2002",
-      "product": "长青定期寿险",
-      "kind": "寿险",
+      "product": "长青定期人寿保险",
+      "kind": "人寿保险",
       "status": "lapsed",
       "insured": "配偶",
       "sum_insured": "500000.00",
@@ -971,7 +971,7 @@ describe('policy book', () => {
 
   it('keeps the insured person out of the summary that enters the session state', () => {
     const summary = policySummary(findPolicy(loadPolicies(BOOK), 'P-2002')!)
-    expect(summary).toEqual({ policy_no: 'P-2002', product: '长青定期寿险', status: 'lapsed', sum_insured: '500000.00', end_date: '2043-05-09', next_due: '2026-05-10' })
+    expect(summary).toEqual({ policy_no: 'P-2002', product: '长青定期人寿保险', status: 'lapsed', sum_insured: '500000.00', end_date: '2043-05-09', next_due: '2026-05-10' })
   })
 
   it('fails loud on a book with a malformed policy', () => {

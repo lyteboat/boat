@@ -39,7 +39,7 @@ export async function apply(ctx: Context): Promise<void> {
 
   ctx.toolPolicy.register(defineTool({
     name: 'asset_overview',
-    description: '查询用户在集团内的全景资产（三笔钱的占比与金额、授权态），写入会话状态，并渲染一张资产总览卡。无参数。',
+    description: '查询用户已授权账户里的资产（三笔钱的占比与金额、授权态），写入会话状态，并渲染一张资产总览卡。无参数。',
     parameters: {},
     output: {
       schema: {
@@ -60,12 +60,12 @@ export async function apply(ctx: Context): Promise<void> {
     },
     execute: async (_args, exec) => {
       const bundle = buildAssetsBundle(loadPersona(PERSONAS, personaName()))
-      const rendered = await ctx.a2ui.render(TEMPLATES, 'asset_overview', { ...bundle.yl_assets, ...bundle }, {
+      const rendered = await ctx.a2ui.render(TEMPLATES, 'asset_overview', { ...bundle.assets_view, ...bundle }, {
         sessionId: exec.agent?.session.id ?? '',
       })
       return {
         status: 'ok',
-        auth_state: String(bundle.yl_assets['auth_state']),
+        auth_state: String(bundle.assets_view['auth_state']),
         digest: rendered.digest,
         card: rendered.payload as JsonValue,
         stateDelta: bundle as unknown as JsonValue,
@@ -92,7 +92,7 @@ export async function apply(ctx: Context): Promise<void> {
     execute: async (_args, exec) => {
       const agent = exec.agent
       const state = agent === undefined ? undefined : ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')
-      const assets = state?.['yl_assets']
+      const assets = state?.['assets_view']
       if (typeof assets !== 'object' || assets === null || Array.isArray(assets)) {
         return { status: 'no-assets', summary: '会话里还没有资产状态，请先查看资产（asset_overview）再诊断。', verdicts: [] }
       }

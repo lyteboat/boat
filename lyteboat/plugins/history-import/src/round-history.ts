@@ -1,25 +1,25 @@
 /**
- * The reference SA history rules (agents/yinglong/sa_history_merger.py): entries are
- * `{ role, trace_id, message_desc: [{ module_desc }], create_time?, app_type?, bu_source? }`;
- * a round is one user and one assistant entry sharing a trace id. Half
- * rounds (the in-flight one), empty-text rounds and malformed entries are
- * dropped; a duplicate role inside a round keeps the first; rounds sort by
- * `create_time` when every round has one, else keep input order.
- * @module @lyteboat/history-import/sa-history
+ * The round rules for history a caller brings from an earlier conversation
+ * (ported from the reference implementation's history merger): entries are
+ * `{ role, traceId, parts: [{ type?, text }], createTime?, channel? }`; a round
+ * is one user and one assistant entry sharing a trace id. Half rounds (the
+ * in-flight one), empty-text rounds and malformed entries are dropped; a
+ * duplicate role inside a round keeps the first; rounds sort by `createTime`
+ * when every round has one, else keep input order.
+ * @module @lyteboat/history-import/round-history
  */
 
-export interface SaHistoryEntry {
+export interface HistoryEntry {
   role: 'user' | 'assistant'
-  trace_id: string
-  message_desc?: { module_desc?: string; module_type?: string }[]
-  create_time?: string | number
-  app_type?: string
-  bu_source?: string
+  traceId: string
+  parts?: { type?: string; text?: string }[]
+  createTime?: string | number
+  channel?: string
 }
 
 export interface HistoryMessage {
   text: string
-  /** `app_type` / `bu_source` / `create_time` of the entry, when present. */
+  /** `channel` / `createTime` of the entry, when present. */
   meta: Record<string, string | number>
 }
 
@@ -30,7 +30,7 @@ export interface HistoryRound {
   assistant: HistoryMessage
 }
 
-export interface SaHistoryParse {
+export interface HistoryParse {
   rounds: HistoryRound[]
   dropped: { malformed: number; duplicated: number; half: number; empty: number }
 }
@@ -39,21 +39,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function moduleText(entry: Record<string, unknown>): string {
-  const modules = entry['message_desc']
-  if (!Array.isArray(modules)) return ''
-  const parts: string[] = []
-  for (const module of modules) {
-    if (!isRecord(module)) continue
-    const desc = module['module_desc']
-    if (typeof desc === 'string' && desc.trim() !== '') parts.push(desc.trim())
+function partsText(entry: Record<string, unknown>): string {
+  const parts = entry['parts']
+  if (!Array.isArray(parts)) return ''
+  const texts: string[] = []
+  for (const part of parts) {
+    if (!isRecord(part)) continue
+    const text = part['text']
+    if (typeof text === 'string' && text.trim() !== '') texts.push(text.trim())
   }
-  return parts.join('\n')
+  return texts.join('\n')
 }
 
 function messageOf(entry: Record<string, unknown>, text: string): HistoryMessage {
   const meta: Record<string, string | number> = {}
-  for (const key of ['app_type', 'bu_source', 'create_time']) {
+  for (const key of ['channel', 'createTime']) {
     const value = entry[key]
     if ((typeof value === 'string' && value !== '') || (typeof value === 'number' && value !== 0)) meta[key] = value
   }
@@ -61,10 +61,10 @@ function messageOf(entry: Record<string, unknown>, text: string): HistoryMessage
 }
 
 /**
- * Group raw SA entries into complete rounds.
- * @param raw - the `sa_history` list as the caller received it.
+ * Group raw history entries into complete rounds.
+ * @param raw - the entry list as the caller received it.
  */
-export function parseSaHistory(raw: unknown): SaHistoryParse {
+export function parseHistoryRounds(raw: unknown): HistoryParse {
   const dropped = { malformed: 0, duplicated: 0, half: 0, empty: 0 }
   if (!Array.isArray(raw)) return { rounds: [], dropped: { ...dropped, malformed: 1 } }
   const byTrace = new Map<string, { user?: Record<string, unknown>; assistant?: Record<string, unknown> }>()
@@ -74,7 +74,7 @@ export function parseSaHistory(raw: unknown): SaHistoryParse {
       continue
     }
     const role = entry['role']
-    const traceId = entry['trace_id']
+    const traceId = entry['traceId']
     if ((role !== 'user' && role !== 'assistant') || traceId === undefined || traceId === null || traceId === '') {
       dropped.malformed += 1
       continue
@@ -97,13 +97,13 @@ export function parseSaHistory(raw: unknown): SaHistoryParse {
       dropped.half += 1
       continue
     }
-    const userText = moduleText(pair.user)
-    const assistantText = moduleText(pair.assistant)
+    const userText = partsText(pair.user)
+    const assistantText = partsText(pair.assistant)
     if (userText === '' || assistantText === '') {
       dropped.empty += 1
       continue
     }
-    const createTime = pair.user['create_time']
+    const createTime = pair.user['createTime']
     rounds.push({
       traceId,
       createTime: typeof createTime === 'string' || typeof createTime === 'number' ? createTime : undefined,

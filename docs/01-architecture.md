@@ -214,7 +214,7 @@ flowchart LR
 | 工具策略 | `toolPolicy` | `lyteboat/plugins/tool-policy/src/index.ts:99-132` | `always` / `auto` 可见性、确认、state delta，`lyteboat:state` context |
 | skill 路由 | `skillRouter` | `lyteboat/plugins/skill-router/src/index.ts:149-206` | `off` / `full` / `dynamic` 三种加载模式，参考实现的 LLM 路由，`lyteboat:skill` context |
 | 卡片 | `a2ui` | `lyteboat/plugins/a2ui/src/index.ts:159-167` | 参考实现的 A2UI 模板引擎，`render_a2ui` 工具 |
-| 历史导入 | `historyImport` | `lyteboat/plugins/history-import/src/index.ts:50-53` | 把外部 SA 历史变成会话 seed |
+| 历史导入 | `historyImport` | `lyteboat/plugins/history-import/src/index.ts:50-53` | 把外部对话历史变成会话 seed |
 
 **事件与投影**（完整列表见 [7.2](#72-事件一览表)）：
 
@@ -918,8 +918,8 @@ sequenceDiagram
 {"type":"request/header","seq":13,"time":1790184018446,"data":{"header":{"config":{"provider":"deepseek-official","model":"<model>","maxTokens":256000,"reasoningEffort":"high"},"adapterDefaults":{"reasoningEffort":true,"maxTokens":true},"tools":"<25 tools: asset_overview,bash,create_goal,…>"},"reason":"initial"}}
 {"type":"assistant/message","seq":17,"time":1790184018479,"data":{"turn":1,"step":1,"message":{"role":"assistant","content":[{"type":"tool-call","id":"call-overview","name":"asset_overview","arguments":"{}"}],"source":{"kind":"model","provider":"deepseek-official","model":"<model>","replayState":{…}},"id":"05913f00-…"},"usage":{"inputTokens":3,"outputTokens":2,"totalTokens":5},"stream":"<6 stream frames>"},"surfaceOp":"append"}
 {"type":"tool/call","seq":18,"time":1790184018481,"data":{"turn":1,"step":1,"callId":"call-overview","name":"asset_overview","arguments":"{}"}}
-{"type":"tool/result","seq":20,"time":1790184018529,"data":{"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call-overview"},"toolCallId":"call-overview","content":[{"type":"text","text":"status=ok · [卡片:资产/full] 总额300,000.00元（约30.00万元） · 保单4份 · 已授权3/3桶 · 卡后一句简短收尾（≤25字），不复述卡内数字"}],"isError":false,"id":"64fc0150-…"},"meta":{"lyteboat":{"card":{"surfaceId":"asset_overview-session--7df8fc","payload":{"event":"beginRendering","version":"1.0.0","surfaceId":"asset_overview-session--7df8fc","rootComponentId":"root-container","showType":"card","components":"<14 components>"}},"stateDelta":{"yl_assets":{"total":"300000.00","buckets":{"日常":{"pct":15,…},"稳健":{"pct":58,…},"进取":{"pct":27,…}},"policy_count":4,"auth_state":"full",…},"yl_assets_raw":{"accounts":[…3 accounts…]}}}}},"sourceEventSeqs":[18],"surfaceOp":"append"}
-{"type":"user/message","seq":23,"time":1790184018562,"data":{"content":[{"type":"text","text":"Current runtime context. …(2033)"}],"source":{"kind":"runtime-context","form":"snapshot","sections":[…,{"name":"lyteboat:state","text":"Session state, accumulated from tool results (JSON):\n{\"yl_assets\":{\"total\":\"300000.00\",…(819)"},{"name":"lyteboat:skill",…}]},"role":"user","id":"bb2535e6-…"},"surfaceOp":"append"}
+{"type":"tool/result","seq":20,"time":1790184018529,"data":{"turn":1,"step":1,"message":{"role":"tool","source":{"kind":"tool","callId":"call-overview"},"toolCallId":"call-overview","content":[{"type":"text","text":"status=ok · [卡片:资产/full] 总额300,000.00元（约30.00万元） · 保单4份 · 已授权3/3桶 · 卡后一句简短收尾（≤25字），不复述卡内数字"}],"isError":false,"id":"64fc0150-…"},"meta":{"lyteboat":{"card":{"surfaceId":"asset_overview-session--7df8fc","payload":{"event":"beginRendering","version":"1.0.0","surfaceId":"asset_overview-session--7df8fc","rootComponentId":"root-container","showType":"card","components":"<14 components>"}},"stateDelta":{"assets_view":{"total":"300000.00","buckets":{"日常":{"pct":15,…},"稳健":{"pct":58,…},"进取":{"pct":27,…}},"policy_count":4,"auth_state":"full",…},"assets_raw":{"accounts":[…3 accounts…]}}}}},"sourceEventSeqs":[18],"surfaceOp":"append"}
+{"type":"user/message","seq":23,"time":1790184018562,"data":{"content":[{"type":"text","text":"Current runtime context. …(2033)"}],"source":{"kind":"runtime-context","form":"snapshot","sections":[…,{"name":"lyteboat:state","text":"Session state, accumulated from tool results (JSON):\n{\"assets_view\":{\"total\":\"300000.00\",…(819)"},{"name":"lyteboat:skill",…}]},"role":"user","id":"bb2535e6-…"},"surfaceOp":"append"}
 {"type":"turn/end","seq":26,"time":1790184018581,"data":{"turn":1,"reason":{"kind":"completed"}}}
 ```
 
@@ -983,11 +983,11 @@ dsh 的持久化层读日志时先过 `validateStoredEvents`（`dsh/session/sess
 
 ### 5.7 外部历史导入：种子怎么进日志
 
-参考实现用 `SessionHistoryMerger`（`base_agent.py:222`）把外部历史（SA 的 `sa_history`）并进会话；lyteboat 把它做成 dsh 的**会话种子**：在 agent 发布之前写进日志的一串已经关闭的 turn。模型从第一次请求起就能看到这些历史，因为 `deriveMessages` 本来就从日志里的 surface 事件推导消息。
+参考实现用 `SessionHistoryMerger`（`base_agent.py:222`）把外部历史（调用方带来的上一段对话）并进会话；lyteboat 把它做成 dsh 的**会话种子**：在 agent 发布之前写进日志的一串已经关闭的 turn。模型从第一次请求起就能看到这些历史，因为 `deriveMessages` 本来就从日志里的 surface 事件推导消息。
 
 ```mermaid
 flowchart LR
-  arg["--history sa.json<br/>lyteboat-run-startup 解析<br/>startup.ts:58,90-91"] --> rf["historyImport.readFile<br/>parseSaHistory 清洗<br/>sa-history.ts:67-114"]
+  arg["--history rounds.json<br/>lyteboat-run-startup 解析<br/>startup.ts:58,90-91"] --> rf["historyImport.readFile<br/>parseHistoryRounds 清洗<br/>round-history.ts:67-114"]
   rf --> sd["historyImport.seed<br/>seedFromRounds 生成 13 个事件<br/>seed.ts:39-77"]
   sd --> cr["agents.create<br/>seed · inheritedEventCount 13 · isSeeded<br/>run/src/index.ts:205-220"]
   cr --> es["Session 构造函数<br/>追加 session/end-seed inherited<br/>session/src/index.ts:613-619"]
@@ -1000,13 +1000,13 @@ flowchart LR
 运行（[7.5](#75-复现本文的运行) 的 `repro.mjs`，不带 `--agent`）：
 
 ```console
-$ node /tmp/repro.mjs run --history "$PWD/lyteboat/bundles/run/tests/fixtures/history/sa.json" 继续刚才的话题
+$ node /tmp/repro.mjs run --history "$PWD/lyteboat/bundles/run/tests/fixtures/history/rounds.json" 继续刚才的话题
 exit=0  requests=[loop, title]
 stdout: 您好（PLAIN-OK）。
-stderr: lyteboat: imported 2 history round(s) from sa.json
+stderr: lyteboat: imported 2 history round(s) from rounds.json
 ```
 
-fixture 里有 6 条 SA 记录：两轮完整的问答被保留；第三轮“那具体怎么调”只有用户消息（半轮），最后一条缺 `trace_id`，都被 `parseSaHistory` 丢掉（`lyteboat/plugins/history-import/src/sa-history.ts:67-114`）。日志如下（header 是 `"isSeeded":true`，没有 `agentPreset`）：
+fixture 里有 6 条历史记录：两轮完整的问答被保留；第三轮“那具体怎么调”只有用户消息（半轮），最后一条缺 `traceId`，都被 `parseHistoryRounds` 丢掉（`lyteboat/plugins/history-import/src/round-history.ts:67-114`）。日志如下（header 是 `"isSeeded":true`，没有 `agentPreset`）：
 
 | seq | 类型 | 关键字段 | 帧 |
 |---|---|---|---|
@@ -1336,6 +1336,6 @@ reopen: refused: session "session-<uuid>" contains event type "lyteboat/route-re
 | b | `run --agents <abs>/lyteboat/agents --agent demo 帮我炒股` | 0 | 无 | `抱歉，我只负责资产配置相关的问题，不提供股票买卖建议。` | ok |
 | c | `run --agents <abs>/lyteboat/agents --agent demo 你好` | 0 | 路由、循环、标题 | `您好（PLAIN-OK）。` | refused（`lyteboat/route-request`） |
 | d | `run 你好` | 0 | 循环、标题 | `您好（PLAIN-OK）。` | ok |
-| e | `run --history <abs>/lyteboat/bundles/run/tests/fixtures/history/sa.json 继续刚才的话题` | 0 | 循环、标题 | `您好（PLAIN-OK）。` | ok |
+| e | `run --history <abs>/lyteboat/bundles/run/tests/fixtures/history/rounds.json 继续刚才的话题` | 0 | 循环、标题 | `您好（PLAIN-OK）。` | ok |
 
 [3.4](#34-启动保证哪些能力) 的禁行实验也用 `repro.mjs`：把 patch 文件写在仓库外（例如 `printf -- '- id: llm\n  disabled: true\n' > /tmp/no-llm.yml`），再 `node /tmp/repro.mjs run --patch /tmp/no-llm.yml 你好`。

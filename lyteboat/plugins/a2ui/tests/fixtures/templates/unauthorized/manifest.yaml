@@ -1,10 +1,10 @@
 # manifest.yaml — templates_v2/unauthorized/
 #
-# 唯一绑定：去授权按钮 openLink.url ← ``yl_assets.auth_link``（build_assets_bundle
-# 已用 constants.PAMA_AUTH_FALLBACK_URL 兜底空值）。其余文案 / action 全静态在 template.json。
+# 唯一绑定：去授权按钮 openLink.url ← ``assets_view.auth_link``（空值由
+# build_assets_bundle 兜底）。其余文案 / action 全静态在 template.json。
 
 paths:
 
   auth_link:                    # 去授权按钮 openLink.url
     kind: state
-    path: "yl_assets.auth_link"
+    path: "assets_view.auth_link"

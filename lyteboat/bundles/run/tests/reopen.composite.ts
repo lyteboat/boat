@@ -100,7 +100,7 @@ describe('lyteboat sessions reopen under dsh session persistence (in process, sc
   })
 
   it('an imported history: the seed is closed turns of dsh nodes', async () => {
-    const { types, refusal } = await run('history', ['--history', join(FIXTURES, 'history', 'sa.json'), '继续刚才的话题'])
+    const { types, refusal } = await run('history', ['--history', join(FIXTURES, 'history', 'rounds.json'), '继续刚才的话题'])
     expect(refusal).toBeUndefined()
     expect(types).toContain('session/end-seed')
     expect(types.filter(type => type.startsWith('lyteboat/'))).toEqual([])

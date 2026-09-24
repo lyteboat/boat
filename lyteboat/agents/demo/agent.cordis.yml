@@ -6,7 +6,7 @@
   name: '@deepseek-ai/dsh-persona'
   config:
     prefix: >-
-      You are DEMO-ASSET-PERSONA, 平安集团的资产顾问助手 powered by the {{model}} model.
+      You are DEMO-ASSET-PERSONA, 一位资产顾问助手 powered by the {{model}} model.
       回答用中文，称用户为「您」。
     suffix: Your working directory is {{cwd}}.
 

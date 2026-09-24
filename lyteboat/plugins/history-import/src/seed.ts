@@ -13,7 +13,7 @@ import { createAssistantMessage, createSystemMessage, createUserMessage } from '
 import type { SessionEvent, SessionEventMap, SessionEventType } from '@deepseek-ai/dsh-session'
 import { SessionSeq } from '@deepseek-ai/dsh-session'
 import { LYTEBOAT_ASSISTANT_PROVIDER, LYTEBOAT_HISTORY_IMPORT_SOURCE } from '@lyteboat/contracts'
-import type { HistoryRound } from './sa-history.ts'
+import type { HistoryRound } from './round-history.ts'
 
 /** The model recorded on imported assistant messages. */
 export const HISTORY_IMPORT_MODEL = 'history-import'

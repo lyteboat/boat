@@ -2,11 +2,11 @@
   "name": "healthy",
   "note": "三桶在目标区间内、保障齐、全部授权。",
   "policyCount": 4,
-  "authorizedAreas": ["A01", "A07", "A15"],
+  "authorizedAreas": ["insurance", "securities", "bank"],
   "links": { "authLink": "https://example.test/auth", "assetsSubPageLink": "https://example.test/policies" },
   "accounts": [
-    { "bucket": "日常", "area": "A15", "bu": "平安银行", "name": "活期", "amount": "45000.00" },
-    { "bucket": "稳健", "area": "A15", "bu": "平安银行", "name": "理财", "amount": "174000.00" },
-    { "bucket": "进取", "area": "A07", "bu": "平安证券", "name": "基金", "amount": "81000.00" }
+    { "bucket": "日常", "area": "bank", "bu": "示例银行", "name": "活期", "amount": "45000.00" },
+    { "bucket": "稳健", "area": "bank", "bu": "示例银行", "name": "理财", "amount": "174000.00" },
+    { "bucket": "进取", "area": "securities", "bu": "示例证券", "name": "基金", "amount": "81000.00" }
   ]
 }

@@ -1,8 +1,8 @@
 /**
  * The demo's asset bundle: a persona fixture (accounts with a bucket, an
- * authorization area and an amount) folded into the `yl_assets` /
- * `yl_assets_raw` shape the asset_overview card binds, a simplified port of
- * yinglong's query_assets.build_assets_bundle.
+ * authorization area and an amount) folded into the `assets_view` /
+ * `assets_raw` shape the asset_overview card binds, a simplified port of the
+ * reference implementation's `query_assets.build_assets_bundle`.
  * @module @lyteboat/agent-demo/assets
  */
 
@@ -14,7 +14,7 @@ export const ASSET_BUCKETS = ['日常', '稳健', '进取'] as const
 export type AssetBucket = (typeof ASSET_BUCKETS)[number]
 
 /** Main account groups; a bucket's coverage is one thing, an unauthorized group is another. */
-const MAIN_GROUPS: Record<string, string[]> = { securities: ['A07', 'A17'], bank: ['A15'], insurance: ['A01'] }
+const MAIN_GROUPS = ['securities', 'bank', 'insurance'] as const
 
 export interface PersonaAccount {
   bucket: AssetBucket
@@ -33,8 +33,8 @@ export interface Persona {
 }
 
 export interface AssetsBundle {
-  yl_assets: Record<string, JsonValue>
-  yl_assets_raw: { accounts: { bucket: string; bu: string; name: string; amount: string }[] }
+  assets_view: Record<string, JsonValue>
+  assets_raw: { accounts: { bucket: string; bu: string; name: string; amount: string }[] }
 }
 
 /** `f"{value:,.2f}"` */
@@ -81,9 +81,9 @@ export function buildAssetsBundle(persona: Persona, isAigc = true): AssetsBundle
     authorized: covered[bucket],
   }]))
   const authorizedBuckets = ASSET_BUCKETS.filter(bucket => covered[bucket]).length
-  const unauthorizedGroups = Object.values(MAIN_GROUPS).filter(areas => !areas.some(area => authorized.has(area))).length
+  const unauthorizedGroups = MAIN_GROUPS.filter(area => !authorized.has(area)).length
   return {
-    yl_assets: {
+    assets_view: {
       total: total.toFixed(2),
       total_display: fmtPlain(total),
       buckets,
@@ -91,12 +91,12 @@ export function buildAssetsBundle(persona: Persona, isAigc = true): AssetsBundle
       auth_state: authState(authorizedBuckets),
       is_authorized: authorizedBuckets > 0,
       is_aigc: isAigc,
-      insurance_authorized: authorized.has('A01'),
+      insurance_authorized: authorized.has('insurance'),
       unauth_main_group_count: unauthorizedGroups,
       auth_link: persona.links.authLink,
       assets_sub_page_link: persona.links.assetsSubPageLink,
     },
-    yl_assets_raw: {
+    assets_raw: {
       accounts: persona.accounts
         .filter(account => authorized.has(account.area))
         .map(({ bucket, bu, name, amount }) => ({ bucket, bu, name, amount })),

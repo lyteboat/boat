@@ -47,7 +47,7 @@ export interface Config {
   preset?: string
   /** The agent directory the preset is declared from; absent resolves `preset` among the declared presets. */
   agentDir?: string
-  /** An external history file (SA entries) seeded into the session as closed turns before the task. */
+  /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
 }
 
