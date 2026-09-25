@@ -52,9 +52,10 @@ agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPo
 
 ### 0.4 agent 能在哪里跑
 
-加载 agent 目录的有三处：`lyteboat headless`、`lyteboat serve`（§4.13），以及 composite 测试里的 `bootComposition` / `startComposition`（§2.15）。`lyteboat headless` 是一次性的：一个任务、一轮；这一轮打到 stdout（回答原文，每张卡片各占一行 `[card <区域>]`），会话 id 打到 stderr（`lyteboat: session <id>`），然后退出（`lyteboat/bundles/headless/src/index.ts:262-269`）。
+加载 agent 目录的有四处：`lyteboat headless`、`lyteboat serve`（§4.13）、`lyteboat eval`（§4.14），以及 composite 测试里的 `bootComposition` / `startComposition`（§2.15）。`lyteboat headless` 是一次性的：一个任务、一轮；这一轮打到 stdout（回答原文，每张卡片各占一行 `[card <区域>]`），会话 id 打到 stderr（`lyteboat: session <id>`），然后退出（`lyteboat/bundles/headless/src/index.ts:262-269`）。
 
-- **HTTP 服务用 `lyteboat serve`。** 它是常驻的：`--agents` 目录里的每个 agent 都能经 `POST /chat` 调用，同步返回一个 JSON 或返回 enterprise 事件流（§4.13）。`lyteboat web`（dsh-web-app）也能通过 HTTP 访问，但它的 profile 里没有 `@lyteboat/headless` 或 `@lyteboat/serve`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`）。
+- **HTTP 服务用 `lyteboat serve`。** 它是常驻的：`--agents` 目录里的每个 agent 都能经 `POST /chat` 调用，同步返回一个 JSON 或返回 enterprise 事件流（§4.13）。`lyteboat web`（dsh-web-app）也能通过 HTTP 访问，但它的 profile 里没有 `@lyteboat/headless`、`@lyteboat/serve` 或 `@lyteboat/eval`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`）。
+- **评测用 `lyteboat eval`。** 它把 agent 目录 `evals/` 里的用例逐个跑成新会话、逐轮检查，真实模型的一次运行录下会话，之后不调模型、不要 key 就能回放（§4.14）。
 - **多轮靠续会话。** 下一次运行加上 `--session-id <上次打出的 id>`，就在同一个会话上接着聊：dsh 的持久化层重开日志，新的一轮能看到前面的轮次，路由过的技能、它的工具、会话状态和请求上下文都还在（§4.10）。要在 agent 自己的组合下续聊，用的就是这个办法。
 - **也可以导入外部历史。** 用 `--history <file>` 把外部系统的几轮对话导入成一个新会话的已结束轮次，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/headless/tests/fixtures/history/rounds.json "继续刚才的话题"`（`CLAUDE.md`「Commands」，`lyteboat/bundles/headless/src/index.ts:235-240`）。`--history` 只能开新会话，不能和 `--session-id` 一起用（`lyteboat/bundles/headless/src/startup.ts:123`）。
 
@@ -75,7 +76,7 @@ agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPo
 | 行（row） | Cordis 插件树里的一项：`{ id, name, config }` | `agent.cordis.yml` 的每一项 |
 | `!!js` | 行配置里的 YAML 标签，值是加载时求值的 JS 表达式 | `task: !!js ctx.lyteboatHeadlessStartup.task`（`lyteboat/bundles/headless/cordis.patch.yml:43`） |
 | patch / bundle | patch 是对行列表的增删改；bundle 是带一层 patch 的包 | `@lyteboat/host` 的 `cordis.patch.yml` 插入八个宿主行，并关掉 dsh-base 的 `session-telemetry-otel` 行 |
-| profile | 按顺序列出的 bundle 层 | `headless` = dsh-base + `@lyteboat/host` + `@lyteboat/headless`（`lyteboat/apps/cli/src/templates.ts:18-20`）；`serve` 的最后一层换成 `@lyteboat/serve`（`:24-26`） |
+| profile | 按顺序列出的 bundle 层 | `headless` = dsh-base + `@lyteboat/host` + `@lyteboat/headless`（`lyteboat/apps/cli/src/templates.ts:18-20`）；`serve` 的最后一层换成 `@lyteboat/serve`（`:24-26`），`eval` 的换成 `@lyteboat/eval`（`:27-29`） |
 | 服务 / seam | 发布在 Context 上、按名字注入的对象；dsh 的扩展点都是服务 | `ctx.tools`、`ctx.skills`、`ctx.llm`、`ctx.systemPrompt`（`CLAUDE.md`「Architecture boundaries」） |
 | 根 realm | 宿主行发布服务的全局命名空间 | `toolPolicy`、`a2ui`、`intakeGuard` 在这里 |
 | standing scope | preset 注册表给一个 preset 修订创建的作用域，agent 行挂在这里；每个 Agent 实例是它的子作用域 | `policy-desk-tools` 行 |
@@ -365,7 +366,7 @@ mkdir -p examples/agents/policy-desk/{src,tests,assets/sample-data,assets/skills
 
 agent 目录在仓库根下三层（`examples/agents/policy-desk`），所以 `extends` 和每条 `references` 都以 `../../../` 回到仓库根，和金融智能体的 `tsconfig.json` 一样。`references` 对应 `src` 里 import 的每个工作区包：内核的 `dsh/core/tools`、`lyteboat/core/contracts`、`lyteboat/plugins/tool-policy`、`lyteboat/plugins/a2ui`、`lyteboat/plugins/intake-guard`。`references` 决定 `tsc -b` 的构建顺序：被引用的包先构建。`CLAUDE.md`「Repository layout」要求每个被 import 的工作区包都列上，内核包也一样。测试文件不在这里编译，由根 `tsconfig.tests.json` 做类型检查。
 
-根 `tsconfig.json` 在 finance 那一项后面加一项（finance 那一项在 `tsconfig.json:89-91`）：
+根 `tsconfig.json` 在 finance 那一项后面加一项（finance 那一项在 `tsconfig.json:95-97`）：
 
 ```diff
      {
@@ -1226,7 +1227,7 @@ npx vitest run --project source examples/agents/policy-desk --exclude '**/*.e2e.
 
 ### 2.15 组合测试：`tests/policy-desk.composite.ts`
 
-agent 必须有组合测试（`CLAUDE.md`「Testing」的测试表和 Who tests what）。`bootComposition`（`@lyteboat/testing/composition`）在测试进程里按 launcher 的方式启动 `LYTEBOAT_HEADLESS_BUNDLES`（`dsh-base + @lyteboat/host + @lyteboat/headless`），内部参数放在 `ctx.cmdlineArgs` 上；profile 跳过了要求的 bundle 时启动失败。loader 加载 `lib/`，所以要先构建（`lyteboat/tooling/testing/src/composition.ts:1-21`、`:50`、`:169-183`、`:206-293`）。`createLyteboatScratch(name)` 给每个测试文件一个临时根目录，`run(label)` 在它下面建一对干净的 home 和工作区（`lyteboat/tooling/testing/src/scratch.ts:41-68`）；`scriptedModelEnv(model)` 给出指向脚本模型的环境变量（`scripted-model.ts:173-175`）；`printedSessionId(stderr)` 从 stderr 取会话 id（`composition.ts:101-105`）；`reopenRefusal(records)` 用 dsh 自己的校验器判断日志能不能重开（`lyteboat/tooling/testing/src/session-reopen.ts:19-36`）。
+agent 必须有组合测试（`CLAUDE.md`「Testing」的测试表和 Who tests what）。`bootComposition`（`@lyteboat/testing/composition`）在测试进程里按 launcher 的方式启动 `LYTEBOAT_HEADLESS_BUNDLES`（`dsh-base + @lyteboat/host + @lyteboat/headless`），内部参数放在 `ctx.cmdlineArgs` 上；profile 跳过了要求的 bundle 时启动失败。loader 加载 `lib/`，所以要先构建（`lyteboat/tooling/testing/src/composition.ts:1-21`、`:50`、`:172-186`、`:209-296`）。`createLyteboatScratch(name)` 给每个测试文件一个临时根目录，`run(label)` 在它下面建一对干净的 home 和工作区（`lyteboat/tooling/testing/src/scratch.ts:41-68`）；`scriptedModelEnv(model)` 给出指向脚本模型的环境变量（`scripted-model.ts:173-175`）；`printedSessionId(stderr)` 从 stderr 取会话 id（`composition.ts:104-108`）；`reopenRefusal(records)` 用 dsh 自己的校验器判断日志能不能重开（`lyteboat/tooling/testing/src/session-reopen.ts:19-36`）。
 
 ```ts
 /**
@@ -1968,6 +1969,94 @@ export function apply(ctx) {
 
 组合测试用 `startComposition` 和 `LYTEBOAT_SERVE_BUNDLES` 在进程内起服务，用 `@lyteboat/testing/chat-client` 的 `postChat`、`streamChat` 调它（§7.7）；金融智能体的 `examples/agents/finance/tests/finance-chat.composite.ts` 是现成的例子，事件流的金样在同目录的 `fixtures/frames/`。
 
+### 4.14 评测用例：`lyteboat eval`
+
+`lyteboat eval` 用 `eval` profile（dsh-base + `@lyteboat/host` + `@lyteboat/eval`，`lyteboat/apps/cli/src/templates.ts:27-29`）跑一个 agent 的评测用例。每个用例开一个新会话，每一轮像 `/chat` 的一条消息那样经 session-controller 交给 agent：请求上下文记在人类消息上，owner 是 `eval`，准入在循环里补做（§4.13）。这一轮结束后，从会话里读出它的表现，按用例的 `expect` 逐项检查（`lyteboat/plugins/eval-runner/src/index.ts:128-153`）。eval 组合关掉了标题请求、插件包清单和工作区的 AGENTS.md（`lyteboat/bundles/eval/cordis.patch.yml:21-32`）。
+
+**用例怎么写。** 默认读 agent 目录 `evals/` 下的每个 `.yml` / `.yaml`，按文件名排序；`--cases <文件或目录>`（可重复）换成别的。金融智能体的 `examples/agents/finance/evals/cases.yml` 有 6 个用例，节选：
+
+```yaml
+cases:
+  - id: overview-then-diagnosis
+    context: { customer: young-idle-cash }
+    turns:
+      - message: 看看我的资产
+        expect:
+          skill: asset-overview
+          tools: { called: [asset_overview], not_called: [allocation_diagnosis] }
+          cards: { areas: [asset_overview] }
+          outcome: completed
+      - message: 我的配置合理吗
+        expect:
+          skill: allocation-diagnosis
+          tools: { called: [allocation_diagnosis] }
+          cards: { areas: [allocation_diagnosis, allocation_plan] }
+          outcome: completed
+
+  - id: out-of-scope
+    context: { customer: midlife-moderate }
+    turns:
+      - message: 帮我写一首诗
+        expect:
+          outcome: rejected
+          tools: { called: [] }
+          cards: { count: 0 }
+          model_requests: { max: 0 }
+          text: { includes: [服务范围] }
+```
+
+- 顶层只有 `cases`。用例有 `id`（kebab-case，所有用例文件里不能重复，录音按它命名）、可选的 `context`（第一轮的请求上下文；后面的轮次不带就沿用，和 `--context` 一样）、`turns`（至少一轮）。每一轮是 `message`（不能是空白）、可选的 `context`、`expect`。
+- 文件按严格的 schema 读：多出的键、空白的消息、不是 kebab-case 或重复的 id、编译不过的正则，都让加载失败并报出文件名，这次运行以 2 退出（`lyteboat/plugins/eval-runner/src/eval-case.ts:52-75`、`:120-133`）。
+- 检查的是框架层面的行为（路由到哪个技能、调了哪些工具、出了哪些卡、这一轮怎么结束），措辞留给模型，文字检查只挑必须出现的词（`cases.yml` 开头的注释）。
+
+`expect` 里写了哪项才检查哪项（`lyteboat/plugins/eval-runner/src/eval-check.ts:42-64`，读法在 `eval-turn.ts:71-96`）：
+
+| 检查 | 通过的条件 | 读的是什么 |
+|---|---|---|
+| `skill` | 等于这一轮之后激活的技能；`null` 表示没有 | `lyteboatActiveSkill` 投影 |
+| `tools.called` / `tools.not_called` | 列出的工具都调用过（`[]` 总是通过）/ 一个都没调用 | 这一轮 assistant 消息里的工具调用 |
+| `cards.areas` / `cards.count` | 卡片的区域与列出的相同，不计顺序 / 卡片张数 | `ctx.a2ui.turnParts` 排出的这一轮 |
+| `outcome` | 这一轮的结局，取值同 `/chat` 的 `outcome`（§4.13）；准入 `reply` 作答的一轮是 `rejected` | `turn/end` 的原因，以及有没有 provider 为 `lyteboat` 的 assistant 消息 |
+| `text.includes` / `text.excludes` / `text.matches` | 正文包含每一段 / 不含任何一段 / 匹配这个正则（`u` 标志） | `turnParts` 的正文，不含卡片 |
+| `model_requests.min` / `model_requests.max` | 循环的模型调用次数在范围内；旁路调用不算 | 这一轮 `stream` 非空的 `assistant/message` 和 `assistant/attempt` |
+
+**跑。**
+
+```sh
+# real：调模型并录下每个用例的会话；模型的访问方式同 §4.12
+node lyteboat/apps/cli/lib/bin.js eval --agents ./examples/agents --agent finance
+# replay：回放一次录下的运行，不调模型、不要 key
+node lyteboat/apps/cli/lib/bin.js eval --agents ./examples/agents --agent finance --model replay --from examples/agents/finance/evals/baseline
+```
+
+`--agents` 可重复、至少一个，`--agent` 必填；`--from` 是运行目录，或 `$LYTEBOAT_HOME/evals` 下的运行 id；`--workspace` 是会话的工作目录，默认当前目录（`lyteboat/bundles/eval/src/startup.ts:86-104`）。每个用例跑完打一行：`✓ <id> (<n> turns)`，或 `✗ <id>: turn <n> <失败的检查>`；最后一行是汇总和报告的路径。全部通过退出 0，有检查失败退出 1，跑不起来（参数不对、用例文件不合法、没有这个 agent、回放缺录音）退出 2（`lyteboat/bundles/eval/src/index.ts:26-45`、`:62-75`）。
+
+**结果在哪。** 每次运行写进 `$LYTEBOAT_HOME/evals/<运行 id>/`，运行 id 是 UTC 开始时间（精确到秒）加 4 位十六进制（`lyteboat/bundles/eval/src/startup.ts:82-84`）。目录里有四样东西（`lyteboat/plugins/eval-runner/src/eval-report.ts:1-8`、`:96-101`）：
+
+- `run.json`：agent、模式、每个用例是否通过、轮次和检查的通过数。
+- `results.jsonl`：每轮一行，有消息、读出的表现、每项检查的期望值和实际值。不含耗时，所以同一份录音回放出来逐行相同。
+- `sessions/<用例 id>/session.v4.jsonl`：只有 real 有，是会话头加全部事件，dsh 的回放能读。
+- `report.md`：汇总表，失败的检查逐条写出期望和实际。
+
+**回放怎么作答。** replay 运行期间，eval-runner 在 `llm/stream` 上接住全部模型调用，没有一个到达 provider。每个会话按会话 id 绑到同名用例的录音：循环调用依次取 `@deepseek-ai/dsh-llm-replay` 从录音推出的回答，旁路调用（路由、准入分类）依次取录音里的 `lyteboat/aux-llm-call` 记录（`lyteboat/plugins/eval-runner/src/eval-replay.ts:1-13`、`:87-108`）。模型的回答是录下的，技能路由、工具、卡片、准入这些代码照常运行；所以回放回答的问题是：同样的模型回答，经过现在的代码，每一轮是不是还和录下时一样。
+
+**回放失败说明什么。** agent 现在的做法和录音不一样了，有两种情形：
+
+- 调模型的次数变了。超出录音的那次调用失败，报 `… recorded N loop call(s); the replay asked for call M. The agent now behaves differently from the recording: record the case again`，这一轮以 `errored` 结束。例如金融智能体的准入不再直接回复归为 `other` 的请求，`out-of-scope` 用例的消息就进了循环，而录音里这一轮没有循环调用，于是它的 `outcome` 是 `errored`，不是 `rejected`。
+- 同样的回答经现在的代码出了别的工具、卡片、结局或正文。对应的检查失败，`results.jsonl` 也和基线不再相同。
+
+改动本不该改变这一轮的表现，这就是回归，要修代码；改动就是要改变它，就重录基线。
+
+**录一份基线并提交。**
+
+1. 用固定的工作目录跑一次 real，例如 `mkdir -p /tmp/<id>-eval`，再加 `--workspace /tmp/<id>-eval`。金融智能体的基线用的是 `/tmp/finance-eval`。
+2. 读 `report.md`，确认每一轮都是你要的样子。
+3. 把运行目录拷成 `examples/agents/<id>/evals/baseline/`。录音里技能调用消息的 `Base directory for this skill:` 是 agent 根目录的绝对路径，把它换成 `<agents-root>`。回放只取录音里的模型回答和旁路调用记录，不读这些路径。
+4. 写一个免 key 回放基线的组合测试，照 `examples/agents/finance/tests/finance-eval.composite.ts` 写：`bootComposition` 起 `LYTEBOAT_EVAL_BUNDLES`，参数 `--agents <根> --agent <id> --model replay --from <基线目录>`，断言这次运行的 `results.jsonl` 与基线的完全相同，退出码与基线的结果一致（`finance-eval.composite.ts:23-39`）。`package.json` 的 devDependencies 加 `@lyteboat/eval`（金融智能体的 `package.json:51`）。之后任何改变了某一轮表现的改动，都会让这个测试失败。
+5. 改动就是要改变某一轮的表现时（技能、工具、卡片、准入规则、提示），照 1–3 重录，像审代码一样审 `evals/baseline/` 的 diff 和报告（`CLAUDE.md`「Testing」的 Fixtures 一条）。
+
+**比较两次运行。** `lyteboat eval compare <前> <后>`（两个参数都是运行目录或运行 id）逐个用例、轮次、检查比较两次运行的 `results.jsonl`，列出结果变了的检查：`✗` 是回归，即之前通过、现在失败或没有了；`·` 是其它变化。末行是变化数和回归数，有回归就退出 1（`lyteboat/bundles/eval/src/index.ts:47-56`，`lyteboat/plugins/eval-runner/src/eval-report.ts:119-137`）。改提示要有 eval 数据（`CLAUDE.md`「Agent design」）：改完用新的一次 real 运行和基线比较，看哪些检查变了。
+
 ---
 
 ## 5. 测试与验收
@@ -1979,6 +2068,7 @@ export function apply(ctx) {
 | 单元（纯逻辑） | `examples/agents/<id>/tests/*.spec.ts` | vitest `source` 项目，通过 `@lyteboat/source` 读 lyteboat 包的 `src`，不用构建本 agent；内核要至少构建过一次 | L4 纯函数、准入判定 |
 | 单元（单元宿主） | 同上 | 同上；`createLyteboatUnitHost` + `MockAdapter` | 行挂上服务之后的行为：工具结果、卡片契约（`validateFullPayload` 严格校验）、状态、准入经 `submit` 和不经 `submit` 两条路径 |
 | 组合（agent 必需） | `examples/agents/<id>/tests/<id>.composite.ts` | vitest `composite` 项目，加载 `lib/`，需先构建；`bootComposition` + 脚本模型 | 路由、可见性、状态增量、卡片与排布、审批、准入、续聊与重开，全部在会话日志、模型请求和 stdout 上断言 |
+| 评测回放（有评测基线的 agent） | `examples/agents/<id>/tests/<id>-eval.composite.ts` | vitest `composite` 项目，需先构建；`bootComposition` + `LYTEBOAT_EVAL_BUNDLES`，`--model replay`，不要模型和 key | 基线 `evals/baseline` 经现在的代码回放出的 `results.jsonl` 与基线的完全相同；照 `examples/agents/finance/tests/finance-eval.composite.ts` 写（§4.14） |
 | e2e 冒烟（每个 agent 一个） | `examples/agents/<id>/tests/<id>-smoke.e2e.ts` | vitest `source` 项目，经 devDependency `@lyteboat/cli` 派生构建好的 `lib/bin.js` 进程，需先构建 | 安装闭包 + profile + agent 目录能一起加载 |
 
 依据：`CLAUDE.md`「Testing」的测试表和 Who tests what、Composition、E2E 几条，`vitest.config.ts:19-26`、`:54-59`。测试名描述行为而不是实现，断言会话日志节点、投影状态、脚本模型记录的请求或工具结果，不断言私有字段；只 mock 边界：模型用 `MockAdapter` 或脚本服务器，技能和模板用 fixture 文件；不要 mock 一个 lyteboat 服务去测另一个，两个都挂上（`CLAUDE.md`「Testing」的 Conventions）。
@@ -2204,7 +2294,7 @@ export interface LyteboatStepPayload {
 |---|---|---|
 | `@lyteboat/testing` | `createLyteboatUnitHost(adapter, options?)` → `Context`；`followUpAndWait(agent, text \| message)`；`MockAdapter`、`textResponse`、`toolCallResponse`、`maxTokensResponse`；`mountDshTestServices(ctx, options?)` | 单元宿主：不变量注册表、dsh 服务、内核 agent loop、`mock` provider，测试结束时释放；要测的 lyteboat 服务由测试自己挂（`lyteboat/tooling/testing/src/index.ts:34-69`）。`MockAdapter` 按脚本逐次应答，并记录每次请求（`mock-adapter.ts`） |
 | `@lyteboat/testing/scratch` | `createLyteboatScratch(name)` → `{ root, run(label, files?), remove() }` | 每个测试文件的临时目录树：`run(label)` 给出干净的 `home` 和 `workspace`（工作区里放一个 `README.md`），同一个 label 再调会重建（`scratch.ts:41-68`） |
-| `@lyteboat/testing/composition` | `bootComposition({ bundles, args, cwd, env, home?, patches?, timeoutMs? })` → `{ code, home, stdout, stderr }`；`startComposition(同样的参数)` → `{ home, exited, stdout(), stderr(), waitForStdout(pattern), stop() }`；`LYTEBOAT_HEADLESS_BUNDLES`、`LYTEBOAT_SERVE_BUNDLES`；`pluginFileRow(file)`；`printedSessionId(stderr)` | 进程内启动组合；profile 跳过了要求的 bundle 时失败；`bootComposition` 等树请求退出，`startComposition` 在服务跑着时就返回，测试调完它再 `stop()`；`pluginFileRow` 相当于 `--plugin`（`composition.ts:50-105`、`:185-293`） |
+| `@lyteboat/testing/composition` | `bootComposition({ bundles, args, cwd, env, home?, patches?, timeoutMs? })` → `{ code, home, stdout, stderr }`；`startComposition(同样的参数)` → `{ home, exited, stdout(), stderr(), waitForStdout(pattern), stop() }`；`LYTEBOAT_HEADLESS_BUNDLES`、`LYTEBOAT_SERVE_BUNDLES`、`LYTEBOAT_EVAL_BUNDLES`；`pluginFileRow(file)`；`printedSessionId(stderr)` | 进程内启动组合；profile 跳过了要求的 bundle 时失败；`bootComposition` 等树请求退出，`startComposition` 在服务跑着时就返回，测试调完它再 `stop()`；`pluginFileRow` 相当于 `--plugin`（`composition.ts:50-108`、`:188-296`） |
 | `@lyteboat/testing/chat-client` | `postChat(url, body, { token? })` → `{ status, body }`；`streamChat(url, body, { token?, onOpen?, onFrame? })` → `{ status, frames, keepAlives, refusal }` | 调 `/chat` 的测试客户端：一个 JSON 回答，或逐帧读 enterprise 事件流；`onFrame` 的 `leave()` 模拟调用方断开（`lyteboat/tooling/testing/src/chat-client.ts:28-93`） |
 | `@lyteboat/testing/scripted-model` | `startScriptedModel(script, { apiKey? })` → `{ baseURL, requests, loopRequests(), close() }`；`withTitle(script)`；`scriptedModelEnv(model)` | `RecordedRequest`：`purpose`（`loop`/`title`/`router`，agent 自己的旁路调用也记成 `loop`）、`body`、`lastUser`、`systemText`、`toolNames`、`calledTools`；回复为 `{ text }` 或 `{ toolCall: { name, arguments, id? } }`，脚本也可以返回 Promise，在它落定之前压住回答（`scripted-model.ts:36-64`、`:126-180`）。`scriptedModelEnv` 给出 `DEEPSEEK_BASE_URL`（`${baseURL}/v1`）、`DEEPSEEK_API_KEY`（`mock-key`）、`DSH_TELEMETRY_DISABLED` |
 | `@lyteboat/testing/session-log` | `findSessionLogs(home)`、`readSessionLog(path)`、`eventTypes(records)`、`normalizeSessionLog(records, options)` | `session-log.ts:97-169` |

@@ -15,7 +15,7 @@
 ### 0.1 lyteboat 作为发行版承诺什么
 
 - **内核归 lyteboat。** lyteboat 拥有 dsh 14 个核心包的源码，放在 `dsh/`，清单是 `dsh/kernel.json`。这些包保留上游发布时的 `@deepseek-ai/dsh-*` 包名。
-- **其余原样。** 上游 0.1.7-rc.2 一共 312 个 dsh 包，内核之外的 298 个 lyteboat 不改源码。lyteboat 工作区从 npm 安装其中 264 个（它的依赖闭包），全部是 `0.1.7-rc.2`（§0.4）。
+- **其余原样。** 上游 0.1.7-rc.2 一共 312 个 dsh 包，内核之外的 298 个 lyteboat 不改源码。lyteboat 工作区从 npm 安装其中 265 个（它的依赖闭包），全部是 `0.1.7-rc.2`（§0.4）。
 - **承诺范围**（`dsh-compat/COMPAT.md` §1）：
   - 针对 `dsh.upstream.json` 钉住的版本，即 `0.1.7-rc.2`。
   - 按该版本写的插件，从 lyteboat 内核看到的**协议、接口、行为**与官方包相同。
@@ -51,11 +51,11 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 | 跟踪的上游 | dsh `0.1.7-rc.2`，tag `dsh-v0.1.7-rc.2`，上游提交 `477b4f42` | `dsh.upstream.json` |
 | 内核包数 | 14 | `dsh/kernel.json` |
 | 上游包总数 / 不在内核的 | 312 / 298，全部是 `@deepseek-ai/dsh*` | `ls up:packages/*/*/package.json` |
-| 工作区实际装的 npm dsh 包 | 264 个，全部 `0.1.7-rc.2` | **[实跑]** `ls node_modules/.pnpm \| grep '^@deepseek-ai+dsh' \| wc -l` |
+| 工作区实际装的 npm dsh 包 | 265 个，全部 `0.1.7-rc.2` | **[实跑]** `ls node_modules/.pnpm \| grep -o '^@deepseek-ai+dsh[^@]*' \| sort -u \| wc -l` |
 | lyteboat 在内核上的差量 | agent-loop：上游文件 2 个 +49/−0，自有文件 4 个 +268/−0；session：上游文件 1 个 +9/−2，自有文件 2 个 +98/−0；session-persistence：自有测试 1 个 +33/−0；session-controller：上游文件 5 个 +66/−46（2 个是重新生成的 Typert 文件，`build` 与 `extend` 各重新生成一次），自有文件 2 个 +114/−0；其余 10 个包没有差量 | **[实跑]** `pnpm run dist:delta` |
 | 登记的扩展 | 4 个：`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`、`session-controller-prompt-source`，共 10 个契约键 | `dsh-compat/contract/extensions.yml` |
 | G1 | `G1 contract vs dsh 0.1.7-rc.2: 21 registered difference(s), 0 failure(s)` | **[实跑]** |
-| `pnpm run test` | 186 个文件，3425 通过，1 跳过（含 G1、G2） | **[实跑]** |
+| `pnpm run test` | 190 个文件，3443 通过，1 跳过（含 G1、G2） | **[实跑]** |
 | G2 | 133 个测试文件：上游 128 个，lyteboat 放在内核包 `tests/lyteboat/` 下的 5 个 | 按 `vitest.config.ts` 的 glob 与排除表静态计数 |
 | `pnpm run dsh-compat` | 3 个文件、32 个测试全部通过：G4 7 个，G5 23 个，G6 2 个；冷树上约 3 分钟 | **[实跑]** |
 | `pnpm run dist:delta -- --check` | 退出码 0，无输出 | **[实跑]** |
@@ -79,7 +79,7 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 | 组件怎么接起来 | `Lifecycle` / `Plugin` 协议 + `AppContext`，由组装根装配（参考实现 `CLAUDE.md`「Lifecycle vs Plugin」） | cordis 插件 + `ctx` 上的服务 + `inject`；组合是 YAML 数据（profile、bundle、patch） |
 | 版本号 | `x.y.z.n`，用 release commit 的短 SHA 作下次发版的边界（参考实现 `docs/RELEASING.md`） | 仓库里保持上游版本号，打包时才盖 `+lyteboat.<commit>`（§8.1）；差量的边界是最近一次 `Dist-Import` 提交 |
 | "兼容"指什么 | wheel 使用方看到的公开 API（发版说明里的 Breaking Changes） | 与同版本官方 dsh 在协议、接口、行为上一致，由 G1–G6 机器证明 |
-| 发版产物 | wheel + 发版说明 | 还没有发版：仓库没有 git tag，17 个 `@lyteboat/*` 包（`lyteboat/` 下 16 个，加上 `examples/agents/finance`）都是 `0.0.1`、`private: true` |
+| 发版产物 | wheel + 发版说明 | 还没有发版：仓库没有 git tag，19 个 `@lyteboat/*` 包（`lyteboat/` 下 18 个，加上 `examples/agents/finance`）都是 `0.0.1`、`private: true` |
 
 正文直接用到的 dsh 词汇：
 
@@ -104,8 +104,8 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 | 层 | 是什么 | 在哪里声明 | 怎么解析 | 怎么跟上游 |
 |---|---|---|---|---|
 | **内核** `dsh/` | lyteboat 拥有的 14 个 dsh 包，保留 `@deepseek-ai/dsh-*` 包名：`llm/llm`、`core/session`、`core/system-prompt`、`core/tools`、`skill/skill`、`core/agent`、`core/agent-loop`、`session/session-projection`、`session/session-persistence`、`session/session-persistence-jsonl`、`compaction/compaction`、`compaction/compaction-basic`、`test-support/agent-loop-testkit`、`api/session-controller` | 权威清单是 `dsh/kernel.json`。`pnpm-workspace.yaml:16-30` 的 overrides 和根 `tsconfig.json` 的 references 是它的镜像；`scripts/upstream-pins.spec.ts:31-34` 核对 overrides 与清单一致 | overrides 把每个内核包名改写成 `workspace:*`；lyteboat 自己的清单也写 `workspace:*` | 每个 tag 一个导入提交，三方合并（§2） |
-| **npm 原样层** | 上游其余 298 个 dsh 包都不改源码；工作区实际装其中 264 个：seam 与 provider、可选插件、基础设施、Web 产品等 | `pnpm-workspace.yaml:79-170` 的 `catalogs.dsh`（91 项）、`:171-176` 的 `catalogs.cordis`、`dsh.upstream.json` | `.pnpmfile.cjs` 把所有非内核的 `@deepseek-ai/dsh*` 依赖改写成 `dsh.upstream.json` 里的版本 | 改 catalog、版本钉文件和精确 peer（§7、§8） |
-| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,headless,serve}`、`plugins/{distro,agent-catalog,chat-api,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/contracts`、`tooling/testing`，共 16 个（`CLAUDE.md`「Repository layout」）；示例 agent `examples/agents/finance` 在这一层旁边 | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`）；示例 agent 是 `examples/*/*`（`:8`） | `workspace:*` | 不适用 |
+| **npm 原样层** | 上游其余 298 个 dsh 包都不改源码；工作区实际装其中 265 个：seam 与 provider、可选插件、基础设施、Web 产品等 | `pnpm-workspace.yaml:79-172` 的 `catalogs.dsh`（93 项）、`:173-178` 的 `catalogs.cordis`、`dsh.upstream.json` | `.pnpmfile.cjs` 把所有非内核的 `@deepseek-ai/dsh*` 依赖改写成 `dsh.upstream.json` 里的版本 | 改 catalog、版本钉文件和精确 peer（§7、§8） |
+| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,headless,serve,eval}`、`plugins/{distro,agent-catalog,eval-runner,chat-api,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/contracts`、`tooling/testing`，共 18 个（`CLAUDE.md`「Repository layout」）；示例 agent `examples/agents/finance` 在这一层旁边 | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`）；示例 agent 是 `examples/*/*`（`:8`） | `workspace:*` | 不适用 |
 
 **一个包归哪一层？** 规则见 `CLAUDE.md`「Architecture boundaries」的 **Promotion**，满足任一条就进内核：
 
@@ -133,7 +133,7 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 
 **机制三：公开提升**（`pnpm-workspace.yaml:48-56`）。`publicHoistPattern` 把 `@deepseek-ai/*` 和 `@lyteboat/*` 提升到根 `node_modules`，原因有两个：
 
-- agent 目录（`lyteboat headless --agents`、`lyteboat serve --agents`）里的行用裸包名，从 agent 目录向上查找；
+- agent 目录（`lyteboat headless --agents`、`lyteboat serve --agents`、`lyteboat eval --agents`）里的行用裸包名，从 agent 目录向上查找；
 - 组合测试从仓库根解析行。
 
 pnpm 的隔离布局下，只有提升到根的包才能被这两种查找找到。所有包都被机制二钉在同一个版本，所以提升不会产生版本冲突。
@@ -518,7 +518,7 @@ G1 stale registration: <extension> lists <key>, which does not differ from upstr
 - **服务。** `@lyteboat/distro` 发布 `ctx.lyteboatDistro`，提供 `dsh`、`extensions`、`has(id)`（`lyteboat/plugins/distro/src/index.ts:16-27`）。
 - **挂载位置。** host bundle 把 `lyteboat-distro` 行放在 lyteboat 所有服务行的第一个（`lyteboat/bundles/host/cordis.patch.yml:21-24`）。
 - **防过期。** `pnpm run lint` 带 `--check` 跑一次生成器，产物过期就失败（`package.json:14`）。
-- **谁 inject 它。** lyteboat 里用到 `agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable` 的插件都 inject 它：`@lyteboat/tool-policy`、`@lyteboat/skill-router`、`@lyteboat/intake-guard`、`@lyteboat/aux-llm`（各自 `src/index.ts` 的 `static inject`）。放到官方 dsh 上，它们与第三方插件一样停在等待状态。`@lyteboat/chat-api` 经 `sessionController.prompt` 的 `sourceFields` 用 `session-controller-prompt-source`，没有 inject 它；它只挂在 lyteboat 的 serve 组合里（`lyteboat/plugins/chat-api/src/index.ts:100`）。
+- **谁 inject 它。** lyteboat 里用到 `agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable` 的插件都 inject 它：`@lyteboat/tool-policy`、`@lyteboat/skill-router`、`@lyteboat/intake-guard`、`@lyteboat/aux-llm`（各自 `src/index.ts` 的 `static inject`）。放到官方 dsh 上，它们与第三方插件一样停在等待状态。`@lyteboat/chat-api` 经 `sessionController.prompt` 的 `sourceFields` 用 `session-controller-prompt-source`，没有 inject 它；它只挂在 lyteboat 的 serve 组合里（`lyteboat/plugins/chat-api/src/index.ts:100`）。`@lyteboat/eval-runner` 也一样，只挂在 eval 组合里（`lyteboat/plugins/eval-runner/src/index.ts:73`）。
 
 **例子：按第三方写法的插件。** 仓库里的 fixture `lyteboat/bundles/headless/tests/fixtures/plugins/distro-aware.mjs`：
 
@@ -1031,8 +1031,8 @@ workspace:*    admitted
 | catalog | 行 | 内容 | 谁引用 |
 |---|---|---|---|
 | 默认 `catalog:` | `:71-76` | 多个工作区包共用的第三方包（schemastery、zod、commander、js-yaml） | `"zod": "catalog:"` |
-| `catalogs.dsh` | `:79-170` | 91 个非内核 dsh 包，全部 `0.1.7-rc.2` | devDependencies 与依赖写 `catalog:dsh` |
-| `catalogs.cordis` | `:171-176` | cordis、cordis-plugin-include/loader/timer、cosmokit | peer 与 devDependencies 写 `catalog:cordis` |
+| `catalogs.dsh` | `:79-172` | 93 个非内核 dsh 包，全部 `0.1.7-rc.2` | devDependencies 与依赖写 `catalog:dsh` |
+| `catalogs.cordis` | `:173-178` | cordis、cordis-plugin-include/loader/timer、cosmokit | peer 与 devDependencies 写 `catalog:cordis` |
 
 catalog 只管工作区包自己写的依赖；npm 包之间的传递依赖由 `.pnpmfile.cjs` 钉（`pnpm-workspace.yaml:68-70` 的注释）。`dsh.upstream.json` 另外列了 `cordis-plugin-group`：没有工作区包直接依赖它，它经传递依赖进来，由 `.pnpmfile.cjs` 钉住。
 
@@ -1042,13 +1042,13 @@ catalog 只管工作区包自己写的依赖；npm 包之间的传递依赖由 `
 
 ### 8.5 `minimumReleaseAgeExclude`
 
-pnpm 11 拒绝安装发布不到一天的包。被钉的版本刚发布时，要按精确版本列进这个列表（`pnpm-workspace.yaml:178-179` 的注释："the list can go once it has aged"）。
+pnpm 11 拒绝安装发布不到一天的包。被钉的版本刚发布时，要按精确版本列进这个列表（`pnpm-workspace.yaml:180-181` 的注释："the list can go once it has aged"）。
 
-列表共 280 项（`pnpm-workspace.yaml:180-460`，**[实跑]** 用 `yaml` 解析后逐项归类）：
+列表共 280 项（`pnpm-workspace.yaml:182-462`，**[实跑]** 用 `yaml` 解析后逐项归类）：
 
 | 组成 | 项数 | 说明 |
 |---|---|---|
-| 从 npm 解析的 dsh 包 | 261 | 工作区装的 264 个 `@0.1.7-rc.2` 里，除 session-controller 的三个 devDependencies（dsh-client-web、dsh-client-test-runtime、dsh-remote-mock）之外的全部；它们在跟踪版本发布一天之后才进工作区，不需要列 |
+| 从 npm 解析的 dsh 包 | 261 | 工作区装的 265 个 `@0.1.7-rc.2` 里，除 session-controller 的三个 devDependencies（dsh-client-web、dsh-client-test-runtime、dsh-remote-mock）和 `@lyteboat/eval-runner` 依赖的 dsh-llm-replay 之外的全部；它们在跟踪版本发布一天之后才进工作区，不需要列 |
 | 内核包名 | 13 | 14 个内核包里只有 `dsh-agent-loop-testkit` 不在列表里。这些名字经 overrides 解析到工作区、不从 registry 取，所以这 13 条不起作用 |
 | `@deepseek-ai/libreoffice-kit*@0.1.1` | 6 | 跟踪版本依赖的一族平台包 |
 
