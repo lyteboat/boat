@@ -72,6 +72,9 @@
       "path": "./lyteboat/plugins/distro"
     },
     {
+      "path": "./lyteboat/plugins/agent-catalog"
+    },
+    {
       "path": "./lyteboat/bundles/run"
     },
     {

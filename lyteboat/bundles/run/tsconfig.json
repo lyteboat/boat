@@ -13,6 +13,7 @@
     { "path": "../../../dsh/llm/llm" },
     { "path": "../../core/contracts" },
     { "path": "../../plugins/a2ui" },
+    { "path": "../../plugins/agent-catalog" },
     {
       "path": "../../plugins/history-import"
     },

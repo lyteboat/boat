@@ -1,12 +1,13 @@
 # The @lyteboat/run bundle patch: one-shot task mode over dsh-base and @lyteboat/host,
 # lyteboat's replacement for dsh-headless. The startup row parses the task and the
 # `--agent` / `--agents` / `--history` / `--session-id` / `--context` flags from
-# the inner arguments, resolves the agent to its directory, and publishes them as the
-# `lyteboatRunStartup` service; the runner row declares that directory to the
-# agent preset registry, creates one agent composed from it (or resumes the
-# stored session), drives the task to quiescence, prints the final answer, and
-# exits. lyteboat's service rows come from @lyteboat/host and the agent loop
-# (lyteboat's kernel) from dsh-base, both listed before this bundle in the run profile.
+# the inner arguments, checks that an `--agents` root holds the agent, and
+# publishes them as the `lyteboatRunStartup` service; the agent catalog declares
+# that agent to the agent preset registry from its root, and the runner row
+# creates one agent composed from it (or resumes the stored session), drives the
+# task to quiescence, prints the final answer, and exits. lyteboat's service rows
+# come from @lyteboat/host and the agent loop (lyteboat's kernel) from dsh-base,
+# both listed before this bundle in the run profile.
 
 - id: system-prompt
   config:
@@ -22,6 +23,13 @@
     - id: lyteboat-run-startup
       name: '@lyteboat/run/startup'
 
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatRunStartup]
+      config:
+        roots: !!js ctx.lyteboatRunStartup.agentRoots
+        include: !!js "ctx.lyteboatRunStartup.agent === undefined ? [] : [ctx.lyteboatRunStartup.agent]"
+
     - id: agent-preset-registry
       name: '@deepseek-ai/dsh-agent-preset-registry'
       inject: [lyteboatRunStartup]
@@ -34,7 +42,6 @@
       config:
         task: !!js ctx.lyteboatRunStartup.task
         agent: !!js ctx.lyteboatRunStartup.agent
-        agentDir: !!js ctx.lyteboatRunStartup.agentDir
         history: !!js ctx.lyteboatRunStartup.history
         sessionId: !!js ctx.lyteboatRunStartup.sessionId
         context: !!js ctx.lyteboatRunStartup.context

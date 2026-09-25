@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@lyteboat/a2ui": "workspace:*",
+    "@lyteboat/agent-catalog": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/history-import": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
@@ -39,8 +40,7 @@
     "@deepseek-ai/dsh-session-query": "catalog:dsh",
     "@deepseek-ai/dsh-util-values": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
-    "commander": "catalog:",
-    "js-yaml": "catalog:"
+    "commander": "catalog:"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
@@ -61,7 +61,6 @@
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session": "workspace:*",
-    "@deepseek-ai/dsh-tools": "workspace:*",
-    "@types/js-yaml": "catalog:"
+    "@deepseek-ai/dsh-tools": "workspace:*"
   }
 }

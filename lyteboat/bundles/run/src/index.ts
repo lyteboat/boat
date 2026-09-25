@@ -9,8 +9,8 @@
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
  * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
- * the agent composition (the selected agent directory declared to the preset
- * registry, then joined through `agentPresets.mount` in the setup window;
+ * the agent composition (the selected agent, declared to the preset registry by
+ * `@lyteboat/agent-catalog`, joined through `agentPresets.mount` in the setup window;
  * headless composes no preset and refuses a session that ran under one), a
  * resumed session continuing under the agent it ran under, an imported
  * history seeded into a new session, the task submitted through
@@ -21,8 +21,6 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { join, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -33,6 +31,7 @@ import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
 import type { JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/history-import'
+import type {} from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/intake-guard'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
@@ -41,22 +40,19 @@ import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
 import type { SeedResult } from '@lyteboat/history-import'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
-import { readAgentDefinition } from './agent-directory.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
+export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'agentCatalog', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
 
 /** Plugin config: the task and agent resolved from the startup provider service. */
 export interface Config {
   /** The prompt text for the single run. */
   task: string
-  /** The agent to compose from (its agent preset id); absent runs the host composition alone. */
+  /** The agent to compose from (its agent preset id, declared by the agent catalog); absent runs the host composition alone. */
   agent?: string
-  /** The directory `agent` is declared from; required with `agent`. */
-  agentDir?: string
   /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
   /** A stored session to continue; it must run under `agent` (or under none, without one) and belong to this directory. */
@@ -68,7 +64,6 @@ export interface Config {
 export const Config: z<Config> = z.object({
   task: z.string().required(),
   agent: z.string(),
-  agentDir: z.string(),
   history: z.string(),
   sessionId: z.string(),
   context: z.dict(z.any()),
@@ -160,21 +155,6 @@ function streamReasoning(ctx: Context, agent: Agent, stderr: RunIo['stderr']): (
   }
 }
 
-/**
- * Declare one agent directory as a preset for as long as the runner row lives.
- * The directory is the declaration's base URL, so `./lib/x.js` rows and
- * relative paths in row config resolve against it.
- * @param ctx - the runner's context, which owns the declaration.
- * @param id - the agent id.
- * @param dir - the agent directory.
- */
-async function declareAgent(ctx: Context, id: string, dir: string): Promise<void> {
-  const definition = readAgentDefinition(id, dir)
-  // The registry takes the declaration's base URL from its caller's context.
-  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).agentPresets
-  await ctx.effect(() => presets.register(definition), 'lyteboat-run.declareAgent()')
-}
-
 /** The agent a stored session runs under: its creation header, advanced by every later selection. */
 function storedPreset(header: SessionHeader, events: readonly SessionEvent[]): string | undefined {
   let preset = header.agentPreset
@@ -237,13 +217,12 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   await ctx.get('loader')?.await()
   // Injected, so present while this row is active; a tree disposed during the
   // settlement above makes these reads throw, and the failure still exits.
-  const { agents, agentDefaultModel, agentPresets: presets, sessions, historyImport, a2ui, intakeGuard } = ctx
+  const { agents, agentDefaultModel, agentPresets: presets, agentCatalog, sessions, historyImport, a2ui, intakeGuard } = ctx
 
   const selection = agentDefaultModel.currentSelection()
   let agentPreset: string | undefined
   if (config.agent !== undefined) {
-    if (config.agentDir === undefined) throw new Error(`lyteboat-run: agent ${JSON.stringify(config.agent)} needs agentDir, the directory it is declared from`)
-    await declareAgent(ctx, config.agent, config.agentDir)
+    await agentCatalog.whenReady()
     agentPreset = (await presets.resolve(config.agent)).id
   }
   const setup: AgentSetup = async (agentCtx) => {

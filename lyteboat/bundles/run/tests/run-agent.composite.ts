@@ -64,4 +64,14 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
     expect(rootless.code).not.toBe(0)
     expect(rootless.stderr).toContain('--agents')
   })
+
+  it('fails with the agent catalog\'s diagnosis when the agent does not mount', async () => {
+    const { home, workspace } = scratch.run('unmountable')
+    const before = model.requests.length
+    const result = await runComposition(['--agents', AGENTS, '--agent', 'unmountable', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('agent-catalog: 1 agent(s) failed')
+    expect(result.stderr).toContain('@lyteboat/no-such-package')
+    expect(model.requests.slice(before).filter(request => request.purpose === 'loop')).toHaveLength(0)
+  })
 })
