@@ -10,7 +10,9 @@
  * returns the digest as the model-facing text; the cards ride the result's
  * presentation meta (`meta.lyteboat.cards`), never the model transcript. A card's
  * manifest names when it is shown (`emission_mode`): at once, or where the answer
- * writes `[[card:<area>]]`.
+ * writes `[[card:<area>]]`. An agent's own tool composes cards the same way:
+ * `renderCard` for each card, `cardsPresentationMeta` for its result's meta, and
+ * `cardMarker` for the marker its digest asks the answer to write.
  * @module @lyteboat/a2ui
  */
 
@@ -18,7 +20,8 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionSeq, type Session, type SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { LyteboatCard, JsonValue } from '@lyteboat/contracts'
+import { lyteboatResultCardSchema } from '@lyteboat/contracts'
+import type { LyteboatCard, LyteboatResultCard } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
 import { cardsPresentationMeta, lyteboatCardsProjectionDefinition, preparedCardsOf } from './cards-projection.ts'
 import { TemplateEngine } from './engine.ts'
@@ -29,10 +32,12 @@ import { collectRawData, parseObjectArgs } from './render-tool-input.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 import { composeTurnParts, type LyteboatTurnPart } from './turn-parts.ts'
 
+export { cardsPresentationMeta } from './cards-projection.ts'
 export type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
 export type { A2uiLog, RawData } from './transforms.ts'
 export { validateFullPayload } from './contract.ts'
 export type { A2uiComponentCatalog, GuardResult } from './contract.ts'
+export { cardMarker } from './turn-parts.ts'
 export type { LyteboatTurnPart } from './turn-parts.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -59,6 +64,17 @@ export interface RenderToolOptions {
   validation?: 'warn' | 'enforce'
   /** The client's component catalog the contract is checked against; the domain-neutral default when absent. */
   components?: A2uiComponentCatalog
+}
+
+/**
+ * A rendered card as the contract carries it. Parsing is where the payload,
+ * built from template files and business data, becomes JSON.
+ * @throws naming the card when a raw value JSON cannot carry (NaN, a function, a date) reached its payload.
+ */
+function resultCardOf(area: string, rendered: TemplateRenderResult): LyteboatResultCard {
+  const card = lyteboatResultCardSchema.safeParse({ surfaceId: String(rendered.payload['surfaceId'] ?? ''), area, emission: rendered.emission, payload: rendered.payload })
+  if (!card.success) throw new Error(`a2ui: card "${area}" did not render to lossless JSON: its raw data bound a value JSON cannot carry`, { cause: card.error })
+  return card.data
 }
 
 interface RenderToolCatalog {
@@ -94,11 +110,27 @@ export class A2uiService extends Service {
   }
 
   /**
-   * Render one card outside the tool (an orchestration tool composing a card
-   * beside its own result).
+   * Render one card outside the tool: the engine's whole result, digest and
+   * warnings included. {@link renderCard} gives the card a result carries.
    */
   render(templates: string, card: string, raw: RawData, options: TemplateRenderOptions = {}): Promise<TemplateRenderResult> {
     return this.engine(templates).render(card, raw, options)
+  }
+
+  /**
+   * Render one card for an agent, as a tool result carries it beside the
+   * tool's own value ({@link cardsPresentationMeta}) or an admission reply
+   * does. The engine's degradations go to the log.
+   * @param templates - absolute path of the templates root.
+   * @param area - the card; its marker ({@link cardMarker}) places it by this name.
+   * @param raw - the card's raw data namespace.
+   * @param options - `agent`: the agent the card is for, whose session names the surface.
+   * @throws when the card is unknown or malformed, or its payload is not lossless JSON.
+   */
+  async renderCard(templates: string, area: string, raw: RawData, options: { agent: Agent }): Promise<LyteboatResultCard> {
+    const rendered = await this.engine(templates).render(area, raw, { sessionId: options.agent.session.id })
+    for (const warning of rendered.warnings) this.log.warn(warning)
+    return resultCardOf(area, rendered)
   }
 
   /** The cards one agent's session has prepared, in log order. */
@@ -202,15 +234,16 @@ export class A2uiService extends Service {
         const guard = validateFullPayload(result.payload, { strict: validation === 'enforce', log, catalog: components })
         if (validation === 'enforce' && guard.errors.length > 0) throw new Error(`A2UI contract invalid: ${guard.errors[0] ?? ''}`)
         for (const message of [...guard.errors, ...guard.warnings]) log.warn(message)
+        const rendered = resultCardOf(card, result)
         if (terminal.has(card)) exec.concludeTurn()
         return {
           template: card,
           event: String(result.payload['event'] ?? 'beginRendering'),
-          emission: result.emission,
-          surfaceId: String(result.payload['surfaceId'] ?? ''),
+          emission: rendered.emission,
+          surfaceId: rendered.surfaceId,
           digest: result.digest,
           warnings: [...result.warnings, ...guard.errors, ...guard.warnings],
-          card: result.payload as JsonValue,
+          card: rendered.payload,
         }
       },
     })

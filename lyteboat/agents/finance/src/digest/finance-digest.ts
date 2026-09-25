@@ -23,11 +23,6 @@ export interface FinanceDigest {
   leads: readonly string[]
 }
 
-/** The line the answer carries where a card should appear: `[[card:asset_overview]]`. */
-export function cardMarker(area: string): string {
-  return `[[card:${area}]]`
-}
-
 function section(title: string, lines: readonly string[]): string[] {
   return lines.length === 0 ? [] : [`【${title}】`, ...lines.map(line => `- ${line}`)]
 }

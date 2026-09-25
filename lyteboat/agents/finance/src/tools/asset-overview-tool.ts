@@ -7,9 +7,10 @@
  */
 
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import { cardMarker } from '@lyteboat/a2ui'
 import { summarizeHoldings, type FinanceHoldings } from '../capabilities/finance-holdings.ts'
 import { moneyForModel, pctText, yuanPlain } from '../capabilities/money-text.ts'
-import { cardMarker, composeFinanceDigest } from '../digest/finance-digest.ts'
+import { composeFinanceDigest } from '../digest/finance-digest.ts'
 import { FINANCE_TOOL_OUTPUT, callingAgent, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
 
 /** The card's raw data: every line already worded, so the template only binds. */

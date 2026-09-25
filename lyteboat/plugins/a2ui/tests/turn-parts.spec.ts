@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { LyteboatCard, LyteboatCardEmission } from '@lyteboat/contracts'
-import { composeTurnParts, type LyteboatTurnPart } from '../src/turn-parts.ts'
+import { cardMarker, composeTurnParts, type LyteboatTurnPart } from '../src/turn-parts.ts'
 
 function card(area: string, emission: LyteboatCardEmission, n = 1): LyteboatCard {
   return { callId: `call-${area}`, surfaceId: `${area}-${String(n)}`, area, emission, payload: {} }
@@ -57,5 +57,20 @@ describe('composeTurnParts', () => {
 
   it('leaves text after a dropped marker as written', () => {
     expect(shape(composeTurnParts('A[[card:none]]。B', [], true))).toEqual(['A。B'])
+  })
+})
+
+describe('cardMarker', () => {
+  it('writes the marker at which the answer places the cards of an area', () => {
+    const marker = cardMarker('资产_overview-2')
+
+    expect(marker).toBe('[[card:资产_overview-2]]')
+    expect(shape(composeTurnParts(`前${marker}后`, [card('资产_overview-2', 'deferred')], true))).toEqual(['前', '<资产_overview-2-1>', '后'])
+  })
+
+  it('rejects an area a marker cannot carry, whose cards could never be placed', () => {
+    for (const area of ['asset overview', '', 'x'.repeat(65), 'a]]b']) {
+      expect(() => cardMarker(area)).toThrow(/cannot be written as a marker/u)
+    }
   })
 })

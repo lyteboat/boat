@@ -6,10 +6,11 @@
  */
 
 import { defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import { cardMarker } from '@lyteboat/a2ui'
 import { VERDICT_TEXT, diagnoseAllocation, type AllocationDiagnosis } from '../capabilities/allocation-diagnosis.ts'
 import { summarizeHoldings, type FinanceHoldings } from '../capabilities/finance-holdings.ts'
 import { moneyForModel, pctText } from '../capabilities/money-text.ts'
-import { cardMarker, composeFinanceDigest } from '../digest/finance-digest.ts'
+import { composeFinanceDigest } from '../digest/finance-digest.ts'
 import { FINANCE_TOOL_OUTPUT, callingAgent, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
 
 const bandText = (diagnosis: AllocationDiagnosis): string => `${String(diagnosis.lowPct)}%–${String(diagnosis.highPct)}%`
