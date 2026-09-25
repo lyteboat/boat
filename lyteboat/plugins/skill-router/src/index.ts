@@ -110,12 +110,7 @@ export function lyteboatSkillMeta(metadata: Readonly<Record<string, unknown>> | 
   if (typeof lyteboat !== 'object' || lyteboat === null || Array.isArray(lyteboat)) return undefined
   const record = lyteboat as Record<string, unknown>
   const requiredTools = record['requiredTools']
-  return {
-    ...typeof record['group'] === 'string' ? { group: record['group'] } : {},
-    ...Array.isArray(requiredTools) ? { requiredTools: requiredTools.filter((tool): tool is string => typeof tool === 'string') } : {},
-    ...typeof record['version'] === 'string' ? { version: record['version'] } : {},
-    ...Array.isArray(record['tags']) ? { tags: (record['tags'] as unknown[]).filter((tag): tag is string => typeof tag === 'string') } : {},
-  }
+  return Array.isArray(requiredTools) ? { requiredTools: requiredTools.filter((tool): tool is string => typeof tool === 'string') } : {}
 }
 
 /** The skill a `skill` tool call loads, from the call's JSON arguments. */

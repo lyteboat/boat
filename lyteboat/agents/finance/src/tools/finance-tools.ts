@@ -18,6 +18,6 @@ import { defineLookupKnowledgeTool } from './lookup-knowledge-tool.ts'
  */
 export function registerFinanceTools(ctx: Context, deps: FinanceToolDeps): void {
   for (const definition of [defineAssetOverviewTool(deps), defineAllocationDiagnosisTool(deps), defineLookupKnowledgeTool(deps)]) {
-    ctx.toolPolicy.register(definition, { visibility: 'auto', group: 'finance' })
+    ctx.toolPolicy.register(definition, { visibility: 'auto' })
   }
 }

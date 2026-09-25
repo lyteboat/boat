@@ -66,8 +66,6 @@ export interface RenderToolOptions {
   name?: string
   /** lyteboat tool visibility; defaults to `always`. */
   visibility?: 'always' | 'auto'
-  /** lyteboat tool group; defaults to `framework`. */
-  group?: string
   /** Contract violations: `warn` keeps the card and records them (the reference default); `enforce` fails the call. */
   validation?: 'warn' | 'enforce'
   /** The client's component catalog the contract is checked against; the reference client by default. */
@@ -335,7 +333,6 @@ export class A2uiService extends Service {
     })
     return this.ctx.toolPolicy.register(tool, {
       visibility: options.visibility ?? 'always',
-      group: options.group ?? 'framework',
       stateDelta: (_args, value) => (value as { stateDelta?: JsonValue }).stateDelta,
     })
   }

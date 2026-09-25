@@ -3,8 +3,6 @@ name: investor-education
 description: 解释投资理财概念：资产配置、再平衡、分散投资。用户问「什么是… / …是什么意思 / 怎么理解…」这类概念问题归此；问题涉及用户自己的资产时归其他技能。
 metadata:
   lyteboat:
-    group: finance
-    version: "2.0"
     requiredTools: [lookup_knowledge]
 ---
 

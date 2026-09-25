@@ -30,7 +30,6 @@ export const inject = ['toolPolicy']
 /** One tool's declared policy, as a composition file states it. */
 export interface DeclaredToolPolicy {
   visibility?: 'always' | 'auto'
-  group?: string
   requiresConfirmation?: boolean
 }
 
@@ -42,12 +41,11 @@ export interface Config {
 export const Config: z<Config> = z.object({
   tools: z.dict(z.object({
     visibility: z.union(['always', 'auto'] as const),
-    group: z.string(),
     requiresConfirmation: z.boolean(),
   })).required(),
 })
 
-const POLICY_KEYS = new Set(['visibility', 'group', 'requiresConfirmation'])
+const POLICY_KEYS = new Set(['visibility', 'requiresConfirmation'])
 
 /**
  * Declare every configured policy in the calling scope.
@@ -63,7 +61,6 @@ export function apply(ctx: Context, config: Config): void {
     }
     const meta: LyteboatToolMeta = {
       ...policy.visibility === undefined ? {} : { visibility: policy.visibility },
-      ...policy.group === undefined ? {} : { group: policy.group },
       ...policy.requiresConfirmation === undefined ? {} : { requiresConfirmation: policy.requiresConfirmation },
     }
     ctx.toolPolicy.declare(toolName, meta)

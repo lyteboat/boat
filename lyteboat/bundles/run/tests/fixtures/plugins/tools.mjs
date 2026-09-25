@@ -35,7 +35,6 @@ export function apply(ctx) {
     execute: async () => ({ total: 1234, currency: 'CNY' }),
   }), {
     visibility: 'always',
-    group: 'assets',
     stateDelta: (_args, value) => ({ 'assets.total': value.total, 'assets.currency': value.currency }),
   })
 
@@ -48,7 +47,7 @@ export function apply(ctx) {
       render: (args, _value) => [{ type: 'text', text: `已按“${args.target}”调仓` }],
     },
     execute: async () => ({ ok: true }),
-  }), { visibility: 'auto', group: 'assets', requiresConfirmation: true })
+  }), { visibility: 'auto', requiresConfirmation: true })
 
   ctx.on('lyteboat/pre-assemble', async (payload, next) => {
     if (WANTS_REBALANCE.test(textOf(payload.messages))) ctx.toolPolicy.activate(payload.agent, ['rebalance'])

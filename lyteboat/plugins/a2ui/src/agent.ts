@@ -34,7 +34,6 @@ export interface Config {
   cardDescriptions?: Record<string, string>
   name?: string
   visibility?: 'always' | 'auto'
-  group?: string
   validation?: 'warn' | 'enforce'
   /** The client's component catalog (types, and binding fields per type); the reference client when absent. */
   components?: { types: string[]; bindingFields: Record<string, string[]> }
@@ -47,7 +46,6 @@ export const Config: z<Config> = z.object({
   cardDescriptions: z.dict(z.string()),
   name: z.string(),
   visibility: z.union(['always', 'auto'] as const),
-  group: z.string(),
   validation: z.union(['warn', 'enforce'] as const),
   components: z.object({
     types: z.array(z.string()).required(),
@@ -75,7 +73,6 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     ...config.cardDescriptions === undefined ? {} : { cardDescriptions: config.cardDescriptions },
     ...config.name === undefined ? {} : { name: config.name },
     ...config.visibility === undefined ? {} : { visibility: config.visibility },
-    ...config.group === undefined ? {} : { group: config.group },
     ...config.validation === undefined ? {} : { validation: config.validation },
     ...config.components === undefined ? {} : { components: config.components },
   })

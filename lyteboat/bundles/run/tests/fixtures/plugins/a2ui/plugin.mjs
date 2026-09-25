@@ -20,7 +20,7 @@ export async function apply(ctx) {
       render: (_args, value) => [{ type: 'text', text: `profile loaded: ${value.profile.name}` }],
     },
     execute: async () => PROFILE,
-  }), { visibility: 'always', group: 'profile', stateDelta: (_args, value) => value })
+  }), { visibility: 'always', stateDelta: (_args, value) => value })
 
   await ctx.a2ui.registerRenderTool({
     templates: fileURLToPath(new URL('./templates', import.meta.url)),

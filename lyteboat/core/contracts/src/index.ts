@@ -98,8 +98,6 @@ export type LyteboatToolVisibility = 'always' | 'auto'
 export interface LyteboatToolMeta {
   /** Defaults to `always`. */
   visibility?: LyteboatToolVisibility
-  /** Registry grouping only; never affects visibility. */
-  group?: string
   /** Route the call through the approval seam before execution. */
   requiresConfirmation?: boolean
   /**
@@ -112,11 +110,8 @@ export interface LyteboatToolMeta {
 
 /** lyteboat-side skill metadata: the `metadata.lyteboat` object of a SKILL.md frontmatter. */
 export interface LyteboatSkillMeta {
-  group?: string
   /** Tools the skill needs; activated (made visible) when the skill is routed. */
   requiredTools?: string[]
-  version?: string
-  tags?: string[]
 }
 
 /**

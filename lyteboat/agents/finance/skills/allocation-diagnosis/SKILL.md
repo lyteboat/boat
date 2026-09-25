@@ -3,8 +3,6 @@ name: allocation-diagnosis
 description: 按「100 减年龄」的公开常识诊断用户的资产配置是否合理，并给出方向性的调整建议。用户问「我的配置合理吗 / 健康吗 / 该怎么调 / 帮我诊断」归此；只想看资产、不问好坏归 asset-overview；问理财概念归 investor-education。
 metadata:
   lyteboat:
-    group: finance
-    version: "2.0"
     requiredTools: [allocation_diagnosis]
 ---
 
