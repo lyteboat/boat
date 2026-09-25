@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createToolResultMessage, createUserMessage, ToolCallId, type Message } from '@deepseek-ai/dsh-llm'
-import { buildRoutePrompt, renderHistory, resolveRouteDecision, SKILL_ROUTER_SYSTEM_PROMPT } from '@lyteboat/skill-router'
+import { buildRoutePrompt, renderHistory, resolveRouteDecision, SKILL_ROUTER_SYSTEM_PROMPT } from '../src/router.ts'
 
 describe('resolveRouteDecision', () => {
   const candidates = ['asset-overview', 'market-news']

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { HISTORY_IMPORT_MODEL, seedFromRounds } from '@lyteboat/history-import'
-import type { HistoryRound } from '@lyteboat/history-import'
+import type { HistoryRound } from '../src/round-history.ts'
+import { HISTORY_IMPORT_MODEL, seedFromRounds } from '../src/seed.ts'
 import { LYTEBOAT_ASSISTANT_PROVIDER, LYTEBOAT_HISTORY_IMPORT_SOURCE } from '@lyteboat/contracts'
 
-const round = (traceId: string): HistoryRound => ({ traceId, createTime: undefined, user: { text: `u-${traceId}`, meta: {} }, assistant: { text: `a-${traceId}`, meta: {} } })
+const round = (traceId: string): HistoryRound => ({ traceId, createTime: undefined, user: { text: `u-${traceId}` }, assistant: { text: `a-${traceId}` } })
 
 describe('seedFromRounds', () => {
   it('writes one closed turn per round with contiguous seqs and an empty system head on node 0, and nothing but dsh node types', () => {

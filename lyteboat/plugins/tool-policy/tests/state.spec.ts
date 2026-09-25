@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@lyteboat/contracts'
-import { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState } from '@lyteboat/tool-policy'
+import { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState } from '../src/state.ts'
 
 describe('mergeStateDelta', () => {
   it('assigns dot paths, creating intermediate objects', () => {

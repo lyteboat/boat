@@ -16,50 +16,16 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage, type MessageSource, type UserMessage } from '@deepseek-ai/dsh-llm'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { lyteboatRequestSchema, lyteboatRequestStateSchema } from '@lyteboat/contracts'
-import type { JsonValue, LyteboatRequest, LyteboatRequestState } from '@lyteboat/contracts'
+import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-session-projection'
+import type { JsonValue, LyteboatRequest } from '@lyteboat/contracts'
+import { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from './request-projection.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
     requestContext: RequestContextService
   }
 }
-
-/**
- * The request a message source carries. The field sits beside `kind: 'user'`
- * (dsh's human-input kind), so it is read as data and validated against the
- * contract's schema; a2ui reads the admission's cards from the same field.
- * @param source - a user message's source.
- * @returns the request; undefined when the source carries none.
- * @throws when the carried request fails its schema.
- */
-export function lyteboatRequestOf(source: MessageSource): LyteboatRequest | undefined {
-  if (source.kind !== 'user') return undefined
-  const carried = (source as { lyteboatRequest?: unknown }).lyteboatRequest
-  if (carried === undefined) return undefined
-  return lyteboatRequestSchema.parse(carried)
-}
-
-export const lyteboatRequestProjectionDefinition = {
-  key: 'lyteboatRequest',
-  stateSchema: lyteboatRequestStateSchema,
-  init: (): LyteboatRequestState => ({ requests: 0, context: {}, intake: null }),
-  apply(state: LyteboatRequestState, event) {
-    if (event.type !== 'user/message' || event.surfaceOp !== 'append') return state
-    let request: LyteboatRequest | undefined
-    try {
-      request = lyteboatRequestOf(event.data.source)
-    } catch (error: unknown) {
-      throw new Error(`human message at session seq ${String(event.seq)} carries an invalid source.lyteboatRequest`, { cause: error })
-    }
-    if (request === undefined) return state
-    return { requests: state.requests + 1, context: request.context ?? state.context, intake: request.intake ?? null }
-  },
-  wire: { viewSchema: lyteboatRequestStateSchema, view: (state: LyteboatRequestState) => state },
-  stateVersion: 1,
-} satisfies ProjectionDefinition<'lyteboatRequest', LyteboatRequestState>
 
 /** Host service: write a human message with its request, and read the session's request state. */
 export class RequestContextService extends Service {
@@ -85,7 +51,10 @@ export class RequestContextService extends Service {
     })
   }
 
-  /** The request a message carries; see {@link lyteboatRequestOf}. */
+  /**
+   * The request a message carries, beside `kind: 'user'` on its source.
+   * @throws when the carried request fails the contract's schema.
+   */
   requestOf(message: UserMessage): LyteboatRequest | undefined {
     return lyteboatRequestOf(message.source)
   }

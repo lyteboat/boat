@@ -7,8 +7,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
-import HistoryImportService, { historyEntriesOf } from '@lyteboat/history-import'
-import type { HistoryRound } from '@lyteboat/history-import'
+import HistoryImportService from '@lyteboat/history-import'
+import { historyEntriesOf, type HistoryRound } from '../src/round-history.ts'
 
 async function harness(adapter: MockAdapter): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)
@@ -16,7 +16,7 @@ async function harness(adapter: MockAdapter): Promise<Context> {
   return ctx
 }
 
-const round = (traceId: string, user: string, assistant: string): HistoryRound => ({ traceId, createTime: undefined, user: { text: user, meta: {} }, assistant: { text: assistant, meta: {} } })
+const round = (traceId: string, user: string, assistant: string): HistoryRound => ({ traceId, createTime: undefined, user: { text: user }, assistant: { text: assistant } })
 
 describe('a seeded session', () => {
   it('starts after the imported turns and derives them into the first request', async () => {

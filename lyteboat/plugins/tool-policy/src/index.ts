@@ -38,8 +38,6 @@ import { LYTEBOAT_STATE_CONTEXT_ORDER } from '@lyteboat/contracts'
 import type { LyteboatToolMeta, LyteboatToolVisibility, JsonValue } from '@lyteboat/contracts'
 import { lyteboatStateProjectionDefinition, isJsonObject, renderLyteboatState } from './state.ts'
 
-export { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState, stateDeltaOfMeta } from './state.ts'
-
 declare module '@deepseek-ai/cordis' {
   interface Context {
     toolPolicy: ToolPolicyService

@@ -26,7 +26,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Timeout reason code of one side call. */
-export const AUX_LLM_TIMEOUT_CODE = 'LYTEBOAT_AUX_LLM_TIMEOUT'
+const AUX_LLM_TIMEOUT_CODE = 'LYTEBOAT_AUX_LLM_TIMEOUT'
 
 /** Plugin config (the host row). */
 export interface Config {
@@ -67,7 +67,7 @@ export interface AuxLlmCall {
 }
 
 /** What a side call came back with. A failure is an outcome, not an exception: the caller decides the fallback. */
-export type AuxLlmOutcome =
+type AuxLlmOutcome =
   | { kind: 'answer'; text: string; route: AuxLlmRoute; durationMs: number }
   | { kind: 'failed'; reason: string; message: string; durationMs: number }
 

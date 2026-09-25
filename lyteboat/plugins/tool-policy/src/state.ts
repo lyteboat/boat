@@ -67,7 +67,7 @@ export function mergeStateDelta(state: LyteboatStateValue, delta: JsonValue): Ly
  * @returns the delta; undefined when the meta carries no `lyteboat` envelope or it has no delta.
  * @throws when the `lyteboat` envelope fails its schema.
  */
-export function stateDeltaOfMeta(meta: JsonValue | undefined): LyteboatStateDelta | undefined {
+function stateDeltaOfMeta(meta: JsonValue | undefined): LyteboatStateDelta | undefined {
   if (!isJsonObject(meta) || meta['lyteboat'] === undefined) return undefined
   return lyteboatResultMetaSchema.parse(meta['lyteboat']).stateDelta
 }

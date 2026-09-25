@@ -44,9 +44,6 @@ import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload }
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
 
-export { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
-export type { RouteCandidate, RouteDecision, RoutePromptInput } from './router.ts'
-
 declare module '@deepseek-ai/cordis' {
   interface Context {
     skillRouter: SkillRouterService
@@ -54,7 +51,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** The router call's `purpose` in its `lyteboat/aux-llm-call` record. */
-export const SKILL_ROUTER_PURPOSE = 'skill-router'
+const SKILL_ROUTER_PURPOSE = 'skill-router'
 /** The dsh tool through which the model loads a skill itself. */
 const SKILL_TOOL = 'skill'
 
@@ -109,7 +106,7 @@ class SettingsLayer implements ScopeLayer {
  * @returns the metadata, or undefined when the frontmatter has no `lyteboat` object.
  * @throws when `metadata.lyteboat` fails its schema: a misspelt key must not silently drop the skill's tools.
  */
-export function lyteboatSkillMeta(skill: Pick<SkillDefinition, 'name' | 'metadata'>): LyteboatSkillMeta | undefined {
+function lyteboatSkillMeta(skill: Pick<SkillDefinition, 'name' | 'metadata'>): LyteboatSkillMeta | undefined {
   const lyteboat = skill.metadata?.['lyteboat']
   if (lyteboat === undefined) return undefined
   const parsed = lyteboatSkillMetaSchema.safeParse(lyteboat)

@@ -17,7 +17,7 @@ export interface RouteCandidate {
   readonly description: string
 }
 
-export interface RoutePromptInput {
+interface RoutePromptInput {
   readonly candidates: readonly RouteCandidate[]
   readonly history: readonly string[]
   readonly current: string | null

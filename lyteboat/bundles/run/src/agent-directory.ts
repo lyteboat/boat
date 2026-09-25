@@ -20,10 +20,10 @@ import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 
 /** The composition file that makes a directory an agent. */
-export const AGENT_COMPOSITION_FILE = 'agent.cordis.yml'
+const AGENT_COMPOSITION_FILE = 'agent.cordis.yml'
 
 /** The optional display-metadata file beside the composition. */
-export const AGENT_METADATA_FILE = 'preset.yml'
+const AGENT_METADATA_FILE = 'preset.yml'
 
 function isAgentDirectory(root: string, name: string): boolean {
   return existsSync(join(root, name, AGENT_COMPOSITION_FILE))

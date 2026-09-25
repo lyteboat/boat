@@ -7,7 +7,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
-import RequestContextService, { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from '@lyteboat/request-context'
+import RequestContextService from '@lyteboat/request-context'
+import { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from '../src/request-projection.ts'
 
 async function harness(adapter: MockAdapter): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)

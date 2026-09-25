@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseHistoryRounds } from '@lyteboat/history-import'
+import { parseHistoryRounds } from '../src/round-history.ts'
 
 const entry = (role: 'user' | 'assistant', traceId: string, text: string, extra: Record<string, unknown> = {}): Record<string, unknown> =>
   ({ role, traceId, parts: [{ type: 'text', text }], channel: 'app', ...extra })
@@ -12,7 +12,7 @@ describe('parseHistoryRounds', () => {
     ])
     expect(dropped).toEqual({ malformed: 0, duplicated: 0, half: 0, empty: 0 })
     expect(rounds).toHaveLength(1)
-    expect(rounds[0]).toMatchObject({ traceId: 't1', createTime: '2026-01-01 10:00:00', user: { text: '看看资产', meta: { channel: 'app', createTime: '2026-01-01 10:00:00' } }, assistant: { text: '总额 100\n三桶均衡' } })
+    expect(rounds[0]).toMatchObject({ traceId: 't1', createTime: '2026-01-01 10:00:00', user: { text: '看看资产' }, assistant: { text: '总额 100\n三桶均衡' } })
   })
 
   it('drops malformed entries, half rounds, empty rounds and keeps the first duplicate role', () => {
