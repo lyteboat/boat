@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../../../dsh/core/session" },
+    { "path": "../../../dsh/llm/llm" },
+    {
+      "path": "../../core/contracts"
+    }
+  ]
+}

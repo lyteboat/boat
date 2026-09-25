@@ -1,0 +1,50 @@
+{
+  "name": "@lyteboat/skill-router",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's skill router over the dsh skill registry: full / dynamic load modes, LLM routing per user input (the reference LLMSkillRouter), the lyteboatActiveSkill projection, and required-tool activation through @lyteboat/tool-policy",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./agent": {
+      "@lyteboat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/contracts": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/dsh-skill": "workspace:*",
+    "@deepseek-ai/schemastery": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/distro": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

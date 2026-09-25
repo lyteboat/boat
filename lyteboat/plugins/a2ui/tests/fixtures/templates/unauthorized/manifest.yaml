@@ -1,0 +1,10 @@
+# manifest.yaml — templates_v2/unauthorized/
+#
+# 唯一绑定：去授权按钮 openLink.url ← ``assets_view.auth_link``（空值由
+# build_assets_bundle 兜底）。其余文案 / action 全静态在 template.json。
+
+paths:
+
+  auth_link:                    # 去授权按钮 openLink.url
+    kind: state
+    path: "assets_view.auth_link"

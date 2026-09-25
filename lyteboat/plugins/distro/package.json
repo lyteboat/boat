@@ -1,0 +1,27 @@
+{
+  "name": "@lyteboat/distro",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's distribution marker: the lyteboatDistro service naming the dsh release lyteboat's kernel was imported from and the kernel extensions it carries",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis"
+  }
+}

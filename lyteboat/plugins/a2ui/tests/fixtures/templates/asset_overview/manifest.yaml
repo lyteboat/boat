@@ -1,0 +1,121 @@
+# manifest.yaml — one entry per {path:k} in template.json for templates_v2/asset_overview/
+# Each entry: kind = state | transform | computed
+#   state:     dotted path into the merged raw_data namespace
+#              (assets_view.* / assets_raw.* / diagnosis_view.* / args.*)
+#   transform: a transforms.execute_transforms DSL spec
+#   computed:  {fn: <name in compute.py>, args: [<raw_data path or literal>...]}
+#
+# Resolution order: transforms first, then computed. Computed fns receive
+# resolved values; arg strings of the form "state:<path>" are pre-resolved via
+# _resolve_path before the fn is called. Plain-literal args pass through.
+#
+# NOTE: action *shapes* stay STATIC in template.json (opaque-payload rule); the
+# only per-render bits bound into actions are the authorization jump-link URLs —
+# {path:auth_link} on auth-btn / auth-tip / insurance「授权查看」openLink.url, and
+# {path:insurance_sub_page_link} on insurance「N份保单」openLink.url. The walker
+# resolves a {path} nested under action.args.url to a raw string (binding-contract
+# wrapper only applies to top-level component props). diag-btn's query and the
+# callLocalTools blocks (incl. {{surfaceId}} / {{queryMsg}} /
+# {{_localCommonParams.*}} moustaches, resolved client-side) remain fully static.
+
+paths:
+
+  # ── asset-summary label: AIGC vs non-AIGC copy switch (is_aigc drives it)
+  summary_label:
+    kind: transform
+    spec:
+      switch: "assets_view.is_aigc"
+      cases:
+        "True": "全部资产(元)"
+        "False": "已授权资产(元)"
+      default: "全部资产(元)"
+
+  # ── big amount: fmt_plain output already in bundle (no ¥, 千分位)
+  # default 兜底缺失态:无 assets_view(数据未就绪/降级)时回落 "0.00",与旧 blocks
+  # 构造器一致 —— 否则解析为 "" → walker 产出 {literalString: ""} → 严格校验 XOR 拒整卡。
+  total_display:
+    kind: state
+    path: "assets_view.total_display"
+    default: "0.00"
+
+  # ── AssetProportionProgress.assetsList + AssetListCard.assetsList
+  #    (SAME array, one {path} reused by both components).
+  #    Imperative: Decimal rollup of accounts by bucket+bu, percent fmt,
+  #    bucket label/color map, authorization bool + auth_url (三桶共用整卡
+  #    auth_link), fmt_plain children (千分位，无 ¥).
+  assets_list:
+    kind: computed
+    fn: assets_list
+    args:
+      - "state:assets_view"
+      - "state:assets_raw"
+
+  # ── insurance-row dual Text hide —— gate on the insurance account being authorized (授权 SSOT)，不是 policy_count
+  #    授权而 0 保单 / 网关漏返 amount 时,按份数判定会错误显示"授权查看"逼用户重复授权;
+  #    assets_view.insurance_authorized 由 build_assets_bundle 从 authorized_areas 派生。
+  insurance_unauth_hide:        # "授权查看" hidden when the insurance account IS authorized
+    kind: computed
+    fn: insurance_unauth_hide
+    args:
+      - "state:assets_view.insurance_authorized"
+
+  insurance_auth_hide:          # "N份保单" hidden when the insurance account is NOT authorized
+    kind: computed
+    fn: insurance_auth_hide
+    args:
+      - "state:assets_view.insurance_authorized"
+
+  insurance_policy_text:        # "3份保单"
+    kind: transform
+    spec:
+      concat:
+        - {get: "assets_view.policy_count", default: 0}
+        - "份保单"
+
+  # ── openLink.url 绑定。URL 兜底由 build_assets_bundle 注入。
+  auth_link:                    # 去授权 CTA 落地页（auth-btn openLink.url）
+    kind: state
+    path: "assets_view.auth_link"
+
+  insurance_sub_page_link:      # 「N份保单」openLink.url：保单二级页（该按钮仅 policy_count>0 时可见）
+    kind: state
+    path: "assets_view.assets_sub_page_link"
+
+  # ════════════════════════════════════════════════════════════════════
+  # CTA data-driven hide (model never touches):
+  #   规则维度 = 桶级 auth_state × 主账户组 unauth_main_group_count
+  #   (主组 = 证券 / 银行 / 保险三类机构，与桶态解耦：一家银行即可覆盖三个桶)
+  #
+  #   两条渠道同一套规则，不看渠道，按钮先得看得见。
+  #   两颗橙色 CTA 按 auth_state 互斥,整卡任意时刻至多一颗。
+  #
+  #   none                → 无 CTA        (整卡"无数据"分支处理)
+  #   one                 → auth-btn      (diag/tip hide)
+  #   multi/full + 主组未全 → diag-btn + auth-tip(小号蓝字链接,非 CTA)
+  #   multi/full + 主组全   → diag-btn      (tip hide)
+  # ════════════════════════════════════════════════════════════════════
+
+  auth_btn_hide:                # 去授权按钮:show iff auth_state=="one"
+    kind: computed
+    fn: auth_btn_hide
+    args:
+      - "state:assets_view.auth_state"
+
+  diag_btn_hide:                # 诊断 CTA:show iff auth_state in {multi,full}
+    kind: computed
+    fn: diag_btn_hide
+    args:
+      - "state:assets_view.auth_state"
+
+  auth_tip_text:                # "还有 N 家未授权…" —— N = 主账户组未授权数
+    kind: computed
+    fn: auth_tip_text
+    args:
+      - "state:assets_view"
+
+  auth_tip_hide:                # 提示:show iff (主组未全 & auth_state in {multi,full})
+    kind: computed
+    fn: auth_tip_hide
+    args:
+      - "state:assets_view.auth_state"
+      - "state:assets_view.unauth_main_group_count"

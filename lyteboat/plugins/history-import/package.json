@@ -1,0 +1,33 @@
+{
+  "name": "@lyteboat/history-import",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's external history import: entries grouped into rounds by trace id (half rounds dropped, the first duplicate role kept, ordered by create time) turned into a session seed of closed turns",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*"
+  }
+}

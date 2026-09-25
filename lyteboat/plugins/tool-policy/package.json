@@ -1,0 +1,44 @@
+{
+  "name": "@lyteboat/tool-policy",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's tool policy over the dsh tool registry: visibility (always/auto + activation), confirmation, and tool-result state deltas folded into the lyteboatState projection",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./agent": {
+      "@lyteboat/source": "./src/agent.ts",
+      "types": "./lib/agent.d.ts",
+      "default": "./lib/agent.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*",
+    "@deepseek-ai/dsh-scope": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@lyteboat/distro": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-projection": "workspace:*",
+    "@deepseek-ai/dsh-system-prompt": "workspace:*",
+    "@deepseek-ai/dsh-tools": "workspace:*"
+  }
+}

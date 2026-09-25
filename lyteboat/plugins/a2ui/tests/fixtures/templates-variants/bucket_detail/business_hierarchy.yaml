@@ -1,0 +1,12 @@
+default: brief
+
+hierarchies:
+  brief:
+    root: root
+    ui_ids:
+      - title
+  full:
+    root: root
+    ui_ids:
+      - title
+      - detail
