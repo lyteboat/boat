@@ -1045,11 +1045,11 @@ pnpm 11 拒绝安装发布不到一天的包。被钉的版本刚发布时，要
 `dsh-compat/COMPAT.md` §7 与 `CLAUDE.md`「Upstream sync (the distribution)」的 **Channels.** 规定了两条通道：
 
 - **lyteboat-next** 跟每一次同步：一次同步合并新 tag 的导入，合入前必须通过 G1–G6。同步按周批量进行，一次可跨多个 tag，不必每个 tag 各同步一次。
-- **lyteboat-stable** 只从 dsh 的 release candidate（`-rc.N`）切出，之后只接受回移（backport）。
+- **lyteboat-stable** 只在 lyteboat 发版时切出，而且只从一次同步到 dsh release candidate（`-rc.N`）并通过 G1–G6 的状态切出，之后只接受回移（backport）。
 
 为什么 lyteboat-stable 只从 rc 切？预发布 tag 之间契约可能变动；rc 是上游自己宣布趋于稳定的点。这和 RHEL 冻结 kABI 基线是同一种做法。
 
-两条通道的分支都还没有建立。跟踪的 `0.1.7-rc.2` 本身是一个 release candidate，所以按规则可以从它切出 lyteboat-stable；切分支由维护者决定。
+两条通道都还没有切出分支：lyteboat 还没有发版（`COMPAT.md` §7）。
 
 ### 9.2 不改写历史
 
