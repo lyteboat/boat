@@ -8,11 +8,15 @@
  * exits.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Differences:
- * preset composition (the selected agent directory declared to the preset
- * registry, then joined through `agentPresets.mount` in the setup window), a
- * resumed session keeping the agent it runs under, and the `lyteboat:`
- * diagnostic prefix.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
+ * the agent composition (the selected agent directory declared to the preset
+ * registry, then joined through `agentPresets.mount` in the setup window;
+ * headless composes no preset and refuses a session that ran under one), a
+ * resumed session continuing under the agent it ran under, an imported
+ * history seeded into a new session, the task submitted through
+ * `intakeGuard.submit` with its request context, the turn printed with its
+ * cards placed, no stdin task and no `--json` event stream, and the
+ * `lyteboat:` diagnostic prefix.
  * @module @lyteboat/run
  */
 

@@ -4,10 +4,11 @@
  * compatibility gates' log comparisons, decode logs through this one module.
  *
  * `scanZstdFrames` is adapted from deepseek-ai/deepseek-harness
- * packages/session/session-persistence-jsonl/src/zstd.ts @ dsh-v0.1.5-alpha.2
- * (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. The jsonl backend writes one
- * Zstandard frame per flushed batch; Node's `zstdDecompressSync` stops after
- * the first frame, so frames must be located structurally and decoded one by one.
+ * packages/session/session-persistence-jsonl/src/zstd.ts @ dsh-v0.1.7-rc.2
+ * (477b4f42), MIT — see THIRD_PARTY_NOTICES.md, without its `maxFrames`
+ * limit. The jsonl backend writes one Zstandard frame per flushed batch;
+ * Node's `zstdDecompressSync` stops after the first frame, so frames must be
+ * located structurally and decoded one by one.
  * @module @lyteboat/testing/session-log
  */
 

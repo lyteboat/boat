@@ -4,7 +4,7 @@
  * dsh/core/agent-loop/tests, which every import overwrites.
  *
  * Adapted from deepseek-ai/deepseek-harness packages/core/agent-loop/tests/mock-adapter.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md.
  * @module @lyteboat/testing/mock-adapter
  */
 
