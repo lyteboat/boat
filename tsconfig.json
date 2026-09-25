@@ -69,6 +69,12 @@
       "path": "./lyteboat/plugins/distro"
     },
     {
+      "path": "./lyteboat/bundles/run"
+    },
+    {
+      "path": "./lyteboat/apps/cli"
+    },
+    {
       "path": "./lyteboat/tooling/testing"
     }
   ]

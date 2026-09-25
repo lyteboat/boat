@@ -1,0 +1,9 @@
+paths:
+  title:
+    kind: state
+    path: "profile.name"
+    default: "-"
+  total:
+    kind: state
+    path: "profile.total"
+    default: "-"
