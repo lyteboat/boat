@@ -1153,7 +1153,7 @@ G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试
 
 树必须在仓库外，否则 Node 向上查找会退回到工作区的 `node_modules`（`:1-11`）。因为两棵树只差内核，任何差异都是内核造成的（`dsh-compat/README.md:20`）。
 
-**跑什么。** 两边都用官方 CLI `dsh headless` 对着上游的 `@deepseek-ai/dsh-llm-mock-server` 运行（`dsh-compat/tests/support/official-cli.ts:1-13`）。五个场景（`dsh-compat/tests/scenarios/scenarios.ts:12-24`），每个走内核的一条不同路径：
+**跑什么。** 两边都用官方 CLI `dsh headless` 对着上游的 `@deepseek-ai/dsh-llm-mock-server` 运行（`dsh-compat/tests/support/official-cli.ts:1-13`）。七个场景（`dsh-compat/tests/scenarios/scenarios.ts:105-121`），每个走内核的一条不同路径：
 
 | 场景 | mock 序列 | 走的内核路径 |
 |---|---|---|
@@ -1162,8 +1162,10 @@ G2 的 glob 也收 lyteboat 自己放在内核包 `tests/lyteboat/` 下的测试
 | `reasoning` | `reasoning_success` | 推理块 |
 | `retry` | `server_error` → `success` | 服务端错误后重试 |
 | `max-tokens` | `max_tokens` | 截断的回答 |
+| `tool-switch-addition-only` | `tool_call_success` → `success` | 两次请求之间工具集变了：夹具插件 `fixtures/tool-switch.mjs` 的 `g4_switch_tools` 去掉 `g4_retired`、加上 `g4_added`（各带一段提示词）；路由有 `toolUpdate: addition-only`，不开新请求序列，新提示词追加在历史里 |
+| `tool-switch-no-tool-update` | `tool_call_success` → `success` | 同一个变化，路由没有 `toolUpdate`：开新请求序列，替换提示词头，`request/header` 带 `startsSeries`。lyteboat 的 `requestHeader() === undefined` 子句就挨着上游这一条件 |
 
-**断言**（`dsh-compat/tests/scenarios/g4.spec.ts:31-35`）：退出码、模型请求数、stdout、归一化后的会话日志四项都相等。
+**断言**（`dsh-compat/tests/scenarios/g4.spec.ts:31-36`）：退出码、模型请求数、stdout、归一化后的会话日志四项都相等。两个 tool-switch 场景的两条路由在补丁里由 `llm-deepseek` 的模型目录给出（`scenarios.ts:28-36`），另外带一个 `witness`：原版日志第 2 步里的提示词提交、`request/header` 和 `tool-registry` 开发者消息必须是预期的样子（`scenarios.ts:61-83`），免得夹具没加载时两边写出同样的失败也算通过。
 
 **归一化做什么**（`lyteboat/tooling/testing/src/session-log.ts:150-167`）：
 
