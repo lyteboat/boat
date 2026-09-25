@@ -6,7 +6,7 @@ import { pluginRowId } from '../src/plugins.ts'
 const INTAKE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/intake-gate.mjs', import.meta.url))
 const NOOP_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/noop.mjs', import.meta.url))
 
-const parse = (argv: string[]) => parseLyteboatArgs(argv, { lyteboat: '0.0.1', dsh: '0.1.5-alpha.2' })
+const parse = (argv: string[]) => parseLyteboatArgs(argv, { lyteboat: '0.0.1', dsh: '0.0.0-test' })
 
 /** Capture the process exit code while muting Commander's output. */
 function exitCode(argv: string[]): number {

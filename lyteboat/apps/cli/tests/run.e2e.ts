@@ -1,5 +1,6 @@
 import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
@@ -7,7 +8,8 @@ import { scriptedModelEnv } from '@lyteboat/testing/scripted-model'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
-const SUCCESS_TEXT = 'LYTEBOAT-M0-SMOKE-OK'
+const SUCCESS_TEXT = 'LYTEBOAT-RUN-SMOKE-OK'
+const NOOP_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/noop.mjs', import.meta.url))
 
 /**
  * The session-title provider issues its own model request whose events land at
@@ -38,14 +40,16 @@ describe('lyteboat run (built bin, mock model)', () => {
     scratch.remove()
   })
 
-  it('answers one task through the real tool path and persists the turn', async () => {
+  it('answers one task through the real tool path and persists the turn when a --plugin file joins the tree', async () => {
     const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(
-      ['run', '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
+      ['run', '--plugin', NOOP_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
       { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(mock) } },
     )
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(SUCCESS_TEXT)
+    // The launcher reports a row that failed to import or apply; the plugin file's row activated.
+    expect(result.stderr).not.toContain('did not activate')
 
     // The world, not the self-report: the persisted log carries the tool round trip.
     const logs = findSessionLogs(home)
