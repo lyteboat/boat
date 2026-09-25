@@ -46,3 +46,20 @@ extensions:
       prompt and tool set (agent/pre-step fires after assembly).
     tests:
       - dsh/core/agent-loop/tests/lyteboat/pre-assemble.spec.ts
+  - id: session-append-ignorable
+    package: '@deepseek-ai/dsh-session'
+    kind: api-option
+    surface: >-
+      Session.append takes `{ ignorable: true }` for a non-surface event of a type this build does not
+      know, and writes `ignorable: true` on its envelope, so a reader that does not know the type skips
+      it instead of refusing the log (the read and seed paths already honour the marker). A type the
+      build knows, surface types included, is refused. Exports LyteboatAppendOptions.
+    contract:
+      - api › @deepseek-ai/dsh-session › exports › . › Session › append
+      - api › @deepseek-ai/dsh-session › exports › . › LyteboatAppendOptions
+    exit: >-
+      Upstream gives Session.append (or another write path) a way to set SessionEvent.ignorable; then
+      @lyteboat plugins use it instead.
+    tests:
+      - dsh/core/session/tests/lyteboat/append-ignorable.spec.ts
+      - dsh/session/session-persistence/tests/lyteboat/reopen-ignorable.spec.ts
