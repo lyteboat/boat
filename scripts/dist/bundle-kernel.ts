@@ -19,18 +19,20 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { lastImport } from './import-upstream.ts'
 import { git, kernelPackages, repoRoot } from './kernel.ts'
 import { kernelTypertFiles, readTypertStamps, typertSourceDigest } from './typert.ts'
 
-const tsdown = join(repoRoot, 'node_modules/.bin/tsdown')
+// tsdown's bin script run by this Node: node_modules/.bin/tsdown is a POSIX shell shim, which Windows cannot spawn without a shell.
+const tsdown = fileURLToPath(import.meta.resolve('tsdown/run'))
 
 for (const { name, dir } of kernelPackages()) {
   const packageDir = join(repoRoot, 'dsh', dir)
   const own = join(packageDir, 'tsdown.config.ts')
   const config = existsSync(own) ? own : join(repoRoot, 'dsh/tsdown.config.ts')
   try {
-    execFileSync(tsdown, ['--config', config, '--logLevel', 'warn'], { cwd: packageDir, stdio: ['ignore', 'ignore', 'inherit'] })
+    execFileSync(process.execPath, [tsdown, '--config', config, '--logLevel', 'warn'], { cwd: packageDir, stdio: ['ignore', 'ignore', 'inherit'] })
   } catch (error) {
     throw new Error(`${name}: tsdown failed in dsh/${dir}`, { cause: error })
   }
