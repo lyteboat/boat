@@ -16,15 +16,19 @@
  *
  * - `package.json` is the manifest npm publishes for that version (pnpm
  *   publish's resolution of `workspace:` ranges), read from a vanilla tree;
- * - `tsconfig.json` keeps only the `references` that point at other kernel
- *   packages (the rest are dsh packages lyteboat installs from npm).
+ * - every `tsconfig*.json` at the package root keeps only the `references`
+ *   that point at other kernel packages (the rest are dsh packages lyteboat
+ *   installs from npm) or at the package's own sibling configs, except the one
+ *   that compiles a browser face lyteboat carries (scripts/dist/client-face.ts).
  *
  * A package that exports a Typert Host face (`./typert`) or Remote client
  * (`./remote`) also gets those published files (`lib/typert.*`): upstream's
  * generator emits them from a whole-workspace analysis that cannot run inside
  * lyteboat, so the build uses the published ones while the package's source equals
  * the import (scripts/dist/bundle-kernel.ts) and `dist:overlay … typert`
- * regenerates them from lyteboat's source in an upstream checkout.
+ * regenerates them from lyteboat's source in an upstream checkout. A package
+ * with a browser face (`dsh.client`) likewise gets its published browser
+ * bundle and `./client` declarations, which lyteboat neither builds nor changes.
  *
  *   node --import tsx scripts/dist/import-upstream.ts <dsh checkout at a tag> [--trailer "Key: value"]…
  * @module scripts/dist/import-upstream
@@ -34,13 +38,14 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { git, kernelPackages, repoRoot } from './kernel.ts'
 import type { KernelPackage } from './kernel.ts'
 import { releaseOfCheckout, vanillaTree } from './trees.ts'
-import { publishedTypertFiles } from './typert.ts'
+import { CLIENT_TSCONFIG, carriesClientFace, clientFaceFiles, type ClientFaceManifest } from './client-face.ts'
+import { publishedTypertFiles, type TypertManifest } from './typert.ts'
 
 /** Trailer naming the tag an import commit holds; the next import finds its parent by it. */
 export const IMPORT_TRAILER = 'Dist-Import'
@@ -72,15 +77,44 @@ function nextStep(commit: string, parent: string | undefined): string {
   return `first import: git merge --no-ff --allow-unrelated-histories ${commit}`
 }
 
-function normalizedTsconfig(path: string, pkg: KernelPackage, kernelDirs: ReadonlySet<string>): string {
+/**
+ * Whether a tsconfig reference survives the import: one to a kernel package
+ * (its directory or one of its tsconfig files), or to a sibling tsconfig of the
+ * same package, except the one that compiles a browser face lyteboat carries.
+ */
+function keptReference(referencePath: string, pkg: KernelPackage, kernelDirs: ReadonlySet<string>, carriedClient: boolean): boolean {
+  // Upstream paths are relative to packages/<dir>; the same relative path holds under dsh/<dir>.
+  const target = relative('/packages', resolve('/packages', pkg.dir, referencePath))
+  if (!target.endsWith('.json')) return kernelDirs.has(target)
+  if (dirname(target) !== pkg.dir) return kernelDirs.has(dirname(target))
+  return !(carriedClient && basename(target) === CLIENT_TSCONFIG)
+}
+
+/**
+ * A package tsconfig as the import writes it: `references` limited to kernel
+ * packages and the package's own sibling configs (see {@link keptReference}).
+ * @param path - the upstream file.
+ * @param pkg - the kernel package it belongs to.
+ * @param kernelDirs - every kernel package directory.
+ * @param carriedClient - whether the package's browser face is carried as published.
+ * @returns the file's new text.
+ */
+export function normalizedTsconfig(path: string, pkg: KernelPackage, kernelDirs: ReadonlySet<string>, carriedClient: boolean): string {
   const parsed = ts.parseConfigFileTextToJson(path, readFileSync(path, 'utf8'))
   if (parsed.error !== undefined) throw new Error(`${path}: ${ts.flattenDiagnosticMessageText(parsed.error.messageText, '\n')}`)
   const config = parsed.config as { references?: { path: string }[] }
   if (config.references !== undefined) {
-    // Upstream paths are relative to packages/<dir>; the same relative path holds under dsh/<dir>.
-    config.references = config.references.filter(reference => kernelDirs.has(relative('/packages', resolve('/packages', pkg.dir, reference.path))))
+    config.references = config.references.filter(reference => keptReference(reference.path, pkg, kernelDirs, carriedClient))
   }
   return `${JSON.stringify(config, null, 2)}\n`
+}
+
+function copyPublished(publishedDir: string, files: readonly string[], staging: string, pkg: KernelPackage): void {
+  for (const file of files) {
+    const destination = join(staging, 'dsh', pkg.dir, file)
+    mkdirSync(dirname(destination), { recursive: true })
+    copyFileSync(join(publishedDir, file), destination)
+  }
 }
 
 function stage(checkout: string, staging: string, publishedRoot: string): void {
@@ -89,11 +123,10 @@ function stage(checkout: string, staging: string, publishedRoot: string): void {
   const require = createRequire(join(publishedRoot, 'package.json'))
   for (const pkg of packages) {
     const publishedDir = dirname(realpathSync(require.resolve(`${pkg.name}/package.json`)))
-    for (const file of publishedTypertFiles(JSON.parse(readFileSync(join(publishedDir, 'package.json'), 'utf8')) as { exports?: Record<string, unknown>; files?: string[] })) {
-      const destination = join(staging, 'dsh', pkg.dir, file)
-      mkdirSync(dirname(destination), { recursive: true })
-      copyFileSync(join(publishedDir, file), destination)
-    }
+    const manifest = JSON.parse(readFileSync(join(publishedDir, 'package.json'), 'utf8')) as TypertManifest & ClientFaceManifest
+    const carriedClient = carriesClientFace(manifest)
+    copyPublished(publishedDir, publishedTypertFiles(manifest), staging, pkg)
+    if (carriedClient) copyPublished(publishedDir, clientFaceFiles(publishedDir), staging, pkg)
     const source = `packages/${pkg.dir}`
     const files = git(checkout, ['ls-files', '-z', '--', source]).split('\0').filter(file => file !== '')
     if (files.length === 0) throw new Error(`${pkg.name}: ${source} does not exist at this tag`)
@@ -103,8 +136,8 @@ function stage(checkout: string, staging: string, publishedRoot: string): void {
       if (file === `${source}/package.json`) {
         const published = realpathSync(require.resolve(`${pkg.name}/package.json`))
         writeFileSync(destination, readFileSync(published))
-      } else if (file === `${source}/tsconfig.json`) {
-        writeFileSync(destination, normalizedTsconfig(join(checkout, file), pkg, kernelDirs))
+      } else if (dirname(file) === source && /^tsconfig[^/]*\.json$/u.test(basename(file))) {
+        writeFileSync(destination, normalizedTsconfig(join(checkout, file), pkg, kernelDirs, carriedClient))
       } else {
         copyFileSync(join(checkout, file), destination)
       }
@@ -150,9 +183,11 @@ function main(): void {
       '',
       `The ${String(kernelPackages().length)} kernel packages of deepseek-ai/deepseek-harness at ${tag}, as`,
       'scripts/dist/import-upstream.ts writes them: every file byte for byte, except',
-      'package.json (the manifest npm publishes for this version) and tsconfig.json',
-      '(references limited to kernel packages); a package with a Typert Host face or',
-      'Remote client also carries its published lib/typert.* files.',
+      'package.json (the manifest npm publishes for this version) and the tsconfig',
+      'files (references limited to kernel packages and the package\'s own Node-face',
+      'configs); a package with a Typert Host face or Remote client also carries its',
+      'published lib/typert.* files, and one with a browser face its published',
+      'lib/client.js and lib/types/client/.',
       '',
       `${IMPORT_TRAILER}: ${tag}`,
       `Dist-Upstream-Commit: ${upstreamCommit}`,

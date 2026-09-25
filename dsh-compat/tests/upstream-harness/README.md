@@ -16,12 +16,12 @@ Upstream runs these tests inside its monorepo, with a resolution facade that map
 | `fast-check` is a root devDependency | Upstream's property tests import it from the root manifest. |
 | `test-invariants.ts` globs companions under `dsh/` | Upstream's invariant host, otherwise unchanged (see below). |
 
-Excluded, each because it tests upstream's repository tooling rather than the package (`UPSTREAM_TEST_EXCLUDES` in `harness.ts`):
+Excluded (`UPSTREAM_TEST_EXCLUDES` in `harness.ts`): the tests of upstream's repository tooling rather than the package, and the browser-face specs (`tests/**/*.client.spec.ts`) of every kernel package that carries its browser face as published (`scripts/dist/client-face.ts`); those run in upstream's DOM lane against the browser build, which lyteboat neither builds nor changes. The tooling tests are:
 
 - `dsh/core/tools/tests/gen-tool-catalog.spec.ts`: upstream's `scripts/gen-tool-catalog.ts`.
 - `dsh/core/session/tests/gen-persistence-catalog.spec.ts`: upstream's `scripts/gen-persistence-catalog.ts`; the overlay `persistence` gate runs that script on lyteboat's sources instead.
 - `dsh/core/agent/tests/verify-export-jsdoc.spec.ts`: upstream's `scripts/verify-export-jsdoc.ts`, a repository lint.
 
-Upstream's invariant host runs too: `test-invariants.ts` is upstream's `scripts/test-invariants.ts` with the companion glob and the owner match pointed at `dsh/` (its header lists the changes). Every ordinary cordis root a test creates gets the invariant service and the companion of the package under test. Upstream's DOM and proxy-environment setup files are not carried: the kernel has no client code, and no kernel test reads the proxy environment.
+Upstream's invariant host runs too: `test-invariants.ts` is upstream's `scripts/test-invariants.ts` with the companion glob and the owner match pointed at `dsh/` (its header lists the changes). Every ordinary cordis root a test creates gets the invariant service and the companion of the package under test. Upstream's DOM and proxy-environment setup files are not carried: the kernel's client code is carried as published and its specs are excluded, and no kernel test reads the proxy environment.
 
 A new adaptation needs a line in this table and must leave the test files untouched. If a test cannot run without an edit, exclude it with a reason, and let the overlay gate (`scripts/dist/overlay.ts`), which runs in upstream's own repository, cover it.

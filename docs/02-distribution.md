@@ -599,7 +599,7 @@ stateDiagram-v2
 5. 把 lyteboat 各清单里对它的引用（peer、dependencies、devDependencies）都改成 `workspace:*`。`scripts/upstream-pins.spec.ts` 会检查 peer 与 overrides。
 6. 以上改动**先不提交**。`pnpm run dist:import <checkout>`：工具按工作区里的 `dsh/kernel.json` 导入，得到同一个 tag 的又一个导入提交，父提交是上一个导入，与它只差新包，以及已有内核包 `tsconfig.json` 里恢复的、指向新包的 references。
 7. `git merge --no-ff --no-commit <新导入>`，把第 2–5 步的改动（以及第 8–10 步的产物）一起加进暂存区，以 `dist(promote): <包名> enters the kernel` 为标题提交。路由改动放进合并提交本身，因为路由和源码必须同时生效：只有路由没有源码，overrides 指向一个工作区里还不存在的包，安装解析不了；只有源码没有路由，npm 副本仍在 store 里，接管不成立。代价是这些改动躲过 `delta-report --check`（它跳过合并提交），所以提交后用 §3.3 的 `git merge-tree` 办法确认合并自带的改动都在内核包目录之外。
-8. 若它导出 `./typert` 或 `./remote`，确认 `lib/typert.*` 随导入进来了，并跑 `pnpm run dist:overlay <checkout> typert`。
+8. 若它导出 `./typert` 或 `./remote`，确认 `lib/typert.*` 随导入进来了，并跑 `pnpm run dist:overlay <checkout> typert`。若它在清单里声明了 `dsh.client`（有浏览器面），确认 `lib/client.js` 和 `lib/types/client/` 随导入进来了，见 §5.4。
 9. `pnpm run dist:snapshot <checkout>` 重写快照。同版本重写时它不打印差异，所以用 `git diff --stat dsh-compat/contract/` 确认只多出新包的几节，没有删除。
 10. 若 G2 需要新的环境适配，加进 `dsh-compat/tests/upstream-harness/README.md` 的表格。
 11. `pnpm install` 后确认 store 里没有它的 npm 副本：`ls node_modules/.pnpm | grep '^@deepseek-ai+<名字>@'` 应为空。
@@ -627,6 +627,17 @@ stateDiagram-v2
 13 个内核包里只有 dsh-llm 发布 Typert 文件（`git ls-files dsh/llm/llm/lib` 列出 4 个）。lyteboat 没有改 dsh-llm 的源码，所以 `dsh/typert.json` 不存在：只有第一次 `--write` 才会写出它。
 
 CI 用默认的浅克隆（`.github/workflows/ci.yml:26`），浅克隆里找不到导入提交，第 2 条直接返回。所以这项校验只在本地完整克隆上生效；改了 dsh-llm 的 `src/` 却没有重新生成 Typert 文件，CI 不会报错。
+
+
+### 5.4 浏览器面：按发布的样子带进来
+
+有的 dsh 包同时有 Node 面和浏览器面：清单里声明 `dsh.client`，发布 `lib/client.js`（浏览器打包）和 `./client` 的声明文件 `lib/types/client/`。上游用 `packages/client/tsdown.client.ts` 打包浏览器面，这个预设引用上游仓库自己的脚本，在 lyteboat 里跑不了。lyteboat 只改内核包的 Node 面，所以：
+
+1. 导入时拷入发布的浏览器面文件（`scripts/dist/client-face.ts` 的 `clientFaceFiles`），和 Typert 文件同一套做法；包根目录下所有 `tsconfig*.json` 都做引用规范化，solution 形式的 `tsconfig.json` 不再引用 `tsconfig.client.json`，`tsc -b` 只编译 Node 面。
+2. 构建时这类包不用自己的 `tsdown.config.ts`（它用的是上游的客户端预设），改用 `dsh/tsdown.config.ts` 打包 Node 面；同时检查 `src/client/`、`lib/client.js`、`lib/types/client/` 仍等于某个导入，不等就报错。lyteboat 要改浏览器面，得先有构建它的办法。
+3. G2 排除这类包的浏览器面测试（`tests/**/*.client.spec.ts`），它们在上游的 DOM 通道里针对浏览器打包运行（`dsh-compat/tests/upstream-harness/README.md`）。
+
+第一个这样的内核包是 `@deepseek-ai/dsh-api-session-controller`。
 
 ---
 

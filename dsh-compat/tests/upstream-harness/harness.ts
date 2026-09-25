@@ -33,11 +33,27 @@ import type { Plugin } from 'vitest/config'
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const require = createRequire(join(repoRoot, 'package.json'))
 
-/** Test files that exercise upstream's repository tooling (`scripts/`), not the package. */
+/**
+ * The browser-face specs of every kernel package that carries its browser face
+ * as published (scripts/dist/client-face.ts): they run in upstream's DOM lane
+ * against the browser build, which lyteboat neither builds nor changes.
+ */
+function browserFaceSpecs(): { file: string; reason: string }[] {
+  const kernel = (JSON.parse(readFileSync(join(repoRoot, 'dsh/kernel.json'), 'utf8')) as { packages: Record<string, string> }).packages
+  return Object.values(kernel)
+    .filter(dir => (JSON.parse(readFileSync(join(repoRoot, 'dsh', dir, 'package.json'), 'utf8')) as { dsh?: { client?: unknown } }).dsh?.client !== undefined)
+    .map(dir => ({
+      file: `dsh/${dir}/tests/**/*.client.spec.ts`,
+      reason: 'browser-face specs run in upstream\'s DOM lane against the browser build, which lyteboat carries as published and does not change',
+    }))
+}
+
+/** Test files G2 does not run: tests of upstream's repository tooling (`scripts/`), and the browser-face specs of carried browser faces. */
 export const UPSTREAM_TEST_EXCLUDES: readonly { file: string; reason: string }[] = [
   { file: 'dsh/core/tools/tests/gen-tool-catalog.spec.ts', reason: 'tests upstream scripts/gen-tool-catalog.ts, which lyteboat does not carry' },
   { file: 'dsh/core/session/tests/gen-persistence-catalog.spec.ts', reason: 'tests upstream scripts/gen-persistence-catalog.ts; the overlay persistence gate runs that script on lyteboat\'s sources' },
   { file: 'dsh/core/agent/tests/verify-export-jsdoc.spec.ts', reason: 'tests upstream scripts/verify-export-jsdoc.ts, a repository lint' },
+  ...browserFaceSpecs(),
 ]
 
 /** Imports of files no published package ships, by the importer-relative or bare specifier upstream writes. */
