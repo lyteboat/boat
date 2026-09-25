@@ -94,6 +94,8 @@ function recordOf(call: AuxLlmCall, route: AuxLlmRoute, controls: { temperature:
 export class AuxLlmService extends Service {
   // lyteboatDistro: the record rides the kernel extension session-append-ignorable.
   static inject = ['llm', 'lyteboatDistro']
+  // The loader applies a class plugin's static Config, not the module's.
+  static Config = Config
 
   constructor(ctx: Context, private readonly config: Config = {}) {
     super(ctx, 'auxLlm')

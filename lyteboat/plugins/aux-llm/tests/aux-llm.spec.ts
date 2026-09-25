@@ -88,6 +88,12 @@ describe('ctx.auxLlm.generate', () => {
     expect(records(agent)[0]?.data.reasoningEffort).toBe('off')
   })
 
+  it('rejects a host row whose reasoning effort is empty', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+    await ctx.plugin(LyteboatDistroService)
+    await expect(ctx.plugin(AuxLlmService, { reasoningEffort: '' })).rejects.toThrow(/reasoningEffort/u)
+  })
+
   it('propagates the caller\'s abort and records nothing', async () => {
     const adapter = new MockAdapter(['hang'])
     const ctx = await harness(adapter)
