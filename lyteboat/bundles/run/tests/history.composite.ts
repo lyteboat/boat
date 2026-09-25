@@ -63,6 +63,9 @@ describe('lyteboat run --history (in process, scripted model)', () => {
     expect(types.indexOf('session/end-seed')).toBeGreaterThan(types.indexOf('turn/end'))
     expect(types.indexOf('session/end-seed')).toBeLessThan(types.lastIndexOf('turn/start'))
     expect(records.filter(record => record.type === 'turn/end').at(-1)?.data).toEqual({ turn: 3, reason: { kind: 'completed' } })
+    // The first request replaces the seed's empty system head, so its header opens a new series.
+    const headers = records.filter(record => record.type === 'request/header').map(record => [record.data?.['reason'], record.data?.['startsSeries']])
+    expect(headers).toEqual([['initial', true]])
   })
 
   it('rejects a missing history file as a usage error', async () => {

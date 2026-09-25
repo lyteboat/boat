@@ -220,6 +220,10 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     expect(second.code, second.stderr).toBe(0)
     const loop = model.requests.slice(before).filter(isLoop)
     expect(loop[0]!.toolNames.filter(name => FINANCE_TOOLS.includes(name))).toEqual(['allocation_diagnosis'])
+    // dsh's default DeepSeek route updates tools in history (addition-only): the switched skill's
+    // tool is declared deferred and activated by a system update after the new user turn.
+    expect(loop[0]!.body.tools?.find(tool => tool.name === 'allocation_diagnosis')).toMatchObject({ defer_loading: true })
+    expect(loop[0]!.body.messages.at(-1)).toEqual({ role: 'system', content: [{ type: 'tool_addition', tool: { type: 'tool_reference', name: 'allocation_diagnosis' } }] })
     const earlier = loop[0]!.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result')).map(blockText)
     expect(earlier).toHaveLength(1)
     expect(earlier[0]).toMatch(/^\[tool:asset_overview status=ok areas=asset_overview\]/u)
@@ -227,6 +231,11 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const [log] = findSessionLogs(home)
     const records = readSessionLog(log!) as unknown as LogRecord[]
     expect(records.filter(record => record.type === 'turn/start')).toHaveLength(2)
+    const toolUpdates = records.filter(record => record.type === 'developer/message').map(record => record.data?.['message'] as { source: unknown; content: unknown })
+    expect(toolUpdates.map(message => [message.source, message.content])).toEqual([[
+      { kind: 'tool-registry' },
+      [{ type: 'tool-addition', toolName: 'allocation_diagnosis' }, { type: 'tool-removal', toolName: 'asset_overview' }],
+    ]])
     expect(reopenRefusal(records)).toBeUndefined()
   })
 })

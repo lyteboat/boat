@@ -134,6 +134,51 @@ describe('visibility', () => {
   })
 })
 
+describe('tool updates (dsh 0.1.7-rc.2)', () => {
+  async function activateOnSecondTurn(adapter: MockAdapter, id: string): Promise<Agent> {
+    const ctx = await harness(adapter)
+    ctx.toolPolicy.register(echo('always_tool'), { visibility: 'always' })
+    ctx.toolPolicy.register(echo('auto_tool'), { visibility: 'auto' })
+    let activate: string[] = []
+    ctx.on('lyteboat/pre-assemble', async (payload, next) => {
+      if (activate.length > 0) ctx.toolPolicy.activate(payload.agent, activate)
+      return next()
+    })
+    const agent = await ctx.agentLoop.create(SessionId(id), { provider: 'mock', model: 'mock' })
+    await send(agent, 'hello')
+    activate = ['auto_tool']
+    await send(agent, 'now')
+    return agent
+  }
+
+  it('logs an activation after the first request as a tool-registry developer message that names the changed header', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    const agent = await activateOnSecondTurn(adapter, 'tool-registry-log')
+    const events = agent.session.snapshotEvents()
+    const headers = events.filter(event => event.type === 'request/header') as SessionEvent<'request/header'>[]
+    expect(headers.map(event => event.data.reason)).toEqual(['initial', 'change'])
+    const updates = events.filter(event => event.type === 'developer/message') as SessionEvent<'developer/message'>[]
+    expect(updates.map(event => ({ content: event.data.message.content, source: event.data.message.source, headerSeq: event.data.headerSeq, surfaceOp: event.surfaceOp })))
+      .toEqual([{ content: [{ type: 'tool-addition', toolName: 'auto_tool' }], source: { kind: 'tool-registry' }, headerSeq: headers[1]!.seq, surfaceOp: 'append' }])
+  })
+
+  it('sends a route without tool updates the complete list and no developer message', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    await activateOnSecondTurn(adapter, 'tool-registry-plain')
+    expect(adapter.requests[1]?.tools?.map(tool => [tool.name, tool.deferLoading])).toEqual([['always_tool', undefined], ['auto_tool', undefined]])
+    expect(adapter.requests[1]?.messages.filter(message => message.role === 'developer')).toEqual([])
+  })
+
+  it('sends an addition-only route the activated tool deferred, activated by the logged developer message', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    adapter.toolUpdate = 'addition-only'
+    await activateOnSecondTurn(adapter, 'tool-registry-deferred')
+    expect(adapter.requests[1]?.tools?.map(tool => [tool.name, tool.deferLoading])).toEqual([['always_tool', undefined], ['auto_tool', true]])
+    expect(adapter.requests[1]?.messages.filter(message => message.role === 'developer').map(message => message.content))
+      .toEqual([[{ type: 'tool-addition', toolName: 'auto_tool' }]])
+  })
+})
+
 describe('confirmation', () => {
   it('turns a requiresConfirmation call into ask, which denies without an approval service', async () => {
     const adapter = new MockAdapter([toolCallResponse('c1', 'guarded', {}), textResponse('done')])
