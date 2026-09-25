@@ -4,14 +4,14 @@
 # snapshot only when its key starts with one of an entry's `contract` keys; a
 # listed key that no longer differs fails as stale. Keys are the snapshot paths
 # joined by ' › ', e.g. `events › @deepseek-ai/dsh-agent-loop › lyteboat/intake` or
-# `api › @deepseek-ai/dsh-agent-loop › exports › . › IntakeDecision`. Every entry
+# `api › @deepseek-ai/dsh-agent-loop › exports › . › LyteboatIntakeDecision`. Every entry
 # is named by at least one `Dist-Change: extend` commit's `Dist-Extension`
 # trailer (scripts/dist/delta-report.ts checks it), and the @lyteboat/distro service
 # lists the ids at runtime.
 #
 # Fields: id, package, kind (event | api | api-option | service | config),
-# surface (what a plugin sees), contract (keys), since, exit (the upstream
-# change that retires the entry), tests.
+# surface (what a plugin sees), contract (keys), exit (the upstream change
+# that retires the entry), tests.
 extensions:
   - id: agent-loop-intake
     package: '@deepseek-ai/dsh-agent-loop'
@@ -28,7 +28,6 @@ extensions:
       - api › @deepseek-ai/dsh-agent-loop › exports › . › LyteboatIntakeDecision
       - api › @deepseek-ai/dsh-agent-loop › exports › . › LyteboatIntakeReply
       - api › @deepseek-ai/dsh-agent-loop › exports › . › LyteboatStepPayload
-    since: lyteboat on dsh 0.1.7-rc.1 (carried from the lyteboat driver fork since M2)
     exit: >-
       Upstream dispatches a pre-assembly waterfall that can answer a step without a model request
       (agent/pre-step fires after assembly and cannot); then @lyteboat plugins listen to it instead.
@@ -42,7 +41,6 @@ extensions:
       prompt is assembled, so skill routing and tool activation shape the same step's request.
     contract:
       - events › @deepseek-ai/dsh-agent-loop › lyteboat/pre-assemble
-    since: lyteboat on dsh 0.1.7-rc.1 (carried from the lyteboat driver fork since M2)
     exit: >-
       Upstream dispatches an event before systemPrompt.assemble that can still change the step's
       prompt and tool set (agent/pre-step fires after assembly).
@@ -59,7 +57,6 @@ extensions:
     contract:
       - api › @deepseek-ai/dsh-session › exports › . › Session › append
       - api › @deepseek-ai/dsh-session › exports › . › LyteboatAppendOptions
-    since: lyteboat on dsh 0.1.7-rc.1
     exit: >-
       Upstream gives Session.append (or another write path) a way to set SessionEvent.ignorable; then
       @lyteboat plugins use it instead.

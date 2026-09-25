@@ -57,8 +57,6 @@ export interface LyteboatDistroExtension {
   package: string
   /** `event`, `api`, `api-option`, `service`, or `config`. */
   kind: string
-  /** The lyteboat and dsh versions that introduced it. */
-  since: string
 }
 
 /**
