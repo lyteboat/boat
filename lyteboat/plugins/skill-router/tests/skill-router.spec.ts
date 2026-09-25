@@ -3,46 +3,27 @@
  * same-step body and tool visibility, sticky decisions, model-initiated
  * activation, a session continued by a fresh agent, full mode, and off.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import { createUserMessage, type GenerateOptions, type UserMessage } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, SessionSeq, buildForkSeed, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry, { renderSkillContent } from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import type { LyteboatActiveSkillState } from '@lyteboat/contracts'
 import SkillRouterService, { lyteboatActiveSkillProjectionDefinition, type Config } from '@lyteboat/skill-router'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter, config: Config): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-  await mountDshTestServices(ctx)
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(SkillRegistry)
-  await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(ToolPolicyService)
   await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(AuxLlmService)
   await ctx.plugin(SkillRouterService, config)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   ctx.skills.register({ name: 'asset-overview', description: '资产总览与配置诊断', content: 'BODY-ASSET', source: 'custom', metadata: { lyteboat: { requiredTools: ['lookup_assets', 'not_a_tool'] } } })
   ctx.skills.register({ name: 'market-news', description: '市场行情与新闻', content: 'BODY-NEWS', source: 'custom', metadata: { lyteboat: { requiredTools: ['fetch_news'] } } })
   ctx.toolPolicy.register(echo('lookup_assets'), { visibility: 'auto' })
@@ -53,11 +34,6 @@ async function harness(adapter: MockAdapter, config: Config): Promise<Context> {
 
 function echo(name: string): ToolDefinition {
   return defineContentToolFixture({ name, description: name, parameters: {}, execute: async () => [{ type: 'text', text: `${name} ran` }] })
-}
-
-async function send(agent: Agent, text: string): Promise<void> {
-  agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
-  await agent.whenIdle()
 }
 
 const isRouter = (request: GenerateOptions): boolean => (request.system ?? '').includes('skill 路由器')

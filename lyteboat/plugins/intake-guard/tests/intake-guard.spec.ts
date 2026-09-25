@@ -3,32 +3,20 @@
  * in the loop without a model request, a pass is not admitted twice, and a
  * message that arrives unadmitted is admitted in the loop.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LyteboatDistroService from '@lyteboat/distro'
 import RequestContextService from '@lyteboat/request-context'
-import { MockAdapter, mountDshTestServices, textResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as sendAndWait, textResponse } from '@lyteboat/testing'
 import IntakeGuardService, { type LyteboatAdmission } from '@lyteboat/intake-guard'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(RequestContextService)
   await ctx.plugin(IntakeGuardService)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
 }
 
@@ -47,11 +35,6 @@ function stockGate(): LyteboatAdmission & { calls: number } {
     },
   }
   return gate
-}
-
-async function sendAndWait(agent: Agent, message: UserMessage): Promise<void> {
-  agent.followup(message)
-  await agent.whenIdle()
 }
 
 const humanSources = (agent: Agent): unknown[] =>
@@ -101,7 +84,7 @@ describe('admission ahead of the loop', () => {
     const gate = stockGate()
     agent.ctx.get('intakeGuard')!.register(gate)
 
-    await sendAndWait(agent, createUserMessage({ content: [{ type: 'text', text: '帮我炒股' }], source: { kind: 'user' } }))
+    await sendAndWait(agent, '帮我炒股')
 
     expect(adapter.requests).toEqual([])
     expect(gate.calls).toBe(1)

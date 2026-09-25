@@ -4,30 +4,19 @@
  * abort, and an agent without a model; every call that reached a model leaves
  * exactly one ignorable record.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LyteboatDistroService from '@lyteboat/distro'
-import { MockAdapter, maxTokensResponse, mountDshTestServices, textResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, maxTokensResponse, textResponse } from '@lyteboat/testing'
 import AuxLlmService, { type AuxLlmCall, type Config } from '@lyteboat/aux-llm'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter, config: Config = {}): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(AuxLlmService, config)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
 }
 

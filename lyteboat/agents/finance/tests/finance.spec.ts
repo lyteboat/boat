@@ -7,18 +7,13 @@
  * turns in process, so routing, the cards and their placement, and the request
  * context are checked across turns without a reopen.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
 import type { ContentBlock, GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
@@ -29,12 +24,6 @@ import IntakeGuardService from '@lyteboat/intake-guard'
 import * as financeAgent from '@lyteboat/agent-finance/agent'
 
 interface TurnPlan { skill: string; tool: string; args?: Record<string, unknown> }
-
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
 
 function textOf(message: { readonly content: readonly ContentBlock[] }): string {
   return message.content.map(block => block.type === 'text' ? block.text : '').join('')
@@ -87,15 +76,10 @@ function scriptFor(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMap<st
 }
 
 async function harness(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMap<string, string> = new Map()): Promise<{ ctx: Context; adapter: MockAdapter }> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-  await mountDshTestServices(ctx)
+  const script = scriptFor(plans, intents)
+  const adapter = new MockAdapter(Array.from({ length: 80 }, () => script))
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(SkillRegistry)
-  await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(ToolPolicyService)
   await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(AuxLlmService)
@@ -104,9 +88,6 @@ async function harness(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMa
   await ctx.plugin(RequestContextService)
   await ctx.plugin(IntakeGuardService)
   await ctx.plugin(financeAgent)
-  const script = scriptFor(plans, intents)
-  const adapter = new MockAdapter(Array.from({ length: 80 }, () => script))
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return { ctx, adapter }
 }
 
@@ -117,8 +98,7 @@ async function harness(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMa
 async function send(ctx: Context, agent: Agent, text: string, customer?: string): Promise<void> {
   const context = customer === undefined ? undefined : { customer }
   const intake = await ctx.intakeGuard.admit(agent, { text, context: context ?? ctx.requestContext.contextOf(agent) }, AbortSignal.timeout(5000))
-  agent.followup(ctx.requestContext.message(text, { ...context === undefined ? {} : { context }, ...intake === undefined ? {} : { intake } }))
-  await agent.whenIdle()
+  await followUpAndWait(agent, ctx.requestContext.message(text, { ...context === undefined ? {} : { context }, ...intake === undefined ? {} : { intake } }))
 }
 
 type ResultMeta = { lyteboat?: { cards?: { area: string; emission: string; payload: Record<string, unknown> }[] } }

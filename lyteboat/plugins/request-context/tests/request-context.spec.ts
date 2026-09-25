@@ -2,34 +2,17 @@
  * The request on a human message: written by the service, read back with
  * validation, and folded into the session's request state.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { MockAdapter, mountDshTestServices, textResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
 import RequestContextService, { lyteboatRequestOf } from '@lyteboat/request-context'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(RequestContextService)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
-}
-
-async function send(agent: Agent, message: ReturnType<typeof createUserMessage>): Promise<void> {
-  agent.followup(message)
-  await agent.whenIdle()
 }
 
 describe('the request on a human message', () => {
