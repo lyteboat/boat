@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { TemplateEngine, TemplateModeError, mintSurfaceId, validateFullPayload } from '@lyteboat/a2ui'
+import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 
 const ROOT = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
 const BASELINE = fileURLToPath(new URL('./fixtures/baseline', import.meta.url))
@@ -50,7 +51,7 @@ describe('TemplateEngine against reference baselines', () => {
     expect(baseline.stateDelta).toBeNull()
     expect(result).not.toHaveProperty('stateDelta')
     expect(result.warnings).toEqual(baseline.warnings)
-    const guard = validateFullPayload(result.payload, { strict: true })
+    const guard = validateFullPayload(result.payload, { strict: true, catalog: REFERENCE_A2UI_COMPONENT_CATALOG })
     expect(guard.ok).toBe(baseline.guard.ok)
     expect(guard.errors).toEqual(baseline.guard.errors)
     expect(guard.warnings).toEqual(baseline.guard.warnings)

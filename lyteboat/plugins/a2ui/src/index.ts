@@ -67,7 +67,7 @@ export interface RenderToolOptions {
   visibility?: 'always' | 'auto'
   /** Contract violations: `warn` keeps the card and records them (the reference default); `enforce` fails the call. */
   validation?: 'warn' | 'enforce'
-  /** The client's component catalog the contract is checked against; the reference client by default. */
+  /** The client's component catalog the contract is checked against; the domain-neutral default when absent. */
   components?: A2uiComponentCatalog
 }
 

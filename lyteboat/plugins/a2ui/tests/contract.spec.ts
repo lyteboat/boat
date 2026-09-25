@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload, validatePayload } from '@lyteboat/a2ui'
+import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 
 const payload = {
   event: 'beginRendering', version: '1.0.0', surfaceId: 's', rootComponentId: 'c1',
@@ -31,5 +32,21 @@ describe('validatePayload', () => {
     const result = validatePayload(widget, log, { types: ['Widget'], bindingFields: { Widget: ['label'] } })
     expect(result.entries).toEqual([{ code: 'A2UI_BINDING_XOR', message: "Component 'w' field 'label' must contain exactly one of 'path' or 'literalString'" }])
     expect(DEFAULT_A2UI_COMPONENT_CATALOG.types).toContain('Text')
+  })
+
+  it('knows the generic components by default and reports a business widget only a client catalog declares', () => {
+    const warnings: string[] = []
+    const log = { warn: (message: string) => { warnings.push(message) } }
+    const card = { rootComponentId: 'col', components: [
+      { id: 'col', component: { Column: { children: { explicitList: ['title', 'go', 'fav'] } } } },
+      { id: 'title', component: { Text: { text: { literalString: 'Title' } } } },
+      { id: 'go', component: { Button: { text: { literalString: 'Go' } } } },
+      { id: 'fav', component: { FundFavIcon: { fundCode: { literalString: '000001' } } } },
+    ] }
+    expect(validatePayload(card, log).ok).toBe(true)
+    expect(warnings).toEqual(['Unsupported A2UI component type: FundFavIcon (component id=fav index=3)'])
+    warnings.length = 0
+    expect(validatePayload(card, log, REFERENCE_A2UI_COMPONENT_CATALOG).ok).toBe(true)
+    expect(warnings).toEqual([])
   })
 })

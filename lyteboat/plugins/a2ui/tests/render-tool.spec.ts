@@ -16,6 +16,7 @@ import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textRespo
 import ToolPolicyService from '@lyteboat/tool-policy'
 import A2uiService, { lyteboatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@lyteboat/a2ui'
 import * as A2uiAgent from '@lyteboat/a2ui/agent'
+import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 import type { LyteboatCard, LyteboatResultCard, JsonValue } from '@lyteboat/contracts'
 
 const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
@@ -35,7 +36,9 @@ async function harness(adapter: MockAdapter): Promise<Context> {
     output: { schema: { type: 'json' }, render: () => [{ type: 'text', text: 'assets loaded' }] },
     execute: async () => FULL.raw as JsonValue,
   }), { stateDelta: (_args, value) => value as JsonValue })
-  await ctx.a2ui.registerRenderTool({ templates: TEMPLATES, stateKeys: ['assets_view', 'assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' } })
+  await ctx.a2ui.registerRenderTool({
+    templates: TEMPLATES, stateKeys: ['assets_view', 'assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' }, components: REFERENCE_A2UI_COMPONENT_CATALOG,
+  })
   return ctx
 }
 
