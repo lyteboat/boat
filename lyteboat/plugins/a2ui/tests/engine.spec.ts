@@ -46,7 +46,9 @@ describe('TemplateEngine against reference baselines', () => {
     }
     expect(actual).toEqual(expected)
     expect(result.digest).toBe(baseline.digest)
-    expect(result.stateDelta).toEqual(baseline.stateDelta ?? undefined)
+    // The reference produced no state delta for these cards; the port has no stateDelta hook.
+    expect(baseline.stateDelta).toBeNull()
+    expect(result).not.toHaveProperty('stateDelta')
     expect(result.warnings).toEqual(baseline.warnings)
     const guard = validateFullPayload(result.payload, { strict: true })
     expect(guard.ok).toBe(baseline.guard.ok)

@@ -1020,9 +1020,6 @@ importers:
       yaml:
         specifier: ^2.4.2
         version: 2.9.1
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis

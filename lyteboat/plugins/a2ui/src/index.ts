@@ -15,14 +15,13 @@
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
-import { z as zod } from 'zod'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionSeq, type Session, type SessionEvent, type SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import { lyteboatCardSchema, lyteboatRequestSchema, lyteboatResultMetaSchema } from '@lyteboat/contracts'
-import type { LyteboatCard, LyteboatResultCard, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
+import type { LyteboatCard, LyteboatResultCard, LyteboatResultMeta, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
@@ -72,9 +71,7 @@ export interface RenderToolOptions {
   components?: A2uiComponentCatalog
 }
 
-const CARD_EMISSIONS = ['immediate', 'deferred', 'deferred_discard'] as const
-
-const lyteboatCardsSchema: zod.ZodType<LyteboatCard[]> = zod.array(lyteboatCardSchema)
+const lyteboatCardsSchema = lyteboatCardSchema.array()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -87,6 +84,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function cardsOfMeta(meta: JsonValue | undefined): LyteboatResultCard[] {
   if (!isRecord(meta) || meta['lyteboat'] === undefined) return []
   return lyteboatResultMetaSchema.parse(meta['lyteboat']).cards ?? []
+}
+
+/**
+ * The presentation meta that puts a tool's cards where the `lyteboatCards`
+ * projection reads them (`meta.lyteboat.cards`); no cards, no envelope.
+ * @param cards - the cards the tool's value carries.
+ * @throws when a card fails its schema, so the call fails instead of the log keeping an envelope the projection refuses.
+ */
+function cardsPresentationMeta(cards: readonly JsonValue[]): { lyteboat?: LyteboatResultMeta } {
+  return cards.length === 0 ? {} : { lyteboat: lyteboatResultMetaSchema.parse({ cards }) }
 }
 
 /**
@@ -248,9 +255,9 @@ export class A2uiService extends Service {
 
   /**
    * Register a `render_a2ui` tool over a templates root in the calling
-   * scope's layer (through the tool policy, so its state delta and card meta
-   * ride the result). Loads every card first so the parameter enums are
-   * complete.
+   * scope's layer (through the tool policy, which declares its visibility; the
+   * card rides the result's meta). Loads every card first so the parameter
+   * enums are complete.
    * @returns the exact disposer that unregisters the tool.
    */
   async registerRenderTool(options: RenderToolOptions): Promise<() => void> {
@@ -283,17 +290,16 @@ export class A2uiService extends Service {
           properties: {
             template: { type: 'string', required: true },
             event: { type: 'string', required: true },
-            emission: { type: 'string', required: true, enum: [...CARD_EMISSIONS] },
+            emission: { type: 'string', required: true },
             surfaceId: { type: 'string', required: true },
             digest: { type: 'string', required: true },
             warnings: { type: 'array', required: true, items: { type: 'string' } },
             card: { type: 'json', required: true },
-            stateDelta: { type: 'json' },
           },
         },
         render: (_args, value) => [{ type: 'text', text: value.digest !== '' ? value.digest : `[卡片:${value.template}] 已渲染` }],
         presentationMeta: (_args, value) => ({
-          lyteboat: { cards: [{ surfaceId: value.surfaceId, area: value.template, emission: value.emission, payload: value.card }] },
+          ...cardsPresentationMeta([{ surfaceId: value.surfaceId, area: value.template, emission: value.emission, payload: value.card }]),
           a2ui: { template: value.template, event: value.event, warnings: value.warnings },
         }),
       },
@@ -327,14 +333,10 @@ export class A2uiService extends Service {
           digest: result.digest,
           warnings: [...result.warnings, ...guard.errors, ...guard.warnings],
           card: result.payload as JsonValue,
-          ...result.stateDelta === undefined ? {} : { stateDelta: result.stateDelta as JsonValue },
         }
       },
     })
-    return this.ctx.toolPolicy.register(tool, {
-      visibility: options.visibility ?? 'always',
-      stateDelta: (_args, value) => (value as { stateDelta?: JsonValue }).stateDelta,
-    })
+    return this.ctx.toolPolicy.register(tool, { visibility: options.visibility ?? 'always' })
   }
 
   private async catalogOf(engine: TemplateEngine): Promise<RenderToolCatalog> {

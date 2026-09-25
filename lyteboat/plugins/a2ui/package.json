@@ -23,8 +23,7 @@
     "@lyteboat/tool-policy": "workspace:*",
     "@deepseek-ai/dsh-scope": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
-    "yaml": "^2.4.2",
-    "zod": "catalog:"
+    "yaml": "^2.4.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
