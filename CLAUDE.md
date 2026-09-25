@@ -1,0 +1,241 @@
+# lyteboat
+
+lyteboat is an agent harness built as Cordis plugins on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh), and a distribution of dsh. It expresses the runtime facts of a Python agent framework (the reference implementation below) as plugins on dsh's seams: skill routing, tool visibility, A2UI cards, session state, request context and admission, external history. lyteboat owns the source of dsh's core packages (the kernel, `dsh/`) under their published names, so every official package and community plugin binds to lyteboat's implementation; it promises them the protocol, interfaces, and behavior of the release it tracks (`dsh.upstream.json`, `dsh-compat/COMPAT.md`). The forward plan is in [docs/04-reference-alignment.md](docs/04-reference-alignment.md), a structural change's design in its design document ([Workflow](#workflow)); this file owns how to work in the repository.
+
+Read [README.md](README.md) for what lyteboat provides and [dsh-compat/COMPAT.md](dsh-compat/COMPAT.md) before touching `dsh/`. When a dsh API is unclear, read the kernel's source under `dsh/` or, for other dsh packages, the tracked tag's checkout (`packages/<group>/<pkg>/src`) rather than guessing from the published `lib/`.
+
+## Stack
+
+TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`lyteboat/*/*`, `dsh/*/*`; `overrides` route the kernel names to `dsh/`) · `tsc -b` with project references, then tsdown for the kernel bundles (upstream's own build) · vitest 4 (unit, composite, e2e, and upstream's kernel tests in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-rc.2: the kernel from `dsh/`, every other dsh package from npm as a peer dependency · `@deepseek-ai/schemastery` for plugin `Config`, zod for the JSON envelopes lyteboat writes and its projection states.
+
+## Repository layout
+
+```
+dsh/                      the kernel: dsh packages lyteboat owns (dsh/kernel.json), published names kept
+  llm/llm/ core/session/ core/system-prompt/ core/tools/ skill/skill/ core/agent/ core/agent-loop/
+  session/session-projection/ session/session-persistence/ session/session-persistence-jsonl/
+  compaction/compaction/ compaction/compaction-basic/ test-support/agent-loop-testkit/
+                          each: upstream's src/ and tests/ as imported, lyteboat's commits on top,
+                          lyteboat-owned modules in src/lyteboat/ and tests/lyteboat/
+  kernel.json             the kernel list (promotion adds a row); tsdown.config.ts: upstream's root bundling options
+  typert.json             present only after `dist:overlay … typert --write`: the source digests its regenerated Typert files match
+lyteboat/
+  apps/cli/               @lyteboat/cli — the `lyteboat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI)
+  bundles/host/           @lyteboat/host — the host bundle every profile lists: lyteboat's service rows
+  bundles/run/            @lyteboat/run — the one-shot bundle behind `lyteboat run` (cordis.patch.yml, startup flags, the runner)
+  plugins/distro/         @lyteboat/distro — the lyteboatDistro marker: the kernel's dsh base and the extensions it carries
+  plugins/tool-policy/    @lyteboat/tool-policy — visibility always/auto + activation, an agent row's `undeclared`, confirmation, state deltas → lyteboatState projection
+  plugins/aux-llm/        @lyteboat/aux-llm — side model calls (the router's, an intake classifier's), each recorded as an ignorable lyteboat/aux-llm-call
+  plugins/request-context/ @lyteboat/request-context — the request a human message answers to (request id, context, admission verdict) on its source; lyteboatRequest projection
+  plugins/intake-guard/   @lyteboat/intake-guard — admission ahead of the loop: an agent's admission function, the verdict recorded on the request, the in-loop reply
+  plugins/skill-router/   @lyteboat/skill-router — skill load modes full/dynamic, the reference LLM router, lyteboatActiveSkill projection
+  plugins/a2ui/           @lyteboat/a2ui — the reference A2UI template engine (domain-neutral default component catalog), the render_a2ui tool, renderCard / cardsPresentationMeta / cardMarker for an agent's own tools, lyteboatCards projection, turnParts (cards placed by [[card:<area>]] markers and emission modes)
+  plugins/history-import/ @lyteboat/history-import — external conversation history (rounds by trace id) → session seed of closed turns
+  core/contracts/         @lyteboat/contracts — lyteboat's declarations over the dsh seams: tool/skill metadata, the kernel's lyteboat/* events (re-exported), log nodes, projection keys, prompt orders, LyteboatDistro, the zod schemas of its JSON envelopes
+  agents/finance/         @lyteboat/agent-finance — an agent directory, kept minimal (public knowledge only): agent.cordis.yml, preset.yml, skills/ (three routed), a2ui/ (four cards), fixtures/, src/ → lib/ (three tools, an admission ahead of the loop); the request context names the customer
+  tooling/testing/        @lyteboat/testing — the test harness lyteboat's packages use: createLyteboatUnitHost + MockAdapter, composition, scratch, scripted-model, session-log, session-reopen, process
+dsh-compat/               what lyteboat promises the plugins written against dsh, and the proof; no runtime code; README.md lists the gates
+  COMPAT.md               the promise for people: stable surface, behavior invariants, additions, release channels
+  contract/               the promise for machines: dsh-<version>/ snapshots (api, services, events, config, persistence), extensions.yml
+  tests/                  the proof: upstream-harness/ (G2), scenarios/ (G4), canaries/ (G5), roundtrip/ (G6)
+scripts/                  check-layers.ts, check-sensitive.ts, upstream-pins.spec.ts; dist/ (import, snapshot, G1, delta, overlay gates, bundling, trees)
+dsh.upstream.json         the tracked dsh release; .pnpmfile.cjs pins every non-kernel dsh and cordis package to it
+```
+
+Under `lyteboat/`, one directory per layer, and a package's layer is its directory. `lyteboat/apps/*` owns a process — `lyteboat/apps/cli` owns the `lyteboat` bin and nothing else does; `lyteboat/bundles/*` are compositions, a `cordis.patch.yml` a profile includes by name, with no bin of their own; `lyteboat/plugins/*` are the capabilities on the dsh seams those compositions wire together; `lyteboat/core/*` are declarations; `lyteboat/agents/*` are business agents; `lyteboat/tooling/*` is test infrastructure no runtime package depends on. A new runnable mode (`lyteboat web`, an SDK entry) is a new `lyteboat/bundles/<name>`, not a second app and not a branch inside `@lyteboat/run`.
+
+Each lyteboat package has `src/` (compiled to `lib/`, gitignored), `tests/`, its own `tsconfig.json` with `references` to every workspace package it imports (kernel packages included), an entry in the root `tsconfig.json`, and a package.json `exports` entry per public subpath (`@lyteboat/x`, `@lyteboat/x/agent`, …) whose first key is the `@lyteboat/source` condition pointing at `src/*.ts`. `exports` is the only resolution table: `lyteboat/tsconfig.base.json` sets `customConditions: ['@lyteboat/source']` and `vitest.config.ts` sets the same resolve condition, so typecheck and tests read lyteboat's `src`; Node, the built CLI (`lyteboat/apps/cli/lib/bin.js`), and cordis compositions use the default conditions and load `lib/`. There is no `paths` table. Kernel packages keep upstream's layout and manifests (as npm publishes them): the root `tsconfig.base.json` holds upstream's compiler options, `tsc` emits `lib/types/`, and `scripts/dist/bundle-kernel.ts` bundles `lib/index.js` with tsdown; lyteboat's packages and tests load the kernel's built `lib/`, so a kernel change needs `pnpm run build` before lyteboat's unit tests see it.
+
+## Architecture boundaries
+
+Dependencies flow downward only:
+
+```
+apps/*                          ← processes: they select and boot compositions; they name bundles and rows, they import no plugin
+bundles/*                       ← compositions: they wire, they do not implement behavior
+agents/*                        ← business logic and agent compositions; may depend on any lyteboat plugin
+plugins/*                       ← lyteboat plugins; depend on core + dsh seams; between plugins only `import type` (a service declaration)
+core/contracts                  ← types, constants, declaration merging, and the schemas of the types it declares; no other runtime behavior
+tooling/*                       ← tests only (devDependencies); depends on core + dsh
+dsh/ (the kernel) + @deepseek-ai/dsh-* from npm
+                                ← the seams: tools, skills, llm, sessions, sessionProjections, systemPrompt, approval, agents, presets;
+                                  the kernel knows no lyteboat package
+```
+
+`pnpm run lint` enforces the direction with `scripts/check-layers.ts` (runtime edges per layer, devDependency edges to `lyteboat/tooling/*`, between bundles, and from `lyteboat/agents/*` to `lyteboat/bundles/*`, value imports between plugins, no `@lyteboat/*` anywhere in the kernel), and with knip the declarations (every import a package's `src` or `tests` makes resolves through a dependency that package declares) and dead exports (knip's `exports` and `types` checks).
+
+Hard rules:
+
+- **contracts is the only shared declaration home.** It holds types, constants, declaration merging, and the schemas of the types it declares; no other runtime behavior. A new event, log node, projection key, or metadata field is declared once in `@lyteboat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
+- **Plugins sit on dsh seams; they do not re-implement them.** Tools go through `ctx.tools`, skills through `ctx.skills`, model calls through `ctx.llm`, state through `ctx.sessionProjections`, prompt text through `ctx.systemPrompt`, confirmation through the approval seam. If a seam is missing, first check whether dsh already has one under a different name.
+- **Outside the kernel first.** A new behavior is a lyteboat plugin, a seam provider, or a lyteboat-owned seam before it is a kernel change; the kernel takes only harness-level capabilities, never business vocabulary. A kernel change is a design decision: the design document says why it cannot live outside, and which change class it is.
+- **The kernel changes only by classified commits.** Every commit that touches `dsh/<group>/<package>/` carries `Dist-Change: backport | fix | extend | redesign | compat | drop | build` and the trailer its class requires (`Dist-Upstream` for backport, `Dist-Tests` for fix and redesign, `Dist-Extension` for extend, `Dist-Exit` for compat and drop), plus `Dist-Contract` and `Dist-Exit` wherever the contract or an exit condition is involved (`pnpm run dist:delta -- --check`). Keep hooks in upstream files to a few lines and put lyteboat's logic in `src/lyteboat/` and its tests in `tests/lyteboat/`; a smaller carried hunk is a cheaper sync.
+- **The contract only grows, by registration.** G1 compares lyteboat's build with `dsh-compat/contract/dsh-<version>/`: a removed export, member, event, service, or config field fails; an added or widened one fails unless `dsh-compat/contract/extensions.yml` registers it (with its tests and exit condition) and an `extend` commit names it. A plugin outside the repository that uses an extension injects `lyteboatDistro`. Persistence (the session event vocabulary) is held the same way by the overlay `persistence` gate.
+- **Upstream's tests are never edited.** `dsh/*/*/tests` outside `tests/lyteboat/` are upstream's and run under G2 as imported; an environment difference is an adaptation in `dsh-compat/tests/upstream-harness` (listed in its README), a test that cannot run outside upstream is excluded there with a reason, and a behavior lyteboat changes on purpose is a `redesign`/`extend` whose upstream tests still pass.
+- **Promotion.** A dsh package from npm enters the kernel the first time lyteboat must change its implementation (not configure it, not replace it with a provider), or when it is a capability every lyteboat composition needs to start (model access, tools, skills, sessions): add it to `dsh/kernel.json`, the overrides, and the root `tsconfig.json` references, switch every lyteboat reference to it to `workspace:*`, import the tag again, and it falls under G1–G3 from that commit. A package that publishes Typert files (`./typert`, `./remote`) brings them with the import: upstream's generator derives them from its whole workspace, so lyteboat builds with the published ones while the package's source is the imported source, and `pnpm run dist:overlay <checkout> typert --write` regenerates them when lyteboat changes it.
+- **Composition is data.** `lyteboat/bundles/host/cordis.patch.yml` is the host composition every lyteboat profile lists (lyteboat's service rows, the distro marker first), `lyteboat/bundles/run/cordis.patch.yml` adds the one-shot mode; `lyteboat/agents/<id>/agent.cordis.yml` is the per-agent composition. Host rows publish services (`@lyteboat/distro`, `@lyteboat/tool-policy`, `@lyteboat/aux-llm`, `@lyteboat/request-context`, `@lyteboat/intake-guard`, `@lyteboat/skill-router`, `@lyteboat/a2ui`, `@lyteboat/history-import`); agent rows declare policy against them (`@lyteboat/tool-policy/agent`, `@lyteboat/skill-router/agent`, `@lyteboat/a2ui/agent`, `./lib/x.js`). An agent row must never publish a service into the root realm.
+- **Framework packages stay domain-neutral.** `lyteboat/bundles/*`, `lyteboat/plugins/*`, and `lyteboat/core/*` know no business vocabulary; asset buckets, personas, and Chinese product copy live under `lyteboat/agents/*`. Strings ported from the reference implementation for golden fidelity (error messages, digest formats) are allowed inside `a2ui` and say so in a comment.
+- **Model-visible ⟺ logged** (dsh rule, lyteboat inherits it). Anything that reaches a model request is reconstructable from the session log. lyteboat's facts ride dsh envelopes (`tool/result.meta.lyteboat.{cards,stateDelta}`, the assistant `source` of a reply, dsh's skill-invocation message for a routed skill, the human message's `source.lyteboatRequest` for its request context and admission verdict); lyteboat's one record type of its own is `lyteboat/aux-llm-call`, an ignorable audit of a side model call. A new model-visible input needs the same treatment: an existing envelope first, a new node in contracts only with the persist-and-reopen proof below.
+- **A new session event type is proven reopenable before it ships.** dsh's persistence layer refuses a stored log that carries an event type outside its compiled catalog unless the event is marked `ignorable`. The kernel extension `session-append-ignorable` lets `Session.append(type, data, { ignorable: true })` set the mark, and only a purely informational record may use it (a reader that skips it must rebuild the same session, as `lyteboat/aux-llm-call`); a fact a reader needs never rides an ignorable record. Prefer folding a fact into an existing envelope (`tool/result.meta`, the assistant message `source`, a message `source`) over a new node; a new node needs a persist-and-reopen test, and the design document records it.
+- **Registrations are effects.** Every contribution goes through `ctx.effect()` / `ctx.on()` / a registry `register()` that returns the disposer, so an agent scope or a plugin unload leaves nothing behind. Per-agent state lives in a `WeakMap<Agent, …>` or behind the agent scope's disposer, never in a module-level map that outlives the agent.
+- **Waterfall listeners MUST call `next()`.** `lyteboat/intake`, `lyteboat/pre-assemble`, `tools/pre-execute`, `tools/post-execute` are waterfalls; returning without `next()` short-circuits every listener behind you. Choose the side of `next()` deliberately: work that must be visible to later listeners in the same step runs before `await next()`, reconciliation runs after.
+- **Projections return the same reference when nothing changed.** `apply(state, event)` returns `state` itself for events it ignores; dsh's wire diffing depends on it.
+- **Projections fold appended nodes only.** A surface replacement (compaction pruning, an agent shortening an old tool result) must keep the original `tool/result`'s meta, so a fold that reads meta checks `event.surfaceOp === 'append'`; otherwise the replaced result's delta or card is applied a second time.
+
+## Coding conventions
+
+- **Tooling**: `pnpm` only (never `npm install`/`yarn`). New dependencies are added to the owning package; dsh and cordis packages are `peerDependencies` (+ `devDependencies`) written as `catalog:dsh` / `catalog:cordis`, never a literal version, with one exception: a non-kernel dsh peer is the tracked release's exact version, because dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm leaves `catalog:` unresolved, and refuses a row it cannot match. The catalogs in `pnpm-workspace.yaml` and those peers mirror `dsh.upstream.json` (`scripts/upstream-pins.spec.ts` enforces both). Third-party packages used by more than one workspace package go through the default `catalog:`. Workspace packages use `workspace:*`.
+- **ESM everywhere.** Package names across packages, `.ts` extensions in local relative imports (`rewriteRelativeImportExtensions` turns them into `.js` in `lib/`). No CJS-only exports; `.pnpmfile.cjs` is the one CommonJS file and pnpm requires it.
+- **Names carry their owner.** `LyteboatToolMeta` not `Meta`, `lyteboatActiveSkill` not `activeSkill`, `SkillRouterSettings` not `Settings`. Files are named for what they define (`business-payload.ts`, `round-history.ts`), never `utils.ts` / `helpers.ts` / `types.ts`. Services publish under an unambiguous key (`toolPolicy`, `skillRouter`, `a2ui`, `historyImport`); log nodes and events are `lyteboat/<noun>`; projection keys are `lyteboat<Noun>`.
+- **The reference implementation stays unnamed.** The Python framework lyteboat is ported from is an internal project: its name, any short form of it, and any translation of it (in Chinese as well as English) never appear in code, identifiers, comments, documents, test titles, fixtures, commit messages, PR descriptions, or explanations to the user. Call it *the reference implementation* (参考实现); when a port needs provenance, cite the file path (`template_engine/walker.py`), not the project.
+- **No capability probing.** Never test `'x' in obj` or `typeof obj.x === 'function'` to discover what a value can do. Declare the dependency (`static inject`) or narrow on a discriminant field (`block.type === 'tool_result'`, `decision.kind === 'reply'`). Closed unions end in `assertNever`; merge-extensible unions fall through a documented default.
+- **Types are strict.** No `any`; no non-null assertions in `src/` (oxlint enforces both). An `as unknown as` cast in `src/` is a boundary crossing (cordis's untyped `baseUrl`, a session envelope built by hand, a business object entering `JsonValue`) and carries a one-line comment naming the boundary. Opaque ids that cross a process or wire boundary keep dsh's branded types.
+- **Validate at real boundaries only.** Config (schemastery), model/tool JSON (tool parameter specs), files (history JSON, templates, manifests), and the wire are validated; values a static interface already requires are trusted. A tool's `execute` treats its arguments as untrusted.
+- **Misconfiguration fails loud.** Unknown tool names in a policy, an unknown agent, a missing template directory, a malformed manifest, a `Config` that fails its schema: throw at load, or at the earliest point the referent can be resolved. Never silently skip a missing referent. Degradations the design accepts (router timeout keeps the current skill, an unavailable approval channel denies) are logged at `warn` and recorded in the session log where the model would otherwise see a different world.
+- **No hardcoded tunables in plugins.** Anything a deployment would change (router timeout, history window, provider/model, template roots, validation strictness) is a validated `Config` field settable from `cordis.yml`. Protocol constants (prompt orders, event names, the reference router prompt, surface-id format) stay fixed constants with a name.
+- **Limits**: functions ≤ 160 lines, nesting ≤ 3, inheritance depth ≤ 2 (`Service` subclasses only; prefer composition). Extract on the third repetition, not the first: a helper used by two packages moves to `contracts` only when it is a contract, otherwise it stays local.
+- **Logging**: `this.ctx.logger` / `ctx.logger` from cordis, prefixed with the plugin name (`lyteboat skill router: …`). `warn` for handled degradation, `error` only for aborted operations. No `console.*` in `lyteboat/bundles/*`, `lyteboat/plugins/*`, `lyteboat/core/*`, or `lyteboat/agents/*`; the CLI writes to stdout/stderr on purpose and says so. Never log credentials, full model requests, or user history.
+- **An empty `catch` names what it swallows** and why nothing else can reach it; keep the `try` to one statement.
+- Files end with exactly one trailing newline. No `TODO` without an owner and a reason.
+
+### Comments and docstrings
+
+**Default: none. When you write one, it says WHY, not WHAT.**
+
+- **Required**: a module JSDoc (`@module @lyteboat/x`) stating the module's contract in one paragraph; JSDoc on every exported symbol whose contract is not obvious from its signature (`@param` / `@returns` on function-like exports); JSDoc on every event and log node in contracts with its ordering guarantee (which dsh event it precedes or follows).
+- **Allowed**: an inline comment for a non-obvious WHY: a dsh quirk (`restrict()` cannot hide a tool registered in the agent's own layer), a Python-semantics emulation kept for golden fidelity, an ordering constraint, a workaround with the upstream reference.
+- **Forbidden**: restating the code (`// register the tool`), narrating history or the milestone it came from (that goes in the commit and the design document), review transcripts, `// eslint-disable` / `// oxlint-disable` without a reason on the same line.
+
+```ts
+// ❌ // merge the delta into the state
+state = mergeStateDelta(state, delta)
+
+// ✅ // dsh computes no presentation meta for a PTC sub-dispatch (a tool the `run_code` SDK
+//    // calls, `exec.parent !== undefined`), so only model-direct calls carry a delta or a card.
+```
+
+## Workflow
+
+### Milestones and steps
+
+Work is delivered one runnable milestone at a time, and a large milestone is split into steps that each end with something you can run from the built CLI. Every step follows the same order, and none of it is skipped for speed:
+
+1. **Think.** Read the reference source being ported and the dsh seam it lands on. Write down what is being ported verbatim, what deviates and why, and which dsh rule constrains the design.
+2. **Design.** Add the step to the design document (C2 which packages, C3 which services / events / projections, C4 the types and the log nodes) before writing code. When the change touches a public event, a projection key, or the kernel (`dsh/`), stop and confirm with the user.
+3. **Review the design** against this file's rules and dsh's AGENTS.md; fix the design, not the code, when a clean test cannot be written.
+4. **Implement** with the tests from the [test table](#testing), then `pnpm run check`.
+5. **Accept.** Run the milestone's acceptance on the built binary with the scripted model, record the result (what was run, what the log showed) in the design document's acceptance log, and only then commit.
+
+### Task types
+
+**Simple** (`bug` / `chore` / docs / config): fix it, add the regression test, run the gates the change can affect.
+
+**Structural** (`feature` / `refactor` / a new plugin or agent): design top-down through the C4 layers before code: C1 system context (what lyteboat, dsh, the model, and the client see) → C2 containers (launcher, bundles, kernel, plugins, agents, tests) → C3 components (services, events, projections, prompt sections and their orders) → C4 code (types in contracts, hunks, log nodes, event ordering). Confirm with the user when the change touches a public contract or crosses a layer boundary.
+
+**Design deliverable** for a structural task: the design document is a self-contained HTML artifact (mermaid inlined, never a CDN), published through the artifact tool, and never committed under the repository. It must contain the C4 diagrams, the step-by-step flow (one agent-loop step with intake, pre-assemble, routing, activation, assembly; one tool call with state delta and card), the changes-and-impact table, and the acceptance log.
+
+### Scope of change
+
+**Every changed line traces back to the task.** Smaller diff beats tidier diff.
+
+- **Required**: remove imports, helpers, config fields, and events your change orphaned; keep the package table and status of `README.md` and `README.en.md` in step with the code in the same commit.
+- **Allowed**: dead-code removal limited to files you already edit, provably unreferenced, not a public export.
+- **Forbidden**: drive-by renames or reformatting, refactors of working code outside the task, unclassified edits under `dsh/<group>/<package>/`, edits to upstream's test files, lint fixes in untouched files, changes to `data/`, `.env*`, `.github/`, `dsh.upstream.json`, or `.pnpmfile.cjs` without an explicit instruction.
+
+### Done criteria
+
+Run only the gates the change can affect, and report only the commands you ran.
+
+1. Touched `src/` or `tests/`? `pnpm run lint` and `pnpm run test` (build, G1, spec, composite, e2e, and G2) pass; `pnpm run check` adds the compatibility gates (G4–G6). `pnpm run test:unit` is the fast loop while iterating (the kernel must have been built once).
+2. Touched types or a `tsconfig.json`? `pnpm run typecheck` (sources and tests) introduces no new errors.
+3. Tests for the new code match the [test table](#testing).
+4. Touched anything a user runs (CLI flags, `cordis.patch.yml`, an agent)? Run it once from the built binary (`node lyteboat/apps/cli/lib/bin.js …`) with the scripted model or a real key, and paste the command in the commit or PR.
+5. Touched `dsh/`? `pnpm run test` runs G1 and G2, `pnpm run dsh-compat` runs G4–G6; `pnpm run dist:delta -- --check` passes; `pnpm run dist:overlay <upstream checkout> persistence` passes when the change can reach a persisted type, and `… typert` when it touches a package that publishes Typert files; the extension, if any, is in `dsh-compat/contract/extensions.yml` and `pnpm run lint` regenerated nothing stale.
+6. Diff is in scope; `README.md` and the design document are current.
+
+## Testing
+
+| Task type | Tests required |
+|---|---|
+| `feature` / new plugin | Unit: happy path + ≥1 boundary case on the unit host (`createLyteboatUnitHost` + `MockAdapter` from `@lyteboat/testing`). Composition: one `*.composite.ts` in the bundle (or agent) that wires it, booting the composition in process with the scripted model and asserting on the session log. A new process surface (a flag, a bin, a profile) also gets an `lyteboat/apps/<app>/tests/*.e2e.ts` on the built binary. |
+| port from the reference implementation | Golden fixtures generated by the reference implementation's Python code, compared with deep equality; each deliberate deviation is a named test. |
+| `bug` | Regression test that fails before and passes after. |
+| `refactor` | Existing tests pass before and after; no new tests unless behavior moved. |
+| `chore` / docs | Skip; run the existing suite if a touched path could regress. |
+
+Conventions:
+
+- **Tests are type-checked, not only transpiled.** `tsc -b` covers `src/` only and vitest strips types, so `pnpm run typecheck` also runs `tsc -p tsconfig.tests.json`; CI runs it.
+- **Tests describe behavior, not implementation.** Name them `test('<subject> <does what> when <condition>')`; assert on session-log nodes, projection state, the model request the scripted server recorded, or the tool result, never on private fields.
+- **Mock the boundary, not the unit.** The model (`MockAdapter` in unit tests, the scripted DeepSeek Messages server in e2e), the filesystem for skills and templates (fixtures under `tests/fixtures`), the clock when ordering matters. Never mock a lyteboat service to test another lyteboat service; mount both.
+- **Unit harness** (`@lyteboat/testing`): `createLyteboatUnitHost(adapter)` returns a fresh context with dsh's invariant registry and the session, agent, and agent-loop companions, the dsh services (`mountDshTestServices`), the kernel's agent loop, and `adapter` serving the `mock` provider; it disposes itself when the test finishes. The test mounts the lyteboat services under test on it, in the order it chooses, and drives an agent with `followUpAndWait(agent, input)`, which follows up and waits until the agent is idle. Router requests are recognized by their system text, never by call order.
+- **Kernel tests** (`dsh/*/*/tests/lyteboat/`): lyteboat's tests of a kernel change use only the kernel and upstream's own test helpers (`../mock-adapter.ts`, the testkit), never `@lyteboat/*`; they run in the vitest project `dsh` with upstream's tests (G2), under upstream's invariant host.
+- **Who tests what.** `lyteboat/plugins/*` and `lyteboat/core/*` test their own behavior (`*.spec.ts`, in process, from `src`); `lyteboat/bundles/*` and `lyteboat/agents/*` test their composition (`*.composite.ts`); `lyteboat/apps/*` test only their process surface — flags, help, exit codes, profiles — plus one built-binary smoke per bundle or agent (`*.e2e.ts`). A test never reaches into another package's `tests/` or `src/` by relative path; shared helpers live in `@lyteboat/testing`.
+- **Composition** (`lyteboat/bundles/*/tests`, `lyteboat/agents/*/tests`): `bootComposition` (`@lyteboat/testing/composition`) boots the bundles under test (`LYTEBOAT_RUN_BUNDLES` for the run profile) in the test process, the way the launcher boots a profile, with the inner arguments on `ctx.cmdlineArgs`; a bundle the profile skips fails the boot. `pluginFileRow` stands in for `--plugin`, and `printedSessionId` reads the session id a run prints. `createLyteboatScratch` (`@lyteboat/testing/scratch`) gives each run its own home and workspace, and `scriptedModelEnv` points dsh's DeepSeek provider at the scripted model. The cordis loader loads `lib/`, so vitest runs these files in the `composite` project, which does not set the `@lyteboat/source` condition; `pnpm run test` builds first.
+- **E2E** (`lyteboat/apps/*/tests`): `runLyteboat` / `startLyteboat` (bound to the app's `lib/bin.js` through `lyteboatLauncher` from `@lyteboat/testing/process`) spawn the built launcher under plain Node with `LYTEBOAT_HOME` in a scratch home (`createLyteboatScratch`), pointed at the scripted model by `scriptedModelEnv`.
+- **Scripted model and logs**: `startScriptedModel` (`@lyteboat/testing/scripted-model`) answers by purpose (loop / title / router) and records every request; `@lyteboat/testing/session-log` reads the log, and `reopenRefusal` (`@lyteboat/testing/session-reopen`) says why dsh's persistence would refuse to reopen it. Tool order in a request is not registration order: sort before asserting.
+- **Fixtures** belong to the package whose tests use them: agent directories and plugin files for the run composition under `lyteboat/bundles/run/tests/fixtures`, `--plugin` files for the launcher under `lyteboat/apps/cli/tests/fixtures/plugins`, templates under `lyteboat/plugins/a2ui/tests/fixtures`, reference baselines under `tests/fixtures/baseline`. Fix the fixture, never the normalizer.
+- One `test.skip` is acceptable only with a reason string; a skipped new test marks the step ⚠️ partial in the design document.
+
+## Unattended runs
+
+- Work only on the branch the task designates. Never push to `main` / `master` / `develop`; never force-push, rebase, or amend a pushed commit without explicit permission; a rewrite that is permitted uses `--force-with-lease`.
+- If the designated branch's PR is already merged, restart the branch from `origin/master` and treat the work as a new change.
+- One focused fix attempt on a failing new test. Still failing → mark ⚠️ partial, skip the test with a reason, and say so in the commit and the design document.
+- State assumptions in the commit message and the PR description instead of guessing silently; never create a PR unless asked.
+- Never modify `.github/`, `dsh.upstream.json`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `.env*`, or anything under `dsh/` outside a classified commit without explicit instruction.
+- Commit messages: `<type>: <package> — <what it delivers>` with a conventional type (`feat: @lyteboat/tool-policy — …`, `fix:`, `refactor:`, `test:`, `chore:`, `docs:`), followed by a body that states what runs and what was accepted. End with the attribution trailers the session provides.
+- Every commit also carries `Co-authored-by: $GIT_COAUTHOR` in its closing trailers, the value read from the environment, so GitHub credits the person who asked for the change. Each contributor sets `GIT_COAUTHOR` in their own cloud environment as `Name <email>`, the email bound to their GitHub account or their `ID+username@users.noreply.github.com` address. If `GIT_COAUTHOR` is unset, ask the user for it before committing.
+- Never put a model identifier in a commit, PR, code comment, or file.
+
+## Upstream sync (the distribution)
+
+- `dsh.upstream.json` names the tracked dsh version, tag, commit, and the cordis versions (taken from the tag's `vendor/*/package.json`). The kernel comes from `dsh/`; every other dsh package comes from npm at that version: `.pnpmfile.cjs` rewrites their `@deepseek-ai/*` dependencies to it at install and leaves the kernel names to the overrides. `pnpm-workspace.yaml` hoists `@deepseek-ai/*` and `@lyteboat/*` because agent directories and the composition tests resolve bare row names from the repository.
+- **The upstream line.** Each tag's kernel is one import commit (`scripts/dist/import-upstream.ts <checkout at the tag>`) whose tree holds only `dsh/<dir>/` (files byte for byte, the published `package.json`, `tsconfig.json` references limited to the kernel). The first import is the root commit of the repository's history; every later import is parented on the previous import (found by its `Dist-Import` trailer), is carried by no branch, and is merged into the branch. A sync is therefore a three-way merge: previous tag, new tag, lyteboat's commits.
+- **A sync, step by step** (target: one sync a week, crossing as many tags as there are): check out the new tag beside the repository; `pnpm run dist:snapshot <checkout>` writes `dsh-compat/contract/dsh-<new>/` and prints the contract difference from the tracked release; `pnpm run dist:import <checkout>` writes the import commit, then `git merge --no-ff <commit>`; resolve conflicts in lyteboat's hunks; bump `dsh.upstream.json`, the dsh peers of lyteboat's packages, the catalogs (replace removed packages with the successors dsh's own bundles compose; keep `lyteboat/apps/cli`'s closure a superset of dsh's `apps/cli`), and `minimumReleaseAgeExclude` if the release (or a package it newly depends on) is younger than a day; `pnpm install` (from a clean `node_modules`; the lockfile names the previous release, which the new list does not exclude, so that one re-resolving install takes `--config.minimum-release-age=0`, and a clean `pnpm install --frozen-lockfile` afterwards proves the committed settings), `pnpm run check`; `pnpm run dist:overlay <checkout> persistence`, `… typert`, and `… g3`; `pnpm run dist:delta` for the report. A carried commit upstream made redundant (a backport, an extension whose exit condition holds) is dropped in the same sync.
+- **Channels.** lyteboat-next follows every sync; lyteboat-stable is cut only from a dsh release candidate and then takes backports only (dsh-compat/COMPAT.md §7).
+- Files elsewhere adapted from dsh keep the header `Adapted from deepseek-ai/deepseek-harness` and are listed by that header in `THIRD_PARTY_NOTICES.md`.
+- dsh's public APIs are pre-stable: a sync may rename a seam. Update every lyteboat consumer in the same sync; a `compat` change keeps an upstream removal alive only for community plugins the canaries show still use it, and only until its `Dist-Exit`.
+
+## Agent design
+
+Read the reference implementation's `docs/agent_design_principles.md` before designing, reviewing, or porting an agent; its principles apply, and the mechanism is dsh's. Prompt changes need eval data; without it they are a working hypothesis and the commit says so.
+
+- Vocabulary: an **agent** is a business agent's definition, the directory `lyteboat/agents/<id>`; `lyteboat run` declares it to dsh's `dsh-agent-preset-registry`, which calls it a preset, so "preset" names only that mechanism. An **agent instance** is the runtime `Agent` dsh creates per session; one agent has many instances.
+- An agent is a directory with `agent.cordis.yml` (required; its rows are the preset's `plugins`, read by `lyteboat/bundles/run/src/agent-directory.ts`) and an optional `preset.yml` (`name`, `description`, `order`: display only). Every row runs in the agent's standing scope, so it reaches exactly the sessions of that agent. `lyteboat run --agents <dir> --agent <id>` selects one.
+- Skill names are hyphenated (`asset-overview`), matching `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`; the reference implementation's underscore ids are renamed on migration. lyteboat's skill metadata is the `metadata.lyteboat` object of the SKILL.md frontmatter, whose only key is `requiredTools`; an unknown key fails loud.
+- Tools are registered through `ctx.toolPolicy.register(definition, meta)` so visibility, confirmation, and the state delta are declared with the tool. `visibility: 'auto'` tools become visible only through an active skill's `requiredTools` or an explicit activation in `lyteboat/pre-assemble`. The agent row `@lyteboat/tool-policy/agent` declares policy for tools other rows register, and `undeclared: always | auto` sets the visibility of every inherited tool it does not name; under `auto` those tools stay hidden (finance declares `undeclared: auto` and keeps `skill` at `always`).
+- Cards ride the tool result's presentation meta and are never described to the model beyond the digest. The `render_a2ui` tool (`@lyteboat/a2ui/agent`) renders them from the session state; an agent's own tool renders each card with `ctx.a2ui.renderCard(templates, area, raw, { agent })`, returns them through `cardsPresentationMeta(cards)`, and names each card's marker in its digest with `cardMarker(area)`.
+- Admission: an agent registers its admission function with `ctx.intakeGuard.register(...)` in its own scope; a caller submits every request through `ctx.intakeGuard.submit(agent, { text, context?, requestId? }, signal)`, which admits it and follows it up with the verdict recorded on the request.
+- Business logic (`diagnoseAllocation`, thresholds, personas) lives in `lyteboat/agents/<id>/src` and is compiled to `lyteboat/agents/<id>/lib` so `./lib/x.js` rows resolve relative to the composition file. Deployment inputs (persona selection, template roots) are `Config` or environment read at the edge, documented in the preset's `package.json` description.
+- Prompt orders: context `lyteboat:state` 130 (`LYTEBOAT_STATE_CONTEXT_ORDER`); section `lyteboat:skills` 450 (`LYTEBOAT_SKILLS_SECTION_ORDER`). New prompt text picks an order relative to these and to dsh's (`SANDBOX_POLICY` 110, `APPROVAL_POLICY` 115, `SUBAGENT_DELEGATION` 120) and records it in contracts.
+
+## Commands
+
+| Task | Command |
+|---|---|
+| Install | `pnpm install` (CI uses `--frozen-lockfile`) |
+| Build | `pnpm run build` (`tsc -b`; emits every package's `lib/`) |
+| Lint | `pnpm run lint` |
+| Typecheck sources and tests | `pnpm run typecheck` |
+| Unit tests (fast loop, no build, no composite or e2e) | `pnpm run test:unit` |
+| All tests (spec + composite + e2e, builds first) | `pnpm run test` |
+| What CI runs (build, G1, lyteboat's tests, G2) | `pnpm run test` (after `pnpm run lint` and `pnpm run typecheck`) |
+| G4–G6 against the official release | `pnpm run dsh-compat` |
+| Everything | `pnpm run check` (lint + test + dsh-compat) |
+| Show one test's console output | `npx vitest run <file> --silent=false --reporter=verbose` |
+| One-shot task | `node lyteboat/apps/cli/lib/bin.js run "task"` (needs `DEEPSEEK_API_KEY` or a scripted model via `DEEPSEEK_BASE_URL`) |
+| A plugin file | `node lyteboat/apps/cli/lib/bin.js run --plugin ./my-plugin.mjs "task"` |
+| An agent | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"` |
+| Imported history | `node lyteboat/apps/cli/lib/bin.js run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/run/tests/fixtures/history/rounds.json "继续刚才的话题"` |
+| Browser UI | `node lyteboat/apps/cli/lib/bin.js web --no-open` |
+| Composed plugin tree | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` |
+| G1 contract check (after a build) | `pnpm run contract:check` |
+| Upstream's kernel tests only (G2) | `npx vitest run --project dsh` |
+| What lyteboat carries on top of the tag | `pnpm run dist:delta` (`-- --check` for the trailer discipline only) |
+| Snapshot a tag's contract | `pnpm run dist:snapshot <dsh checkout at the tag>` |
+| Import a tag's kernel (then `git merge`) | `pnpm run dist:import <dsh checkout at the tag>` |
+| Persistence and G3 gates | `pnpm run dist:overlay <installed dsh checkout at the tracked tag> persistence` / `g3` |
+| Typert files against upstream's generator (`--write` regenerates) | `pnpm run dist:overlay <installed dsh checkout at the tracked tag> typert` |
+
+All lyteboat data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`); the launcher exports it as `DSH_HOME` before any dsh package loads, so a user's `~/.dsh` is never touched. Set `DSH_TELEMETRY_DISABLED=1` in tests and CI.
