@@ -31,6 +31,7 @@ import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import type { PreToolDecision, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-system-prompt'
+import { LYTEBOAT_STATE_CONTEXT_ORDER } from '@lyteboat/contracts'
 import type { LyteboatToolMeta, JsonValue } from '@lyteboat/contracts'
 import { lyteboatStateProjectionDefinition, isJsonObject, renderLyteboatState } from './state.ts'
 
@@ -41,9 +42,6 @@ declare module '@deepseek-ai/cordis' {
     toolPolicy: ToolPolicyService
   }
 }
-
-/** Where the `lyteboat:state` runtime context sits among dsh's (sandbox 110, approval 115, delegation 120). */
-export const LYTEBOAT_STATE_CONTEXT_ORDER = 130
 
 /** Metadata a composition file can declare for a tool registered elsewhere: everything but the code-only delta. */
 export type LyteboatToolPolicy = Omit<LyteboatToolMeta, 'stateDelta'>

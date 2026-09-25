@@ -91,6 +91,12 @@ export const LYTEBOAT_HISTORY_IMPORT_SOURCE = 'plugin:lyteboat-history-import'
 /** `source.kind` of the one user message a side model call sends (`@lyteboat/aux-llm`; the call is recorded, the message is not). */
 export const LYTEBOAT_AUX_LLM_SOURCE = 'plugin:lyteboat-aux-llm'
 
+/** Where the `lyteboat:state` runtime context (`@lyteboat/tool-policy`) sits among dsh's (sandbox 110, approval 115, delegation 120). */
+export const LYTEBOAT_STATE_CONTEXT_ORDER = 130
+
+/** Where the `lyteboat:skills` system prompt section (`@lyteboat/skill-router`, full mode) sits among the sections (before PLAN_POLICY at 500). */
+export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
+
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type LyteboatToolVisibility = 'always' | 'auto'
 

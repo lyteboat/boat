@@ -39,7 +39,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { AuxLlmRoute } from '@lyteboat/aux-llm'
 import type {} from '@lyteboat/tool-policy'
-import { lyteboatActiveSkillStateSchema } from '@lyteboat/contracts'
+import { LYTEBOAT_SKILLS_SECTION_ORDER, lyteboatActiveSkillStateSchema } from '@lyteboat/contracts'
 import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
@@ -53,8 +53,6 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Where the full-mode skill bodies sit among the system prompt sections (before PLAN_POLICY at 500). */
-export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
 /** The router call's `purpose` in its `lyteboat/aux-llm-call` record. */
 export const SKILL_ROUTER_PURPOSE = 'skill-router'
 /** Output budget of one router call: strict JSON with a ≤30-character reason. */
