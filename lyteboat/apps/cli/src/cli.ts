@@ -14,7 +14,7 @@ import { pluginOverlay } from './plugins.ts'
 import { NAME } from './profile-boot.ts'
 
 /** Read lyteboat's own version and the installed dsh version. */
-export function readVersions(): LyteboatVersions {
+function readVersions(): LyteboatVersions {
   const manifest = JSON.parse(
     readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
   ) as { version?: unknown }

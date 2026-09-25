@@ -89,7 +89,7 @@ export function homePatchPath(): string {
 }
 
 /** Absolute path of this lyteboat installation's package.json (src/ and lib/ both sit one level under apps/cli). */
-export const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
+const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
 
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# lyteboat profile root — an empty entry list. The tree is composed as patches:
