@@ -28,13 +28,13 @@
   - **无**：对外服务的其余部分（其他出口协议、会话目录、推荐问、步数上限）；记忆；外部历史并入已有会话；OpenAI 兼容的业务模型适配器；多实例存储；评测的 LLM judge、调优与出口帧断言；Studio 的写功能与看板；子任务与委派；工作流状态机；引用与终答前纠错；主动服务。
   - **不移植**：回调容器；Bootstrap、AppContext 与 `ENABLE_*` 开关；checkout/flush 与乐观锁；三档压缩视图；把兜底话术写进会话；单轮工具调用数截断；Studio 整体回写；技能资格过滤；read_reference；工具级沙箱；portal 反馈墙。
 - **设计规则（第 2 节）。** 能力先落在 lyteboat 插件上，内核只在接缝确实不够时扩展；lyteboat 的事实放在 dsh 已有的日志信封里，唯一的自有记录是可忽略的旁路调用审计；框架包不含业务词汇；示例 agent 只用公开知识、保持最小。
-- **后续计划（第 6 节），按顺序：**
-  1. 继续验证金融智能体：friction 计数、授权回流后的刷新、在真实模型上跑的 eval 语料。
-  2. 对外服务 bundle：`/chat` 的同步与 SSE、chat wire、会话目录、推荐问、步数上限。
+- **后续计划（第 6 节）。** F3 骨架已完成：agent 目录、session-controller 纳入内核、`/chat`、eval、Studio。其余按顺序：
+  1. 继续验证金融智能体：friction 计数、授权回流后的刷新、用 `lyteboat eval` 扩充用例。
+  2. 对外服务的其余部分：其他出口协议、会话目录、推荐问、步数上限、重试返回原答案。
   3. 记忆与外部历史：记忆 seam 与本地 provider、外部历史增量并入已有会话、OpenAI 兼容的模型适配器。
   4. 第二个领域 agent，并据此决定要不要 agent kit。
   5. 多实例部署。
-  6. 评测与上游化。
+  6. 评测的 LLM judge 与上游化。
 
 ---
 
@@ -707,27 +707,37 @@ $ lyteboat headless --agents ./examples/agents --agent finance --session-id sess
 
 顺序的理由：先把示例 agent 在真实模型上验证扎实，服务化和记忆才有可信的行为基线；对外服务 bundle 定下用户身份、请求 id 与会话目录，记忆的用户键和外部历史的去重键都依赖它们；多实例和评测建在这些之上。每一步都遵守第 2 节的规则：先插件，内核扩展只在插件做不到时加，事实放在已有信封上。
 
+**F3 骨架（已完成）。** 下面 6.1、6.2、6.6、6.7 里原本计划的一部分，在 F3 里按四步做完，每步都在构建产物上验收：
+- **agent 目录与 session-controller 纳入内核。** `@lyteboat/agent-catalog` 扫描 agent 根目录，把每个 agent 声明成 dsh preset，报告挂载失败的 agent，能重载、能监视目录；dsh 的 session-controller 成为内核第 14 个包，登记扩展 `session-controller-prompt-source`（`prompt` 的 `sourceFields`），调用方经 dsh 自己的会话入口送消息时带上请求上下文；`lyteboat run` 改名 `lyteboat headless`。
+- **`/chat`。** `lyteboat serve`（`@lyteboat/serve`、`@lyteboat/chat-api`）：同步 JSON 与 enterprise 事件流，见 6.2。
+- **eval。** `lyteboat eval`（`@lyteboat/eval`、`@lyteboat/eval-runner`）：用例放在 agent 目录，逐轮做确定性检查，真模型运行录下会话，CI 免 key 回放，见 6.6。
+- **Studio。** `lyteboat studio`（`@lyteboat/studio`、`@lyteboat/studio-pages`）取代 `lyteboat web`：dsh web 加 Agents、Evals 页面和会话右侧栏的 lyteboat 页签，见 6.7。
+
+下面各小节只写还没做的部分，以及 F3 的做法和原计划不同的地方。
+
 计划完成后的组合（实线框是已有的包，虚线框是计划中的）：
 
 ```mermaid
 flowchart TB
   subgraph APPS["apps"]
-    CLI["@lyteboat/cli<br/>run · web · config dump"]
-    CLIN["serve · eval 命令<br/>五项服务核对"]
+    CLI["@lyteboat/cli<br/>headless · serve · eval · studio · config dump"]
+    CLIN["五项服务核对"]
   end
   subgraph BUNDLES["bundles"]
     HOST["@lyteboat/host"]
     RUN["@lyteboat/headless"]
-    SERVE["@lyteboat/serve<br/>/chat · 业务组合"]
+    SERVE["@lyteboat/serve<br/>/chat"]
     EVAL["@lyteboat/eval"]
+    STUDIO["@lyteboat/studio"]
   end
   subgraph AGENTS["agents"]
     FIN["finance"]
     AG2["第二个领域 agent"]
   end
   subgraph PLUGINS["plugins"]
-    HAVE["tool-policy · skill-router · a2ui<br/>aux-llm · request-context · intake-guard<br/>history-import · distro"]
-    WIRE["chat-wire · suggestion · step-budget<br/>session-directory"]
+    HAVE["tool-policy · skill-router · a2ui<br/>aux-llm · request-context · intake-guard<br/>history-import · distro · agent-catalog<br/>chat-api · eval-runner · studio-pages"]
+    WIRE["其余出口协议 · suggestion · step-budget<br/>session-directory"]
+    JUDGE["LLM judge · 调优"]
     MEM["memory · memory-store-local<br/>llm-openai-compat · model-routes<br/>compaction-business"]
     MULTI["session-persistence-sql · datasource-sql<br/>lease · telemetry-traces"]
   end
@@ -735,19 +745,22 @@ flowchart TB
   K["内核 dsh/：14 包<br/>agent-loop-intake · agent-loop-pre-assemble · session-append-ignorable · session-controller-prompt-source"]
   CLI --> HOST
   CLI --> RUN
-  CLIN -.-> SERVE
-  CLIN -.-> EVAL
+  CLI --> SERVE
+  CLI --> EVAL
+  CLI --> STUDIO
+  CLIN -.-> CLI
   SERVE -.-> WIRE
-  EVAL -.-> WIRE
+  EVAL -.-> JUDGE
   FIN --> HAVE
   AG2 -.-> HAVE
   HAVE --> CT
   WIRE -.-> CT
+  JUDGE -.-> CT
   MEM -.-> CT
   MULTI -.-> CT
   CT --> K
   classDef planned stroke-dasharray: 5 5
-  class CLIN,SERVE,EVAL,AG2,WIRE,MEM,MULTI planned
+  class CLIN,AG2,WIRE,JUDGE,MEM,MULTI planned
 ```
 
 ### 6.1 继续验证金融智能体
@@ -763,103 +776,87 @@ flowchart TB
 - 卡片原地刷新：`renderCard` 要能接受已有的 surfaceId，渲染成 `surfaceUpdate`，`lyteboatCards` 投影据此替换同一 surface 的卡（`appendCard`，`lyteboat/plugins/a2ui/src/cards-projection.ts`）。模板引擎支持指定 surfaceId，`render_a2ui` 的 `surface_id` 参数就用它。
 - 验收：刷新轮不发模型请求；`lyteboatCards` 里那张卡被替换而不是追加。
 
-**在真实模型上跑 eval 语料。**
-- 语料覆盖准入分类（四类意图、追问归类）、路由、工具选择、卡片标记的写法、边界话术、续聊时上下文的沿用；放在 `examples/agents/finance/` 下。
-- 在真实的 DeepSeek 路由上跑，grader 读会话日志、投影和 `turnParts`，不读私有字段。先用 `lyteboat headless` 逐条跑，runner 在 6.6 收进 eval bundle。
-- 这份语料是之后改提示的依据（`CLAUDE.md`「Agent design」：提示改动要有 eval 数据，否则只是工作假设），也用来回答几个悬而未决的问题：更早轮次的工具结果要不要老化成只留事实的形式；入参二次编码要不要纠正；5.5 那些行为差异的实际影响；`lyteboatState` 的可见键和预算怎样设计才有用。
+**扩充 eval 用例。**
+- `lyteboat eval` 在 F3 里做完了：金融智能体的 6 个用例（`examples/agents/finance/evals/cases.yml`）有一份真模型基线，组合测试免 key 回放它（6.6）。
+- 接下来把用例扩充到准入分类（四类意图、追问归类）、路由、工具选择、卡片标记的写法、边界话术、续聊时上下文的沿用；每扩一批就真跑一次、审报告、重录基线。
+- 这份数据是之后改提示的依据（`CLAUDE.md`「Agent design」：提示改动要有 eval 数据，否则只是工作假设），也用来回答几个悬而未决的问题：更早轮次的工具结果要不要老化成只留事实的形式；入参二次编码要不要纠正；5.5 那些行为差异的实际影响；`lyteboatState` 的可见键和预算怎样设计才有用。
 
-### 6.2 对外服务 bundle
+### 6.2 对外服务的其余部分
 
-新的运行形态是一个新的 bundle，不是第二个 app，也不是 `@lyteboat/headless` 里的分支（`CLAUDE.md`「Repository layout」）：`lyteboat/bundles/serve`（`@lyteboat/serve`），加一个 `serve` profile 模板和启动器的 `serve` 命令。
+**F3 做了什么。** `lyteboat serve`（`@lyteboat/serve`）加 `@lyteboat/chat-api`：
+- `POST /chat` 同步返回一个 JSON，或返回 enterprise 事件流（SSE），卡片放在正文标记处（`a2ui.turnParts`，流式时 `liveTurn`）；另有 `GET /agents`、`GET /health`。
+- 只在本机回环上可以不鉴权，其余监听要共享密钥（bearer，按请求经 credentialRef 解析）。
+- 不带 `session_id` 就在请求的 agent 下新建会话；续聊时别人的会话按不存在处理（owner 取自会话的 `lyteboatRequest`），agent 不符拒绝，同一会话里重复的 `message_id` 拒绝；调用方断开就取消本轮。
+- agent 行可以登记帧装饰器给帧加字段；金融智能体的四个场景做成帧金样。
 
-**`/chat` 的同步与 SSE。**
-- serve bundle 插入（或复用）一行 id 为 `webserver` 的 `@deepseek-ai/dsh-host-webserver`，这样它进入 app-boot 的必需行审计；profile 同时列了 dsh-web-app 时复用它的 `webserver` 行。`/chat` 的路由用另一个行 id，inject `webServer` 注册；写法参照 webhook-github：共享密钥用 credentialRef 解析，限制 `maxBodyBytes`，注册经 `ctx.effect`（`dsh:packages/webhook/webhook-github/src/index.ts`）。
-- 请求经 `ctx.intakeGuard.submit(agent, { text, context, requestId }, signal)` 提交；客户端断连就中止 signal 并取消本轮。
-- 同步模式按本次请求所在轮的 `turn/end` 返回，不等 agent 整体空闲。
-- 同一个 `requestId` 重试时返回原来的答案。
+**和原计划不同的地方。**
+- 消息经 dsh 的 session-controller 进会话，请求上下文走 `prompt` 的 `sourceFields`（扩展 `session-controller-prompt-source`），不调 `intakeGuard.submit`。准入在循环第 1 步的 `lyteboat/intake` 补做，`reply` 照样作答，判定不记在消息上。
+- 只有 enterprise 一种出口，帧格式写在 chat-api 里，没有单独的 chat wire 包；帧金样是 lyteboat 自己录的，不是参考实现生成的。
+- 结束原因（`outcome`）在 chat-api 里从日志推出，取值 completed、tool_stopped、rejected、stopped_by_limit、aborted、errored。
+- `LyteboatRequest` 加了 `owner` 和 `traceId`；`/chat` 的消息 id 就是请求 id，没有单独的 `messageId`。
+- 业务组合只关掉了本机包清单和工作区 AGENTS.md；工具面由 agent 自己收窄（`undeclared: auto`）。
 
-**chat wire。**
-- `@lyteboat/chat-wire` 发布 `ctx.chatWire`：出口协议的格式化器和帧装饰器按 agent 作用域登记；参考实现的四种出口协议、企业帧装饰器、终帧的 card_description 与 original_context 都在这里；app_type 覆盖是部署配置。
-- 结束原因是一个从日志折叠出来的纯函数：completed、tool_stopped、rejected、stopped_by_limit、errored、cancelled。内部把拒识（准入 reply）和取消分开，只在 wire 层把 rejected 映射回参考实现的 aborted。推荐问的门控、Studio 口径的拒识统计、eval 的 grader 都读它。
-- 拒识帧从 `lyteboatRequest.intake` 推导；兜底话术按 `LlmFailure.code` 映射，不写日志。
-- 说卡交错的增量排版放在 `@lyteboat/a2ui` 里，作为 `composeTurnParts` 的流式版本，出口层经 `ctx.a2ui` 的服务方法调用；web 客户端要用时再开 a2ui 的 client 子路径。
-- 业务事件（参考实现的 CustomToolEvent）放在 `tool/result.meta.lyteboat` 的新字段上，先在 contracts 里声明 schema。
-- 与参考实现生成的 SSE 金样逐帧比对。
+**还没做的。**
+- **其余出口协议。** 参考实现的另外三种出口协议、终帧的 card_description 与 original_context、app_type 覆盖。做的时候把帧格式从 chat-api 里拆成按 agent 作用域登记的格式器（原计划的 chat wire），内部把拒识和取消分开，只在 wire 层把 rejected 映射回参考实现的 aborted。兜底话术按 `LlmFailure.code` 映射，不写日志；业务事件（参考实现的 CustomToolEvent）放在 `tool/result.meta.lyteboat` 的新字段上，先在 contracts 里声明 schema。
+- **重试返回原答案。** 现在同一会话里重复的 `message_id` 直接拒绝；参考实现的语义是返回原来的答案。
+- **会话目录。** `@lyteboat/session-directory` 维护 `(agentId, userKey, externalSessionId) → SessionId`，resume 之前校验归属；现在 `/chat` 直接用 dsh 的会话 id，归属靠请求上的 owner。会话列表与搜索一律经过会话目录，按归属过滤；session-query 只在进程内做单会话精读，不对外暴露。删除与保留期的 purge 在 6.5 随 SQL 版一起做。
+- **按 trace id 检索。** trace id 已经记在请求上；按它搜会话、外部历史去重（6.3）都还没做。
+- **推荐问。** `@lyteboat/suggestion` 支持两种来源：agent 提供的规则生成器，加上候选池兜底；池兜底经 `ctx.auxLlm` 用自己的路由。只在出口协议需要时触发，并按结束原因门控。
+- **步数上限。** `@lyteboat/step-budget` 在 `agent/pre-step` 上计步，超限时调用 `agent.cancel({ kind: 'hook', reason: 'step-budget' }, { keepInbox: true })`：hook 类型的原因原样写进 `turn/end`，追发的消息留在收件箱里。
+- **业务组合的其余部分。** 关掉 dsh-base 里会给模型注册非业务工具、或会把宿主环境信息注入会话的行：编码工具（`tool-bash` 到 `tool-web`）、PTC（`ptc-runtime`，PTC 子调度不计算 presentationMeta，卡片和状态增量会丢）、`workflow-ptc` 与 `tool-workflow`、`goal` 一组、`jobs` 一组；运行时上下文里带工作目录路径的 `sandbox:policy`（`dsh:packages/sandbox/sandbox-policy`）；`approval:policy`（`dsh:packages/interaction/user-approval`）属于确认接缝，`requiresConfirmation` 靠它，保留；再加上 `time-context`，写工具超时的默认值，保留 `subprocess` 行。关掉 jobs、goal 这些服务后，依赖它们的社区插件会一直等待而不报错（7.1）。
 
-**会话目录。**
-- `@lyteboat/session-directory` 维护 `(agentId, userKey, externalSessionId) → SessionId`，resume 之前校验归属。
-- 会话列表与搜索一律经过会话目录，按归属过滤；session-query 只在进程内做单会话精读，不对外暴露。
-- 删除与保留期的 purge 在 6.5 随 SQL 版一起做。
-
-**推荐问。** `@lyteboat/suggestion` 支持两种来源：agent 提供的规则生成器，加上候选池兜底；池兜底经 `ctx.auxLlm` 用自己的路由。只在出口协议需要时触发，并按结束原因门控。
-
-**步数上限。** `@lyteboat/step-budget` 在 `agent/pre-step` 上计步，超限时调用 `agent.cancel({ kind: 'hook', reason: 'step-budget' }, { keepInbox: true })`：hook 类型的原因原样写进 `turn/end`，追发的消息留在收件箱里。
-
-**trace id。** `LyteboatRequest` 在 contracts 里加 `traceId`、`messageId`，serve 从请求填入；按 trace id 搜会话、外部历史去重（6.3）都用它。
-
-**业务组合。** serve bundle 就是业务 profile 的组合，它关掉 dsh-base 里会给模型注册非业务工具、或会把宿主环境信息注入会话的行：
-- 编码工具（`tool-bash` 到 `tool-web`）、PTC（`ptc-runtime`，PTC 子调度不计算 presentationMeta，卡片和状态增量会丢）、`workflow-ptc` 与 `tool-workflow`、`goal` 一组、`jobs` 一组、`agent-instructions`；
-- 运行时上下文里带工作目录路径的 `sandbox:policy`（`dsh:packages/sandbox/sandbox-policy`）；`approval:policy`（`dsh:packages/interaction/user-approval`）属于确认接缝，`requiresConfirmation` 靠它，保留；
-- `plugin-package-inventory-deepseek`（每个 DeepSeek 请求附带的已装插件包清单）；
-- 加上 `time-context`，写工具超时的默认值；保留 `subprocess` 行。
-
-关掉 jobs、goal 这些服务后，依赖它们的社区插件会一直等待而不报错（7.1）。
-
-**计划的时序**（AIGC 渠道、已有会话、用户说「帮我诊断一下资产配置」）：
+**现在的时序，加上还没做的部分**（AIGC 渠道、已有会话、用户说「帮我诊断一下资产配置」；标「计划」的还没做）：
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant FE as 中控或前端
-    participant SV as serve
-    participant DIR as session-directory
+    participant CA as chat-api（serve）
+    participant SC as session-controller
+    participant AL as agent-loop 内核
     participant IG as intake-guard
     participant ADM as agent 的准入函数
     participant AUX as aux-llm
-    participant AL as agent-loop 内核
     participant SR as skill-router
     participant M as 业务模型
     participant T as agent 的工具与 a2ui
-    participant W as chat-wire
-    FE->>SV: POST /chat，agent、session、message、context、trace id
-    SV->>SV: 校验共享密钥，限制请求体大小
-    SV->>DIR: resolve，agent、userKey、外部 session id
-    DIR-->>SV: SessionId，归属校验通过
-    SV->>IG: submit，text、context、requestId
+    FE->>CA: POST /chat，agent、user、session、message、context、trace id
+    CA->>CA: 校验共享密钥，限制请求体大小
+    CA->>SC: projections，核对 owner 与 agent（计划：经会话目录解析外部 session id）
+    CA->>SC: prompt，queue，sourceFields 带请求 id、owner、trace id、上下文
+    SC->>AL: 人类消息进收件箱，source.lyteboatRequest
+    AL->>IG: lyteboat/intake，第 1 步，循环内补做准入
     IG->>ADM: admit，本句、上下文
     ADM->>AUX: 分类，purpose intake
-    AUX-->>ADM: 意图与 friction
-    ADM-->>IG: decision pass，附判定
-    IG->>AL: followup，source.lyteboatRequest 带请求 id、上下文、判定
-    AL->>IG: lyteboat/intake，第 1 步
+    AUX-->>ADM: 意图
     alt 判定为 reply
-        IG-->>AL: reply 记录的话术
-        AL-->>W: assistant 消息，provider lyteboat，turn/end completed
-        W-->>FE: 结束原因 rejected，帧与卡片取自判定
+        IG-->>AL: reply 的话术与卡片
+        AL-->>CA: assistant 消息，provider lyteboat，turn/end completed
+        CA-->>FE: outcome rejected，正文与卡片
     else 判定为 pass
         IG-->>AL: pass
         AL->>SR: lyteboat/pre-assemble
         SR->>AUX: 路由调用
         AUX-->>SR: 技能
         SR-->>AL: 激活技能与所需工具
-        AL->>AL: 组装提示，agent/pre-step 追加技能消息，step-budget 计步
-        AL->>M: agent/request，路由预设
+        AL->>AL: 组装提示，agent/pre-step 追加技能消息（计划：step-budget 计步）
+        AL->>M: agent/request
         M-->>AL: 调用诊断工具
         AL->>T: 工具管线
         T-->>AL: tool/result，meta.lyteboat 带卡片
         AL->>M: 第 2 步
         M-->>AL: 终答，带卡片标记
-        AL-->>W: turn/end completed
-        W-->>FE: SSE 帧，按标记插卡，推荐问，终帧
+        AL-->>CA: turn/end completed
+        CA-->>FE: enterprise 帧或 JSON，按标记插卡（计划：其余出口协议、推荐问、终帧）
     end
 ```
 
-**验收。**
-- `/chat` 的 SSE 与参考实现生成的金样逐帧一致，金融智能体至少 3 个场景。
-- 同一个 `requestId` 重试返回原来的答案。
+**验收（还没做的部分）。**
+- 其余出口协议与参考实现生成的 SSE 金样逐帧一致，金融智能体至少 3 个场景。
+- 同一个请求 id 重试返回原来的答案。
 - 步数超限时 `turn/end` 为 `aborted`，原因 `{ kind: 'hook', reason: 'step-budget' }`，追发的消息仍在收件箱里。
-- 业务 profile 下，主循环请求的工具集合与 agent 声明的完全相等；请求里没有 `dsh_plugin_packages`、AGENTS.md 和工作目录路径。
-- 别的用户拿同一个外部 session id 续聊被拒绝。
+- 业务 profile 下，主循环请求的工具集合与 agent 声明的完全相等；请求里没有工作目录路径（`dsh_plugin_packages` 和 AGENTS.md 在 F3 里已经去掉）。
+- 别的用户拿同一个外部 session id 续聊被拒绝（F3 对 dsh 的会话 id 已经如此）。
 
 ### 6.3 记忆与外部历史
 
@@ -899,11 +896,12 @@ sequenceDiagram
 - **容量。** checkpoint-policy 在每次模型请求前、每个顶层工具执行前都 flush，SQL 下写放大明显；上线前给出容量估算，配合 projection-cache。
 - **验收。** 两个进程同时 resume 同一个会话，只有一个拿到写句柄；租约过期后旧句柄抛 `SessionOwnershipLostError`；SQL 会话导出为 JSONL 后，官方 dsh 能打开并续写；span 与日志事件一一对应。
 
-### 6.6 评测与上游化
+### 6.6 评测的 LLM judge 与上游化
 
 **评测。**
-- `@lyteboat/eval` bundle：6.1 的语料作为种子；回放接 llm-replay，录下来的业务会话在 CI 里不带 key 回放；grader 读日志、投影和 chat wire 推导出的帧，所以参考实现的 callback_event 断言可以照搬。
-- judge、judge 校准、提示调优、变体、从会话导入用例放在核心之后。
+- F3 做了 `@lyteboat/eval` 与 `@lyteboat/eval-runner`（`lyteboat eval`）：用例是 agent 目录 `evals/` 下的 YAML，每个用例一个新会话，逐轮经 session-controller 提交；检查是确定性的（技能、调用与没调用的工具、卡片区域与张数、结局、正文、循环的模型调用数），从会话日志和投影读出；真模型运行录下会话，回放用 `llm/stream` 监听按会话绑定录音作答（循环调用由 dsh-llm-replay 从录音推出，旁路调用取 `lyteboat/aux-llm-call` 记录），CI 里不带 key；`compare` 找出两次运行之间变了的检查。
+- 和原计划不同的地方：检查读日志和投影，不读出口帧，参考实现的 callback_event 断言还不能照搬；等 6.2 的其余出口协议做了，再加帧上的检查。
+- 还没做：LLM judge 与 judge 校准、提示调优、变体、从会话导入用例。
 - G6 加一个变体：带 lyteboat 记录（可忽略的 `lyteboat/aux-llm-call`、`source.lyteboatRequest`）的会话，由官方版续写一轮，结果与 lyteboat 去掉这些记录后续写的相同。
 
 **上游化。** dsh 不接受外部 PR，需求经 GitHub Discussions 提：
@@ -920,7 +918,7 @@ sequenceDiagram
 - **主动服务。** `@lyteboat/proactive` 保留参考实现的触发、扇出、投递三个维度，由 agent 行声明；cron 触发用 6.5 的租约选主；PerUser 扫描需要用户目录，频控记本次 tick 的 fired_at（4.9 的缺陷）；站内信与 SSE 推送由通知存储加 serve 路由提供；webhook 作为一种触发器。
 - **meta_builder。** 用 dsh 的 Creator 模式加一个 lyteboat 技能。
 - **MCP。** agent 组合里配 dsh 的 mcp 行即可，先核查部署环境里按 agent 划分的配置（7.2）。
-- **Studio 的写功能与看板。** 只读功能先用 dsh web。
+- **Studio 的写功能与看板。** F3 做了查看与调试：`lyteboat studio` 在 dsh web 上加 Agents（列表、失败原因、重载）、Evals（运行与报告）页面和会话的 lyteboat 页签（带请求上下文发消息，实时看技能、请求、卡片、状态）。编辑 agent、技能与用例，在页面上跑评测，排好的卡片预览，看板，这些写功能等有使用方再排。
 
 ---
 
@@ -937,7 +935,7 @@ sequenceDiagram
 | 上游将来可能移除 `ignorable` 字段（决策笔记写明替代机制完成切换后可以删） | `session-append-ignorable` 和可忽略这一档词表失去依据 | 只让纯信息记录用它，丢了不影响重建，随时可以退回到只写 logger 或 OTel；用它的只有 `lyteboat/aux-llm-call` |
 | dsh 的信任模型只有单一操作者；session-query 不做授权 | 终端用户鉴权和多租户隔离的责任在 lyteboat | serve 不鉴权时只监听 `127.0.0.1`，其他地址要求共享密钥；续聊之前校验归属，别人的会话按不存在处理；session-query 不对外暴露 |
 | 业务组合关掉 jobs、goal 等服务后，依赖它们的社区插件会一直等待而不报错 | 这些插件在业务 profile 里用不了 | 写进 COMPAT.md；加装插件时比对它的 inject 清单与关掉的行，给出提示 |
-| 默认 dsh-base 的每个 DeepSeek 请求附带已装插件包清单 | 部署的插件构成（含业务 agent 包名）随请求发给模型服务 | 业务组合关掉 `plugin-package-inventory-deepseek`（6.2） |
+| 默认 dsh-base 的每个 DeepSeek 请求附带已装插件包清单 | 部署的插件构成（含业务 agent 包名）随请求发给模型服务 | serve、eval、studio 三个 bundle 已关掉 `plugin-package-inventory-deepseek`（F3）；`lyteboat headless` 还开着 |
 | SQL provider 的写放大 | 容量和延迟 | 6.5 上线前的容量估算，配合 projection-cache |
 | 常驻进程随 preset 修订重启 | 热更新期间数据接入短暂不可用 | 生产环境关 hmr；重启纳入就绪探针的超时预算 |
 | 迁移的主要工作量是把 Python 业务代码改写成 TS | 业务迁移的工期 | 本方案只降低框架层的成本；业务按 agent 逐个迁移，公开仓库只放按公开知识写的示例 |
