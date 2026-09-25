@@ -97,7 +97,8 @@ function sameNames(left: readonly string[], right: readonly string[]): boolean {
 
 /** Host service: lyteboat tool metadata plus its enforcement at the dsh tool seams. */
 export class ToolPolicyService extends Service {
-  static inject = ['tools', 'sessionProjections', 'systemPrompt']
+  // lyteboatDistro: visibility is reconciled in the kernel extension agent-loop-pre-assemble.
+  static inject = ['tools', 'sessionProjections', 'systemPrompt', 'lyteboatDistro']
 
   private readonly layers = new ScopedLayers(scope => new PolicyLayer(scope), () => {})
   private readonly agents = new WeakMap<Agent, AgentPolicyState>()

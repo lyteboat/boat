@@ -1066,6 +1066,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:*
         version: link:../../../dsh/core/tools
+      '@lyteboat/distro':
+        specifier: workspace:*
+        version: link:../distro
       '@lyteboat/testing':
         specifier: workspace:*
         version: link:../../tooling/testing
@@ -1304,6 +1307,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:*
         version: link:../../../dsh/core/tools
+      '@lyteboat/distro':
+        specifier: workspace:*
+        version: link:../distro
       '@lyteboat/testing':
         specifier: workspace:*
         version: link:../../tooling/testing

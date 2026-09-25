@@ -7,12 +7,14 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineContentToolFixture, defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import LyteboatDistroService from '@lyteboat/distro'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import * as ToolPolicyAgent from '@lyteboat/tool-policy/agent'
 
 async function harness(adapter: MockAdapter): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)
+  await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(ToolPolicyService)
   return ctx
 }
@@ -223,6 +225,18 @@ describe('state', () => {
       .map(event => event.data.meta)
     expect(metas).toEqual([{ card: 'own' }, {}])
     expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')).toEqual({})
+  })
+})
+
+describe('distribution', () => {
+  it('loads only where lyteboatDistro marks the kernel extension it listens to', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+    void ctx.plugin(ToolPolicyService)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(ctx.get('toolPolicy')).toBeUndefined()
+    await ctx.plugin(LyteboatDistroService)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(ctx.get('toolPolicy')).toBeDefined()
   })
 })
 

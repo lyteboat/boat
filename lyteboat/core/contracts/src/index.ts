@@ -119,6 +119,11 @@ export interface LyteboatSkillMeta {
   requiredTools?: string[]
 }
 
+/** The schema of {@link LyteboatSkillMeta}; strict, since a misspelt key in a hand-written frontmatter must not silently mean nothing. */
+export const lyteboatSkillMetaSchema: z.ZodType<LyteboatSkillMeta> = z.strictObject({
+  requiredTools: z.array(z.string()).exactOptional(),
+})
+
 /**
  * When a card is shown: `immediate` as soon as its result arrives; `deferred`
  * where the answer writes its area's marker, or after the answer when it never

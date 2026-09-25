@@ -6,7 +6,8 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 export const name = 'example-tools'
-export const inject = ['toolPolicy']
+// lyteboatDistro: the activation listens to the kernel extension agent-loop-pre-assemble.
+export const inject = ['toolPolicy', 'lyteboatDistro']
 
 const WANTS_REBALANCE = /调仓|rebalance/iu
 

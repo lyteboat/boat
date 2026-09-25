@@ -33,6 +33,7 @@ export const Config: z<Config> = z.object({
   mode: z.union(['off', 'full', 'dynamic'] as const),
   historyWindow: z.natural(),
   timeoutMs: z.natural(),
+  maxTokens: z.natural().min(1),
   provider: z.string(),
   model: z.string(),
 })

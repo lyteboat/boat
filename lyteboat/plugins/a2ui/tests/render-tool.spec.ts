@@ -11,6 +11,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import LyteboatDistroService from '@lyteboat/distro'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import A2uiService, { lyteboatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@lyteboat/a2ui'
@@ -24,6 +25,7 @@ const FULL = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/baseline/
 
 async function harness(adapter: MockAdapter): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)
+  await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(ToolPolicyService)
   await ctx.plugin(A2uiService)
   // The data tool: its result becomes session state through the tool policy's delta.
