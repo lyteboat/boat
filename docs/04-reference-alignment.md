@@ -948,7 +948,7 @@ flowchart TB
 - **工具与状态。** 三个工具（`asset_overview`、`allocation_diagnosis`、`lookup_knowledge`）经 `toolPolicy.register` 按 `auto` 登记，都没有声明 `isConcurrencySafe`。没有 agent 私有的状态：工具每次按请求上下文里的客户重新取数，事实只写在给模型的 digest 里。V1 把 agent 私有的状态写在结果的 `meta.finance.state` 上、由 `financeState` 投影按键 replace 折叠，这个投影在收窄时删了。
 - **诊断规则。** 风险资产占比对照「100 减年龄」，上下各 10 个百分点：低于区间偏保守，高于区间偏激进，落在区间里（含两端）算比较合适（`lyteboat/agents/finance/src/capabilities/allocation-diagnosis.ts:37-48`）。四个客户夹具各对一种情形：`young-idle-cash` 偏保守，`midlife-moderate` 正好落在区间下沿、算比较合适，`pre-retiree-risky` 偏激进，`none-authorized` 没有授权任何账户。
 - **卡片。** 四张卡：资产总览一张；诊断工具一次结果出两张（诊断、调整方向）；这三张都是 `deferred`，靠正文里的 `[[card:<area>]]` 标记放置。unauthorized 卡的 manifest 没写 `emission_mode`，按默认是 `immediate`，工具出它时调用 `concludeTurn`。卡片挂在结果的 `meta.lyteboat.cards` 上。没有用到 `deferred_discard`，也没有写 `meta.lyteboat.concluded`。V1 的另外两张卡（单桶明细、下一步）随下钻技能一起删了。
-- **投资者教育。** 知识库只有资产配置、再平衡、分散投资三个概念（`lyteboat/agents/finance/fixtures/knowledge.json`），`lookup_knowledge` 按名字或别名匹配，找不到就列出这三个主题；不出卡，不读客户数据。
+- **投资者教育。** 知识库只有资产配置、再平衡、分散投资三个概念（`lyteboat/agents/finance/assets/sample-data/knowledge.json`），`lookup_knowledge` 按名字或别名匹配，找不到就列出这三个主题；不出卡，不读客户数据。
 - **准入。** 见 5.3 的现状。
 - 刷新（make_a2ui_refresh）、外部历史合并、记忆、推荐问、帧装饰器、app_type 覆盖、eval 种子都还没有。V1 里那些只增加业务深度、不对应表里机制的部分（三个资金桶及其目标比例、用户上报的外部资产、追问、保险保障）也在收窄时删了。
 
