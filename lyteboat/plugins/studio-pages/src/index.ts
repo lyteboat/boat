@@ -1,13 +1,14 @@
 /**
- * @lyteboat/studio-pages — lyteboat's pages in dsh web. The Host face answers the
- * browser on the `/lyteboat` channel of dsh's connection, behind the same
- * authentication as every dsh web request: the agents the catalog serves and
- * the ones that failed, a reload of the catalog, a session's lyteboat state
- * (active skill, request, cards, state), a message sent with its request
- * context, the eval runs and one run's report. A message goes through dsh's
- * session controller with its request on the source, the path a `/chat`
- * message takes, so its answer shows in dsh's own conversation. The client
- * face (`./client`) is the pages.
+ * @lyteboat/studio-pages — lyteboat's pages in dsh web. The Host face answers
+ * the pages at `/api/lyteboat/<endpoint>` on dsh's connection, behind the same
+ * trust fence and login as every dsh web request, in dsh's RPC envelopes so
+ * the pages call it through dsh's own browser transport: the agents the
+ * catalog serves and the ones that failed, a reload of the catalog, a message
+ * sent with its request context, the eval runs and one run's report. A message
+ * goes through dsh's session controller with its request on the source, the
+ * path a `/chat` message takes, so its answer shows in dsh's own conversation.
+ * The client face (`./client`) is the pages; a session's lyteboat state reaches
+ * them through dsh's projection hooks, not through this face.
  * @module @lyteboat/studio-pages
  */
 
@@ -17,24 +18,25 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import { brandString } from '@deepseek-ai/dsh-brand'
-import type { ConnectionRpcHandlerResult } from '@deepseek-ai/dsh-client-connection'
+import { clientRequestSchema, type ConnectionRpcHandlerResult, type ServerResponse } from '@deepseek-ai/dsh-client-connection'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/request-context'
 import { z as zod } from 'zod'
 import { listEvalRuns, readEvalReport } from './eval-runs.ts'
+import {
+  STUDIO_PAGES_ENDPOINTS, STUDIO_PAGES_METHOD_PREFIX,
+  type StudioAgentsAnswer, type StudioEvalReportAnswer, type StudioEvalsAnswer, type StudioPagesEndpoint, type StudioSendAnswer,
+} from './studio-endpoints.ts'
 
-export type { StudioEvalRun } from './eval-runs.ts'
+export type { StudioAgentsAnswer, StudioEvalReportAnswer, StudioEvalRun, StudioEvalsAnswer, StudioPagesEndpoint, StudioSendAnswer, StudioSendRequest } from './studio-endpoints.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
     studioPages: StudioPagesService
   }
 }
-
-/** The connection channel the pages call. */
-export const STUDIO_RPC_CHANNEL = '/lyteboat'
 
 export interface Config {
   /** The request owner a message the pages send records. */
@@ -49,13 +51,12 @@ export const Config: z<Config> = z.object({
 })
 
 /** A refusal the page shows. */
-class StudioRpcError extends Error {
+class StudioPagesRefusal extends Error {
   constructor(readonly code: string, message: string) {
     super(message)
   }
 }
 
-const sessionPayload = zod.strictObject({ sessionId: zod.string().min(1) })
 const sendPayload = zod.strictObject({
   sessionId: zod.string().min(1),
   text: zod.string().refine((text: string) => text.trim() !== '', 'text must not be blank'),
@@ -67,10 +68,10 @@ function parse<T>(schema: zod.ZodType<T>, payload: unknown): T {
   const parsed = schema.safeParse(payload)
   if (parsed.success) return parsed.data
   const issue = parsed.error.issues[0]
-  throw new StudioRpcError('invalid_request', issue === undefined ? 'invalid payload' : `${issue.path.join('.') || 'payload'}: ${issue.message}`)
+  throw new StudioPagesRefusal('invalid_request', issue === undefined ? 'invalid payload' : `${issue.path.join('.') || 'payload'}: ${issue.message}`)
 }
 
-/** Host service: the `/lyteboat` channel the Studio pages call. */
+/** Host service: the endpoints the Studio pages call. */
 export class StudioPagesService extends Service {
   static inject = ['connection', 'sessionController', 'agentCatalog', 'requestContext']
   // The loader applies a class plugin's static Config, not the module's.
@@ -78,27 +79,40 @@ export class StudioPagesService extends Service {
 
   constructor(ctx: Context, private readonly config: Config = {}) {
     super(ctx, 'studioPages')
-    ctx.effect(() => ctx.connection.rpc.handle(STUDIO_RPC_CHANNEL, (endpoint, payload, signal) => this.answer(endpoint, payload, signal)), 'studio-pages: /lyteboat')
+    // Exact routes on dsh's `/api` channel: `rpc.handle` would mount a channel of
+    // its own through the connection's web server, which a plugin row cannot reach.
+    for (const endpoint of STUDIO_PAGES_ENDPOINTS) {
+      const route = { path: `/api/${STUDIO_PAGES_METHOD_PREFIX}/${endpoint}`, methods: ['POST' as const], requestBody: 'buffered' as const, fetch: (request: Request) => this.serve(endpoint, request) }
+      ctx.effect(() => ctx.connection.fetch.register(route), `studio-pages: ${route.path}`)
+    }
   }
 
-  private async answer(endpoint: string, payload: unknown, signal: AbortSignal): Promise<ConnectionRpcHandlerResult> {
+  /** Answer one call in dsh's RPC envelopes, as `connection.rpc.call` expects. */
+  private async serve(endpoint: StudioPagesEndpoint, request: Request): Promise<Response> {
+    const body: unknown = await request.json().catch(() => undefined)
+    const envelope = clientRequestSchema.safeParse(body)
+    if (!envelope.success || envelope.data.method !== `${STUDIO_PAGES_METHOD_PREFIX}/${endpoint}`) return new Response('invalid client-request message', { status: 400 })
+    const result = await this.answer(endpoint, envelope.data.payload, request.signal)
+    return Response.json({ type: 'server-response', rpcId: envelope.data.rpcId, result } satisfies ServerResponse)
+  }
+
+  private async answer(endpoint: StudioPagesEndpoint, payload: unknown, signal: AbortSignal): Promise<ConnectionRpcHandlerResult> {
     try {
       return { ok: true, value: await this.endpoint(endpoint, payload, signal) }
     } catch (error: unknown) {
-      const refusal = error instanceof StudioRpcError ? error : new StudioRpcError('internal', error instanceof Error ? error.message : String(error))
+      const refusal = error instanceof StudioPagesRefusal ? error : new StudioPagesRefusal('internal', error instanceof Error ? error.message : String(error))
       if (refusal.code === 'internal') this.ctx.logger.warn(`studio pages: ${endpoint}: ${refusal.message}`)
       return { ok: false, error: { code: refusal.code, message: refusal.message, details: {} } }
     }
   }
 
-  private async endpoint(endpoint: string, payload: unknown, signal: AbortSignal): Promise<unknown> {
+  private async endpoint(endpoint: StudioPagesEndpoint, payload: unknown, signal: AbortSignal): Promise<StudioAgentsAnswer | StudioSendAnswer | StudioEvalsAnswer | StudioEvalReportAnswer> {
     switch (endpoint) {
       case 'agents': return this.agents()
       case 'agents/reload':
         // A failed agent is reported with the rest; the reload itself answers.
         await this.ctx.agentCatalog.reload().catch(() => {})
         return this.agents()
-      case 'session': return this.session(parse(sessionPayload, payload).sessionId, signal)
       case 'session/send': return this.send(parse(sendPayload, payload), signal)
       case 'evals': return { runs: listEvalRuns(this.evalsDir()) }
       case 'evals/report': {
@@ -106,10 +120,9 @@ export class StudioPagesService extends Service {
         try {
           return { run, report: readEvalReport(this.evalsDir(), run) }
         } catch (error: unknown) {
-          throw new StudioRpcError('not_found', error instanceof Error ? error.message : String(error))
+          throw new StudioPagesRefusal('not_found', error instanceof Error ? error.message : String(error))
         }
       }
-      default: throw new StudioRpcError('not_found', `no endpoint ${JSON.stringify(endpoint)}`)
     }
   }
 
@@ -117,7 +130,7 @@ export class StudioPagesService extends Service {
     return this.config.evalsDir ?? dshHomePath('evals')
   }
 
-  private async agents(): Promise<unknown> {
+  private async agents(): Promise<StudioAgentsAnswer> {
     await this.ctx.agentCatalog.whenReady().catch(() => {})
     return {
       agents: this.ctx.agentCatalog.list().map(agent => ({ id: agent.id, name: agent.name ?? agent.id, ...agent.description === undefined ? {} : { description: agent.description } })),
@@ -125,23 +138,8 @@ export class StudioPagesService extends Service {
     }
   }
 
-  /** A session's lyteboat state, as its projections show it. */
-  private async session(id: string, signal: AbortSignal): Promise<unknown> {
-    const projections = await this.ctx.sessionController.projections({ sessionId: brandString<SessionId>(id) }, signal)
-    if (projections === null) throw new StudioRpcError('session_not_found', `session ${JSON.stringify(id)} does not exist`)
-    const values = projections.values
-    return {
-      agent: values['agentPreset'] ?? null,
-      // The active-skill projection's wire view is the skill's name, or null.
-      skill: typeof values['lyteboatActiveSkill'] === 'string' ? values['lyteboatActiveSkill'] : null,
-      request: values['lyteboatRequest'] ?? null,
-      cards: values['lyteboatCards'] ?? null,
-      state: values['lyteboatState'] ?? null,
-    }
-  }
-
   /** Queue a message with its request context, the way `/chat` does. */
-  private async send(message: zod.infer<typeof sendPayload>, signal: AbortSignal): Promise<unknown> {
+  private async send(message: zod.infer<typeof sendPayload>, signal: AbortSignal): Promise<StudioSendAnswer> {
     const requestId = randomUUID()
     await this.ctx.sessionController.prompt({
       requestId: brandString<SessionRequestId>(requestId),

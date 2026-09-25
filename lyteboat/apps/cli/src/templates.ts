@@ -18,8 +18,8 @@ export const LYTEBOAT_PROFILE_TEMPLATES: Readonly<Record<string, LyteboatProfile
   headless: {
     bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/headless'],
   },
-  web: {
-    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@deepseek-ai/dsh-web-app'],
+  studio: {
+    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@deepseek-ai/dsh-web-app', '@lyteboat/studio'],
   },
   serve: {
     bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/serve'],
@@ -32,8 +32,8 @@ export const LYTEBOAT_PROFILE_TEMPLATES: Readonly<Record<string, LyteboatProfile
 /** The profile `lyteboat headless` boots when `--profile` is absent. */
 export const DEFAULT_HEADLESS_PROFILE = 'headless'
 
-/** The profile `lyteboat web` boots when `--profile` is absent. */
-export const DEFAULT_WEB_PROFILE = 'web'
+/** The profile `lyteboat studio` boots when `--profile` is absent. */
+export const DEFAULT_STUDIO_PROFILE = 'studio'
 
 /** The profile `lyteboat serve` boots when `--profile` is absent. */
 export const DEFAULT_SERVE_PROFILE = 'serve'

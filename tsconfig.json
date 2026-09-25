@@ -84,6 +84,9 @@
       "path": "./lyteboat/plugins/studio-pages"
     },
     {
+      "path": "./lyteboat/plugins/studio-pages/tsconfig.client.json"
+    },
+    {
       "path": "./lyteboat/bundles/headless"
     },
     {
@@ -91,6 +94,9 @@
     },
     {
       "path": "./lyteboat/bundles/eval"
+    },
+    {
+      "path": "./lyteboat/bundles/studio"
     },
     {
       "path": "./lyteboat/apps/cli"

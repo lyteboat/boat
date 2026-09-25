@@ -1,0 +1,125 @@
+# The @lyteboat/studio bundle patch: dsh web with lyteboat's pages, over
+# dsh-base, @lyteboat/host, and dsh-web-app (the studio profile lists them in
+# that order). dsh web's startup row refuses a flag it does not know, so this
+# bundle disables it; lyteboat's startup parses dsh web's flags and `--agents`
+# and provides `webStartup` for dsh web's rows. The agent catalog declares
+# every agent of the roots and reloads them when a root changes; one that
+# fails is reported on the Agents page instead of stopping the page. The
+# Studio pages answer the browser on dsh's connection. dsh's coding presets
+# are turned off: a session runs a lyteboat agent, `--agent` (else the first
+# agent of the roots) unless another is picked in dsh web.
+
+- id: web-startup
+  disabled: true
+
+- id: preset-standard
+  disabled: true
+
+- id: preset-ptc
+  disabled: true
+
+- id: preset-minimal
+  disabled: true
+
+- id: preset-cordis
+  disabled: true
+
+# dsh web moves the agent plane behind its presets. A lyteboat agent runs on
+# dsh-base's agent plane, as headless, serve, and eval run it, and hides what
+# its tool policy does not declare; so a Studio session sees what a /chat one
+# does, these rows are back on the host. The workspace's AGENTS.md and the
+# package inventory stay out of model requests, as in serve.
+- id: tool-plugin-manager
+  disabled: false
+
+- id: tool-bash
+  disabled: false
+
+- id: tool-pwsh
+  disabled: false
+
+- id: tool-jobs
+  disabled: false
+
+- id: tool-fs
+  disabled: false
+
+- id: tool-fs-search
+  disabled: false
+
+- id: skill-filesystem
+  disabled: false
+
+- id: tool-skill
+  disabled: false
+
+- id: command-goal
+  disabled: false
+
+- id: tool-goal
+  disabled: false
+
+- id: plan-mode
+  disabled: false
+
+- id: compaction-basic
+  disabled: false
+
+- id: command-compact
+  disabled: false
+
+- id: tool-result-pruner
+  disabled: false
+
+- id: tool-subagent-control
+  disabled: false
+
+- id: tool-subagent-list-agents
+  disabled: false
+
+- id: tool-subagent
+  disabled: false
+
+- id: tool-subagent-fork
+  disabled: false
+
+- id: workflow-ptc
+  disabled: false
+
+- id: tool-workflow
+  disabled: false
+
+- id: tool-todo
+  disabled: false
+
+- id: tool-web
+  disabled: false
+
+- id: agent-instructions
+  disabled: true
+
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: agent-preset-registry
+  inject: [lyteboatStudioStartup]
+  config:
+    default: !!js ctx.lyteboatStudioStartup.defaultAgent
+
+- insert:
+    - id: lyteboat-studio-startup
+      name: '@lyteboat/studio/startup'
+
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatStudioStartup]
+      config:
+        roots: !!js ctx.lyteboatStudioStartup.agentRoots
+        strict: false
+        watch: true
+
+    - id: studio-pages
+      name: '@lyteboat/studio-pages'
+
+    - id: lyteboat-studio
+      name: '@lyteboat/studio'

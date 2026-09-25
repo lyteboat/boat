@@ -1,7 +1,7 @@
 /**
- * The `/lyteboat` channel the Studio pages call, answered in process: dsh's
- * connection and session controller are stood in for at their boundary (the
- * handler the page's call reaches, the prompts and projections it asks for);
+ * The endpoints the Studio pages call, answered in process: dsh's connection
+ * and session controller are stood in for at their boundary (the routes a
+ * page's call reaches once dsh has let it through, the prompts it queues);
  * the agent catalog and the request context are the real services.
  */
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
@@ -12,47 +12,52 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import type { SessionPromptRequest } from '@deepseek-ai/dsh-api-session-controller/types'
-import type { ConnectionRpcHandler, ConnectionRpcHandlerResult } from '@deepseek-ai/dsh-client-connection'
+import type { ConnectionFetchRoute, ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
 import { MockAdapter, createLyteboatUnitHost } from '@lyteboat/testing'
 import AgentCatalogService from '@lyteboat/agent-catalog'
 import RequestContextService from '@lyteboat/request-context'
-import StudioPagesService, { STUDIO_RPC_CHANNEL } from '@lyteboat/studio-pages'
+import StudioPagesService from '@lyteboat/studio-pages'
 
 const fixture = (name: string): string => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
 /** What a page's call reaches, and what the session controller was asked. */
 interface StudioPagesHost {
-  call(endpoint: string, payload?: unknown): Promise<ConnectionRpcHandlerResult>
+  /** A call as dsh's browser transport makes it: `connection.rpc.call('/api', 'lyteboat/<endpoint>', payload)`. */
+  call(endpoint: string, payload?: unknown): Promise<ConnectionRpcResult<unknown>>
+  post(path: string, body: unknown): Promise<Response>
   prompts: SessionPromptRequest[]
   ctx: Context
 }
 
-async function studioPagesHost(roots: string[], sessions: Record<string, Record<string, unknown>> = {}): Promise<StudioPagesHost> {
+async function studioPagesHost(roots: string[]): Promise<StudioPagesHost> {
   const ctx = await createLyteboatUnitHost(new MockAdapter([]))
-  const handlers = new Map<string, ConnectionRpcHandler>()
+  const routes = new Map<string, ConnectionFetchRoute>()
   const prompts: SessionPromptRequest[] = []
   // The unit host has no loader tree; the registry only waits on it to settle, and here it has.
   ctx.provide('loader', { await: () => Promise.resolve() } as never)
-  // dsh's connection: the channel a page's call reaches once it is authenticated.
-  ctx.provide('connection', { rpc: { handle: (channel: string, handler: ConnectionRpcHandler) => { handlers.set(channel, handler); return () => Promise.resolve(handlers.delete(channel)).then(() => {}) } } } as never)
-  // dsh's session controller: a session's projections, and the prompts queued on it.
-  ctx.provide('sessionController', {
-    projections: ({ sessionId }: { sessionId: string }) => Promise.resolve(sessionId in sessions ? { asOfSeq: 1, values: sessions[sessionId] } : null),
-    prompt: (request: SessionPromptRequest) => { prompts.push(request); return Promise.resolve() },
-  } as never)
+  // dsh's connection: the exact routes on its `/api` channel, reached once its fence and login let a call through.
+  ctx.provide('connection', { fetch: { register: (route: ConnectionFetchRoute) => { routes.set(route.path, route); return () => Promise.resolve(routes.delete(route.path)).then(() => {}) } } } as never)
+  // dsh's session controller: the prompts queued on a session.
+  ctx.provide('sessionController', { prompt: (request: SessionPromptRequest) => { prompts.push(request); return Promise.resolve() } } as never)
   await ctx.plugin(AgentPresetRegistry, { default: 'none' })
   await ctx.plugin(AgentCatalogService, { roots, strict: false })
   await ctx.plugin(RequestContextService)
   await ctx.plugin(StudioPagesService, { owner: 'studio', evalsDir: fixture('evals') })
-  const call = async (endpoint: string, payload: unknown = {}): Promise<ConnectionRpcHandlerResult> => {
-    const handler = handlers.get(STUDIO_RPC_CHANNEL)
-    if (handler === undefined) throw new Error(`nothing handles ${STUDIO_RPC_CHANNEL}`)
-    return handler(endpoint, payload, new AbortController().signal, {} as never)
+  const post = async (path: string, body: unknown): Promise<Response> => {
+    const route = routes.get(path)
+    if (route === undefined) return new Response('not found', { status: 404 })
+    return route.fetch(new Request(`http://127.0.0.1${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }))
   }
-  return { call, prompts, ctx }
+  const call = async (endpoint: string, payload: unknown = {}): Promise<ConnectionRpcResult<unknown>> => {
+    const response = await post(`/api/lyteboat/${endpoint}`, { type: 'client-request', rpcId: 'rpc-1', method: `lyteboat/${endpoint}`, payload })
+    const envelope = await response.json() as { type: string; rpcId: string; result: ConnectionRpcResult<unknown> }
+    expect({ type: envelope.type, rpcId: envelope.rpcId }).toEqual({ type: 'server-response', rpcId: 'rpc-1' })
+    return envelope.result
+  }
+  return { call, post, prompts, ctx }
 }
 
-describe('the Studio pages\' channel', () => {
+describe('the Studio pages\' endpoints', () => {
   const roots: string[] = []
   afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
@@ -109,17 +114,6 @@ describe('the Studio pages\' channel', () => {
     expect(host.prompts).toEqual([])
   })
 
-  it('answers a session\'s lyteboat state from its projections, and refuses a session that does not exist', async () => {
-    const request = { requests: 1, context: { customer: 'young-idle-cash' }, intake: null, owner: 'studio' }
-    const host = await studioPagesHost([fixture('agents')], { 'sess-1': { agentPreset: 'support', lyteboatActiveSkill: 'asset-overview', lyteboatRequest: request } })
-
-    const known = await host.call('session', { sessionId: 'sess-1' })
-    const unknown = await host.call('session', { sessionId: 'sess-2' })
-
-    expect(known).toEqual({ ok: true, value: { agent: 'support', skill: 'asset-overview', request, cards: null, state: null } })
-    expect(unknown).toEqual({ ok: false, error: { code: 'session_not_found', message: 'session "sess-2" does not exist', details: {} } })
-  })
-
   it('lists the eval runs newest first, skipping a directory that is not a run, and answers one run\'s report', async () => {
     const host = await studioPagesHost([fixture('agents')])
 
@@ -138,13 +132,20 @@ describe('the Studio pages\' channel', () => {
     expect(report).toEqual({ ok: true, value: { run: '20260925T010000Z-aaaa', report: '# Eval support: 1/2 cases passed\n' } })
   })
 
-  it('refuses a report named by a path, and an endpoint it does not have', async () => {
+  it('refuses a report named by a path', async () => {
     const host = await studioPagesHost([fixture('agents')])
 
     const escaped = await host.call('evals/report', { run: '../evals/20260925T010000Z-aaaa' })
-    const missing = await host.call('sessions')
 
     expect(escaped).toEqual({ ok: false, error: { code: 'not_found', message: 'no eval run "../evals/20260925T010000Z-aaaa"', details: {} } })
-    expect(missing).toEqual({ ok: false, error: { code: 'not_found', message: 'no endpoint "sessions"', details: {} } })
+  })
+
+  it('refuses a body that is not a client-request for the route\'s own endpoint', async () => {
+    const host = await studioPagesHost([fixture('agents')])
+
+    const notEnvelope = await host.post('/api/lyteboat/agents', { agents: true })
+    const otherMethod = await host.post('/api/lyteboat/agents', { type: 'client-request', rpcId: 'rpc-1', method: 'lyteboat/evals', payload: {} })
+
+    expect([notEnvelope.status, otherMethod.status]).toEqual([400, 400])
   })
 })

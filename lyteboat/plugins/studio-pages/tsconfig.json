@@ -5,9 +5,12 @@
     "outDir": "lib"
   },
   "include": ["src"],
+  // The browser face compiles on its own (tsconfig.client.json): DOM and React JSX, no Node.
+  "exclude": ["src/client"],
   "references": [
     { "path": "../../../dsh/api/session-controller/tsconfig.host.json" },
     { "path": "../../../dsh/core/session" },
+    { "path": "../../core/contracts" },
     { "path": "../agent-catalog" },
     { "path": "../eval-runner" },
     { "path": "../request-context" }

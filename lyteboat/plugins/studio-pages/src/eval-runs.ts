@@ -8,17 +8,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { EvalRunRecord } from '@lyteboat/eval-runner'
-
-/** One run as the Evals page lists it. */
-export interface StudioEvalRun {
-  /** The run's directory name, its id. */
-  id: string
-  agent: string
-  mode: EvalRunRecord['mode']
-  cases: number
-  passedCases: number
-  startedAt: string
-}
+import type { StudioEvalRun } from './studio-endpoints.ts'
 
 /** The run ids a request may name: a directory name, never a path. */
 const RUN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u
