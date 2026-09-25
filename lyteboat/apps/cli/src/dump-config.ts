@@ -5,7 +5,7 @@
  * each `--patch` overlay.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/dump-config.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md.
  * @module @lyteboat/cli/dump-config
  */
 

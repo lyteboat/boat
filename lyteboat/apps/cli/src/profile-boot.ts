@@ -18,7 +18,10 @@
  * lyteboat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
  * dropped, the launcher's own overlays (`--plugin`) sit above the
- * `--patch` overlays, and `FiberState` reads go through `FIBER_STATE` (`fiber-state.ts`).
+ * `--patch` overlays, a startup failure is left to the process exit instead
+ * of disposing the tree and the proxy first (the launcher is the only caller,
+ * and its process ends on the error), and `FiberState` reads go through
+ * `FIBER_STATE` (`fiber-state.ts`).
  * @module @lyteboat/cli/profile-boot
  */
 
