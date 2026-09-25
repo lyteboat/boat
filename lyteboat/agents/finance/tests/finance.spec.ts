@@ -13,7 +13,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ContentBlock, GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
-import { MockAdapter, createLyteboatUnitHost, followUpAndWait, textResponse, toolCallResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
@@ -91,14 +91,10 @@ async function harness(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMa
   return { ctx, adapter }
 }
 
-/**
- * One request as `lyteboat run` sends it: admitted first, then followed up
- * with its context (when it carries one) and verdict on the human message.
- */
+/** One request as `lyteboat run` sends it: submitted (admitted, then followed up with its context and verdict), then settled. */
 async function send(ctx: Context, agent: Agent, text: string, customer?: string): Promise<void> {
-  const context = customer === undefined ? undefined : { customer }
-  const intake = await ctx.intakeGuard.admit(agent, { text, context: context ?? ctx.requestContext.contextOf(agent) }, AbortSignal.timeout(5000))
-  await followUpAndWait(agent, ctx.requestContext.message(text, { ...context === undefined ? {} : { context }, ...intake === undefined ? {} : { intake } }))
+  await ctx.intakeGuard.submit(agent, { text, context: customer === undefined ? undefined : { customer } }, AbortSignal.timeout(5000))
+  await agent.whenIdle()
 }
 
 type ResultMeta = { lyteboat?: { cards?: { area: string; emission: string; payload: Record<string, unknown> }[] } }

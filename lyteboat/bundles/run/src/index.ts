@@ -30,7 +30,6 @@ import type { LyteboatTurnPart } from '@lyteboat/a2ui'
 import type { JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/history-import'
 import type {} from '@lyteboat/intake-guard'
-import type {} from '@lyteboat/request-context'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
@@ -44,7 +43,7 @@ import { readAgentDefinition } from './agent-directory.ts'
 export const name = 'lyteboat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui', 'requestContext', 'intakeGuard']
+export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui', 'intakeGuard']
 
 /** Plugin config: the task and preset resolved from the startup provider service. */
 export interface Config {
@@ -260,10 +259,9 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const sessions = ctx.get('sessions')
   const historyImport = ctx.get('historyImport')
   const a2ui = ctx.get('a2ui')
-  const requestContext = ctx.get('requestContext')
   const intakeGuard = ctx.get('intakeGuard')
   if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined
-    || a2ui === undefined || requestContext === undefined || intakeGuard === undefined) return
+    || a2ui === undefined || intakeGuard === undefined) return
 
   const selection = defaultModel.currentSelection()
   const presets = ctx.get('agentPresets')
@@ -302,13 +300,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const stopReasoning = streamReasoning(ctx, agent, io.stderr)
   try {
     // Admission runs before the request enters the loop, so its verdict is recorded with the request.
-    // The config fills an absent dict with {}: an empty context carries nothing, as an absent one.
-    const context = config.context === undefined || Object.keys(config.context).length === 0 ? undefined : config.context
-    const intake = await intakeGuard.admit(agent, { text: config.task, context: context ?? requestContext.contextOf(agent) }, new AbortController().signal)
-    agent.followup(requestContext.message(config.task, {
-      ...context === undefined ? {} : { context },
-      ...intake === undefined ? {} : { intake },
-    }))
+    await intakeGuard.submit(agent, { text: config.task, context: config.context }, new AbortController().signal)
     await agent.whenIdle()
   } finally {
     stopReasoning()
