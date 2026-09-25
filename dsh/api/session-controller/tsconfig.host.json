@@ -1,0 +1,45 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.host.tsbuildinfo"
+  },
+  "files": [
+    "src/index.ts",
+    "src/types.ts",
+    "src/remote-events.ts",
+    "src/agent.ts",
+    "src/assistant-stream.ts",
+    "src/catalog.ts",
+    "src/commands.ts",
+    "src/control.ts",
+    "src/file-references.ts",
+    "src/history.ts",
+    "src/list.ts",
+    "src/media-references.ts",
+    "src/model-selection-projection.ts",
+    "src/archived-session-gate.ts",
+    "src/skill-catalog.ts"
+  ],
+  "references": [
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../session/session-persistence"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../skill/skill"
+    }
+  ]
+}

@@ -20,6 +20,9 @@ export interface ClientFaceManifest {
   dsh?: { client?: unknown }
 }
 
+/** The export target of a package's browser bundle. */
+export const CLIENT_BUNDLE = './lib/client.js'
+
 /** The sibling tsconfig that compiles a package's browser face, by upstream's convention. */
 export const CLIENT_TSCONFIG = 'tsconfig.client.json'
 

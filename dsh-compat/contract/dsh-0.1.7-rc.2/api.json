@@ -317,6 +317,1111 @@
       }
     }
   },
+  "@deepseek-ai/dsh-api-session-controller": {
+    "augmentations": {
+      "@deepseek-ai/dsh-llm#MessageSourceMap": {
+        "user-rpc": "'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };"
+      },
+      "@deepseek-ai/dsh-session-projection/types#SessionProjectionMap": {
+        "imageLimits": "imageLimits: ImageAttachmentLimits;",
+        "modelSelection": "modelSelection: ModelSelectionProjection;",
+        "sessionListMetadata": "sessionListMetadata: SessionListMetadata;"
+      },
+      "@deepseek-ai/dsh-session-projection/types#SessionProjectionStateMap": {
+        "imageLimits": "imageLimits: null;",
+        "modelSelection": "modelSelection: ModelSelectionProjectionState;",
+        "sessionListMetadata": "sessionListMetadata: SessionListMetadata;"
+      },
+      "@deepseek-ai/dsh-session/types#SessionEventMap": {
+        "model/selection": "'model/selection': ModelSelection;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#RemoteErrorDetailsMap": {
+        "agent-preset/conflict": "'agent-preset/conflict': { readonly sessionId: SessionId; readonly requestedPreset: string; readonly existingPreset?: string; };",
+        "session/agent-busy": "'session/agent-busy': { readonly reason: string; };",
+        "session/attachment-invalid": "'session/attachment-invalid': { readonly reason: string; };",
+        "session/conflict": "'session/conflict': { readonly sessionId: SessionId; readonly requestedCwd: string; readonly existingCwd?: string; };",
+        "session/fork-unavailable": "'session/fork-unavailable': { readonly sessionId: SessionId; };",
+        "session/invalid-time-zone": "'session/invalid-time-zone': { readonly value: string; };",
+        "session/model-unavailable": "'session/model-unavailable': { readonly provider: string; readonly model: string; };",
+        "session/projections-unavailable": "'session/projections-unavailable': Record<string, never>;",
+        "session/provider-credentials-unavailable": "'session/provider-credentials-unavailable': Record<string, never>;",
+        "session/provider-models-unavailable": "'session/provider-models-unavailable': { readonly provider: string; };",
+        "session/queue-item-not-found": "'session/queue-item-not-found': { readonly itemId: MessageId; };",
+        "session/steer-unavailable": "'session/steer-unavailable': { readonly itemId: MessageId; };",
+        "session/title-invalid": "'session/title-invalid': { readonly sessionId: SessionId; };",
+        "session/workspace-attach-failed": "'session/workspace-attach-failed': { readonly sessionId: SessionId; readonly workspaceId: string; };",
+        "session/writer-held": "'session/writer-held': { readonly sessionId: SessionId; };",
+        "subagent/catalog-diagnostic": "'subagent/catalog-diagnostic': { readonly parentSessionId: SessionId; readonly childSessionId: SessionId; readonly reason: 'corrupt' | 'unsupported' | 'unavailable'; };",
+        "subagent/not-found": "'subagent/not-found': { readonly parentSessionId: SessionId; readonly childSessionId: SessionId; };"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteMap": {
+        "fileReferences/list": "'fileReferences/list': (agentId: SessionId, query: string, signal?: AbortSignal) => Promise<RemoteResult<FileReferenceCandidate[]>>;",
+        "session/attachment": "'session/attachment': (request: SessionAttachmentRequest) => Promise<RemoteResult<SessionAttachmentValue>>;",
+        "session/canOpenWorkspacePath": "'session/canOpenWorkspacePath': () => Promise<RemoteResult<boolean>>;",
+        "session/cancel": "'session/cancel': (request: SessionCancelRequest) => Promise<RemoteResult<SessionCancelValue>>;",
+        "session/control": "'session/control': (signal?: AbortSignal) => RemoteStreamHandle<SessionControlFrame, never>;",
+        "session/create": "'session/create': (request: SessionCreateRequest) => Promise<RemoteResult<SessionCreateValue>>;",
+        "session/follow": "'session/follow': (request: SessionFollowRequest, signal?: AbortSignal) => RemoteStreamHandle<SessionFollowFrame, never>;",
+        "session/fork": "'session/fork': (request: SessionForkRequest) => Promise<RemoteResult<SessionForkValue>>;",
+        "session/initializeDefaultModel": "'session/initializeDefaultModel': () => Promise<RemoteResult<void>>;",
+        "session/list": "'session/list': (_request: SessionListRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionListValue>>;",
+        "session/modelCatalog": "'session/modelCatalog': () => Promise<RemoteResult<ModelCatalog>>;",
+        "session/openWorkspacePath": "'session/openWorkspacePath': (request: SessionOpenWorkspacePathRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionOpenWorkspacePathValue>>;",
+        "session/page": "'session/page': (request: SessionPageRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionPage>>;",
+        "session/projections": "'session/projections': (request: SessionProjectionsRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionProjectionsValue>>;",
+        "session/prompt": "'session/prompt': (request: SessionPromptRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionPromptValue>>;",
+        "session/rename": "'session/rename': (request: SessionRenameRequest) => Promise<RemoteResult<SessionRenameValue>>;",
+        "session/search": "'session/search': (request: SessionSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionSearchValue>>;",
+        "session/selectModel": "'session/selectModel': (request: SessionSelectModelRequest) => Promise<RemoteResult<SessionSelectModelValue>>;",
+        "session/updateQueue": "'session/updateQueue': (request: SessionUpdateQueueRequest) => Promise<RemoteResult<SessionUpdateQueueValue>>;",
+        "session/workspacePathApplications": "'session/workspacePathApplications': (request: { readonly path: string; }, signal?: AbortSignal) => Promise<RemoteResult<readonly SessionWorkspacePathApplication[]>>;",
+        "skills/list": "'skills/list': (request: SkillListRequest, signal?: AbortSignal) => Promise<RemoteResult<SkillListValue>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespace$66696c655265666572656e636573": {
+        "list": "list: (agentId: SessionId, query: string, signal?: AbortSignal) => Promise<RemoteResult<FileReferenceCandidate[]>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespace$73657373696f6e": {
+        "attachment": "attachment: (request: SessionAttachmentRequest) => Promise<RemoteResult<SessionAttachmentValue>>;",
+        "canOpenWorkspacePath": "canOpenWorkspacePath: () => Promise<RemoteResult<boolean>>;",
+        "cancel": "cancel: (request: SessionCancelRequest) => Promise<RemoteResult<SessionCancelValue>>;",
+        "control": "control: (signal?: AbortSignal) => RemoteStreamHandle<SessionControlFrame, never>;",
+        "create": "create: (request: SessionCreateRequest) => Promise<RemoteResult<SessionCreateValue>>;",
+        "follow": "follow: (request: SessionFollowRequest, signal?: AbortSignal) => RemoteStreamHandle<SessionFollowFrame, never>;",
+        "fork": "fork: (request: SessionForkRequest) => Promise<RemoteResult<SessionForkValue>>;",
+        "initializeDefaultModel": "initializeDefaultModel: () => Promise<RemoteResult<void>>;",
+        "list": "list: (_request: SessionListRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionListValue>>;",
+        "modelCatalog": "modelCatalog: () => Promise<RemoteResult<ModelCatalog>>;",
+        "openWorkspacePath": "openWorkspacePath: (request: SessionOpenWorkspacePathRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionOpenWorkspacePathValue>>;",
+        "page": "page: (request: SessionPageRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionPage>>;",
+        "projections": "projections: (request: SessionProjectionsRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionProjectionsValue>>;",
+        "prompt": "prompt: (request: SessionPromptRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionPromptValue>>;",
+        "rename": "rename: (request: SessionRenameRequest) => Promise<RemoteResult<SessionRenameValue>>;",
+        "search": "search: (request: SessionSearchRequest, signal?: AbortSignal) => Promise<RemoteResult<SessionSearchValue>>;",
+        "selectModel": "selectModel: (request: SessionSelectModelRequest) => Promise<RemoteResult<SessionSelectModelValue>>;",
+        "updateQueue": "updateQueue: (request: SessionUpdateQueueRequest) => Promise<RemoteResult<SessionUpdateQueueValue>>;",
+        "workspacePathApplications": "workspacePathApplications: (request: { readonly path: string; }, signal?: AbortSignal) => Promise<RemoteResult<readonly SessionWorkspacePathApplication[]>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespace$736b696c6c73": {
+        "list": "list: (request: SkillListRequest, signal?: AbortSignal) => Promise<RemoteResult<SkillListValue>>;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteNamespaceMap": {
+        "fileReferences": "'fileReferences': TypertRemoteNamespace$66696c655265666572656e636573;",
+        "session": "'session': TypertRemoteNamespace$73657373696f6e;",
+        "skills": "'skills': TypertRemoteNamespace$736b696c6c73;"
+      },
+      "@deepseek-ai/dsh-typert-protocol#TypertRemoteScopeMap": {
+        "agent:fileReferences/list": "'agent:fileReferences/list': (query: string, signal?: AbortSignal) => Promise<RemoteResult<FileReferenceCandidate[]>>;"
+      }
+    },
+    "exports": {
+      ".": {
+        "ApiSessionNotFound": {
+          "$declaration": "class ApiSessionNotFound extends Error { }"
+        },
+        "Config": {
+          "$declaration": "interface Config { }",
+          "nativeOpen": "readonly nativeOpen?: boolean;"
+        },
+        "ModelCatalog": {
+          "$declaration": "interface ModelCatalog { }",
+          "default": "readonly default: ModelSelection;",
+          "failures": "readonly failures: readonly ModelCatalogFailure[];",
+          "groups": "readonly groups: readonly ModelProviderGroup[];",
+          "routableProviders": "readonly routableProviders: readonly string[];"
+        },
+        "ModelCatalogFailure": {
+          "$declaration": "interface ModelCatalogFailure { }",
+          "id": "readonly id: string;",
+          "message": "readonly message: string;",
+          "name": "readonly name: string;"
+        },
+        "ModelCatalogModel": {
+          "$declaration": "interface ModelCatalogModel { }",
+          "description": "readonly description?: string;",
+          "id": "readonly id: string;",
+          "name": "readonly name: string;",
+          "reasoning": "readonly reasoning?: ModelReasoning;"
+        },
+        "ModelProviderGroup": {
+          "$declaration": "interface ModelProviderGroup { }",
+          "id": "readonly id: string;",
+          "models": "readonly models: readonly ModelCatalogModel[];",
+          "name": "readonly name: string;"
+        },
+        "ModelReasoning": {
+          "$declaration": "interface ModelReasoning { }",
+          "defaultEffort": "readonly defaultEffort?: string;",
+          "efforts": "readonly efforts: readonly ModelReasoningEffort[];"
+        },
+        "ModelReasoningEffort": {
+          "$declaration": "interface ModelReasoningEffort { }",
+          "description": "readonly description?: string;",
+          "id": "readonly id: string;",
+          "name": "readonly name: string;"
+        },
+        "ModelSelection": {
+          "$declaration": "interface ModelSelection { }",
+          "model": "readonly model: string;",
+          "provider": "readonly provider: string;",
+          "reasoningEffort": "readonly reasoningEffort?: string;"
+        },
+        "ModelSelectionProjection": {
+          "$declaration": "interface ModelSelectionProjection { }",
+          "lastUsed": "readonly lastUsed: ModelSelection | null;",
+          "next": "readonly next: ModelSelection | null;"
+        },
+        "ModelSelectionProjectionState": {
+          "$declaration": "interface ModelSelectionProjectionState { }",
+          "lastUsed": "readonly lastUsed: ModelSelection | null;",
+          "pending": "readonly pending: ModelSelection | null;"
+        },
+        "PromptContentPart": "type PromptContentPart = { readonly type: 'text'; readonly text: string; } | { readonly type: 'image'; readonly mediaType: ImageMediaType; readonly data: string; readonly name?: string; } | { readonly type: 'file'; readonly receiptId: Branded<'file-upload-receipt-id'>; };",
+        "QueueAction": "type QueueAction = { readonly kind: 'edit'; readonly content: readonly TextBlock[]; } | { readonly kind: 'remove'; } | { readonly kind: 'steer'; };",
+        "SESSION_SEARCH_RESULT_LIMIT": "const SESSION_SEARCH_RESULT_LIMIT = 20;",
+        "SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS": "const SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS = 240;",
+        "SessionAddress": "type SessionAddress = { readonly kind: 'session'; readonly sessionId: SessionId; } | { readonly kind: 'subagent'; readonly parentSessionId: SessionId; readonly childSessionId: SessionId; readonly mode: 'one-shot' | 'continuable' | 'unknown'; };",
+        "SessionAssistantStreamAttempt": {
+          "$declaration": "interface SessionAssistantStreamAttempt { }",
+          "attemptId": "readonly attemptId: LlmAttemptId;",
+          "nextIndex": "readonly nextIndex: number;",
+          "startedAfterSeq": "readonly startedAfterSeq: SessionSeqCursor;",
+          "step": "readonly step: number;",
+          "stream": "readonly stream: readonly JsonValue[];",
+          "turn": "readonly turn: number;"
+        },
+        "SessionAssistantStreamBaseline": {
+          "$declaration": "interface SessionAssistantStreamBaseline { }",
+          "activeAttempt": "readonly activeAttempt?: SessionAssistantStreamAttempt;",
+          "revision": "readonly revision: number;"
+        },
+        "SessionAssistantStreamFrame": "type SessionAssistantStreamFrame = { readonly type: 'start'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly startedAfterSeq: SessionSeqCursor; readonly turn: number; readonly step: number; } | { readonly type: 'chunk'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly index: number; readonly time: number; readonly chunk: JsonValue; } | { readonly type: 'end'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly index: number; readonly outcome: { readonly kind: 'committed'; readonly eventType: 'assistant/message' | 'assistant/attempt'; readonly seq: number; } | { readonly kind: 'abandoned'; }; };",
+        "SessionAttachmentRequest": {
+          "$declaration": "interface SessionAttachmentRequest { }",
+          "attachmentId": "readonly attachmentId: AttachmentIdType;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionAttachmentValue": {
+          "$declaration": "interface SessionAttachmentValue { }",
+          "attachment": "readonly attachment: ImageAttachmentRef;",
+          "data": "readonly data: string;"
+        },
+        "SessionCancelRequest": {
+          "$declaration": "interface SessionCancelRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionCancelValue": {
+          "$declaration": "interface SessionCancelValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionControlBaseline": {
+          "$declaration": "interface SessionControlBaseline { }",
+          "projections": "readonly projections: Readonly<Record<SessionId, SessionProjectionBaseline>>;"
+        },
+        "SessionControlFrame": "type SessionControlFrame = { readonly type: 'baseline'; readonly value: SessionControlBaseline; } | ({ readonly type: 'projection'; } & SessionProjectionUpdate);",
+        "SessionController": {
+          "$declaration": "class SessionController extends TypertRemoteService { }",
+          "Config": "static Config: z<Config>;",
+          "attachment": "attachment(request: SessionAttachmentRequest): Promise<SessionAttachmentValue>;",
+          "canOpenWorkspacePath": "canOpenWorkspacePath(): boolean;",
+          "cancel": "cancel(request: SessionCancelRequest): SessionCancelValue;",
+          "constructor": "constructor(ctx: Context, config: Config, internals?: SessionControllerInternals);",
+          "control": "control(signal: AbortSignal): AsyncIterable<SessionControlFrame>;",
+          "create": "create(request: SessionCreateRequest): Promise<SessionCreateValue>;",
+          "follow": "follow(request: SessionFollowRequest, signal: AbortSignal): AsyncIterable<SessionFollowFrame>;",
+          "fork": "fork(request: SessionForkRequest): Promise<SessionForkValue>;",
+          "initializeDefaultModel": "initializeDefaultModel(): Promise<void>;",
+          "inject": "static inject: string[];",
+          "inspect": "inspect(sessionId: SessionId, signal?: AbortSignal): Promise<SessionInspection>;",
+          "list": "list(_request: SessionListRequest, signal: AbortSignal): Promise<SessionListValue>;",
+          "modelCatalog": "modelCatalog(): Promise<ModelCatalog>;",
+          "openWorkspacePath": "openWorkspacePath(request: SessionOpenWorkspacePathRequest, signal: AbortSignal): Promise<SessionOpenWorkspacePathValue>;",
+          "page": "page(request: SessionPageRequest, signal: AbortSignal): Promise<SessionPage>;",
+          "projections": "projections(request: SessionProjectionsRequest, signal: AbortSignal): Promise<SessionProjectionsValue>;",
+          "prompt": "prompt(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue>;",
+          "rename": "rename(request: SessionRenameRequest): Promise<SessionRenameValue>;",
+          "resolveAgent": "resolveAgent(sessionId: SessionId): Promise<ApiSessionAgentResult>;",
+          "search": "search(request: SessionSearchRequest, signal: AbortSignal): Promise<SessionSearchValue>;",
+          "selectModel": "selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>;",
+          "updateQueue": "updateQueue(request: SessionUpdateQueueRequest): Promise<SessionUpdateQueueValue>;",
+          "workspaceDesktop": "workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 'explorer' | 'directory' | null; };",
+          "workspacePathApplications": "workspacePathApplications(request: { readonly path: string; }, signal: AbortSignal): Promise<readonly SessionWorkspacePathApplication[]>;"
+        },
+        "SessionControllerInternals": {
+          "$declaration": "interface SessionControllerInternals { }",
+          "canOpenPath": "readonly canOpenPath?: () => boolean;",
+          "fileApplications": "readonly fileApplications?: typeof nativeFileApplications;",
+          "openFileApplication": "readonly openFileApplication?: typeof openNativeFileApplication;",
+          "openPath": "readonly openPath?: (path: string, signal: AbortSignal) => Promise<void>;",
+          "revealPath": "readonly revealPath?: (path: string, signal: AbortSignal) => Promise<void>;"
+        },
+        "SessionCreateRequest": {
+          "$declaration": "interface SessionCreateRequest { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "cwd": "readonly cwd?: string;",
+          "sessionId": "readonly sessionId?: SessionId;",
+          "workspaceId": "readonly workspaceId?: WorkspaceId;"
+        },
+        "SessionCreateValue": {
+          "$declaration": "interface SessionCreateValue { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionEventEntry": {
+          "$declaration": "interface SessionEventEntry { }",
+          "event": "readonly event: SessionWireEvent;",
+          "type": "readonly type: 'event';"
+        },
+        "SessionFileReferences": {
+          "$declaration": "class SessionFileReferences extends TypertRemoteService { }",
+          "constructor": "constructor(ctx: Context);",
+          "inject": "static inject: string[];",
+          "list": "list(agent: Agent, query: string, signal: AbortSignal): Promise<FileReferenceCandidate[]>;"
+        },
+        "SessionFollowFrame": "type SessionFollowFrame = { readonly type: 'snapshot'; readonly header: SessionWireHeader; readonly cursor: number; readonly records: readonly SessionHistoryRecord[]; readonly hasMore: boolean; readonly projections: SessionProjectionBaseline; readonly assistantStream?: SessionAssistantStreamBaseline; } | SessionEventEntry | { readonly type: 'assistant-stream'; readonly frame: SessionAssistantStreamFrame; };",
+        "SessionFollowRequest": {
+          "$declaration": "interface SessionFollowRequest extends Pick<SessionPageRequest, 'maxMessages' | 'turnWindow'> { }",
+          "address": "readonly address: SessionAddress;",
+          "assistantStream": "readonly assistantStream?: true;"
+        },
+        "SessionForkRequest": {
+          "$declaration": "interface SessionForkRequest { }",
+          "atSeq": "readonly atSeq?: number;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionForkValue": {
+          "$declaration": "interface SessionForkValue { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionHistoryRecord": "type SessionHistoryRecord = SessionEventEntry;",
+        "SessionListMetadata": {
+          "$declaration": "interface SessionListMetadata { }",
+          "blank": "readonly blank: boolean;",
+          "lastPromptAt": "readonly lastPromptAt: number | null;"
+        },
+        "SessionListRequest": {
+          "$declaration": "interface SessionListRequest { }",
+          "cursor": "readonly cursor?: string;"
+        },
+        "SessionListValue": {
+          "$declaration": "interface SessionListValue { }",
+          "items": "readonly items: readonly SessionSummary[];"
+        },
+        "SessionOpenWorkspacePathRequest": {
+          "$declaration": "interface SessionOpenWorkspacePathRequest { }",
+          "action": "readonly action?: 'reveal';",
+          "application": "readonly application?: string;",
+          "path": "readonly path: string;"
+        },
+        "SessionOpenWorkspacePathValue": {
+          "$declaration": "interface SessionOpenWorkspacePathValue { }",
+          "opened": "readonly opened: true;"
+        },
+        "SessionPage": {
+          "$declaration": "interface SessionPage { }",
+          "hasMore": "readonly hasMore: boolean;",
+          "records": "readonly records: readonly SessionHistoryRecord[];"
+        },
+        "SessionPageRequest": {
+          "$declaration": "interface SessionPageRequest { }",
+          "address": "readonly address: SessionAddress;",
+          "beforeSeq": "readonly beforeSeq?: number;",
+          "maxMessages": "readonly maxMessages?: number;",
+          "throughSeq": "readonly throughSeq: number;",
+          "turnWindow": "readonly turnWindow?: { readonly minMessages: number; readonly minTurns: number; };"
+        },
+        "SessionProjectionBaseline": {
+          "$declaration": "interface SessionProjectionBaseline { }",
+          "asOfSeq": "readonly asOfSeq: number;",
+          "values": "readonly values: SessionProjectionValues;"
+        },
+        "SessionProjectionHints": {
+          "$declaration": "interface SessionProjectionHints { }",
+          "asOfSeq": "readonly asOfSeq: number;",
+          "kind": "readonly kind: 'cached' | 'sequenced';",
+          "values": "readonly values: SessionProjectionValues;"
+        },
+        "SessionProjectionUpdate": {
+          "$declaration": "interface SessionProjectionUpdate { }",
+          "key": "readonly key: string;",
+          "seq": "readonly seq: number;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "value": "readonly value: JsonValue;"
+        },
+        "SessionProjectionValue": "type SessionProjectionValue = JsonValue;",
+        "SessionProjectionValues": "type SessionProjectionValues = Partial<SessionProjectionMap> & Readonly<Record<string, SessionProjectionValue>>;",
+        "SessionProjectionsRequest": {
+          "$declaration": "interface SessionProjectionsRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionProjectionsValue": "type SessionProjectionsValue = SessionProjectionBaseline | null;",
+        "SessionPromptRequest": {
+          "$declaration": "interface SessionPromptRequest { }",
+          "clientTimeZone": "readonly clientTimeZone?: string;",
+          "content": "readonly content: readonly PromptContentPart[];",
+          "mode": "readonly mode: 'queue' | 'steer';",
+          "requestId": "readonly requestId: SessionRequestId;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionPromptValue": {
+          "$declaration": "interface SessionPromptValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionRenameRequest": {
+          "$declaration": "interface SessionRenameRequest { }",
+          "sessionId": "readonly sessionId: SessionId;",
+          "title": "readonly title: string;"
+        },
+        "SessionRenameValue": {
+          "$declaration": "interface SessionRenameValue { }",
+          "seq": "readonly seq: number;",
+          "title": "readonly title: string;"
+        },
+        "SessionRequestId": "type SessionRequestId = Branded<'session-request-id'>;",
+        "SessionSearchItem": {
+          "$declaration": "interface SessionSearchItem { }",
+          "sessionId": "readonly sessionId: SessionId;",
+          "snippet": "readonly snippet: string;"
+        },
+        "SessionSearchRequest": {
+          "$declaration": "interface SessionSearchRequest { }",
+          "query": "readonly query: string;"
+        },
+        "SessionSearchValue": {
+          "$declaration": "interface SessionSearchValue { }",
+          "hasMore": "readonly hasMore: boolean;",
+          "items": "readonly items: readonly SessionSearchItem[];"
+        },
+        "SessionSelectModelRequest": {
+          "$declaration": "interface SessionSelectModelRequest extends ModelSelection { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionSelectModelValue": {
+          "$declaration": "interface SessionSelectModelValue { }",
+          "selected": "readonly selected: ModelSelection;"
+        },
+        "SessionSkillCatalog": {
+          "$declaration": "class SessionSkillCatalog extends TypertRemoteService { }",
+          "constructor": "constructor(ctx: Context);",
+          "inject": "static inject: string[];",
+          "list": "list(request: SkillListRequest, signal: AbortSignal): Promise<SkillListValue>;"
+        },
+        "SessionSummary": {
+          "$declaration": "interface SessionSummary { }",
+          "agentAvailable": "readonly agentAvailable: boolean;",
+          "blank": "readonly blank: boolean;",
+          "cwd": "readonly cwd?: string;",
+          "origin": "readonly origin?: 'subagent';",
+          "parentSessionId": "readonly parentSessionId?: SessionId;",
+          "projections": "readonly projections?: SessionProjectionHints;",
+          "running": "readonly running: boolean;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "updatedAt": "readonly updatedAt: number;"
+        },
+        "SessionUpdateQueueRequest": {
+          "$declaration": "interface SessionUpdateQueueRequest { }",
+          "action": "readonly action: QueueAction;",
+          "itemId": "readonly itemId: MessageId;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionUpdateQueueValue": {
+          "$declaration": "interface SessionUpdateQueueValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionWireEvent": {
+          "$declaration": "interface SessionWireEvent { }",
+          "data": "readonly data: JsonValue;",
+          "ignorable": "readonly ignorable?: true;",
+          "seq": "readonly seq: number;",
+          "sourceEventSeqs": "readonly sourceEventSeqs?: JsonValue;",
+          "surfaceOp": "readonly surfaceOp?: JsonValue;",
+          "time": "readonly time: number;",
+          "type": "readonly type: string;"
+        },
+        "SessionWireHeader": {
+          "$declaration": "interface SessionWireHeader { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "createdAt": "readonly createdAt: number;",
+          "cwd": "readonly cwd?: string;",
+          "delegationDepth": "readonly delegationDepth?: number;",
+          "id": "readonly id: SessionId;",
+          "isSeeded": "readonly isSeeded: boolean;",
+          "origin": "readonly origin?: 'subagent';",
+          "parentSession": "readonly parentSession?: SessionId;",
+          "version": "readonly version: number;"
+        },
+        "SessionWireSurfaceOp": "type SessionWireSurfaceOp = 'append' | { readonly op: 'replace'; readonly startSeq: number; readonly endSeq: number; };",
+        "SessionWorkspacePathApplication": "type SessionWorkspacePathApplication = NativeFileApplication;",
+        "SkillEntry": {
+          "$declaration": "interface SkillEntry { }",
+          "description": "readonly description: string;",
+          "modelInvocable": "readonly modelInvocable: boolean;",
+          "name": "readonly name: string;",
+          "path": "readonly path?: string;",
+          "whenToUse": "readonly whenToUse?: string;"
+        },
+        "SkillListRequest": {
+          "$declaration": "interface SkillListRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SkillListValue": {
+          "$declaration": "interface SkillListValue { }",
+          "skills": "readonly skills: readonly SkillEntry[];"
+        },
+        "buildModelCatalog": "function buildModelCatalog(ctx: Context, defaultSelection?: ModelSelection): Promise<ModelCatalog>;",
+        "default": {
+          "$declaration": "class SessionController extends TypertRemoteService { }",
+          "Config": "static Config: z<Config>;",
+          "attachment": "attachment(request: SessionAttachmentRequest): Promise<SessionAttachmentValue>;",
+          "canOpenWorkspacePath": "canOpenWorkspacePath(): boolean;",
+          "cancel": "cancel(request: SessionCancelRequest): SessionCancelValue;",
+          "constructor": "constructor(ctx: Context, config: Config, internals?: SessionControllerInternals);",
+          "control": "control(signal: AbortSignal): AsyncIterable<SessionControlFrame>;",
+          "create": "create(request: SessionCreateRequest): Promise<SessionCreateValue>;",
+          "follow": "follow(request: SessionFollowRequest, signal: AbortSignal): AsyncIterable<SessionFollowFrame>;",
+          "fork": "fork(request: SessionForkRequest): Promise<SessionForkValue>;",
+          "initializeDefaultModel": "initializeDefaultModel(): Promise<void>;",
+          "inject": "static inject: string[];",
+          "inspect": "inspect(sessionId: SessionId, signal?: AbortSignal): Promise<SessionInspection>;",
+          "list": "list(_request: SessionListRequest, signal: AbortSignal): Promise<SessionListValue>;",
+          "modelCatalog": "modelCatalog(): Promise<ModelCatalog>;",
+          "openWorkspacePath": "openWorkspacePath(request: SessionOpenWorkspacePathRequest, signal: AbortSignal): Promise<SessionOpenWorkspacePathValue>;",
+          "page": "page(request: SessionPageRequest, signal: AbortSignal): Promise<SessionPage>;",
+          "projections": "projections(request: SessionProjectionsRequest, signal: AbortSignal): Promise<SessionProjectionsValue>;",
+          "prompt": "prompt(request: SessionPromptRequest, signal: AbortSignal): Promise<SessionPromptValue>;",
+          "rename": "rename(request: SessionRenameRequest): Promise<SessionRenameValue>;",
+          "resolveAgent": "resolveAgent(sessionId: SessionId): Promise<ApiSessionAgentResult>;",
+          "search": "search(request: SessionSearchRequest, signal: AbortSignal): Promise<SessionSearchValue>;",
+          "selectModel": "selectModel(request: SessionSelectModelRequest): Promise<SessionSelectModelValue>;",
+          "updateQueue": "updateQueue(request: SessionUpdateQueueRequest): Promise<SessionUpdateQueueValue>;",
+          "workspaceDesktop": "workspaceDesktop(): { name: string; available: boolean; fileManager: 'finder' | 'explorer' | 'directory' | null; };",
+          "workspacePathApplications": "workspacePathApplications(request: { readonly path: string; }, signal: AbortSignal): Promise<readonly SessionWorkspacePathApplication[]>;"
+        }
+      },
+      "./client": {
+        "AgentContext": "type AgentContext = Omit<Context, 'remote'> & { readonly remote: ClientRemote & TypertRemoteScopeApi<'agent'>; };",
+        "AgentScopeHandle": {
+          "$declaration": "interface AgentScopeHandle { }",
+          "ctx": "ctx: AgentContext;",
+          "fiber": "fiber: Fiber;"
+        },
+        "AssistantLiveChunkEvent": {
+          "$declaration": "interface AssistantLiveChunkEvent { }",
+          "data": "readonly data: { readonly attemptId: LlmAttemptId; readonly turn: number; readonly step: number; readonly chunk: StreamChunk; };",
+          "seq": "readonly seq: number;",
+          "time": "readonly time: number;",
+          "type": "readonly type: 'assistant/live-chunk';"
+        },
+        "BeginSubmissionInput": {
+          "$declaration": "interface BeginSubmissionInput { }",
+          "attachments": "readonly attachments: readonly PendingSubmissionAttachment[];",
+          "mode": "readonly mode: 'queue' | 'steer';",
+          "onRetire": "readonly onRetire?: (retirement: PendingSubmissionRetirement) => void;",
+          "text": "readonly text: string;"
+        },
+        "ClientSessionPageRequest": "type ClientSessionPageRequest = Omit<SessionPageRequest, 'address' | 'throughSeq'>;",
+        "ISession": {
+          "$declaration": "interface ISession { }",
+          "beginSubmission": "beginSubmission(input: BeginSubmissionInput): SubmissionHandle;",
+          "cancel": "cancel(): Promise<RemoteResult<{ accepted: true; }>>;",
+          "command": "command(line: string): Promise<RemoteResult<{ matched: boolean; }>>;",
+          "loadOlder": "loadOlder(): Promise<void>;",
+          "loadThrough": "loadThrough(seq: SessionSeq): Promise<void>;",
+          "projections": "readonly projections: ProjectionsFace;",
+          "prompt": "prompt(content: PromptContentPart[], mode: 'queue' | 'steer', signal?: AbortSignal, requestId?: SessionRequestId): Promise<RemoteResult<{ accepted: true; }>>;",
+          "readAttachment": "readAttachment(attachmentId: AttachmentIdType): Promise<RemoteResult<{ attachment: ImageAttachmentRef; data: Uint8Array; }>>;",
+          "rename": "rename(title: string): Promise<RemoteResult<{ title: string; seq: SessionSeq; }>>;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "updateQueue": "updateQueue(itemId: MessageId, action: QueueAction): Promise<RemoteResult<{ accepted: true; }>>;"
+        },
+        "ISessions": {
+          "$declaration": "interface ISessions { }",
+          "binding": "binding(id: SessionId): SessionBinding | undefined;",
+          "create": "create(opts?: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; }): Promise<SessionId>;",
+          "fork": "fork(opts: { sessionId: SessionId; atSeq?: number; increaseTitle?: boolean; }): Promise<SessionId>;",
+          "list": "readonly list: ObservableSnapshot<SessionListState>;",
+          "refresh": "refresh(): Promise<void>;",
+          "refreshProjections": "refreshProjections(sessionId: SessionId): Promise<void>;",
+          "retain": "retain(target: SessionTarget, options: SessionRetainOptions): SessionReference;",
+          "retainInfo": "retainInfo(id: SessionId): ObservableSnapshot<SessionRetainInfo>;",
+          "scope": "scope(id: SessionId): AgentContext | undefined;",
+          "scopeOf": "scopeOf(ctx: Context): SessionId | undefined;",
+          "search": "search(query: string, signal: AbortSignal): Promise<RemoteResult<{ items: SessionSearchResultItem[]; hasMore: boolean; }>>;",
+          "searchResultLimit": "readonly searchResultLimit: number;",
+          "sessionOf": "sessionOf(ctx: Context): SessionFace | undefined;",
+          "subagentAddress": "subagentAddress(id: SessionId): SubagentAddress | undefined;",
+          "using": "using<T>(target: SessionTarget, options: SessionRetainOptions, operation: (reference: SessionReference) => T | Promise<T>): Promise<T>;"
+        },
+        "MutableSessionEventSource": {
+          "$declaration": "class MutableSessionEventSource implements SessionEventSource { }",
+          "append": "append(entry: SessionEventLikeEntry): void;",
+          "getSnapshot": "getSnapshot(): SessionEventWindow;",
+          "prepend": "prepend(entries: readonly SessionEventLikeEntry[], hasMore: boolean): void;",
+          "replace": "replace(entries: readonly SessionEventLikeEntry[], hasMore: boolean): void;",
+          "settleAssistant": "settleAssistant(attemptId: LlmAttemptId, entry?: SessionAssistantSettlementEntry): void;",
+          "subscribe": "subscribe(listener: () => void): () => void;"
+        },
+        "OpenState": "type OpenState = 'cold' | 'loading' | 'open' | 'error';",
+        "PendingSubmission": {
+          "$declaration": "interface PendingSubmission { }",
+          "attachments": "readonly attachments: readonly PendingSubmissionAttachment[];",
+          "placement": "readonly placement: PendingSubmissionPlacement;",
+          "requestId": "readonly requestId: SessionRequestId;",
+          "text": "readonly text: string;",
+          "time": "readonly time: number;"
+        },
+        "PendingSubmissionAttachment": "type PendingSubmissionAttachment = PendingSubmissionImageAttachment | PendingSubmissionFileAttachment;",
+        "PendingSubmissionFileAttachment": {
+          "$declaration": "interface PendingSubmissionFileAttachment { }",
+          "type": "readonly type: 'file';",
+          "value": "readonly value: FileAttachmentRef;"
+        },
+        "PendingSubmissionImage": {
+          "$declaration": "interface PendingSubmissionImage { }",
+          "height": "readonly height?: number;",
+          "name": "readonly name?: string;",
+          "previewUrl": "readonly previewUrl: string;",
+          "width": "readonly width?: number;"
+        },
+        "PendingSubmissionImageAttachment": {
+          "$declaration": "interface PendingSubmissionImageAttachment { }",
+          "type": "readonly type: 'image';",
+          "value": "readonly value: PendingSubmissionImage;"
+        },
+        "PendingSubmissionPlacement": "type PendingSubmissionPlacement = 'transcript' | 'queued' | 'steering';",
+        "PendingSubmissionRetirement": "type PendingSubmissionRetirement = { readonly reason: 'observed'; readonly attachments: readonly (ImageAttachmentRef | FileAttachmentRef)[]; } | { readonly reason: 'failed'; };",
+        "ProjectionValueStore": {
+          "$declaration": "class ProjectionValueStore { }",
+          "apply": "apply(key: string, value: unknown, seq: SessionSeqCursor): void;",
+          "applyCached": "applyCached(values: Readonly<Record<string, unknown>>): void;",
+          "clear": "clear(): void;",
+          "faceOf": "faceOf(key: string): ObservableSnapshot<unknown>;",
+          "get": "get(key: string): unknown;",
+          "seed": "seed(baseline: ProjectionsBaseline): void;",
+          "seqOf": "seqOf(key: string): SessionSeqCursor | undefined;",
+          "subscribeAny": "subscribeAny(listener: () => void): () => void;",
+          "values": "values(): Readonly<Partial<SessionProjectionMap>>;"
+        },
+        "ProjectionsBaseline": {
+          "$declaration": "interface ProjectionsBaseline { }",
+          "asOfSeq": "asOfSeq: SessionSeqCursor;",
+          "values": "values: Readonly<Record<string, unknown>>;"
+        },
+        "ProjectionsFace": {
+          "$declaration": "interface ProjectionsFace { }",
+          "faceOf": "faceOf(key: string): ObservableSnapshot<unknown>;"
+        },
+        "PromptError": {
+          "$declaration": "interface PromptError { }",
+          "error": "readonly error: RemoteFailure;",
+          "op": "readonly op: 'send' | 'stop';"
+        },
+        "SESSION_SEARCH_RESULT_LIMIT": "const SESSION_SEARCH_RESULT_LIMIT = 20;",
+        "SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS": "const SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS = 240;",
+        "Session": {
+          "$declaration": "class Session implements SessionFace { }",
+          "beginSubmission": "beginSubmission(input: BeginSubmissionInput): SubmissionHandle;",
+          "bindScope": "bindScope(actx: Context): void;",
+          "cancel": "cancel(): Promise<RemoteResult<{ accepted: true; }>>;",
+          "command": "command(line: string): Promise<RemoteResult<{ matched: boolean; }>>;",
+          "configureSubagent": "configureSubagent(address: SubagentAddress | undefined, parentAvailable?: boolean): void;",
+          "constructor": "constructor(sessionId: SessionId, remote: SessionRemotes, options?: SessionOptions);",
+          "dispose": "dispose(): Promise<void>;",
+          "eventSource": "readonly eventSource: MutableSessionEventSource;",
+          "getSnapshot": "getSnapshot(): SessionSnapshot;",
+          "handleAgentError": "handleAgentError(message: string): void;",
+          "handleBlank": "handleBlank(blank: boolean): void;",
+          "handleRemoved": "handleRemoved(): void;",
+          "handleRunning": "handleRunning(running: boolean): void;",
+          "handleSubagentParentAvailable": "handleSubagentParentAvailable(available: boolean): void;",
+          "loadOlder": "loadOlder(): Promise<void>;",
+          "loadThrough": "loadThrough(seq: SessionSeq): Promise<void>;",
+          "open": "open(): Promise<void>;",
+          "projections": "readonly projections: ProjectionValueStore;",
+          "prompt": "prompt(content: PromptContentPart[], mode: 'queue' | 'steer', signal?: AbortSignal, requestId?: SessionRequestId): Promise<RemoteResult<{ accepted: true; }>>;",
+          "readAttachment": "readAttachment(attachmentId: AttachmentIdType): Promise<RemoteResult<{ attachment: ImageAttachmentRef; data: Uint8Array; }>>;",
+          "rename": "rename(title: string): Promise<RemoteResult<{ title: string; seq: SessionSeq; }>>;",
+          "resync": "resync(): Promise<void>;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "subscribe": "subscribe(listener: () => void): () => void;",
+          "unbindScope": "unbindScope(): void;",
+          "updateQueue": "updateQueue(itemId: MessageId, action: QueueAction): Promise<RemoteResult<{ accepted: true; }>>;"
+        },
+        "SessionAssistantSettlementEntry": {
+          "$declaration": "interface SessionAssistantSettlementEntry { }",
+          "event": "readonly event: SessionEvent<'assistant/message'> | SessionEvent<'assistant/attempt'>;",
+          "type": "readonly type: 'event';"
+        },
+        "SessionBinding": {
+          "$declaration": "interface SessionBinding { }",
+          "ctx": "readonly ctx: AgentContext;",
+          "eventSource": "readonly eventSource: SessionEventSource;",
+          "session": "readonly session: SessionFace;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionControlStream": "type SessionControlStream = RemoteSnapshotStream<SessionControlBaselineFrame, SessionControlDeltaFrame>;",
+        "SessionControlStreamOptions": {
+          "$declaration": "interface SessionControlStreamOptions { }",
+          "accept": "readonly accept: (frame: SessionControlFrame) => void;",
+          "carrierFailed": "readonly carrierFailed?: (error: RemoteStreamCarrierError) => void;",
+          "failed": "readonly failed: (error: unknown) => void;"
+        },
+        "SessionCreateError": {
+          "$declaration": "class SessionCreateError extends Error { }",
+          "constructor": "constructor(rpcError: RemoteFailure, requestedSessionId: SessionId | undefined);",
+          "name": "readonly name = \"SessionCreateError\";",
+          "requestedSessionId": "readonly requestedSessionId: SessionId | undefined;",
+          "rpcError": "readonly rpcError: RemoteFailure;"
+        },
+        "SessionEventChange": "type SessionEventChange = { readonly kind: 'replace'; readonly entries: readonly SessionEventLikeEntry[]; } | { readonly kind: 'prepend'; readonly entries: readonly SessionEventLikeEntry[]; } | { readonly kind: 'append'; readonly entries: readonly SessionEventLikeEntry[]; } | { readonly kind: 'settle-assistant'; readonly attemptId: LlmAttemptId; readonly entry?: SessionAssistantSettlementEntry; };",
+        "SessionEventLike": "type SessionEventLike = SessionEvent | AssistantLiveChunkEvent;",
+        "SessionEventLikeEntry": "type SessionEventLikeEntry = { readonly type: 'event'; readonly event: SessionEvent; } | { readonly type: 'transient'; readonly event: AssistantLiveChunkEvent; };",
+        "SessionEventSource": "type SessionEventSource = ObservableSnapshot<SessionEventWindow>;",
+        "SessionEventStream": {
+          "$declaration": "class SessionEventStream extends RemoteJournalStream<SessionJournalPage, SessionHistoryRecord, number, ClientSessionPageRequest, SessionAssistantStreamFrame> { }",
+          "constructor": "constructor(remote: SessionRemotes, address: SessionAddress, options: SessionEventStreamOptions);",
+          "follow": "protected follow(request: ClientSessionPageRequest, signal: AbortSignal): AsyncIterable<RemoteJournalFrame<SessionHistoryRecord, number, SessionJournalPage, SessionAssistantStreamFrame>>;",
+          "readPage": "protected readPage(request: ClientSessionPageRequest, throughSeq: number, signal: AbortSignal): Promise<SessionJournalPage>;",
+          "repairRequest": "protected repairRequest(request: ClientSessionPageRequest): ClientSessionPageRequest;"
+        },
+        "SessionEventStreamOptions": {
+          "$declaration": "interface SessionEventStreamOptions { }",
+          "carrierFailed": "readonly carrierFailed?: (error: RemoteStreamCarrierError) => void;",
+          "failed": "readonly failed: (error: unknown) => void;",
+          "publish": "readonly publish: (change: SessionJournalChange) => void;"
+        },
+        "SessionEventWindow": {
+          "$declaration": "interface SessionEventWindow { }",
+          "change": "readonly change: SessionEventChange;",
+          "entries": "readonly entries: readonly SessionEventLikeEntry[];",
+          "hasMore": "readonly hasMore: boolean;",
+          "revision": "readonly revision: number;"
+        },
+        "SessionFace": "type SessionFace = ISession & ObservableSnapshot<SessionSnapshot>;",
+        "SessionForkError": {
+          "$declaration": "class SessionForkError extends Error { }",
+          "constructor": "constructor(rpcError: RemoteFailure, sourceSessionId: SessionId);",
+          "name": "readonly name = \"SessionForkError\";",
+          "rpcError": "readonly rpcError: RemoteFailure;",
+          "sourceSessionId": "readonly sourceSessionId: SessionId;"
+        },
+        "SessionJournalChange": "type SessionJournalChange = { readonly type: 'replace' | 'prepend'; readonly page: SessionJournalPage; readonly entries: readonly SessionEventLikeEntry[]; readonly hasMore: boolean; } | { readonly type: 'append'; readonly entry: SessionLiveEventEntry; } | { readonly type: 'assistant-stream'; readonly frame: SessionAssistantStreamFrame; };",
+        "SessionListPhase": "type SessionListPhase = 'pending' | 'ready';",
+        "SessionListSnapshot": {
+          "$declaration": "interface SessionListSnapshot { }",
+          "error": "error: RemoteFailure | null;",
+          "items": "items: readonly SessionListEntry[];",
+          "phase": "phase: SessionListPhase;",
+          "projectionsBySession": "projectionsBySession: Readonly<Record<SessionId, SessionProjectionSnapshot>>;",
+          "state": "state: 'idle' | 'loading' | 'error';"
+        },
+        "SessionListState": {
+          "$declaration": "interface SessionListState { }",
+          "byId": "byId: Record<SessionId, SessionSummary>;",
+          "ids": "ids: SessionId[];",
+          "phase": "phase: SessionListPhase;",
+          "projectionsBySession": "projectionsBySession: Readonly<Record<SessionId, SessionProjectionSnapshot>>;"
+        },
+        "SessionLiveEventEntry": "type SessionLiveEventEntry = Extract<SessionEventLikeEntry, { readonly type: 'event'; }>;",
+        "SessionProjectionMap": {
+          "$declaration": "interface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }",
+          "imageLimits": "imageLimits: ImageAttachmentLimits;",
+          "inbox": "inbox: InboxWireState;",
+          "modelSelection": "modelSelection: ModelSelectionProjection;",
+          "sessionListMetadata": "sessionListMetadata: SessionListMetadata;",
+          "subagent": "subagent: SubagentIdentityProjection | null;",
+          "subagentCatalog": "subagentCatalog: SubagentCatalogEntry[];",
+          "subagentTiming": "subagentTiming: SubagentTimingProjection;",
+          "title": "title: string | null;"
+        },
+        "SessionProjectionSnapshot": {
+          "$declaration": "interface SessionProjectionSnapshot { }",
+          "error": "readonly error: RemoteFailure | null;",
+          "state": "readonly state: 'idle' | 'loading' | 'ready' | 'error';",
+          "values": "readonly values: Readonly<Partial<SessionProjectionMap>>;"
+        },
+        "SessionReference": {
+          "$declaration": "interface SessionReference extends Disposable { }",
+          "binding": "readonly binding: SessionBinding;",
+          "ready": "readonly ready: Promise<SessionBinding>;",
+          "release": "release(): void;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionReferenceSource": "type SessionReferenceSource = Extract<keyof SessionReferenceSourceMap, string>;",
+        "SessionReferenceSourceMap": {
+          "$declaration": "interface SessionReferenceSourceMap { }",
+          "controllerOperation": "controllerOperation: unknown;",
+          "gateway": "gateway: unknown;"
+        },
+        "SessionRemote": "type SessionRemote = ClientRemote['session'];",
+        "SessionRetainInfo": {
+          "$declaration": "interface SessionRetainInfo { }",
+          "referenceCount": "readonly referenceCount: number;",
+          "retainedBy": "readonly retainedBy: Readonly<Partial<Record<SessionReferenceSource, number>>>;"
+        },
+        "SessionRetainOptions": {
+          "$declaration": "interface SessionRetainOptions { }",
+          "signal": "readonly signal?: AbortSignal | undefined;",
+          "source": "readonly source: SessionReferenceSource;"
+        },
+        "SessionSearchResultItem": {
+          "$declaration": "interface SessionSearchResultItem { }",
+          "sessionId": "sessionId: SessionId;",
+          "snippet": "snippet: string;"
+        },
+        "SessionSnapshot": {
+          "$declaration": "interface SessionSnapshot { }",
+          "awaitingFirstTurn": "readonly awaitingFirstTurn: boolean;",
+          "blank": "readonly blank: boolean;",
+          "hasMore": "readonly hasMore: boolean;",
+          "lastAgentError": "readonly lastAgentError: string | null;",
+          "loadingOlder": "readonly loadingOlder: boolean;",
+          "openError": "readonly openError: RemoteFailure | null;",
+          "openState": "readonly openState: OpenState;",
+          "pendingSubmissions": "readonly pendingSubmissions: readonly PendingSubmission[];",
+          "promptAttempted": "readonly promptAttempted: boolean;",
+          "promptError": "readonly promptError: PromptError | null;",
+          "removed": "readonly removed: boolean;",
+          "running": "readonly running: boolean;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "subagent": "readonly subagent: { readonly address: SubagentAddress; readonly parentAvailable?: boolean; } | null;"
+        },
+        "SessionSummary": {
+          "$declaration": "interface SessionSummary { }",
+          "blank": "blank: boolean;",
+          "cwd": "cwd?: string;",
+          "displayTitle": "displayTitle: string;",
+          "id": "id: SessionId;",
+          "origin": "origin?: 'subagent';",
+          "parentId": "parentId?: SessionId;",
+          "projectionValues": "projectionValues?: Readonly<Partial<SessionProjectionMap>>;",
+          "retainedBy": "readonly retainedBy: SessionRetainInfo['retainedBy'];",
+          "running": "running: boolean;",
+          "title": "title?: string;",
+          "updatedAt": "updatedAt: number;"
+        },
+        "SessionTarget": "type SessionTarget = SessionId | SubagentAddress;",
+        "SessionTransientEventEntry": "type SessionTransientEventEntry = Extract<SessionEventLikeEntry, { readonly type: 'transient'; }>;",
+        "SubmissionHandle": {
+          "$declaration": "interface SubmissionHandle { }",
+          "abandon": "abandon(): void;",
+          "requestId": "readonly requestId: SessionRequestId;"
+        },
+        "UseProjection": "type UseProjection = { <K extends Extract<keyof SessionProjectionMap, string>>(key: K): SessionProjectionMap[K] | undefined; <K extends Extract<keyof SessionProjectionMap, string>, S>(key: K, selector: (value: SessionProjectionMap[K] | undefined) => S, eq?: (a: S, b: S) => boolean): S; };",
+        "apply": "function apply(ctx: Context): void;",
+        "createScope": "function createScope(ctx: Context, key: SessionId): AgentScopeHandle;",
+        "createSessionControlStream": "function createSessionControlStream(remote: SessionRemotes, options: SessionControlStreamOptions): SessionControlStream;",
+        "inject": "const inject: string[];",
+        "scopeOf": "function scopeOf(ctx: Context): SessionId | undefined;"
+      },
+      "./remote": {
+        "TYPERT_REMOTE": "const TYPERT_REMOTE: TypertRemoteContribution;",
+        "default": "const TYPERT_REMOTE: TypertRemoteContribution;"
+      },
+      "./remote-events": {},
+      "./typert": {
+        "TYPERT": "const TYPERT: unknown;"
+      },
+      "./types": {
+        "ModelCatalog": {
+          "$declaration": "interface ModelCatalog { }",
+          "default": "readonly default: ModelSelection;",
+          "failures": "readonly failures: readonly ModelCatalogFailure[];",
+          "groups": "readonly groups: readonly ModelProviderGroup[];",
+          "routableProviders": "readonly routableProviders: readonly string[];"
+        },
+        "ModelCatalogFailure": {
+          "$declaration": "interface ModelCatalogFailure { }",
+          "id": "readonly id: string;",
+          "message": "readonly message: string;",
+          "name": "readonly name: string;"
+        },
+        "ModelCatalogModel": {
+          "$declaration": "interface ModelCatalogModel { }",
+          "description": "readonly description?: string;",
+          "id": "readonly id: string;",
+          "name": "readonly name: string;",
+          "reasoning": "readonly reasoning?: ModelReasoning;"
+        },
+        "ModelProviderGroup": {
+          "$declaration": "interface ModelProviderGroup { }",
+          "id": "readonly id: string;",
+          "models": "readonly models: readonly ModelCatalogModel[];",
+          "name": "readonly name: string;"
+        },
+        "ModelReasoning": {
+          "$declaration": "interface ModelReasoning { }",
+          "defaultEffort": "readonly defaultEffort?: string;",
+          "efforts": "readonly efforts: readonly ModelReasoningEffort[];"
+        },
+        "ModelReasoningEffort": {
+          "$declaration": "interface ModelReasoningEffort { }",
+          "description": "readonly description?: string;",
+          "id": "readonly id: string;",
+          "name": "readonly name: string;"
+        },
+        "ModelSelection": {
+          "$declaration": "interface ModelSelection { }",
+          "model": "readonly model: string;",
+          "provider": "readonly provider: string;",
+          "reasoningEffort": "readonly reasoningEffort?: string;"
+        },
+        "ModelSelectionProjection": {
+          "$declaration": "interface ModelSelectionProjection { }",
+          "lastUsed": "readonly lastUsed: ModelSelection | null;",
+          "next": "readonly next: ModelSelection | null;"
+        },
+        "ModelSelectionProjectionState": {
+          "$declaration": "interface ModelSelectionProjectionState { }",
+          "lastUsed": "readonly lastUsed: ModelSelection | null;",
+          "pending": "readonly pending: ModelSelection | null;"
+        },
+        "PromptContentPart": "type PromptContentPart = { readonly type: 'text'; readonly text: string; } | { readonly type: 'image'; readonly mediaType: ImageMediaType; readonly data: string; readonly name?: string; } | { readonly type: 'file'; readonly receiptId: Branded<'file-upload-receipt-id'>; };",
+        "QueueAction": "type QueueAction = { readonly kind: 'edit'; readonly content: readonly TextBlock[]; } | { readonly kind: 'remove'; } | { readonly kind: 'steer'; };",
+        "SESSION_SEARCH_RESULT_LIMIT": "const SESSION_SEARCH_RESULT_LIMIT = 20;",
+        "SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS": "const SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS = 240;",
+        "SessionAddress": "type SessionAddress = { readonly kind: 'session'; readonly sessionId: SessionId; } | { readonly kind: 'subagent'; readonly parentSessionId: SessionId; readonly childSessionId: SessionId; readonly mode: 'one-shot' | 'continuable' | 'unknown'; };",
+        "SessionAssistantStreamAttempt": {
+          "$declaration": "interface SessionAssistantStreamAttempt { }",
+          "attemptId": "readonly attemptId: LlmAttemptId;",
+          "nextIndex": "readonly nextIndex: number;",
+          "startedAfterSeq": "readonly startedAfterSeq: SessionSeqCursor;",
+          "step": "readonly step: number;",
+          "stream": "readonly stream: readonly JsonValue[];",
+          "turn": "readonly turn: number;"
+        },
+        "SessionAssistantStreamBaseline": {
+          "$declaration": "interface SessionAssistantStreamBaseline { }",
+          "activeAttempt": "readonly activeAttempt?: SessionAssistantStreamAttempt;",
+          "revision": "readonly revision: number;"
+        },
+        "SessionAssistantStreamFrame": "type SessionAssistantStreamFrame = { readonly type: 'start'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly startedAfterSeq: SessionSeqCursor; readonly turn: number; readonly step: number; } | { readonly type: 'chunk'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly index: number; readonly time: number; readonly chunk: JsonValue; } | { readonly type: 'end'; readonly attemptId: LlmAttemptId; readonly revision: number; readonly index: number; readonly outcome: { readonly kind: 'committed'; readonly eventType: 'assistant/message' | 'assistant/attempt'; readonly seq: number; } | { readonly kind: 'abandoned'; }; };",
+        "SessionAttachmentRequest": {
+          "$declaration": "interface SessionAttachmentRequest { }",
+          "attachmentId": "readonly attachmentId: AttachmentIdType;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionAttachmentValue": {
+          "$declaration": "interface SessionAttachmentValue { }",
+          "attachment": "readonly attachment: ImageAttachmentRef;",
+          "data": "readonly data: string;"
+        },
+        "SessionCancelRequest": {
+          "$declaration": "interface SessionCancelRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionCancelValue": {
+          "$declaration": "interface SessionCancelValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionControlBaseline": {
+          "$declaration": "interface SessionControlBaseline { }",
+          "projections": "readonly projections: Readonly<Record<SessionId, SessionProjectionBaseline>>;"
+        },
+        "SessionControlFrame": "type SessionControlFrame = { readonly type: 'baseline'; readonly value: SessionControlBaseline; } | ({ readonly type: 'projection'; } & SessionProjectionUpdate);",
+        "SessionCreateRequest": {
+          "$declaration": "interface SessionCreateRequest { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "cwd": "readonly cwd?: string;",
+          "sessionId": "readonly sessionId?: SessionId;",
+          "workspaceId": "readonly workspaceId?: WorkspaceId;"
+        },
+        "SessionCreateValue": {
+          "$declaration": "interface SessionCreateValue { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionEventEntry": {
+          "$declaration": "interface SessionEventEntry { }",
+          "event": "readonly event: SessionWireEvent;",
+          "type": "readonly type: 'event';"
+        },
+        "SessionFollowFrame": "type SessionFollowFrame = { readonly type: 'snapshot'; readonly header: SessionWireHeader; readonly cursor: number; readonly records: readonly SessionHistoryRecord[]; readonly hasMore: boolean; readonly projections: SessionProjectionBaseline; readonly assistantStream?: SessionAssistantStreamBaseline; } | SessionEventEntry | { readonly type: 'assistant-stream'; readonly frame: SessionAssistantStreamFrame; };",
+        "SessionFollowRequest": {
+          "$declaration": "interface SessionFollowRequest extends Pick<SessionPageRequest, 'maxMessages' | 'turnWindow'> { }",
+          "address": "readonly address: SessionAddress;",
+          "assistantStream": "readonly assistantStream?: true;"
+        },
+        "SessionForkRequest": {
+          "$declaration": "interface SessionForkRequest { }",
+          "atSeq": "readonly atSeq?: number;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionForkValue": {
+          "$declaration": "interface SessionForkValue { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionHistoryRecord": "type SessionHistoryRecord = SessionEventEntry;",
+        "SessionListMetadata": {
+          "$declaration": "interface SessionListMetadata { }",
+          "blank": "readonly blank: boolean;",
+          "lastPromptAt": "readonly lastPromptAt: number | null;"
+        },
+        "SessionListRequest": {
+          "$declaration": "interface SessionListRequest { }",
+          "cursor": "readonly cursor?: string;"
+        },
+        "SessionListValue": {
+          "$declaration": "interface SessionListValue { }",
+          "items": "readonly items: readonly SessionSummary[];"
+        },
+        "SessionOpenWorkspacePathRequest": {
+          "$declaration": "interface SessionOpenWorkspacePathRequest { }",
+          "action": "readonly action?: 'reveal';",
+          "application": "readonly application?: string;",
+          "path": "readonly path: string;"
+        },
+        "SessionOpenWorkspacePathValue": {
+          "$declaration": "interface SessionOpenWorkspacePathValue { }",
+          "opened": "readonly opened: true;"
+        },
+        "SessionPage": {
+          "$declaration": "interface SessionPage { }",
+          "hasMore": "readonly hasMore: boolean;",
+          "records": "readonly records: readonly SessionHistoryRecord[];"
+        },
+        "SessionPageRequest": {
+          "$declaration": "interface SessionPageRequest { }",
+          "address": "readonly address: SessionAddress;",
+          "beforeSeq": "readonly beforeSeq?: number;",
+          "maxMessages": "readonly maxMessages?: number;",
+          "throughSeq": "readonly throughSeq: number;",
+          "turnWindow": "readonly turnWindow?: { readonly minMessages: number; readonly minTurns: number; };"
+        },
+        "SessionProjectionBaseline": {
+          "$declaration": "interface SessionProjectionBaseline { }",
+          "asOfSeq": "readonly asOfSeq: number;",
+          "values": "readonly values: SessionProjectionValues;"
+        },
+        "SessionProjectionHints": {
+          "$declaration": "interface SessionProjectionHints { }",
+          "asOfSeq": "readonly asOfSeq: number;",
+          "kind": "readonly kind: 'cached' | 'sequenced';",
+          "values": "readonly values: SessionProjectionValues;"
+        },
+        "SessionProjectionUpdate": {
+          "$declaration": "interface SessionProjectionUpdate { }",
+          "key": "readonly key: string;",
+          "seq": "readonly seq: number;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "value": "readonly value: JsonValue;"
+        },
+        "SessionProjectionValue": "type SessionProjectionValue = JsonValue;",
+        "SessionProjectionValues": "type SessionProjectionValues = Partial<SessionProjectionMap> & Readonly<Record<string, SessionProjectionValue>>;",
+        "SessionProjectionsRequest": {
+          "$declaration": "interface SessionProjectionsRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionProjectionsValue": "type SessionProjectionsValue = SessionProjectionBaseline | null;",
+        "SessionPromptRequest": {
+          "$declaration": "interface SessionPromptRequest { }",
+          "clientTimeZone": "readonly clientTimeZone?: string;",
+          "content": "readonly content: readonly PromptContentPart[];",
+          "mode": "readonly mode: 'queue' | 'steer';",
+          "requestId": "readonly requestId: SessionRequestId;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionPromptValue": {
+          "$declaration": "interface SessionPromptValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionRenameRequest": {
+          "$declaration": "interface SessionRenameRequest { }",
+          "sessionId": "readonly sessionId: SessionId;",
+          "title": "readonly title: string;"
+        },
+        "SessionRenameValue": {
+          "$declaration": "interface SessionRenameValue { }",
+          "seq": "readonly seq: number;",
+          "title": "readonly title: string;"
+        },
+        "SessionRequestId": "type SessionRequestId = Branded<'session-request-id'>;",
+        "SessionSearchItem": {
+          "$declaration": "interface SessionSearchItem { }",
+          "sessionId": "readonly sessionId: SessionId;",
+          "snippet": "readonly snippet: string;"
+        },
+        "SessionSearchRequest": {
+          "$declaration": "interface SessionSearchRequest { }",
+          "query": "readonly query: string;"
+        },
+        "SessionSearchValue": {
+          "$declaration": "interface SessionSearchValue { }",
+          "hasMore": "readonly hasMore: boolean;",
+          "items": "readonly items: readonly SessionSearchItem[];"
+        },
+        "SessionSelectModelRequest": {
+          "$declaration": "interface SessionSelectModelRequest extends ModelSelection { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionSelectModelValue": {
+          "$declaration": "interface SessionSelectModelValue { }",
+          "selected": "readonly selected: ModelSelection;"
+        },
+        "SessionSummary": {
+          "$declaration": "interface SessionSummary { }",
+          "agentAvailable": "readonly agentAvailable: boolean;",
+          "blank": "readonly blank: boolean;",
+          "cwd": "readonly cwd?: string;",
+          "origin": "readonly origin?: 'subagent';",
+          "parentSessionId": "readonly parentSessionId?: SessionId;",
+          "projections": "readonly projections?: SessionProjectionHints;",
+          "running": "readonly running: boolean;",
+          "sessionId": "readonly sessionId: SessionId;",
+          "updatedAt": "readonly updatedAt: number;"
+        },
+        "SessionUpdateQueueRequest": {
+          "$declaration": "interface SessionUpdateQueueRequest { }",
+          "action": "readonly action: QueueAction;",
+          "itemId": "readonly itemId: MessageId;",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SessionUpdateQueueValue": {
+          "$declaration": "interface SessionUpdateQueueValue { }",
+          "accepted": "readonly accepted: true;"
+        },
+        "SessionWireEvent": {
+          "$declaration": "interface SessionWireEvent { }",
+          "data": "readonly data: JsonValue;",
+          "ignorable": "readonly ignorable?: true;",
+          "seq": "readonly seq: number;",
+          "sourceEventSeqs": "readonly sourceEventSeqs?: JsonValue;",
+          "surfaceOp": "readonly surfaceOp?: JsonValue;",
+          "time": "readonly time: number;",
+          "type": "readonly type: string;"
+        },
+        "SessionWireHeader": {
+          "$declaration": "interface SessionWireHeader { }",
+          "agentPreset": "readonly agentPreset?: string;",
+          "createdAt": "readonly createdAt: number;",
+          "cwd": "readonly cwd?: string;",
+          "delegationDepth": "readonly delegationDepth?: number;",
+          "id": "readonly id: SessionId;",
+          "isSeeded": "readonly isSeeded: boolean;",
+          "origin": "readonly origin?: 'subagent';",
+          "parentSession": "readonly parentSession?: SessionId;",
+          "version": "readonly version: number;"
+        },
+        "SessionWireSurfaceOp": "type SessionWireSurfaceOp = 'append' | { readonly op: 'replace'; readonly startSeq: number; readonly endSeq: number; };",
+        "SessionWorkspacePathApplication": "type SessionWorkspacePathApplication = NativeFileApplication;",
+        "SkillEntry": {
+          "$declaration": "interface SkillEntry { }",
+          "description": "readonly description: string;",
+          "modelInvocable": "readonly modelInvocable: boolean;",
+          "name": "readonly name: string;",
+          "path": "readonly path?: string;",
+          "whenToUse": "readonly whenToUse?: string;"
+        },
+        "SkillListRequest": {
+          "$declaration": "interface SkillListRequest { }",
+          "sessionId": "readonly sessionId: SessionId;"
+        },
+        "SkillListValue": {
+          "$declaration": "interface SkillListValue { }",
+          "skills": "readonly skills: readonly SkillEntry[];"
+        }
+      }
+    }
+  },
   "@deepseek-ai/dsh-compaction": {
     "augmentations": {
       "@deepseek-ai/dsh-llm#MessageSourceMap": {
@@ -775,7 +1880,7 @@
         },
         "MessageSource": "type MessageSource = MessageSourceMap[keyof MessageSourceMap];",
         "MessageSourceMap": {
-          "$declaration": "interface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }",
+          "$declaration": "interface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }\ninterface MessageSourceMap { }",
           "compact-checkpoint": "'compact-checkpoint': CompactionCheckpointSource;",
           "model": "model: ModelMessageSource;",
           "model-selection": "'model-selection': { kind: 'model-selection'; } & ContextFormed;",
@@ -785,7 +1890,8 @@
           "tool": "tool: ToolMessageSource;",
           "tool-registry": "'tool-registry': { kind: 'tool-registry'; };",
           "user": "user: { kind: 'user'; };",
-          "user-approval": "'user-approval': { kind: 'user-approval'; } & ContextFormed;"
+          "user-approval": "'user-approval': { kind: 'user-approval'; } & ContextFormed;",
+          "user-rpc": "'user-rpc': { kind: 'user'; rpcId: SessionRequestId; clientTimeZone?: string; };"
         },
         "ModelMessageSource": {
           "$declaration": "interface ModelMessageSource extends AssistantProviderMetadata { }",
@@ -1481,21 +2587,25 @@
         },
         "SessionEvent": "type SessionEvent<T extends SessionEventType = SessionEventType> = { [K in SessionEventType]: { type: K; seq: SessionSeq; time: number; data: SessionEventMap[K]; ignorable?: true; } & (K extends SurfaceEventType ? SurfaceIntent<K> : { surfaceOp?: never; sourceEventSeqs?: never; }); }[T];",
         "SessionEventMap": {
-          "$declaration": "interface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }",
+          "$declaration": "interface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }",
           "agent/inbox/spliced": "'agent/inbox/spliced': { target: InboxTarget; start: number; removedCount?: number; inserted: UserMessage[]; outcome?: 'canceled'; };",
           "approval/asked": "'approval/asked': { id: ApprovalRequestId; toolName: string; callId?: ToolCallId; reason?: string; };",
           "approval/decided": "'approval/decided': { id: ApprovalRequestId; outcome: ApprovalOutcome; };",
           "approval/policy": "'approval/policy': { policy: ApprovalPolicy; source?: 'delegation'; };",
           "assistant/attempt": "'assistant/attempt': { turn: number; step: number; stream: AssistantStreamRecord[]; };",
           "assistant/message": "'assistant/message': { turn: number; step: number; message: AssistantMessage; stream: AssistantStreamRecord[]; usage?: TokenUsage; interrupted?: true; };",
+          "command/done": "'command/done': { commandId: CommandId; kind: 'success' | 'error'; text?: string; sourceEventSeq?: import('@deepseek-ai/dsh-session/types').SessionSeq; };",
+          "command/run": "'command/run': { commandId: CommandId; name: string; args?: string; source: CommandSource; };",
           "compaction/end": "'compaction/end': { compactionId: CompactionId; sourceCommandId?: CommandId; turn: number | null; error?: string; };",
           "compaction/prune": "'compaction/prune': { shadowedRange: { start: SessionSeq; end: SessionSeq; }; shadowedSeqs: SessionSeq[]; shadowedTokenCount: number; };",
           "compaction/start": "'compaction/start': { compactionId: CompactionId; sourceCommandId?: CommandId; turn: number | null; };",
           "compaction/summary": "'compaction/summary': { compactionId: CompactionId; sourceCommandId?: CommandId; summary: ContentBlock[]; shadowedRange: { start: SessionSeq; end: SessionSeq; }; shadowedSeqs: SessionSeq[]; shadowedTokenCount: number; provider: string; model: string; maxTokens?: number; usage?: TokenUsage; } & ({ rawOutput: ContentBlock[]; llmStreamCall: true; } | { rawOutput?: ContentBlock[]; llmStreamCall?: never; });",
           "developer/message": "'developer/message': { turn: number; step: number; message: DeveloperMessage; headerSeq?: SessionSeq; };",
+          "model/selection": "'model/selection': ModelSelection;",
           "request/context": "'request/context': RequestContext;",
           "request/header": "'request/header': { header: EpochHeader; reason: RequestHeaderReason; startsSeries?: true; };",
           "session/end-seed": "'session/end-seed': { inherited?: true; };",
+          "session/title": "'session/title': SessionTitleEventData;",
           "step/end": "'step/end': { turn: number; step: number; };",
           "step/start": "'step/start': { turn: number; step: number; };",
           "system/message": "'system/message': { turn: number; step: number; message: SystemMessage; };",
@@ -1744,21 +2854,25 @@
         "SESSION_FORMAT_VERSION": "const SESSION_FORMAT_VERSION = 4;",
         "SessionEvent": "type SessionEvent<T extends SessionEventType = SessionEventType> = { [K in SessionEventType]: { type: K; seq: SessionSeq; time: number; data: SessionEventMap[K]; ignorable?: true; } & (K extends SurfaceEventType ? SurfaceIntent<K> : { surfaceOp?: never; sourceEventSeqs?: never; }); }[T];",
         "SessionEventMap": {
-          "$declaration": "interface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }",
+          "$declaration": "interface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }\ninterface SessionEventMap { }",
           "agent/inbox/spliced": "'agent/inbox/spliced': { target: InboxTarget; start: number; removedCount?: number; inserted: UserMessage[]; outcome?: 'canceled'; };",
           "approval/asked": "'approval/asked': { id: ApprovalRequestId; toolName: string; callId?: ToolCallId; reason?: string; };",
           "approval/decided": "'approval/decided': { id: ApprovalRequestId; outcome: ApprovalOutcome; };",
           "approval/policy": "'approval/policy': { policy: ApprovalPolicy; source?: 'delegation'; };",
           "assistant/attempt": "'assistant/attempt': { turn: number; step: number; stream: AssistantStreamRecord[]; };",
           "assistant/message": "'assistant/message': { turn: number; step: number; message: AssistantMessage; stream: AssistantStreamRecord[]; usage?: TokenUsage; interrupted?: true; };",
+          "command/done": "'command/done': { commandId: CommandId; kind: 'success' | 'error'; text?: string; sourceEventSeq?: import('@deepseek-ai/dsh-session/types').SessionSeq; };",
+          "command/run": "'command/run': { commandId: CommandId; name: string; args?: string; source: CommandSource; };",
           "compaction/end": "'compaction/end': { compactionId: CompactionId; sourceCommandId?: CommandId; turn: number | null; error?: string; };",
           "compaction/prune": "'compaction/prune': { shadowedRange: { start: SessionSeq; end: SessionSeq; }; shadowedSeqs: SessionSeq[]; shadowedTokenCount: number; };",
           "compaction/start": "'compaction/start': { compactionId: CompactionId; sourceCommandId?: CommandId; turn: number | null; };",
           "compaction/summary": "'compaction/summary': { compactionId: CompactionId; sourceCommandId?: CommandId; summary: ContentBlock[]; shadowedRange: { start: SessionSeq; end: SessionSeq; }; shadowedSeqs: SessionSeq[]; shadowedTokenCount: number; provider: string; model: string; maxTokens?: number; usage?: TokenUsage; } & ({ rawOutput: ContentBlock[]; llmStreamCall: true; } | { rawOutput?: ContentBlock[]; llmStreamCall?: never; });",
           "developer/message": "'developer/message': { turn: number; step: number; message: DeveloperMessage; headerSeq?: SessionSeq; };",
+          "model/selection": "'model/selection': ModelSelection;",
           "request/context": "'request/context': RequestContext;",
           "request/header": "'request/header': { header: EpochHeader; reason: RequestHeaderReason; startsSeries?: true; };",
           "session/end-seed": "'session/end-seed': { inherited?: true; };",
+          "session/title": "'session/title': SessionTitleEventData;",
           "step/end": "'step/end': { turn: number; step: number; };",
           "step/start": "'step/start': { turn: number; step: number; };",
           "system/message": "'system/message': { turn: number; step: number; message: SystemMessage; };",
@@ -2021,8 +3135,15 @@
           "values": "values: Partial<SessionProjectionMap>;"
         },
         "SessionProjectionMap": {
-          "$declaration": "interface SessionProjectionMap { }\ninterface SessionProjectionMap { }",
-          "inbox": "inbox: InboxWireState;"
+          "$declaration": "interface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }",
+          "imageLimits": "imageLimits: ImageAttachmentLimits;",
+          "inbox": "inbox: InboxWireState;",
+          "modelSelection": "modelSelection: ModelSelectionProjection;",
+          "sessionListMetadata": "sessionListMetadata: SessionListMetadata;",
+          "subagent": "subagent: SubagentIdentityProjection | null;",
+          "subagentCatalog": "subagentCatalog: SubagentCatalogEntry[];",
+          "subagentTiming": "subagentTiming: SubagentTimingProjection;",
+          "title": "title: string | null;"
         },
         "SessionProjectionRegistry": {
           "$declaration": "class SessionProjectionRegistry extends Service { }",
@@ -2039,8 +3160,13 @@
           "viewCheckpoint": "viewCheckpoint(checkpoint: ProjectionCheckpoint, keys?: readonly Extract<keyof SessionProjectionMap, string>[]): Partial<SessionProjectionMap>;"
         },
         "SessionProjectionStateMap": {
-          "$declaration": "interface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }",
+          "$declaration": "interface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }",
+          "imageLimits": "imageLimits: null;",
           "inbox": "inbox: InboxState;",
+          "modelSelection": "modelSelection: ModelSelectionProjectionState;",
+          "sessionListMetadata": "sessionListMetadata: SessionListMetadata;",
+          "title": "title: string | null;",
+          "titleInput": "titleInput: TitleInputState;",
           "turnBoundary": "turnBoundary: TurnBoundaryProjection;"
         },
         "default": {
@@ -2060,12 +3186,24 @@
       },
       "./types": {
         "SessionProjectionMap": {
-          "$declaration": "interface SessionProjectionMap { }\ninterface SessionProjectionMap { }",
-          "inbox": "inbox: InboxWireState;"
+          "$declaration": "interface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }\ninterface SessionProjectionMap { }",
+          "imageLimits": "imageLimits: ImageAttachmentLimits;",
+          "inbox": "inbox: InboxWireState;",
+          "modelSelection": "modelSelection: ModelSelectionProjection;",
+          "sessionListMetadata": "sessionListMetadata: SessionListMetadata;",
+          "subagent": "subagent: SubagentIdentityProjection | null;",
+          "subagentCatalog": "subagentCatalog: SubagentCatalogEntry[];",
+          "subagentTiming": "subagentTiming: SubagentTimingProjection;",
+          "title": "title: string | null;"
         },
         "SessionProjectionStateMap": {
-          "$declaration": "interface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }",
+          "$declaration": "interface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }\ninterface SessionProjectionStateMap { }",
+          "imageLimits": "imageLimits: null;",
           "inbox": "inbox: InboxState;",
+          "modelSelection": "modelSelection: ModelSelectionProjectionState;",
+          "sessionListMetadata": "sessionListMetadata: SessionListMetadata;",
+          "title": "title: string | null;",
+          "titleInput": "titleInput: TitleInputState;",
           "turnBoundary": "turnBoundary: TurnBoundaryProjection;"
         }
       }

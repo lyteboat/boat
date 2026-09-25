@@ -42,6 +42,9 @@
       "path": "./dsh/test-support/agent-loop-testkit"
     },
     {
+      "path": "./dsh/api/session-controller"
+    },
+    {
       "path": "./lyteboat/core/contracts"
     },
     {

@@ -60,6 +60,8 @@ export const UPSTREAM_TEST_EXCLUDES: readonly { file: string; reason: string }[]
 const SHIMS: Readonly<Record<string, string>> = {
   '../../../settings/settings/tests/live-config.ts': 'shims/live-config.ts',
   '@deepseek-ai/dsh-llm-pi-ai/src/context.ts': 'shims/pi-context.ts',
+  '../../../settings/settings/tests/configuration-fixture.ts': 'shims/configuration-fixture.ts',
+  '@deepseek-ai/dsh-subagent/src/projection.ts': 'shims/subagent-projection.ts',
 }
 
 const CORDIS_SHIM = '\0lyteboat-upstream-tests:cordis'

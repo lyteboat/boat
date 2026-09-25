@@ -27,9 +27,23 @@ overrides:
   "@deepseek-ai/dsh-compaction": "workspace:*"
   "@deepseek-ai/dsh-compaction-basic": "workspace:*"
   "@deepseek-ai/dsh-agent-loop-testkit": "workspace:*"
+  "@deepseek-ai/dsh-api-session-controller": "workspace:*"
   # The bundler behind tsdown at the version upstream's lockfile resolves, so the kernel
   # bundles (lib/index.js, lib/worker.cjs) come out byte for byte as npm publishes them.
   "rolldown": "1.1.1"
+
+# A promoted kernel package is an importer of its own, and pnpm resolves the peers of its
+# dependencies from what that importer declares. session-controller's dependencies reach kernel
+# peers it does not declare itself (dsh-subagent wants dsh-system-prompt and dsh-tools;
+# dsh-session-query reaches dsh-compaction through dsh-session-format-catalog); without them
+# pnpm keeps second copies of dsh-subagent and dsh-session-query for this importer alone, and
+# an error class imported from one copy fails `instanceof` against the other.
+packageExtensions:
+  "@deepseek-ai/dsh-api-session-controller":
+    peerDependencies:
+      "@deepseek-ai/dsh-compaction": "0.1.7-rc.2"
+      "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.2"
+      "@deepseek-ai/dsh-tools": "0.1.7-rc.2"
 
 # An agent directory (`lyteboat run --agents`) names its rows by bare package name, and they
 # resolve from the agent directory upward; the composition tests resolve rows from the

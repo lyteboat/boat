@@ -29,6 +29,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { kernelPackages, repoRoot, stableJson } from './kernel.ts'
+import { CLIENT_BUNDLE, carriesClientFace, type ClientFaceManifest } from './client-face.ts'
 
 /** The snapshot files this module generates, by file stem. */
 export interface Contract {
@@ -60,19 +61,21 @@ interface ResolvedPackage {
   name: string
   dir: string
   exports: Record<string, { types?: string; default?: string }>
+  /** Whether the package has a browser face (scripts/dist/client-face.ts). */
+  clientFace: boolean
 }
 
 function resolvePackages(root: string): ResolvedPackage[] {
   const require = createRequire(join(root, 'package.json'))
   return kernelPackages().map(({ name }) => {
     const manifestPath = realpathSync(require.resolve(`${name}/package.json`))
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { exports: Record<string, unknown> }
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { exports: Record<string, unknown> } & ClientFaceManifest
     const exports: ResolvedPackage['exports'] = {}
     for (const [subpath, target] of Object.entries(manifest.exports)) {
       if (typeof target !== 'object' || target === null) continue
       exports[subpath] = target as { types?: string; default?: string }
     }
-    return { name, dir: dirname(manifestPath), exports }
+    return { name, dir: dirname(manifestPath), exports, clientFace: carriesClientFace(manifest) }
   })
 }
 
@@ -294,6 +297,8 @@ async function generateRuntime(packages: readonly ResolvedPackage[], contract: C
     const bySubpath: Record<string, Record<string, PluginRuntimeContract>> = {}
     for (const [subpath, target] of Object.entries(pkg.exports)) {
       if (target.default === undefined) continue
+      // The browser bundle registers itself with the page's module loader on import; it has no Node plugin contract.
+      if (pkg.clientFace && target.default === CLIENT_BUNDLE) continue
       const module = await import(pathToFileURL(resolve(pkg.dir, target.default)).href) as Record<string, unknown>
       const found = moduleRuntimeContracts(module)
       if (Object.keys(found).length > 0) bySubpath[subpath] = found

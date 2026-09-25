@@ -6,6 +6,12 @@
     "agentLoop": "agentLoop: AgentLoop;",
     "configuredAgentIdentities": "configuredAgentIdentities?: ConfiguredAgentIdentities;"
   },
+  "@deepseek-ai/dsh-api-session-controller": {
+    "sessionController": "sessionController: SessionController;",
+    "sessionFileReferences": "sessionFileReferences: SessionFileReferences;",
+    "sessionSkillCatalog": "sessionSkillCatalog: SessionSkillCatalog;",
+    "sessions": "sessions: import('./contract/sessions.ts').ISessions;"
+  },
   "@deepseek-ai/dsh-compaction": {
     "compaction": "compaction: CompactionEngine;"
   },
