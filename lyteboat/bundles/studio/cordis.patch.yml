@@ -27,16 +27,14 @@
 # dsh web moves the agent plane behind its presets. A lyteboat agent runs on
 # dsh-base's agent plane, as headless, serve, and eval run it, and hides what
 # its tool policy does not declare; so a Studio session sees what a /chat one
-# does, these rows are back on the host. The workspace's AGENTS.md and the
-# package inventory stay out of model requests, as in serve.
-- id: tool-plugin-manager
-  disabled: false
-
+# does, these rows are back on the host as dsh-base has them (shell by
+# platform; the plugin manager tool stays off). The workspace's AGENTS.md and
+# the package inventory stay out of model requests, as in serve.
 - id: tool-bash
-  disabled: false
+  disabled: !!js process.platform === 'win32'
 
 - id: tool-pwsh
-  disabled: false
+  disabled: !!js process.platform !== 'win32'
 
 - id: tool-jobs
   disabled: false

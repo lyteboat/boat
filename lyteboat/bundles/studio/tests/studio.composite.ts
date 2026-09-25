@@ -131,6 +131,9 @@ describe('lyteboat studio (in process, scripted model)', () => {
     expect(loop[0]?.systemText).toContain('STUDIO-SUPPORT')
     // dsh web keeps the agent plane behind its presets; Studio puts dsh-base's back, as serve runs an agent.
     expect(loop[0]?.toolNames).toEqual(expect.arrayContaining(['skill', 'todo_write']))
+    // As dsh-base has them: the shell of the platform, and no plugin manager tool.
+    expect(loop[0]?.toolNames).not.toContain('plugin_manager')
+    expect(loop[0]?.toolNames.includes('pwsh')).toBe(process.platform === 'win32')
     const projections = await value('session/projections', { args: { request: { sessionId } } }) as { values: { [key: string]: unknown } }
     expect(projections.values['lyteboatRequest']).toMatchObject({ requests: 1, context: { customer: 'c-1' }, owner: 'studio' })
   })
