@@ -200,6 +200,30 @@ describe('state', () => {
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('Session state, accumulated from tool results')
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('portfolio')
   })
+
+  it('records the tool\'s own meta unchanged when the delta hook derives nothing', async () => {
+    const adapter = new MockAdapter([toolCallResponse('c1', 'with_meta', {}), toolCallResponse('c2', 'without_meta', {}), textResponse('done')])
+    const ctx = await harness(adapter)
+    const tool = (name: string, meta: boolean): ToolDefinition => defineTool({
+      name, description: name, parameters: {},
+      output: {
+        schema: { type: 'object', additionalProperties: false, properties: { total: { type: 'number', required: true } } },
+        render: (_args, value) => [{ type: 'text', text: `sum ${value.total}` }],
+        ...meta ? { presentationMeta: () => ({ card: 'own' }) } : {},
+      },
+      execute: async () => ({ total: 5 }),
+    })
+    ctx.toolPolicy.register(tool('with_meta', true), { stateDelta: () => undefined })
+    ctx.toolPolicy.register(tool('without_meta', false), { stateDelta: () => undefined })
+    const agent = await ctx.agentLoop.create(SessionId('no-delta'), { provider: 'mock', model: 'mock' })
+
+    await send(agent, 'go')
+    const metas = agent.session.snapshotEvents()
+      .filter((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')
+      .map(event => event.data.meta)
+    expect(metas).toEqual([{ card: 'own' }, {}])
+    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')).toEqual({})
+  })
 })
 
 describe('preset row', () => {

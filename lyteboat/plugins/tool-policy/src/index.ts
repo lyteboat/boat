@@ -79,11 +79,13 @@ function withStateDelta(definition: ToolDefinition, stateDelta: NonNullable<Lyte
       presentationMeta(args: unknown, value: JsonValue): JsonValue {
         const base = inner?.(args, value)
         const delta = stateDelta(args, value)
-        const own = delta === undefined ? {} : { stateDelta: delta }
-        if (base === undefined) return { lyteboat: own }
+        // dsh refuses an undefined presentation meta, so a call with neither a delta
+        // nor a meta of the tool's own records an empty object.
+        if (delta === undefined) return base ?? {}
+        if (base === undefined) return { lyteboat: { stateDelta: delta } }
         // A tool's own `lyteboat` object (a rendered card) merges with the delta instead of losing it.
-        if (isJsonObject(base)) return { ...base, lyteboat: { ...isJsonObject(base['lyteboat']) ? base['lyteboat'] : {}, ...own } }
-        return { presentation: base, lyteboat: own }
+        if (isJsonObject(base)) return { ...base, lyteboat: { ...isJsonObject(base['lyteboat']) ? base['lyteboat'] : {}, stateDelta: delta } }
+        return { presentation: base, lyteboat: { stateDelta: delta } }
       },
     },
   }
