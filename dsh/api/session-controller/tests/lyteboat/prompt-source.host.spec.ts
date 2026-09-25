@@ -42,7 +42,7 @@ async function promptHarness(): Promise<{ controller: SessionCommandController; 
     saveImages: () => Promise.reject(new Error('fixture did not expect image persistence')),
   }, AttachmentStore.prototype) as never)
   ctx.provide('connection', { fetch: { register: () => () => {} } } as never)
-  new FileUploads(ctx)
+  await ctx.plugin(FileUploads)
   const agents = {
     resolveAgent: () => Promise.resolve({ agent }),
     serializeImageAdmission: <Value>(_agent: Agent, operation: () => Promise<Value>) => operation(),
