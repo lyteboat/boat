@@ -1,0 +1,28 @@
+{
+  "id": "young-idle-cash",
+  "note": "28 岁，钱大多放在活期和货币基金里，风险资产偏少。",
+  "age": 28,
+  "holdings": [
+    {
+      "institution": "示例银行",
+      "name": "活期",
+      "amount": "34400.00",
+      "risky": false
+    },
+    {
+      "institution": "示例银行",
+      "name": "货币基金",
+      "amount": "20000.00",
+      "risky": false
+    },
+    {
+      "institution": "示例证券",
+      "name": "股票账户",
+      "amount": "25600.00",
+      "risky": true
+    }
+  ],
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

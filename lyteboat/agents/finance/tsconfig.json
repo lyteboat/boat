@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../dsh/llm/llm"
+    },
+    {
+      "path": "../../../dsh/core/agent"
+    },
+    {
+      "path": "../../../dsh/core/tools"
+    },
+    {
+      "path": "../../core/contracts"
+    },
+    {
+      "path": "../../plugins/tool-policy"
+    },
+    {
+      "path": "../../plugins/a2ui"
+    },
+    {
+      "path": "../../plugins/aux-llm"
+    },
+    {
+      "path": "../../plugins/intake-guard"
+    },
+    {
+      "path": "../../plugins/request-context"
+    }
+  ]
+}

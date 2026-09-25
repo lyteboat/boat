@@ -1,0 +1,55 @@
+{
+  "event": "beginRendering",
+  "version": "1.0.0",
+  "surfaceId": "finance-unauthorized",
+  "rootComponentId": "root-container",
+  "showType": "card",
+  "components": [
+    {
+      "id": "root-container",
+      "component": {
+        "Column": {
+          "width": 100,
+          "gap": 16,
+          "children": {
+            "explicitList": [
+              "auth-text",
+              "auth-btn"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "auth-text",
+      "component": {
+        "Text": {
+          "text": {
+            "literalString": "暂时没有获取到可以分析的资产。完成账户授权后，就能查看您的资产分布。"
+          },
+          "fontSize": "16px",
+          "color": "#1A1A1A"
+        }
+      }
+    },
+    {
+      "id": "auth-btn",
+      "component": {
+        "Button": {
+          "text": {
+            "literalString": "去授权"
+          },
+          "type": "primary",
+          "action": {
+            "name": "openLink",
+            "args": {
+              "url": {
+                "path": "authorize_link"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

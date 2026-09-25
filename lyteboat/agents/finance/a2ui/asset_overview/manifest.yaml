@@ -1,0 +1,21 @@
+# manifest.yaml — asset_overview: the authorized total, the steady part and the part at market risk
+# The raw data namespace: { overview: { total_line, steady_line, risky_line } }.
+
+# `deferred`: the card sits where the answer writes [[card:asset_overview]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
+paths:
+
+  total_line:
+    kind: state
+    path: "overview.total_line"
+
+  steady_line:
+    kind: state
+    path: "overview.steady_line"
+
+  risky_line:
+    kind: state
+    path: "overview.risky_line"

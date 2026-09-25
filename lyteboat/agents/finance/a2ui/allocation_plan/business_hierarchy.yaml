@@ -1,0 +1,11 @@
+# business_hierarchy.yaml — allocation_plan: one shape
+
+default: allocation_plan
+
+hierarchies:
+  allocation_plan:
+    root: root-container
+    ui_ids:
+      - title-text
+      - direction-text
+      - note-text

@@ -1,0 +1,28 @@
+{
+  "id": "pre-retiree-risky",
+  "note": "58 岁，临近退休，风险资产占比偏高。",
+  "age": 58,
+  "holdings": [
+    {
+      "institution": "示例银行",
+      "name": "活期",
+      "amount": "30000.00",
+      "risky": false
+    },
+    {
+      "institution": "示例证券",
+      "name": "股票账户",
+      "amount": "120000.00",
+      "risky": true
+    },
+    {
+      "institution": "示例证券",
+      "name": "股票基金",
+      "amount": "50000.00",
+      "risky": true
+    }
+  ],
+  "links": {
+    "authorize": "https://example.invalid/authorize"
+  }
+}

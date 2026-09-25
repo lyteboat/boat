@@ -1,0 +1,44 @@
+/**
+ * The text a finance tool hands the model. A one-line header the skill texts
+ * refer to (`[tool:<name> status=<status> ... areas=<cards>]`), then labelled
+ * sections: 【事实】 the lines the model may quote verbatim, 【回答要点】 how to
+ * shape this turn's answer, 【可引导】 the follow-ups the closing line picks from,
+ * and 【不可答】 the fixed boundary. Cards appear in the answer where the model
+ * writes their markers, one per line.
+ * @module @lyteboat/agent-finance/digest/finance-digest
+ */
+
+/** The boundary every finance digest restates, so no turn forgets it. */
+const FINANCE_BOUNDARY = '收益预测、具体产品推荐、个股能不能买、买卖时点：说明不在服务范围内，建议咨询持牌理财顾问。'
+
+interface FinanceDigest {
+  tool: string
+  status: string
+  /** Extra header fields in order (`verdict=cautious`). */
+  tags?: Readonly<Record<string, string | number>>
+  /** The cards this result prepared, by marker name; none leaves `areas=none`. */
+  areas: readonly string[]
+  facts: readonly string[]
+  guidance: readonly string[]
+  leads: readonly string[]
+}
+
+function section(title: string, lines: readonly string[]): string[] {
+  return lines.length === 0 ? [] : [`【${title}】`, ...lines.map(line => `- ${line}`)]
+}
+
+/**
+ * Lay a digest out.
+ * @param digest - the header fields and the section lines.
+ */
+export function composeFinanceDigest(digest: FinanceDigest): string {
+  const tags = Object.entries(digest.tags ?? {}).map(([key, value]) => ` ${key}=${String(value)}`).join('')
+  const areas = digest.areas.length === 0 ? 'none' : digest.areas.join(',')
+  return [
+    `[tool:${digest.tool} status=${digest.status}${tags} areas=${areas}]`,
+    ...section('事实', digest.facts),
+    ...section('回答要点', digest.guidance),
+    ...section('可引导', digest.leads),
+    ...section('不可答', [FINANCE_BOUNDARY]),
+  ].join('\n')
+}

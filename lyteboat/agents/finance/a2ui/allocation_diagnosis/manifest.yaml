@@ -1,0 +1,21 @@
+# manifest.yaml — allocation_diagnosis: the verdict and the risky share against the rule's band
+# The raw data namespace: { diagnosis: { verdict_line, risky_line, steady_line } }.
+
+# `deferred`: the card sits where the answer writes [[card:allocation_diagnosis]],
+# or follows the answer when it never does.
+
+emission_mode: deferred
+
+paths:
+
+  verdict_line:
+    kind: state
+    path: "diagnosis.verdict_line"
+
+  risky_line:
+    kind: state
+    path: "diagnosis.risky_line"
+
+  steady_line:
+    kind: state
+    path: "diagnosis.steady_line"
