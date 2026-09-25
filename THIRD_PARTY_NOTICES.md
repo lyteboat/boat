@@ -4,13 +4,13 @@
 
 Everything under `dsh/<group>/<package>` (the packages `dsh/kernel.json` lists) is imported from
 https://github.com/deepseek-ai/deepseek-harness by `scripts/dist/import-upstream.ts`, at the tag
-the most recent `Dist-Import` commit names (today dsh-v0.1.7-rc.2, commit 477b4f42), and carries
+the most recent `Dist-Import` commit names (dsh-v0.1.7-rc.2, commit 477b4f42), and carries
 lyteboat's changes as commits on top; `src/lyteboat/` and `tests/lyteboat/` inside those packages are lyteboat's
 own. Files elsewhere marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their
 header are derived from the same repository at dsh-v0.1.7-rc.2 (commit 477b4f42), the tag their
 header names, except `lyteboat/bundles/run/src/agent-directory.ts`: it is adapted from
 packages/preset/agent-presets/src/discovery.ts and metadata.ts at dsh-v0.1.5-alpha.2 (commit
-b2e3b2a0), files dsh-v0.1.7-rc.2 no longer carries.
+b2e3b2a0), files dsh-v0.1.7-rc.2 does not carry.
 
 ```
 MIT License

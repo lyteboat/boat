@@ -2,8 +2,8 @@ packages:
   # lyteboat/<layer>/<package>: one directory per architecture layer; dependencies point
   # down only (scripts/check-layers.ts enforces it): apps own processes (the `lyteboat`
   # bin), bundles are compositions a profile includes by name, plugins are
-  # capabilities on the dsh seams, core are declarations and the driver fork, agents
-  # are the business agents, tooling is test infrastructure.
+  # capabilities on the dsh seams, core are declarations, agents are the business
+  # agents, tooling is test infrastructure.
   - lyteboat/*/*
   # dsh/<group>/<package>: the kernel, the dsh packages lyteboat owns (dsh/kernel.json),
   # imported per tag by scripts/dist/import-upstream.ts under their published names.
@@ -53,7 +53,7 @@ allowBuilds:
 
 # Versions shared across the workspace. The dsh and cordis catalogs mirror
 # dsh.upstream.json (scripts/upstream-pins.spec.ts keeps them equal); .pnpmfile.cjs
-# still pins the transitive dsh-to-dsh ranges the catalogs cannot reach.
+# also pins the transitive dsh-to-dsh ranges the catalogs cannot reach.
 catalog:
   "@deepseek-ai/schemastery": "^3.18.4"
   "zod": "^4.6.5"
@@ -156,8 +156,8 @@ catalogs:
     "@deepseek-ai/cordis-plugin-timer": "1.1.6"
     "@deepseek-ai/cosmokit": "1.8.5"
 
-# pnpm 11 refuses packages published less than a day ago; pnpm listed the pinned dsh
-# release here by exact version on its first day. Drop the list once it has aged.
+# pnpm 11 refuses packages published less than a day ago; a dsh release pinned on its
+# first day is listed here by exact version, and the list can go once it has aged.
 minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-acp-app@0.1.7-rc.2'
   - '@deepseek-ai/dsh-acp@0.1.7-rc.2'

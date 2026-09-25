@@ -70,7 +70,7 @@ overrides:
   '@deepseek-ai/dsh-agent-loop-testkit': workspace:*
   rolldown: 1.1.1
 
-pnpmfileChecksum: sha256-LdB8GSmCFSYRAVSmC/9jo5ru2NfxXKuYOd+npGrJSik=
+pnpmfileChecksum: sha256-zPSAui4TDCaHH/v4vX4XHuY95K77kvW9XV5f9hVnyA8=
 
 importers:
 

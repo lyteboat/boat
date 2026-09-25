@@ -4,7 +4,7 @@ lyteboat is a distribution of [DeepSeek Harness](https://github.com/deepseek-ai/
 
 ## 1. Scope
 
-For the dsh release pinned in `dsh.upstream.json` (today `0.1.7-rc.2`), lyteboat promises that a plugin written against that release observes the same **protocol, interface, and behavior** from lyteboat's kernel as from the official packages, except where §4 lists an addition. Packages outside the kernel are installed from npm at the pinned version, unchanged; lyteboat's promise about them is only that it does not patch them.
+For the dsh release pinned in `dsh.upstream.json` (`0.1.7-rc.2`), lyteboat promises that a plugin written against that release observes the same **protocol, interface, and behavior** from lyteboat's kernel as from the official packages, except where §4 lists an addition. Packages outside the kernel are installed from npm at the pinned version, unchanged; lyteboat's promise about them is only that it does not patch them.
 
 ## 2. Stable surface
 
@@ -47,7 +47,7 @@ A third-party plugin that wants a lyteboat extension declares `inject: ['lyteboa
 
 ## 5. Transitional interfaces
 
-`compat` changes keep an interface upstream removed, for the community plugins the canaries show still use it. Each one states its expiry (a dsh release) here and in its `Dist-Exit` trailer. There are none yet.
+`compat` changes keep an interface upstream removed, for the community plugins the canaries show still use it. Each one states its expiry (a dsh release) here and in its `Dist-Exit` trailer. There are none.
 
 ## 6. Not promised
 
@@ -59,5 +59,5 @@ A third-party plugin that wants a lyteboat extension declares `inject: ['lyteboa
 
 ## 7. Release channels
 
-- **lyteboat-next** follows every dsh tag: a sync merges the tag's import and must pass G1–G6. Syncs are batched weekly; one sync may cross several tags.
-- **lyteboat-stable** is cut only from a dsh release candidate (`-rc.N`) and afterwards takes backports only. None exists yet: dsh has published no release candidate since lyteboat's first import.
+- **lyteboat-next** follows every sync: a sync merges the import of the tag it moves to and must pass G1–G6. Syncs are batched weekly; one sync may cross several tags.
+- **lyteboat-stable** is cut only when lyteboat makes a release, and only from a sync onto a dsh release candidate (`-rc.N`) that passes G1–G6; afterwards it takes backports only. No stable channel has been cut: lyteboat has made no release.

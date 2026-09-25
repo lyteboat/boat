@@ -2,7 +2,7 @@
 #
 # G1 (scripts/dist/contract-check.ts) accepts a difference from the upstream
 # snapshot only when its key starts with one of an entry's `contract` keys; a
-# listed key that no longer differs fails as stale. Keys are the snapshot paths
+# listed key that does not differ fails as stale. Keys are the snapshot paths
 # joined by ' › ', e.g. `events › @deepseek-ai/dsh-agent-loop › lyteboat/intake` or
 # `api › @deepseek-ai/dsh-agent-loop › exports › . › LyteboatIntakeDecision`. Every entry
 # is named by at least one `Dist-Change: extend` commit's `Dist-Extension`

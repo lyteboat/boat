@@ -21,7 +21,7 @@ G4–G6 compare two install trees outside the repository (`scripts/dist/trees.ts
 
 ## Canaries
 
-`tests/canaries/canaries.yml` pins each canary by name and version and records how the list was chosen. A plugin becomes a canary only after it installs, activates every row, answers, and exits on the official release: a canary that fails there says nothing about lyteboat. Re-select when the tracked release moves, from the same community sample, and keep at most three per risk category. A canary that starts failing on the official release after a sync is replaced. One that fails only on lyteboat is a G5 failure.
+`tests/canaries/canaries.yml` pins each canary by name and version and states how the list is chosen: from a community sample, ranked by the risk category a kernel change could break, at most three per category, and only plugins that install, activate every row, answer, and exit on the official release, because a canary that fails there says nothing about lyteboat. G5 runs every canary on the official release as well as on lyteboat, so the list is validated on the tracked release, 0.1.7-rc.2. The list is re-selected from the same sample when the tracked release moves; a canary that fails on the official release after a sync is replaced, and one that fails only on lyteboat is a G5 failure.
 
 ## Upstream tests
 
