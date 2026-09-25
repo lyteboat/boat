@@ -2,7 +2,7 @@
 
 > **读者**：熟悉参考实现（lyteboat 的 Python 前身）、刚接触 dsh（DeepSeek Harness）的工程师。
 >
-> **路径约定**：不带前缀的路径相对仓库根目录。内核（lyteboat 拥有源码的 13 个 dsh 包，清单是 `dsh/kernel.json`）按 `dsh/` 下的路径引用；`dsh@rc.2:` 前缀指上游 tag `dsh-v0.1.7-rc.2`（`dsh.upstream.json`）的源码（`packages/<group>/<pkg>/src`、`vendor/*`），也就是 lyteboat 从 npm 安装、不拥有源码的那些包。参考实现只写文件路径。`file:行号` 都对照当前代码核对过。
+> **路径约定**：不带前缀的路径相对仓库根目录。内核（lyteboat 拥有源码的 14 个 dsh 包，清单是 `dsh/kernel.json`）按 `dsh/` 下的路径引用；`dsh@rc.2:` 前缀指上游 tag `dsh-v0.1.7-rc.2`（`dsh.upstream.json`）的源码（`packages/<group>/<pkg>/src`、`vendor/*`），也就是 lyteboat 从 npm 安装、不拥有源码的那些包。参考实现只写文件路径。`file:行号` 都对照当前代码核对过。
 >
 > **例子怎么来的**：文中的运行结果（stdout、stderr、会话日志、模型收到的请求、启动探针的输出）都来自构建好的 CLI `node lyteboat/apps/cli/lib/bin.js`，由 [7.5](#75-复现本文的运行) 的 `repro.mjs` 启动：模型是 `@lyteboat/testing/scripted-model` 的脚本化模型（`startScriptedModel`，环境变量由 `scriptedModelEnv` 给出，`lyteboat/tooling/testing/src/scripted-model.ts:125,168-170`），脚本回答 finance 的准入分类器、skill 路由器和循环请求，`DSH_TELEMETRY_DISABLED=1`，没有用真实 key。[5.4](#54-日志怎么映射回模型看到的内容) 的请求重建和旁路调用核对、[5.7](#57-为什么路由过的会话也能重开) 的重开检查是对这些日志的**离线分析**，用的是内核自己的 `Session.create`、`dsh-llm` 的 `projectToolUpdates` 和 `@lyteboat/testing/session-reopen` 的 `reopenRefusal`（它调用 dsh 持久化层的 `validateStoredEvents`）。日志和请求里的模型是 `deepseek-official` / `deepseek-flash`：`lyteboat run` 用的是 dsh-base 的 `agent-default-model` 行配的默认模型（`dsh@rc.2:packages/bundle/base/cordis.patch.yml:82-86`），它在 `dsh-llm-deepseek` 的默认目录里（`dsh@rc.2:packages/llm/llm-deepseek/src/models.ts:7-14`）。耗时和时间戳每次运行都不一样，本文给的是一次运行的实测值。
 >
@@ -14,15 +14,15 @@
 
 ### 0.1 一句话
 
-**lyteboat 是 dsh 的一个发行版：它拥有 dsh 内核 13 个包的源码（沿用上游包名），把参考实现的运行时能力（skill 路由、工具可见性、A2UI 卡片、会话状态、外部历史导入、循环前的准入）写成挂在 dsh 接缝上的 Cordis 插件，再用自己的启动器 `lyteboat` 把这些东西按 YAML 组合起来跑。**（`CLAUDE.md`「Repository layout」）同一层的宿主服务里有三个负责请求本身：旁路模型调用 `@lyteboat/aux-llm`、请求上下文 `@lyteboat/request-context`、循环前的准入 `@lyteboat/intake-guard`。
+**lyteboat 是 dsh 的一个发行版：它拥有 dsh 内核 14 个包的源码（沿用上游包名），把参考实现的运行时能力（skill 路由、工具可见性、A2UI 卡片、会话状态、外部历史导入、循环前的准入）写成挂在 dsh 接缝上的 Cordis 插件，再用自己的启动器 `lyteboat` 把这些东西按 YAML 组合起来跑。**（`CLAUDE.md`「Repository layout」）同一层的宿主服务里有三个负责请求本身：旁路模型调用 `@lyteboat/aux-llm`、请求上下文 `@lyteboat/request-context`、循环前的准入 `@lyteboat/intake-guard`。
 
-为什么要“拥有内核源码、保留包名”：npm 上的官方包和社区插件都按包名 `@deepseek-ai/dsh-tools` 这类名字去 import 内核；lyteboat 用 pnpm `overrides` 把这些名字全部指到 `dsh/` 下自己的副本（`pnpm-workspace.yaml:16-29`），于是整个依赖图里只有一份内核，而且是 lyteboat 的。插件不用改一行代码就跑在 lyteboat 的实现上。
+为什么要“拥有内核源码、保留包名”：npm 上的官方包和社区插件都按包名 `@deepseek-ai/dsh-tools` 这类名字去 import 内核；lyteboat 用 pnpm `overrides` 把这些名字全部指到 `dsh/` 下自己的副本（`pnpm-workspace.yaml:16-30`），于是整个依赖图里只有一份内核，而且是 lyteboat 的。插件不用改一行代码就跑在 lyteboat 的实现上。
 
 ### 0.2 三层包
 
 | 层 | 在哪 | 有哪些 | 源码归谁 | 怎么改 |
 |---|---|---|---|---|
-| 内核 | `dsh/`（清单 `dsh/kernel.json:3-17`） | `dsh-llm`、`dsh-session`、`dsh-system-prompt`、`dsh-tools`、`dsh-skill`、`dsh-agent`、`dsh-agent-loop`、`dsh-session-projection`、`dsh-session-persistence`、`dsh-session-persistence-jsonl`、`dsh-compaction`、`dsh-compaction-basic`、`dsh-agent-loop-testkit` | lyteboat（每个上游 tag 原样导入，再叠 lyteboat 的分类提交） | 只能用带 `Dist-Change:` trailer 的提交（`CLAUDE.md`「Architecture boundaries」的 “The kernel changes only by classified commits”） |
+| 内核 | `dsh/`（清单 `dsh/kernel.json:3-18`） | `dsh-llm`、`dsh-session`、`dsh-system-prompt`、`dsh-tools`、`dsh-skill`、`dsh-agent`、`dsh-agent-loop`、`dsh-session-projection`、`dsh-session-persistence`、`dsh-session-persistence-jsonl`、`dsh-compaction`、`dsh-compaction-basic`、`dsh-agent-loop-testkit`、`dsh-api-session-controller` | lyteboat（每个上游 tag 原样导入，再叠 lyteboat 的分类提交） | 只能用带 `Dist-Change:` trailer 的提交（`CLAUDE.md`「Architecture boundaries」的 “The kernel changes only by classified commits”） |
 | 其余 dsh 包 | `node_modules`，从 npm 装 | `dsh-base`（bundle）、`dsh-app-boot`、`dsh-agent-preset-registry`、`dsh-llm-deepseek`、`dsh-user-approval`、`dsh-session-checkpoint-policy` 等 | 上游 | 不改源码，只用 patch 层改配置、增删行；版本被 `.pnpmfile.cjs:7-22` 钉在 `dsh.upstream.json` 的 `0.1.7-rc.2` |
 | lyteboat 自己的包 | `lyteboat/<层>/<包>`，共 14 个 | `@lyteboat/cli`（apps）；`@lyteboat/host`、`@lyteboat/run`（bundles）；`@lyteboat/distro`、`@lyteboat/tool-policy`、`@lyteboat/aux-llm`、`@lyteboat/request-context`、`@lyteboat/intake-guard`、`@lyteboat/skill-router`、`@lyteboat/a2ui`、`@lyteboat/history-import`（plugins）；`@lyteboat/contracts`（core）；`@lyteboat/testing`（tooling）；`@lyteboat/agent-finance`（agents） | lyteboat | 正常开发，层间只能向下依赖（`CLAUDE.md`「Architecture boundaries」） |
 
@@ -91,7 +91,7 @@ flowchart TB
 | 终端用户 | 跑 `lyteboat run "任务"` 或 `lyteboat web` 的人 | 通过命令行参数和浏览器交互 | `lyteboat/apps/cli/src/args.ts:109-129` |
 | 业务开发 | 写 `examples/agents/<id>` 目录、`--plugin` 文件、`--patch` 文件的人 | 业务逻辑只放在 agent 目录里，框架包不带业务词汇 | `CLAUDE.md`「Architecture boundaries」的 “Framework packages stay domain-neutral” |
 | dsh 上游 | `deepseek-ai/deepseek-harness` 仓库 | lyteboat 每个 tag 导入一次内核源码，三方合并 lyteboat 的改动 | `dsh.upstream.json`，`CLAUDE.md`「Upstream sync (the distribution)」 |
-| npm 官方包 | 除内核外的 `@deepseek-ai/dsh-*` | 原样使用，版本全钉在 `0.1.7-rc.2` | `.pnpmfile.cjs:7-22`，`pnpm-workspace.yaml:64-157` |
+| npm 官方包 | 除内核外的 `@deepseek-ai/dsh-*` | 原样使用，版本全钉在 `0.1.7-rc.2` | `.pnpmfile.cjs:7-22`，`pnpm-workspace.yaml:78-171` |
 | 社区插件 | 按 dsh 接口写的第三方插件 | 不改代码即可跑在 lyteboat 上；要用 lyteboat 扩展时注入 `lyteboatDistro` | `dsh-compat/COMPAT.md` §4 |
 | 模型服务 | DeepSeek Messages API 兼容端点 | `dsh-llm-deepseek` 适配器 POST 到 `messagesApiRoot(baseURL)/messages`：baseURL 不以 `/v1` 结尾时补上 `/v1`；baseURL 取行配置、否则取 `DEEPSEEK_BASE_URL`、否则取公开端点 `PUBLIC_BASE_URL`。本文的运行把它设成脚本化模型的 `http://127.0.0.1:<port>/v1`，请求就落在 `/v1/messages` | `dsh@rc.2:packages/llm/llm-deepseek/src/adapter.ts:120`，`messages-api.ts:14-17`，`config.ts:106,109,290` |
 
@@ -481,7 +481,7 @@ lyteboat-run (@lyteboat/run): pending (waiting for service: historyImport)
 
 | # | 机制 | 覆盖了什么 | 在哪 | 具体例子 |
 |---|---|---|---|---|
-| 1 | **同名接管**（pnpm `overrides`） | 内核 13 个包的实现 | `pnpm-workspace.yaml:16-29`；`.pnpmfile.cjs:7-22` 对内核名不钉版本（11） | `node_modules/@deepseek-ai/dsh-llm -> ../../dsh/llm/llm`；npm 包 `dsh-llm-deepseek` 在 `.pnpm` 里依赖的 `dsh-llm` 用 `readlink -f` 看也落到仓库的 `dsh/llm/llm`；`node_modules/.pnpm` 里没有任何 npm 版的 `dsh-llm` |
+| 1 | **同名接管**（pnpm `overrides`） | 内核 14 个包的实现 | `pnpm-workspace.yaml:16-30`；`.pnpmfile.cjs:7-22` 对内核名不钉版本（11） | `node_modules/@deepseek-ai/dsh-llm -> ../../dsh/llm/llm`；npm 包 `dsh-llm-deepseek` 在 `.pnpm` 里依赖的 `dsh-llm` 用 `readlink -f` 看也落到仓库的 `dsh/llm/llm`；`node_modules/.pnpm` 里没有任何 npm 版的 `dsh-llm` |
 | 2 | **patch 层增删改行** | 组合：加行、禁行、换配置 | `lyteboat/bundles/host/cordis.patch.yml`、`lyteboat/bundles/run/cordis.patch.yml` | `@lyteboat/host` 把 `session-log-deepseek` 设为 `enabled: false`（`host/cordis.patch.yml:10-12`：这一行默认会把会话日志附到每个官方请求上）。关掉的只是会话日志：dsh-base 的 `plugin-package-inventory-deepseek` 行（`dsh@rc.2:packages/bundle/base/cordis.patch.yml:77-78`）仍然给每个官方请求附上 `dsh_plugin_packages`（已加载的插件包名和版本，含 `@lyteboat/run`、`@lyteboat/agent-finance`、`@lyteboat/skill-router`、`@lyteboat/aux-llm` 等），所以 host bundle 注释里的“lyteboat sends the provider the model request only”（`host/cordis.patch.yml:7-9`）要打这个折扣，见 [5.4](#54-日志怎么映射回模型看到的内容)。`@lyteboat/host` 还禁掉 dsh-base 的 `session-telemetry-otel` 行（`host/cordis.patch.yml:14-19`）：用户一给反馈它就会把会话日志前缀导出到上游收集端，而 lyteboat 的会话是业务对话，不管设没设 `DSH_TELEMETRY_DISABLED` 都不外发。`@lyteboat/run` 禁掉 `hmr`（`run/cordis.patch.yml:42-44`）、整体替换 `system-prompt` 和 `tools` 两行的配置（11-19）、插入 3 行代替 dsh-headless（21-40） |
 | 3 | **内核扩展** | driver 的行为：在组装提示词之前多派发两个 waterfall，reply 一步写进日志；`Session.append` 能给一条记录打上 `ignorable` 标记 | 事件：`dsh/core/agent-loop/src/agent.ts:276-289`，声明在 `lyteboat/step-hooks.ts:44-64`，reply 的日志在 `lyteboat/intake-reply.ts`（`agent.ts` 里只调用一次，347），登记在 `dsh-compat/contract/extensions.yml:16-48`；追加选项：`dsh/core/session/src/index.ts:729-733,756` 加 `lyteboat/append-ignorable.ts`，登记在 `extensions.yml:49-65` | 三个扩展 `agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`，改内核的提交带 `Dist-Change: extend` 和 `Dist-Extension` trailer（`CLAUDE.md`「Architecture boundaries」，`pnpm run dist:delta -- --check` 检查）；每个扩展写明退出条件：前两个在上游出现能在组装前改写 step（或不发请求就回答 step）的事件时移除（`extensions.yml:31-33,44-46`），第三个在上游给 `Session.append`（或别的写路径）一个设 `SessionEvent.ignorable` 的办法时移除（60-62） |
 | 4 | **`lyteboatDistro` 标记服务** | 让第三方插件只在 lyteboat 上加载 | `lyteboat/plugins/distro/src/index.ts:16-27`；扩展列表由 `scripts/dist/gen-distro-manifest.ts` 从 `extensions.yml` 和 `dsh.upstream.json` 生成到 `distro-manifest.ts` | `lyteboat/bundles/run/tests/fixtures/plugins/distro-aware.mjs` 声明 `inject: ['lyteboatDistro']`，实测输出 `lyteboat on dsh 0.1.7-rc.2: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable`；在官方 dsh 上它会停在 PENDING，不会去调一个不存在的扩展。仓库里用到扩展的插件都注入它：`@lyteboat/tool-policy`、`@lyteboat/skill-router`、`@lyteboat/aux-llm`、`@lyteboat/intake-guard`（`lyteboat/plugins/tool-policy/src/index.ts:104`、`lyteboat/plugins/skill-router/src/index.ts:204`、`lyteboat/plugins/aux-llm/src/index.ts:96`、`lyteboat/plugins/intake-guard/src/index.ts:61`），测试夹具 `tools.mjs`、`intake-gate.mjs` 也一样 |
@@ -1428,7 +1428,7 @@ fixture 里有 6 条历史记录：两轮完整的问答被保留；第三轮“
 | 术语 | 含义 |
 |---|---|
 | dsh | DeepSeek Harness，上游 agent 框架（`deepseek-ai/deepseek-harness`） |
-| 内核（kernel） | lyteboat 拥有源码的 13 个 dsh 包，清单在 `dsh/kernel.json` |
+| 内核（kernel） | lyteboat 拥有源码的 14 个 dsh 包，清单在 `dsh/kernel.json` |
 | 发行版 | 拥有上游核心源码、保留上游名字、承诺兼容上游生态的衍生版本 |
 | Cordis | dsh 用的 IoC 框架（`@deepseek-ai/cordis` 4.0.4） |
 | 行（row / entry） | 插件树里的一项：`{id, name, config, inject?, disabled?}` |

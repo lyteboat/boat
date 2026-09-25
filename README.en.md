@@ -39,7 +39,7 @@ lyteboat turns that last mile into a reusable chassis for vertical agents. A tea
   - Audited side calls: routing and classification calls leave their full prompt and answer in the session (`@lyteboat/aux-llm`).
   - Import of external conversation history (`@lyteboat/history-import`).
 - **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `examples/agents/<id>/`.
-- **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 13 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
+- **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 14 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
 - **Traceable.** Everything a model sees is reconstructable from the session log, and every fact lyteboat records rides an envelope dsh already knows.
 
 ## Quick start
@@ -149,7 +149,7 @@ The guides are written in Chinese.
 ## Repository layout
 
 ```
-dsh/                  the kernel: the 13 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
+dsh/                  the kernel: the 14 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
 lyteboat/             lyteboat's 14 packages, one directory per layer
   apps/               processes: the lyteboat launcher
   bundles/            compositions: host (in every profile), run (behind lyteboat run)

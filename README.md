@@ -39,7 +39,7 @@
   - 旁路模型调用留痕：路由、分类这类旁路调用在会话里留下完整的 prompt 和回答（`@lyteboat/aux-llm`）。
   - 外部对话历史导入（`@lyteboat/history-import`）。
 - **一个业务 agent 就是一个目录。** 在 `examples/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
-- **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`dsh-compat/`](dsh-compat/README.md)）。
+- **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 14 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`dsh-compat/`](dsh-compat/README.md)）。
 - **有迹可查。** 模型看到的一切都能从会话日志还原；轻舟记录的事实都放在 dsh 已有的日志信封里。
 
 ## 快速开始
@@ -147,7 +147,7 @@ lyteboat web --no-open                                         # 浏览器界面
 ## 项目结构
 
 ```
-dsh/                  内核：dsh/kernel.json 列出的 13 个 dsh 包，沿用 @deepseek-ai/* 包名
+dsh/                  内核：dsh/kernel.json 列出的 14 个 dsh 包，沿用 @deepseek-ai/* 包名
 lyteboat/             轻舟自己的 14 个包，每层一个目录
   apps/               进程：lyteboat 启动器
   bundles/            组合：每个 profile 都带的 host，lyteboat run 用的 run

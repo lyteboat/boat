@@ -1,6 +1,6 @@
 # 基于 lyteboat 开发业务 agent
 
-> 适用范围：lyteboat 当前代码，跟踪 dsh `0.1.7-rc.2`，内核 13 个包（`dsh/kernel.json`）。仓库里现成的示例 agent 只有一个：刻意做到最小的金融智能体 `examples/agents/finance`（三个路由技能、三个工具、四张卡、进入循环之前的准入），文中提到的「金融智能体」都指它。
+> 适用范围：lyteboat 当前代码，跟踪 dsh `0.1.7-rc.2`，内核 14 个包（`dsh/kernel.json`）。仓库里现成的示例 agent 只有一个：刻意做到最小的金融智能体 `examples/agents/finance`（三个路由技能、三个工具、四张卡、进入循环之前的准入），文中提到的「金融智能体」都指它。
 > 读者：熟悉参考实现（Python 前身）、刚接触 dsh 的工程师。dsh / Cordis 的术语先看 §0.6，完整的架构与启动过程见 [01-architecture.md](01-architecture.md)。
 > 贯穿全文的例子是「保单查询助手」（agent id `policy-desk`）。它不在仓库里：照本文逐字建出来之后，`pnpm run lint`、`pnpm run typecheck`、`pnpm run test` 全部通过（§2.17），文中的命令输出和日志片段都来自在构建好的二进制上用脚本模型的真实运行，过长处注明了裁剪，本机路径换成了占位符。
 > 路径若不加说明，都相对仓库根（仓库里还有一个同名子目录 `lyteboat/`，放 lyteboat 自己的各层包；业务 agent 不在其中，而在与它并列的 `examples/agents/` 下）。「上游」指 dsh 在 tag `dsh-v0.1.7-rc.2` 上的源码（`packages/<group>/<pkg>/src`），lyteboat 从 npm 安装的 dsh 包以它为准。引用 `CLAUDE.md` 时写它的章节名。
@@ -247,7 +247,7 @@ flowchart LR
 
 ### 2.0 前提
 
-在 **git clone** 出来的仓库里工作。`pnpm run build` 打包内核时要跑 `git rev-parse`（`scripts/dist/bundle-kernel.ts:52`），没有 `.git` 的源码包构建不了。
+在 **git clone** 出来的仓库里工作。`pnpm run build` 打包内核时要跑 `git rev-parse`（`scripts/dist/bundle-kernel.ts:53`），没有 `.git` 的源码包构建不了。
 
 ```sh
 node --version        # 22.19+ 或 24
@@ -1485,7 +1485,7 @@ pnpm run build && npx vitest run examples/agents/policy-desk/tests/policy-desk-s
       Tests  1 passed (1)
 ```
 
-冒烟和 CLI 自己的 e2e 一样派生构建好的 `lib/bin.js`，但它不在 CLI 包里，也不能伸进 `lyteboat/apps/cli/tests/` 借那里的辅助文件（`CLAUDE.md`「Testing」的 Who tests what）。所以它自己用 `@lyteboat/testing/process` 的 `lyteboatLauncher` 绑定启动器，启动器的路径经本包对 `@lyteboat/cli` 的 devDependency 解析成 `@lyteboat/cli/lib/bin.js`，写法照金融智能体的冒烟（`examples/agents/finance/tests/finance-smoke.e2e.ts:18-19`）。`@lyteboat/cli` 在 `apps` 层，`examples` 只能经 devDependencies 依赖它（§2.2）。这一项要自己记得写：`createRequire(...).resolve` 不是 import，knip 不把它当依赖（实测去掉这一项，knip 照样通过），而根 `node_modules` 提升了每个 `@lyteboat/*` 包（`pnpm-workspace.yaml:40-42`），解析也能碰巧成功；写上它，这条边才出现在清单里，由 check-layers 检查。stdout 断言的是整轮输出：脚本的回答没写卡片标记，本轮正常结束，所以 `deferred` 的保单卡跟在回答后面，打成一行 `[card policy_card]`，写法和金融智能体的冒烟一样（`finance-smoke.e2e.ts:48-49`）。
+冒烟和 CLI 自己的 e2e 一样派生构建好的 `lib/bin.js`，但它不在 CLI 包里，也不能伸进 `lyteboat/apps/cli/tests/` 借那里的辅助文件（`CLAUDE.md`「Testing」的 Who tests what）。所以它自己用 `@lyteboat/testing/process` 的 `lyteboatLauncher` 绑定启动器，启动器的路径经本包对 `@lyteboat/cli` 的 devDependency 解析成 `@lyteboat/cli/lib/bin.js`，写法照金融智能体的冒烟（`examples/agents/finance/tests/finance-smoke.e2e.ts:18-19`）。`@lyteboat/cli` 在 `apps` 层，`examples` 只能经 devDependencies 依赖它（§2.2）。这一项要自己记得写：`createRequire(...).resolve` 不是 import，knip 不把它当依赖（实测去掉这一项，knip 照样通过），而根 `node_modules` 提升了每个 `@lyteboat/*` 包（`pnpm-workspace.yaml:54-56`），解析也能碰巧成功；写上它，这条边才出现在清单里，由 check-layers 检查。stdout 断言的是整轮输出：脚本的回答没写卡片标记，本轮正常结束，所以 `deferred` 的保单卡跟在回答后面，打成一行 `[card policy_card]`，写法和金融智能体的冒烟一样（`finance-smoke.e2e.ts:48-49`）。
 
 最后一条断言故意不写 `.at(-1)`：标题请求是异步的，它的结果 `session/title` 可能在 `turn/end` 之后才落进日志。§3.3 那份「你好」的运行就是 `turn/end` 之后才出现 `session/title`；`normalizeSessionLog` 为此专门去掉 `session/title*`（`lyteboat/tooling/testing/src/session-log.ts:152`、`:157-169`）。
 
@@ -2016,9 +2016,9 @@ lyteboat: session session-…
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| `pnpm run build` 报 `fatal: not a git repository (or any of the parent directories): .git`（实测） | 在没有 `.git` 的源码包里构建；打包内核时要跑 `git rev-parse`（`scripts/dist/bundle-kernel.ts:52`） | 在 git clone 里工作（§2.0） |
+| `pnpm run build` 报 `fatal: not a git repository (or any of the parent directories): .git`（实测） | 在没有 `.git` 的源码包里构建；打包内核时要跑 `git rev-parse`（`scripts/dist/bundle-kernel.ts:53`） | 在 git clone 里工作（§2.0） |
 | 把 `lyteboat/` 下各包的 `lib/` 都删了再 `pnpm run build`，构建照常退出 0，却没有重新产出 `lib/`；接着运行 CLI 报 `Error: Cannot find module '…/lyteboat/apps/cli/lib/bin.js'`（实测） | 陈旧的 `*.tsbuildinfo`（被 gitignore，lyteboat 的包把它放在包目录里，不在 `lib/` 里）让 `tsc -b` 以为这些项目都是最新的，什么也不产出 | `find lyteboat examples -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete`，再 `pnpm run build`（实测恢复） |
-| 构建报 `Error: @deepseek-ai/dsh-llm: lib/typert.host.js, lib/typert.host.d.ts, lib/typert.remote-client.js, lib/typert.remote-client.d.ts missing; they come with the import (scripts/dist/import-upstream.ts)`（实测） | 删 `lib/` 时连 `dsh/llm/llm/lib/` 下的 Typert 文件一起删了。它们随内核导入提交进仓库，受 git 跟踪，不是构建产物（`scripts/dist/bundle-kernel.ts:50`） | `git checkout -- dsh/llm/llm/lib`，再 `pnpm run build`；清 `lib/` 时绕开 `dsh/` |
+| 构建报 `Error: @deepseek-ai/dsh-llm: lib/typert.host.js, lib/typert.host.d.ts, lib/typert.remote-client.js, lib/typert.remote-client.d.ts missing; they come with the import (scripts/dist/import-upstream.ts)`（实测） | 删 `lib/` 时连 `dsh/llm/llm/lib/` 下的 Typert 文件一起删了。它们随内核导入提交进仓库，受 git 跟踪，不是构建产物（`scripts/dist/bundle-kernel.ts:80`） | `git checkout -- dsh/llm/llm/lib`，再 `pnpm run build`；清 `lib/` 时绕开 `dsh/` |
 | `pnpm run lint` 的 knip 报出几十条与本 agent 无关的 `Unused exports` / `Unused exported types`，指向 finance 和各插件（实测） | 仓库克隆在某个名为 `tmp` 的目录之下（系统临时目录常常就是）。`.gitignore` 忽略 `tmp/`（`.gitignore:6`），knip 用绝对路径匹配包的 `exports` 入口，匹配上这条就把所有入口都丢了 | 把仓库克隆到路径里没有 `tmp` 这一段的目录 |
 | `error: agent "policy_desk" not found in the --agents directories (available: finance, policy-desk)`，退出 1（实测） | id 写错了（id 就是目录名），或者目录里没有 `agent.cordis.yml` | 用列出来的 id；确认文件存在（`lyteboat/bundles/run/src/startup.ts:116-119`） |
 | `lyteboat: policy-desk-tools (./lib/tools.js): never started`，下一行 `policy-desk-intake (./lib/intake.js): never started`，退出 1（实测） | 没有构建，`lib/` 不存在（打开 warn 能看到 `ERR_MODULE_NOT_FOUND`）；或者行的 `inject` 里有服务不可用 | `pnpm run build`；检查 `inject` |

@@ -3,7 +3,7 @@
 > 本文把参考实现的能力逐项对到 lyteboat 的代码上：lyteboat 有没有这项能力、在哪个包哪个文件；只有一部分的，缺什么。然后写下决定能力怎样落进 lyteboat 的设计规则，以及接下来引入能力的顺序。
 >
 > **基线**
-> - lyteboat：本仓库的代码。内核是 dsh 0.1.7-rc.2（tag `dsh-v0.1.7-rc.2`，`dsh.upstream.json`）的 13 个包，带三项登记过的扩展。
+> - lyteboat：本仓库的代码。内核是 dsh 0.1.7-rc.2（tag `dsh-v0.1.7-rc.2`，`dsh.upstream.json`）的 14 个包，带三项登记过的扩展。
 > - 参考实现：它的 master 分支。
 >
 > **路径约定**
@@ -21,7 +21,7 @@
 
 ## 0. 摘要
 
-- **怎样落地。** lyteboat 把参考实现的运行时事实重新表达为 dsh 接缝上的 Cordis 插件：七个能力插件（tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import）和发行版标记 distro，由 `@lyteboat/host` 挂到每个 profile 上。内核只带三项登记过的扩展，13 个内核包里 11 个的上游文件没有改动。
+- **怎样落地。** lyteboat 把参考实现的运行时事实重新表达为 dsh 接缝上的 Cordis 插件：七个能力插件（tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import）和发行版标记 distro，由 `@lyteboat/host` 挂到每个 profile 上。内核只带三项登记过的扩展，14 个内核包里 11 个的上游文件没有改动。
 - **能力对照（第 3 节）。**
   - **有**：工具可见性与调用前确认；技能加载与模型路由，路由过的会话能重开、能续聊；A2UI 模板卡片，工具直接出卡、一个结果多张卡、按标记和出卡模式排进一轮；终态卡结束本轮；进循环前的准入，判定、回复和卡片记在请求上；请求上下文；旁路模型调用留痕；外部历史作为新会话的种子；数据层单例；目录形态的业务 agent。
   - **部分**：LLM 准入分类（没有 friction 计数和授权回流后的刷新）；会话状态（深合并，整份给模型看，没有可见键）；trace id（只有可选的 `requestId`）；业务工具面（工具挡住了，注入没挡住）；按角色选模型（只有旁路调用能选路由）；Studio（只有 dsh web）。
@@ -53,7 +53,7 @@
 | tooling | `@lyteboat/testing` | 单元宿主、进程内组合启动、脚本化模型、会话日志读取与重开检查 |
 | agents | `@lyteboat/agent-finance` | 金融智能体，唯一的示例 agent |
 
-**内核。** `dsh/kernel.json` 列出 13 个 dsh 包：llm、session、system-prompt、tools、skill、agent、agent-loop；session-projection、session-persistence、session-persistence-jsonl；compaction、compaction-basic；agent-loop-testkit。其余 dsh 包从 npm 安装，版本按 `dsh.upstream.json` 精确钉住。
+**内核。** `dsh/kernel.json` 列出 14 个 dsh 包：llm、session、system-prompt、tools、skill、agent、agent-loop；session-projection、session-persistence、session-persistence-jsonl；compaction、compaction-basic；agent-loop-testkit；api-session-controller。其余 dsh 包从 npm 安装，版本按 `dsh.upstream.json` 精确钉住。
 
 **内核扩展（`dsh-compat/contract/extensions.yml`）。**
 

@@ -8,7 +8,7 @@ lyteboat is an agent harness for business agents, built as Cordis plugins on Dee
 
 ### Kernel
 
-- 13 dsh packages under `dsh/` (`dsh/kernel.json`: `dsh-llm`, `dsh-session`, `dsh-system-prompt`, `dsh-tools`, `dsh-skill`, `dsh-agent`, `dsh-agent-loop`, `dsh-session-projection`, `dsh-session-persistence`, `dsh-session-persistence-jsonl`, `dsh-compaction`, `dsh-compaction-basic`, `dsh-agent-loop-testkit`), imported from dsh-v0.1.7-rc.2 and resolved by name for the whole dependency graph; their bundles build byte for byte as npm publishes them. Every other dsh package is installed from npm at the tracked version.
+- 14 dsh packages under `dsh/` (`dsh/kernel.json`: `dsh-llm`, `dsh-session`, `dsh-system-prompt`, `dsh-tools`, `dsh-skill`, `dsh-agent`, `dsh-agent-loop`, `dsh-session-projection`, `dsh-session-persistence`, `dsh-session-persistence-jsonl`, `dsh-compaction`, `dsh-compaction-basic`, `dsh-agent-loop-testkit`, `dsh-api-session-controller`), imported from dsh-v0.1.7-rc.2 and resolved by name for the whole dependency graph; their bundles build byte for byte as npm publishes them. Every other dsh package is installed from npm at the tracked version.
 - Three registered extensions (`dsh-compat/contract/extensions.yml`), listed at runtime by the `lyteboatDistro` service:
   - `agent-loop-intake`: the `lyteboat/intake` waterfall, after the inbox claim and before prompt assembly; a `reply` answers the claimed messages with an assistant message (source provider `lyteboat`) and no model request.
   - `agent-loop-pre-assemble`: the `lyteboat/pre-assemble` waterfall, before the system prompt is assembled, so skill routing and tool activation shape the same step's request.
