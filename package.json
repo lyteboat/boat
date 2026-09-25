@@ -1,0 +1,42 @@
+{
+  "name": "lyteboat-root",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc -b && node --import tsx scripts/dist/bundle-kernel.ts",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
+    "lint": "oxlint . && knip --include unlisted,unresolved,exports,types --no-progress && node --import tsx scripts/check-layers.ts && node --import tsx scripts/dist/gen-distro-manifest.ts --check && node --import tsx scripts/check-sensitive.ts",
+    "test": "pnpm run build && pnpm run contract:check && vitest run --project source --project dsh --project composite",
+    "dsh-compat": "pnpm run build && vitest run --project dsh-compat",
+    "test:unit": "vitest run --project source --project dsh --exclude '**/*.e2e.ts' --exclude '**/*.composite.ts'",
+    "check": "pnpm run lint && pnpm run test && pnpm run dsh-compat",
+    "dist:snapshot": "node --import tsx scripts/dist/snapshot.ts",
+    "dist:import": "node --import tsx scripts/dist/import-upstream.ts",
+    "dist:delta": "node --import tsx scripts/dist/delta-report.ts",
+    "dist:overlay": "node --import tsx scripts/dist/overlay.ts",
+    "contract:check": "node --import tsx scripts/dist/contract-check.ts"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-invariants": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
+    "@deepseek-ai/dsh-typert-generator": "catalog:dsh",
+    "@types/node": "^22.20.0",
+    "fast-check": "^4.5.0",
+    "knip": "^5.88.1",
+    "oxlint": "1.76.0",
+    "tsdown": "0.22.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8",
+    "yaml": "^2.4.2"
+  }
+}

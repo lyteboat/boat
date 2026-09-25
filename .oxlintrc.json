@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "ignorePatterns": [
+    "**/lib/**",
+    "**/node_modules/**",
+    "**/*.js",
+    "**/*.cjs",
+    "**/*.config.ts",
+    "dsh/*/*/src/*.ts",
+    "dsh/*/*/src/*/**",
+    "!dsh/*/*/src/lyteboat/**",
+    "dsh/*/*/tests/*.ts",
+    "dsh/*/*/tests/*/**",
+    "!dsh/*/*/tests/lyteboat/**"
+  ],
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/tests/**/*.ts",
+        "dsh-compat/**/*.ts"
+      ],
+      "rules": {
+        "typescript/no-non-null-assertion": "off"
+      }
+    }
+  ]
+}

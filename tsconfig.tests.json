@@ -1,0 +1,33 @@
+{
+  "extends": "./lyteboat/tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": [
+    "lyteboat/apps/*/tests/**/*.ts",
+    "lyteboat/apps/*/src/**/*.ts",
+    "lyteboat/bundles/*/tests/**/*.ts",
+    "lyteboat/bundles/*/src/**/*.ts",
+    "lyteboat/plugins/*/tests/**/*.ts",
+    "lyteboat/plugins/*/src/**/*.ts",
+    "lyteboat/core/*/tests/**/*.ts",
+    "lyteboat/core/*/src/**/*.ts",
+    "lyteboat/agents/*/tests/**/*.ts",
+    "lyteboat/agents/*/src/**/*.ts",
+    "lyteboat/tooling/*/tests/**/*.ts",
+    "lyteboat/tooling/*/src/**/*.ts",
+    "scripts/**/*.ts",
+    "dsh-compat/**/*.ts"
+  ],
+  // Upstream code carried by the G2 harness (it reads cordis const enums, which
+  // isolatedModules rejects); upstream type-checks it, lyteboat runs it.
+  "exclude": [
+    "dsh-compat/tests/upstream-harness/test-invariants.ts",
+    "dsh-compat/tests/upstream-harness/shims/*.ts"
+  ]
+}

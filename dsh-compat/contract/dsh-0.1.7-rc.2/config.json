@@ -1,0 +1,819 @@
+{
+  "@deepseek-ai/dsh-agent": {
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "agent-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-agent-loop": {
+    ".": {
+      "AgentLoop": {
+        "Config": [
+          {
+            "dict": {
+              "agents": 2,
+              "maxParallelToolCalls": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 10,
+              "min": 1,
+              "step": 1,
+              "volatile": true
+            },
+            "type": "number"
+          },
+          {
+            "inner": 3,
+            "meta": {
+              "default": []
+            },
+            "type": "array"
+          },
+          {
+            "dict": {
+              "cwd": 10,
+              "id": 4,
+              "maxTokens": 9,
+              "model": 7,
+              "provider": 6,
+              "reasoningEffort": 8,
+              "resumeSessionId": 11,
+              "sessionId": 5
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1
+            },
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "max": 9007199254740991,
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          }
+        ],
+        "inject": [
+          "agents",
+          "sessions",
+          "llm",
+          "tools",
+          "systemPrompt",
+          "sessionProjections"
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "agents": 2,
+              "maxParallelToolCalls": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 10,
+              "min": 1,
+              "step": 1,
+              "volatile": true
+            },
+            "type": "number"
+          },
+          {
+            "inner": 3,
+            "meta": {
+              "default": []
+            },
+            "type": "array"
+          },
+          {
+            "dict": {
+              "cwd": 10,
+              "id": 4,
+              "maxTokens": 9,
+              "model": 7,
+              "provider": 6,
+              "reasoningEffort": 8,
+              "resumeSessionId": 11,
+              "sessionId": 5
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1
+            },
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "max": 9007199254740991,
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          }
+        ],
+        "inject": [
+          "agents",
+          "sessions",
+          "llm",
+          "tools",
+          "systemPrompt",
+          "sessionProjections"
+        ]
+      }
+    },
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "agent-loop-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-agent-loop-testkit": {},
+  "@deepseek-ai/dsh-compaction": {
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "compaction-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-compaction-basic": {
+    ".": {
+      "BasicCompactionEngine": {
+        "Config": [
+          {
+            "dict": {
+              "auto": 14,
+              "compactionRetries": 8,
+              "headroomTokens": 2,
+              "maxOverflowRetries": 9,
+              "maxTokens": 7,
+              "modelPolicies": 10,
+              "retainRatio": 3,
+              "retainTokens": 4,
+              "summarizationModel": 6,
+              "summarizationProvider": 5,
+              "thresholdRatio": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {},
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "inner": 11,
+            "meta": {
+              "default": []
+            },
+            "type": "array"
+          },
+          {
+            "dict": {
+              "compactionRetries": 8,
+              "headroomTokens": 2,
+              "maxOverflowRetries": 9,
+              "maxTokens": 7,
+              "model": 13,
+              "provider": 12,
+              "retainRatio": 3,
+              "retainTokens": 4,
+              "summarizationModel": 6,
+              "summarizationProvider": 5,
+              "thresholdRatio": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "boolean"
+          }
+        ],
+        "inject": [
+          "llm",
+          "tokenMeter",
+          "sessions"
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "auto": 14,
+              "compactionRetries": 8,
+              "headroomTokens": 2,
+              "maxOverflowRetries": 9,
+              "maxTokens": 7,
+              "modelPolicies": 10,
+              "retainRatio": 3,
+              "retainTokens": 4,
+              "summarizationModel": 6,
+              "summarizationProvider": 5,
+              "thresholdRatio": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {},
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          },
+          {
+            "meta": {
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "meta": {
+              "min": 0,
+              "step": 1
+            },
+            "type": "number"
+          },
+          {
+            "inner": 11,
+            "meta": {
+              "default": []
+            },
+            "type": "array"
+          },
+          {
+            "dict": {
+              "compactionRetries": 8,
+              "headroomTokens": 2,
+              "maxOverflowRetries": 9,
+              "maxTokens": 7,
+              "model": 13,
+              "provider": 12,
+              "retainRatio": 3,
+              "retainTokens": 4,
+              "summarizationModel": 6,
+              "summarizationProvider": 5,
+              "thresholdRatio": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "meta": {},
+            "type": "boolean"
+          }
+        ],
+        "inject": [
+          "llm",
+          "tokenMeter",
+          "sessions"
+        ]
+      }
+    }
+  },
+  "@deepseek-ai/dsh-llm": {
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "llm-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-session": {
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "session-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-session-persistence": {},
+  "@deepseek-ai/dsh-session-persistence-jsonl": {
+    ".": {
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "compression": 2,
+              "root": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "string"
+          },
+          {
+            "list": [
+              3,
+              4
+            ],
+            "meta": {
+              "default": "zstd"
+            },
+            "type": "union"
+          },
+          {
+            "meta": {},
+            "type": "const",
+            "value": "zstd"
+          },
+          {
+            "meta": {},
+            "type": "const",
+            "value": "none"
+          }
+        ]
+      }
+    }
+  },
+  "@deepseek-ai/dsh-session-projection": {},
+  "@deepseek-ai/dsh-skill": {
+    ".": {
+      "SkillRegistry": {
+        "Config": [
+          {
+            "dict": {
+              "collectCacheMaxEntries": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 128
+            },
+            "type": "number"
+          }
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "collectCacheMaxEntries": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": 128
+            },
+            "type": "number"
+          }
+        ]
+      }
+    }
+  },
+  "@deepseek-ai/dsh-system-prompt": {
+    ".": {
+      "SystemPrompt": {
+        "Config": [
+          {
+            "dict": {
+              "includeHarnessIdentity": 1,
+              "includeRuntimeContext": 2,
+              "personaPrefix": 3,
+              "personaSuffix": 4,
+              "toolOrder": 5
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": true
+            },
+            "type": "boolean"
+          },
+          {
+            "meta": {
+              "default": true
+            },
+            "type": "boolean"
+          },
+          {
+            "meta": {
+              "default": ""
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "default": ""
+            },
+            "type": "string"
+          },
+          {
+            "inner": 6,
+            "meta": {},
+            "type": "array"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          }
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "includeHarnessIdentity": 1,
+              "includeRuntimeContext": 2,
+              "personaPrefix": 3,
+              "personaSuffix": 4,
+              "toolOrder": 5
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {
+              "default": true
+            },
+            "type": "boolean"
+          },
+          {
+            "meta": {
+              "default": true
+            },
+            "type": "boolean"
+          },
+          {
+            "meta": {
+              "default": ""
+            },
+            "type": "string"
+          },
+          {
+            "meta": {
+              "default": ""
+            },
+            "type": "string"
+          },
+          {
+            "inner": 6,
+            "meta": {},
+            "type": "array"
+          },
+          {
+            "meta": {},
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "system-prompt-invariant"
+      }
+    }
+  },
+  "@deepseek-ai/dsh-tools": {
+    ".": {
+      "ToolRuntime": {
+        "Config": [
+          {
+            "dict": {
+              "maxParallelSubCalls": 5,
+              "mode": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "list": [
+              2,
+              3,
+              4
+            ],
+            "meta": {
+              "default": "native"
+            },
+            "type": "union"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "native"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "ptc"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "both"
+          },
+          {
+            "meta": {
+              "default": 10,
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          }
+        ],
+        "inject": [
+          "systemPrompt"
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "maxParallelSubCalls": 5,
+              "mode": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "list": [
+              2,
+              3,
+              4
+            ],
+            "meta": {
+              "default": "native"
+            },
+            "type": "union"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "native"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "ptc"
+          },
+          {
+            "meta": {
+              "required": true
+            },
+            "type": "const",
+            "value": "both"
+          },
+          {
+            "meta": {
+              "default": 10,
+              "min": 1,
+              "step": 1
+            },
+            "type": "number"
+          }
+        ],
+        "inject": [
+          "systemPrompt"
+        ]
+      }
+    },
+    "./invariant": {
+      "$module": {
+        "inject": [
+          "invariants"
+        ],
+        "name": "tools-invariant"
+      }
+    }
+  }
+}

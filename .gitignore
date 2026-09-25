@@ -1,0 +1,15 @@
+node_modules/
+lib/
+*.tsbuildinfo
+.env
+coverage/
+tmp/
+.DS_Store
+.idea/
+.vscode/
+
+# stray tsc emit beside sources (what a project built without its references emits)
+**/src/*.js
+**/src/*.js.map
+**/src/*.d.ts
+**/src/*.d.ts.map
