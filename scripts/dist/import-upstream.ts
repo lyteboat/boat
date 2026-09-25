@@ -30,7 +30,7 @@
  * @module scripts/dist/import-upstream
  */
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -45,10 +45,31 @@ import { publishedTypertFiles } from './typert.ts'
 /** Trailer naming the tag an import commit holds; the next import finds its parent by it. */
 export const IMPORT_TRAILER = 'Dist-Import'
 
-/** The most recent import commit reachable from `rev`, if any. */
-export function lastImport(rev = 'HEAD'): string | undefined {
-  const found = git(repoRoot, ['log', '--format=%H', `--grep=^${IMPORT_TRAILER}: `, '-1', rev])
+/** Whether `rev` names a commit in `repo`; an unborn HEAD (a repository before its first commit) does not. */
+function commitExists(repo: string, rev: string): boolean {
+  return spawnSync('git', ['-C', repo, 'rev-parse', '--verify', '--quiet', `${rev}^{commit}`]).status === 0
+}
+
+/**
+ * The most recent import commit reachable from `rev`, if any.
+ * @param rev - the revision to search from; one that names no commit, as an unborn HEAD, reaches none.
+ * @param repo - the repository.
+ */
+export function lastImport(rev = 'HEAD', repo = repoRoot): string | undefined {
+  // `git log` exits 128 on a revision that names no commit.
+  if (!commitExists(repo, rev)) return undefined
+  const found = git(repo, ['log', '--format=%H', `--grep=^${IMPORT_TRAILER}: `, '-1', rev])
   return found === '' ? undefined : found
+}
+
+/** What the operator runs after a new import commit. */
+function nextStep(commit: string, parent: string | undefined): string {
+  if (parent !== undefined) return `git diff --stat ${parent} ${commit}   # what upstream changed in the kernel\ngit merge --no-ff ${commit}`
+  // git refuses a --no-ff merge into a branch without commits ("Non-fast-forward commit does not make sense into an empty head").
+  if (!commitExists(repoRoot, 'HEAD')) {
+    return `first import, into a branch without commits: start the branch from it\ngit switch -c ${git(repoRoot, ['symbolic-ref', '--short', 'HEAD'])} ${commit}`
+  }
+  return `first import: git merge --no-ff --allow-unrelated-histories ${commit}`
 }
 
 function normalizedTsconfig(path: string, pkg: KernelPackage, kernelDirs: ReadonlySet<string>): string {
@@ -144,9 +165,7 @@ function main(): void {
       return
     }
     console.log(`imported ${tag} (${upstreamCommit.slice(0, 10)}) as ${commit}`)
-    console.log(parent === undefined
-      ? `first import: git merge --no-ff --allow-unrelated-histories ${commit}`
-      : `git diff --stat ${parent} ${commit}   # what upstream changed in the kernel\ngit merge --no-ff ${commit}`)
+    console.log(nextStep(commit, parent))
   } finally {
     rmSync(staging, { recursive: true, force: true })
   }
