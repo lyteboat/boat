@@ -146,7 +146,8 @@ function evalCondition(item: Record<string, unknown>, where: Record<string, unkn
     const text = String(expr).trim()
     const match = CONDITION.exec(text)
     if (match === null) throw new TransformError(`无效的条件表达式: ${text}`, 'where')
-    const [, op, rhsRaw] = match as unknown as [string, string, string]
+    // Both groups are mandatory; the defaults only satisfy noUncheckedIndexedAccess.
+    const [, op = '', rhsRaw = ''] = match
     const rhs = parseRhs(rhsRaw.trim())
     switch (op) {
       case '==':

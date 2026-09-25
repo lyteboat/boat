@@ -77,8 +77,9 @@ export const lyteboatStateProjectionDefinition = {
   stateSchema: lyteboatStateValueSchema,
   init: (): LyteboatStateValue => ({}),
   apply(state: LyteboatStateValue, event) {
-    // dsh computes presentation meta for top-level calls only, so a subagent's
-    // tool never reaches here; an errored result carries no delta worth folding.
+    // dsh computes no presentation meta for a PTC sub-dispatch (a tool the
+    // `run_code` SDK calls, `exec.parent` set), so only model-direct calls carry
+    // a delta; an errored result carries no delta worth folding.
     // A surface replacement (compaction pruning, an agent shortening an old
     // result) must keep the original meta, so folding it would apply an old delta
     // over newer state: only the appended result counts.
