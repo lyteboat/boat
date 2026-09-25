@@ -5,6 +5,10 @@
  * agent's composition test runs its real rows (loaded from `lib/`, so build
  * first) without spawning the launcher and without depending on an app.
  *
+ * A bundle the test asks for that the profile skips (unresolvable, or refused
+ * by its dsh peers) fails the boot with the profile's reason; other skipped
+ * bundles are reported as the launcher reports them.
+ *
  * One composition runs at a time per process: it sets `DSH_HOME`, the given
  * environment, and the working directory, captures stdout and stderr, and
  * restores all of them when the run settles. vitest's default `forks` pool
@@ -152,7 +156,12 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
   const dir = resolveProfileDir(PROFILE, home)
   initProfile(dir, options.bundles)
   const profile = loadProfile(BIN_NAME, PROFILE, WORKSPACE_ANCHOR, home)
-  reportSkippedBundles(BIN_NAME, profile)
+  // A skipped bundle the test asked for would let the test pass without the composition under test.
+  const requested = profile.skippedBundles.filter(skipped => options.bundles.includes(skipped.packageName))
+  reportSkippedBundles(BIN_NAME, { skippedBundles: profile.skippedBundles.filter(skipped => !requested.includes(skipped)) })
+  if (requested.length > 0) {
+    throw new Error(`bootComposition: the profile skipped requested bundles: ${requested.map(({ packageName, reason }) => `${packageName} (${reason})`).join('; ')}`)
+  }
   const root = join(dir, 'cordis.yml')
   writeFileSync(root, '[]\n')
   const patches = [...profile.layers.flatMap(layer => layer.patches), ...QUIET, ...options.patches ?? []]
@@ -163,6 +172,7 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
  * Boot one composition, wait for the tree to request exit, and dispose it.
  * @param options - bundles, extra layers, arguments, working directory, and environment.
  * @returns the exit code, the harness home, and the captured output.
+ * @throws when the profile skipped a bundle in `options.bundles`.
  */
 export async function bootComposition(options: CompositionOptions): Promise<CompositionRun> {
   const home = options.home ?? mkdtempSync(join(tmpdir(), 'lyteboat-composition-'))
