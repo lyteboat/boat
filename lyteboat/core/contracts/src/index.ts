@@ -47,11 +47,7 @@ const lyteboatJsonObjectSchema = z.record(z.string(), lyteboatJsonValueSchema)
  * writes without a model call (intake replies, imported history).
  */
 export { LYTEBOAT_ASSISTANT_PROVIDER } from '@deepseek-ai/dsh-agent-loop'
-export type {
-  LyteboatIntakeDecision as IntakeDecision,
-  LyteboatIntakeReply as IntakeReply,
-  LyteboatStepPayload,
-} from '@deepseek-ai/dsh-agent-loop'
+export type { LyteboatIntakeDecision, LyteboatIntakeReply, LyteboatStepPayload } from '@deepseek-ai/dsh-agent-loop'
 
 /** One extension of the kernel contract that this lyteboat build carries, as dsh-compat/contract/extensions.yml registers it. */
 export interface LyteboatDistroExtension {

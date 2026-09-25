@@ -7,10 +7,10 @@
 
 import { randomBytes } from 'node:crypto'
 import { readdirSync, statSync } from 'node:fs'
-import type { JsonValue } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatCardEmission } from '@lyteboat/contracts'
 import { BUSINESS_PAYLOAD_KEY, templateBusinessPayload } from './business-payload.ts'
 import { isCardDir, loadBundle } from './loader.ts'
-import type { EmissionMode, TemplateBundle } from './loader.ts'
+import type { TemplateBundle } from './loader.ts'
 import { resolveManifest } from './resolver.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 import { SILENT_LOG } from './transforms.ts'
@@ -31,7 +31,7 @@ export interface TemplateRenderResult {
   digest: string
   stateDelta: Record<string, JsonValue> | undefined
   /** When the card is shown: its manifest's `emission_mode`, `immediate` when it declares none. */
-  emission: EmissionMode
+  emission: LyteboatCardEmission
 }
 
 export interface TemplateRenderOptions {
@@ -83,7 +83,7 @@ export class TemplateEngine {
   }
 
   /** `manifest.emission_mode`, or undefined when the card declares none. */
-  async emissionMode(card: string): Promise<EmissionMode | undefined> {
+  async emissionMode(card: string): Promise<LyteboatCardEmission | undefined> {
     return (await loadBundle(this.root, card, this.log)).emissionMode
   }
 

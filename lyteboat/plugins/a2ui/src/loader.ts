@@ -18,9 +18,6 @@ import type { ComputeModule, ManifestPaths } from './resolver.ts'
 import type { TemplateDocument } from './walker.ts'
 import type { LyteboatCardEmission } from '@lyteboat/contracts'
 
-/** A card's `manifest.emission_mode`: when the card is shown (the contract's LyteboatCardEmission). */
-export type EmissionMode = LyteboatCardEmission
-
 export type ComputeHook = (raw: Record<string, unknown>, flat: Record<string, unknown>) => unknown
 
 /** One card's resolved authoring artifacts. */
@@ -34,7 +31,7 @@ export interface TemplateBundle {
   readonly compute: ComputeModule | undefined
   readonly digest: ComputeHook | undefined
   readonly stateDelta: ComputeHook | undefined
-  readonly emissionMode: EmissionMode | undefined
+  readonly emissionMode: LyteboatCardEmission | undefined
   readonly mtimes: string
 }
 
@@ -86,12 +83,9 @@ async function loadCompute(cardDir: string): Promise<ComputeModule | undefined> 
   return isRecord(module) ? module : undefined
 }
 
-function hookOf(compute: ComputeModule | undefined, ...names: string[]): ComputeHook | undefined {
-  for (const name of names) {
-    const candidate = compute?.[name]
-    if (typeof candidate === 'function') return candidate as ComputeHook
-  }
-  return undefined
+function hookOf(compute: ComputeModule | undefined, name: string): ComputeHook | undefined {
+  const candidate = compute?.[name]
+  return typeof candidate === 'function' ? candidate as ComputeHook : undefined
 }
 
 /** Whether `root/card/template.json` exists. */
@@ -131,7 +125,7 @@ export async function loadBundle(root: string, card: string, log: A2uiLog = SILE
   const manifestDoc = readYaml(manifestPath)
   const manifest = mappingAt(manifestDoc, 'paths', manifestPath) as ManifestPaths
   const argSpecs = mappingAt(manifestDoc, 'args', manifestPath) as Record<string, Record<string, unknown>>
-  let emissionMode: EmissionMode | undefined
+  let emissionMode: LyteboatCardEmission | undefined
   const rawMode = manifestDoc['emission_mode']
   if (rawMode !== undefined && rawMode !== null) {
     const text = String(rawMode).trim()
@@ -153,7 +147,7 @@ export async function loadBundle(root: string, card: string, log: A2uiLog = SILE
     argSpecs,
     compute,
     digest: hookOf(compute, 'digest'),
-    stateDelta: hookOf(compute, 'stateDelta', 'state_delta'),
+    stateDelta: hookOf(compute, 'stateDelta'),
     emissionMode,
     mtimes,
   }

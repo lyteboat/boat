@@ -17,7 +17,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
-import type { IntakeDecision, JsonValue, LyteboatIntakeVerdict, LyteboatStepPayload } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatIntakeDecision, LyteboatIntakeVerdict, LyteboatStepPayload } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 
 declare module '@deepseek-ai/cordis' {
@@ -66,7 +66,7 @@ export class IntakeGuardService extends Service {
     super(ctx, 'intakeGuard')
     // After `next()`: a gate registered after this one decides first, and a
     // reply it made stands; admission only runs on a step that would pass.
-    ctx.on('lyteboat/intake', async (payload, next): Promise<IntakeDecision> => {
+    ctx.on('lyteboat/intake', async (payload, next): Promise<LyteboatIntakeDecision> => {
       const decision = await next()
       if (decision.kind === 'reply' || payload.step !== 1) return decision
       const verdict = await this.verdictFor(payload)
