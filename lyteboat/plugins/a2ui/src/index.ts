@@ -18,10 +18,11 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import { z as zod } from 'zod'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionSeq, type Session, type SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { SessionSeq, type Session, type SessionEvent, type SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type { LyteboatCard, LyteboatCardEmission, LyteboatResultCard, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
+import { lyteboatCardSchema, lyteboatRequestSchema, lyteboatResultMetaSchema } from '@lyteboat/contracts'
+import type { LyteboatCard, LyteboatResultCard, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
@@ -73,19 +74,7 @@ export interface RenderToolOptions {
   components?: A2uiComponentCatalog
 }
 
-const jsonValueSchema: zod.ZodType<JsonValue> = zod.lazy(() => zod.union([
-  zod.string(), zod.number(), zod.boolean(), zod.null(), zod.array(jsonValueSchema), zod.record(zod.string(), jsonValueSchema),
-]))
-
 const CARD_EMISSIONS = ['immediate', 'deferred', 'deferred_discard'] as const
-
-const lyteboatCardSchema: zod.ZodType<LyteboatCard> = zod.object({
-  callId: zod.string(),
-  surfaceId: zod.string(),
-  area: zod.string(),
-  emission: zod.enum(CARD_EMISSIONS),
-  payload: jsonValueSchema,
-})
 
 const lyteboatCardsSchema: zod.ZodType<LyteboatCard[]> = zod.array(lyteboatCardSchema)
 
@@ -93,36 +82,41 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isCardEmission(value: unknown): value is LyteboatCardEmission {
-  return CARD_EMISSIONS.some(emission => emission === value)
-}
-
-/** The cards in a logged card list, skipping any entry that is not one. */
-function resultCardsOf(cards: unknown): LyteboatResultCard[] {
-  if (!Array.isArray(cards)) return []
-  return cards.flatMap((card): LyteboatResultCard[] => {
-    if (!isRecord(card)) return []
-    const { surfaceId, area, emission, payload } = card
-    if (typeof surfaceId !== 'string' || typeof area !== 'string' || !isCardEmission(emission) || payload === undefined) return []
-    return [{ surfaceId, area, emission, payload: payload as JsonValue }]
-  })
-}
-
-/** The cards a tool result's presentation meta carries (`lyteboat.cards`). */
+/**
+ * The cards a tool result's presentation meta carries (`lyteboat.cards`).
+ * @throws when the meta's `lyteboat` envelope fails its schema.
+ */
 export function cardsOfMeta(meta: JsonValue | undefined): LyteboatResultCard[] {
-  if (!isRecord(meta) || !isRecord(meta['lyteboat'])) return []
-  return resultCardsOf(meta['lyteboat']['cards'])
+  if (!isRecord(meta) || meta['lyteboat'] === undefined) return []
+  return lyteboatResultMetaSchema.parse(meta['lyteboat']).cards ?? []
 }
 
 /**
  * The cards an admission verdict recorded on a human message carries
  * (`source.lyteboatRequest.intake.cards`, the `@lyteboat/request-context`
  * contract), read from the log as data.
+ * @throws when the carried request fails its schema.
  */
 export function cardsOfRequest(message: UserMessage): LyteboatResultCard[] {
-  const request = (message.source as { lyteboatRequest?: unknown }).lyteboatRequest
-  if (message.source.kind !== 'user' || !isRecord(request) || !isRecord(request['intake'])) return []
-  return resultCardsOf(request['intake']['cards'])
+  if (message.source.kind !== 'user') return []
+  const carried = (message.source as { lyteboatRequest?: unknown }).lyteboatRequest
+  if (carried === undefined) return []
+  return lyteboatRequestSchema.parse(carried).intake?.cards ?? []
+}
+
+/**
+ * The cards one log node prepared, each with what prepared it: an admission
+ * reply's human message, or a tool result.
+ * @throws naming the node when its lyteboat envelope fails its schema.
+ */
+function preparedCardsOf(event: SessionEvent): LyteboatCard[] {
+  try {
+    if (event.type === 'user/message') return cardsOfRequest(event.data).map(card => ({ callId: event.data.id, ...card }))
+    if (event.type === 'tool/result') return cardsOfMeta(event.data.meta).map(card => ({ callId: event.data.message.toolCallId, ...card }))
+  } catch (error: unknown) {
+    throw new Error(`${event.type} at session seq ${String(event.seq)} carries an invalid lyteboat envelope`, { cause: error })
+  }
+  return []
 }
 
 function appendCard(state: LyteboatCard[], card: LyteboatCard): LyteboatCard[] {
@@ -141,10 +135,7 @@ export const lyteboatCardsProjectionDefinition = {
   apply(state: LyteboatCard[], event) {
     // A surface replacement keeps the original meta; folding it would show the card twice.
     if (event.surfaceOp !== 'append') return state
-    if (event.type === 'user/message') return cardsOfRequest(event.data).reduce((cards, card) => appendCard(cards, { callId: event.data.id, ...card }), state)
-    if (event.type !== 'tool/result') return state
-    const callId = event.data.message.toolCallId
-    return cardsOfMeta(event.data.meta).reduce((cards, card) => appendCard(cards, { callId, ...card }), state)
+    return preparedCardsOf(event).reduce(appendCard, state)
   },
   wire: { viewSchema: lyteboatCardsSchema, view: (state: LyteboatCard[]) => state },
   stateVersion: 4,
@@ -245,12 +236,8 @@ export class A2uiService extends Service {
     let completed = false
     for (let seq = fromSeq; seq < session.seq; seq++) {
       const event = session.eventAt(SessionSeq(seq))
-      if (event?.type === 'user/message' && event.surfaceOp === 'append') {
-        const callId = event.data.id
-        cards.push(...cardsOfRequest(event.data).map(card => ({ callId, ...card })))
-      } else if (event?.type === 'tool/result' && event.surfaceOp === 'append') {
-        const callId = event.data.message.toolCallId
-        cards.push(...cardsOfMeta(event.data.meta).map(card => ({ callId, ...card })))
+      if ((event?.type === 'user/message' || event?.type === 'tool/result') && event.surfaceOp === 'append') {
+        cards.push(...preparedCardsOf(event))
       } else if (event?.type === 'assistant/message') {
         const answer = event.data.message.content.filter(block => block.type === 'text').map(block => block.text).join('')
         if (answer !== '') text = answer

@@ -55,7 +55,7 @@ apps/*                          ← processes: they select and boot compositions
 bundles/*                       ← compositions: they wire, they do not implement behavior
 agents/*                        ← business logic and agent compositions; may depend on any lyteboat plugin
 plugins/*                       ← lyteboat plugins; depend on core + dsh seams; between plugins only `import type` (a service declaration)
-core/contracts                  ← types, constants, declaration merging only; no runtime behavior
+core/contracts                  ← types, constants, declaration merging, and the schemas of the types it declares; no other runtime behavior
 tooling/*                       ← tests only (devDependencies); depends on core + dsh
 dsh/ (the kernel) + @deepseek-ai/dsh-* from npm
                                 ← the seams: tools, skills, llm, sessions, sessionProjections, systemPrompt, approval, agents, presets;
@@ -66,7 +66,7 @@ dsh/ (the kernel) + @deepseek-ai/dsh-* from npm
 
 Hard rules:
 
-- **contracts is the only shared declaration home.** A new event, log node, projection key, or metadata field is declared once in `@lyteboat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
+- **contracts is the only shared declaration home.** It holds types, constants, declaration merging, and the schemas of the types it declares; no other runtime behavior. A new event, log node, projection key, or metadata field is declared once in `@lyteboat/contracts` (declaration merging onto dsh's `Events` / `SessionEventMap` / `SessionProjectionStateMap`). A plugin that needs another plugin's data reads it through a projection or a service `inject`, never through a shared module.
 - **Plugins sit on dsh seams; they do not re-implement them.** Tools go through `ctx.tools`, skills through `ctx.skills`, model calls through `ctx.llm`, state through `ctx.sessionProjections`, prompt text through `ctx.systemPrompt`, confirmation through the approval seam. If a seam is missing, first check whether dsh already has one under a different name.
 - **Outside the kernel first.** A new behavior is a lyteboat plugin, a seam provider, or a lyteboat-owned seam before it is a kernel change; the kernel takes only harness-level capabilities, never business vocabulary. A kernel change is a design decision: the design document says why it cannot live outside, and which change class it is.
 - **The kernel changes only by classified commits.** Every commit that touches `dsh/<group>/<package>/` carries `Dist-Change: backport | fix | extend | redesign | compat | drop | build` and the trailer its class requires (`Dist-Upstream` for backport, `Dist-Tests` for fix and redesign, `Dist-Extension` for extend, `Dist-Exit` for compat and drop), plus `Dist-Contract` and `Dist-Exit` wherever the contract or an exit condition is involved (`pnpm run dist:delta -- --check`). Keep hooks in upstream files to a few lines and put lyteboat's logic in `src/lyteboat/` and its tests in `tests/lyteboat/`; a smaller carried hunk is a cheaper sync.

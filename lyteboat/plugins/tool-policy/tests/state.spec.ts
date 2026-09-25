@@ -53,4 +53,9 @@ describe('lyteboatStateProjectionDefinition', () => {
     expect(fold.apply(newer, result(3, { stage: 'overview' }, { op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(newer)
     expect(newer).toEqual({ stage: 'diagnosis' })
   })
+
+  it('fails the fold on a tool result whose meta.lyteboat fails its schema, naming the node', () => {
+    const fold = lyteboatStateProjectionDefinition
+    expect(() => fold.apply(fold.init(), result(4, ['not', 'an', 'object'], 'append'))).toThrow('tool result at session seq 4 carries an invalid meta.lyteboat')
+  })
 })

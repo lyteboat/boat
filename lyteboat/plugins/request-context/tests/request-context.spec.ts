@@ -1,13 +1,13 @@
 /**
- * The request on a human message: written by the service, read back with
- * validation, and folded into the session's request state.
+ * The request on a human message: written by the service, read back against
+ * the contract's schema, and folded into the session's request state.
  */
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
-import RequestContextService, { lyteboatRequestOf } from '@lyteboat/request-context'
+import RequestContextService, { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from '@lyteboat/request-context'
 
 async function harness(adapter: MockAdapter): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)
@@ -28,12 +28,20 @@ describe('the request on a human message', () => {
     expect(ctx.requestContext.requestOf(plain)).toBeUndefined()
   })
 
-  it('reads nothing from a malformed request or from another kind of source', () => {
+  it('rejects a malformed request and reads nothing from another kind of source', () => {
     const malformed = createUserMessage({ content: [], source: { kind: 'user', lyteboatRequest: { context: 'not an object' } } as never })
     const otherKind = createUserMessage({ content: [], source: { kind: 'runtime-context', lyteboatRequest: { context: {} } } as never })
 
-    expect(lyteboatRequestOf(malformed.source)).toBeUndefined()
+    expect(() => lyteboatRequestOf(malformed.source)).toThrow()
     expect(lyteboatRequestOf(otherKind.source)).toBeUndefined()
+  })
+
+  it('fails the fold on a human message whose request fails its schema, naming the node', () => {
+    const fold = lyteboatRequestProjectionDefinition
+    const message = createUserMessage({ content: [], source: { kind: 'user', lyteboatRequest: { intake: { by: 'gate', decision: 'maybe' } } } as never })
+    const event = { type: 'user/message', seq: 3, time: 0, surfaceOp: 'append', data: message } as never
+
+    expect(() => fold.apply(fold.init(), event)).toThrow('human message at session seq 3 carries an invalid source.lyteboatRequest')
   })
 
   it('folds the session context: the latest request that carried one wins, and one without keeps it', async () => {

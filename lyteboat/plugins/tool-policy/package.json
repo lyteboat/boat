@@ -21,8 +21,7 @@
   "dependencies": {
     "@lyteboat/contracts": "workspace:*",
     "@deepseek-ai/dsh-scope": "catalog:dsh",
-    "@deepseek-ai/schemastery": "catalog:",
-    "zod": "catalog:"
+    "@deepseek-ai/schemastery": "catalog:"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",

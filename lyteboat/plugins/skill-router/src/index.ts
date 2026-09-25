@@ -39,6 +39,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { AuxLlmRoute } from '@lyteboat/aux-llm'
 import type {} from '@lyteboat/tool-policy'
+import { lyteboatActiveSkillStateSchema } from '@lyteboat/contracts'
 import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
@@ -131,16 +132,11 @@ function loadedSkillOf(argumentsJson: string): string | undefined {
   return typeof name === 'string' ? name : undefined
 }
 
-const activeSkillStateSchema: zod.ZodType<LyteboatActiveSkillState> = zod.object({
-  active: zod.string().nullable(),
-  loading: zod.record(zod.string(), zod.string()),
-})
-
 const activeSkillViewSchema = zod.string().nullable()
 
 export const lyteboatActiveSkillProjectionDefinition = {
   key: 'lyteboatActiveSkill',
-  stateSchema: activeSkillStateSchema,
+  stateSchema: lyteboatActiveSkillStateSchema,
   init: (): LyteboatActiveSkillState => ({ active: null, loading: {} }),
   apply(state: LyteboatActiveSkillState, event) {
     switch (event.type) {

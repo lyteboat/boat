@@ -10,15 +10,9 @@
  * @module @lyteboat/tool-policy/state
  */
 
-import { z } from 'zod'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type { LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
-
-export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
-  z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema),
-]))
-
-export const lyteboatStateSchema: z.ZodType<LyteboatStateValue> = z.record(z.string(), jsonValueSchema)
+import { lyteboatResultMetaSchema, lyteboatStateValueSchema } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatStateDelta, LyteboatStateValue } from '@lyteboat/contracts'
 
 /** Whether a JSON value is a plain object (the only shape that merges). */
 export function isJsonObject(value: JsonValue | undefined): value is LyteboatStateValue {
@@ -67,17 +61,20 @@ export function mergeStateDelta(state: LyteboatStateValue, delta: JsonValue): Ly
   return next
 }
 
-/** The delta a result's presentation meta carries under `lyteboat.stateDelta`, when the meta is a JSON object. */
-export function stateDeltaOfMeta(meta: JsonValue | undefined): JsonValue | undefined {
-  if (!isJsonObject(meta)) return undefined
-  const lyteboat = meta['lyteboat']
-  if (!isJsonObject(lyteboat)) return undefined
-  return lyteboat['stateDelta']
+/**
+ * The delta a result's presentation meta carries under `lyteboat.stateDelta`.
+ * @param meta - a tool result's presentation meta.
+ * @returns the delta; undefined when the meta carries no `lyteboat` envelope or it has no delta.
+ * @throws when the `lyteboat` envelope fails its schema.
+ */
+export function stateDeltaOfMeta(meta: JsonValue | undefined): LyteboatStateDelta | undefined {
+  if (!isJsonObject(meta) || meta['lyteboat'] === undefined) return undefined
+  return lyteboatResultMetaSchema.parse(meta['lyteboat']).stateDelta
 }
 
 export const lyteboatStateProjectionDefinition = {
   key: 'lyteboatState',
-  stateSchema: lyteboatStateSchema,
+  stateSchema: lyteboatStateValueSchema,
   init: (): LyteboatStateValue => ({}),
   apply(state: LyteboatStateValue, event) {
     // dsh computes presentation meta for top-level calls only, so a subagent's
@@ -87,16 +84,14 @@ export const lyteboatStateProjectionDefinition = {
     // over newer state: only the appended result counts.
     if (event.type !== 'tool/result' || event.surfaceOp !== 'append') return state
     if (event.data.message.isError === true) return state
-    const delta = stateDeltaOfMeta(event.data.meta)
-    if (delta === undefined) return state
-    if (!isJsonObject(delta)) throw new Error(`tool result at session seq ${String(event.seq)} carries a non-object state delta`)
     try {
-      return mergeStateDelta(state, delta)
+      const delta = stateDeltaOfMeta(event.data.meta)
+      return delta === undefined ? state : mergeStateDelta(state, delta)
     } catch (error: unknown) {
-      throw new Error(`invalid state delta at session seq ${String(event.seq)}`, { cause: error })
+      throw new Error(`tool result at session seq ${String(event.seq)} carries an invalid meta.lyteboat`, { cause: error })
     }
   },
-  wire: { viewSchema: lyteboatStateSchema, view: (state: LyteboatStateValue) => state },
+  wire: { viewSchema: lyteboatStateValueSchema, view: (state: LyteboatStateValue) => state },
   stateVersion: 2,
 } satisfies ProjectionDefinition<'lyteboatState', LyteboatStateValue>
 

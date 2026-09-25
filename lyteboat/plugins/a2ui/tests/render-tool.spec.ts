@@ -205,4 +205,13 @@ describe('helpers', () => {
     expect(fold.apply(once, result({ op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(once)
     expect(once.map(card => card.surfaceId)).toEqual(['s1'])
   })
+
+  it('lyteboatCards projection fails on a tool result whose meta.lyteboat fails its schema, naming the node', () => {
+    const fold = lyteboatCardsProjectionDefinition
+    const result = {
+      type: 'tool/result', seq: 2, time: 0, surfaceOp: 'append',
+      data: { turn: 1, step: 1, message: { toolCallId: 'c1' }, meta: { lyteboat: { cards: [{ surfaceId: 's1', area: 'summary', emission: 'later', payload: {} }] } } },
+    } as never
+    expect(() => fold.apply([], result)).toThrow('tool/result at session seq 2 carries an invalid lyteboat envelope')
+  })
 })

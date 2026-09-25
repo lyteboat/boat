@@ -15,11 +15,11 @@
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
-import { z } from 'zod'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, type MessageSource, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import type { JsonValue, LyteboatIntakeVerdict, LyteboatRequest, LyteboatRequestState } from '@lyteboat/contracts'
+import { lyteboatRequestSchema, lyteboatRequestStateSchema } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatRequest, LyteboatRequestState } from '@lyteboat/contracts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -27,63 +27,37 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
-  z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValueSchema), z.record(z.string(), jsonValueSchema),
-]))
-
-const contextSchema = z.record(z.string(), jsonValueSchema)
-
-const verdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.object({
-  by: z.string(),
-  decision: z.enum(['pass', 'reply']),
-  verdict: z.string().exactOptional(),
-  text: z.string().exactOptional(),
-  cards: z.array(z.object({
-    surfaceId: z.string(),
-    area: z.string(),
-    emission: z.enum(['immediate', 'deferred', 'deferred_discard']),
-    payload: jsonValueSchema,
-  })).exactOptional(),
-})
-
-const requestSchema: z.ZodType<LyteboatRequest> = z.object({
-  requestId: z.string().exactOptional(),
-  context: contextSchema.exactOptional(),
-  intake: verdictSchema.exactOptional(),
-})
-
-const requestStateSchema: z.ZodType<LyteboatRequestState> = z.object({
-  requests: z.number(),
-  context: contextSchema,
-  intake: verdictSchema.nullable(),
-})
-
 /**
- * The request a message source carries, when it carries a valid one. The
- * field sits beside `kind: 'user'` (dsh's human-input kind), so it is read as
- * data and validated here; a2ui reads the admission's cards from the same
- * field with its own check.
+ * The request a message source carries. The field sits beside `kind: 'user'`
+ * (dsh's human-input kind), so it is read as data and validated against the
+ * contract's schema; a2ui reads the admission's cards from the same field.
  * @param source - a user message's source.
+ * @returns the request; undefined when the source carries none.
+ * @throws when the carried request fails its schema.
  */
 export function lyteboatRequestOf(source: MessageSource): LyteboatRequest | undefined {
   if (source.kind !== 'user') return undefined
   const carried = (source as { lyteboatRequest?: unknown }).lyteboatRequest
   if (carried === undefined) return undefined
-  const parsed = requestSchema.safeParse(carried)
-  return parsed.success ? parsed.data : undefined
+  return lyteboatRequestSchema.parse(carried)
 }
 
 export const lyteboatRequestProjectionDefinition = {
   key: 'lyteboatRequest',
-  stateSchema: requestStateSchema,
+  stateSchema: lyteboatRequestStateSchema,
   init: (): LyteboatRequestState => ({ requests: 0, context: {}, intake: null }),
   apply(state: LyteboatRequestState, event) {
     if (event.type !== 'user/message' || event.surfaceOp !== 'append') return state
-    const request = lyteboatRequestOf(event.data.source)
+    let request: LyteboatRequest | undefined
+    try {
+      request = lyteboatRequestOf(event.data.source)
+    } catch (error: unknown) {
+      throw new Error(`human message at session seq ${String(event.seq)} carries an invalid source.lyteboatRequest`, { cause: error })
+    }
     if (request === undefined) return state
     return { requests: state.requests + 1, context: request.context ?? state.context, intake: request.intake ?? null }
   },
-  wire: { viewSchema: requestStateSchema, view: (state: LyteboatRequestState) => state },
+  wire: { viewSchema: lyteboatRequestStateSchema, view: (state: LyteboatRequestState) => state },
   stateVersion: 1,
 } satisfies ProjectionDefinition<'lyteboatRequest', LyteboatRequestState>
 

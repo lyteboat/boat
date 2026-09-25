@@ -34,7 +34,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type { LyteboatToolMeta, JsonValue } from '@lyteboat/contracts'
 import { lyteboatStateProjectionDefinition, isJsonObject, renderLyteboatState } from './state.ts'
 
-export { lyteboatStateProjectionDefinition, lyteboatStateSchema, mergeStateDelta, renderLyteboatState, stateDeltaOfMeta } from './state.ts'
+export { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState, stateDeltaOfMeta } from './state.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

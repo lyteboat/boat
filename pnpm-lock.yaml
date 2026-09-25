@@ -997,6 +997,10 @@ importers:
         version: 4.0.9
 
   lyteboat/core/contracts:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
@@ -1180,9 +1184,6 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis
@@ -1275,9 +1276,6 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
-      zod:
-        specifier: 'catalog:'
-        version: 4.6.5
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis

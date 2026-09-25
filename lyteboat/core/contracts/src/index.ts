@@ -1,10 +1,13 @@
 /**
- * lyteboat's contract extensions over the dsh seams. Types and constants only:
- * the tool and skill metadata lyteboat plugins consume, the `lyteboat/*` step events
- * (declared by lyteboat's kernel agent loop, re-exported here), the log nodes lyteboat
- * plugins append, and the projection keys they publish. Declared here, by declaration merging onto
+ * lyteboat's contract extensions over the dsh seams. Types, constants,
+ * declaration merging, and the zod schemas of the JSON types declared here; no
+ * other runtime behavior: the tool and skill metadata lyteboat plugins consume, the
+ * `lyteboat/*` step events (declared by lyteboat's kernel agent loop, re-exported
+ * here), the log nodes lyteboat plugins append, the envelopes their facts ride,
+ * and the projection keys they publish. Declared here, by declaration merging onto
  * the dsh maps, so that providers and consumers depend on this package and
- * never on each other — the same rule dsh applies to its own seams.
+ * never on each other — the same rule dsh applies to its own seams. A reader
+ * that finds a lyteboat envelope failing its schema throws: lyteboat wrote it.
  *
  * Session log vocabulary: dsh's persistence layer refuses to reopen a log
  * that carries an event type outside its compiled catalog unless the event is
@@ -19,6 +22,7 @@
  * @module @lyteboat/contracts
  */
 
+import { z } from 'zod'
 import type {} from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session'
@@ -26,6 +30,13 @@ import type {} from '@deepseek-ai/dsh-session-projection/types'
 
 /** Lossless JSON, the only shape session logs and projections may carry. */
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+
+/** The schema of {@link JsonValue}. */
+export const lyteboatJsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
+  z.string(), z.number(), z.boolean(), z.null(), z.array(lyteboatJsonValueSchema), z.record(z.string(), lyteboatJsonValueSchema),
+]))
+
+const lyteboatJsonObjectSchema = z.record(z.string(), lyteboatJsonValueSchema)
 
 /**
  * The kernel's pre-assembly step events (`lyteboat/intake`, `lyteboat/pre-assemble`)
@@ -128,13 +139,51 @@ export type LyteboatResultCard = {
   payload: JsonValue
 }
 
+const lyteboatResultCardShape = {
+  surfaceId: z.string(),
+  area: z.string(),
+  emission: z.enum(['immediate', 'deferred', 'deferred_discard']),
+  payload: lyteboatJsonValueSchema,
+}
+
+/** The schema of {@link LyteboatResultCard}. */
+export const lyteboatResultCardSchema: z.ZodType<LyteboatResultCard> = z.object(lyteboatResultCardShape)
+
 /** A card the session prepared, with what prepared it: the tool call, or the admission reply's message. */
 export type LyteboatCard = LyteboatResultCard & {
   callId: string
 }
 
+/** The schema of {@link LyteboatCard}. */
+export const lyteboatCardSchema: z.ZodType<LyteboatCard> = z.object({ ...lyteboatResultCardShape, callId: z.string() })
+
+/** A state delta: a JSON object whose top-level keys are dot paths into the `lyteboatState` projection (`assets.total`). */
+export type LyteboatStateDelta = { [path: string]: JsonValue }
+
+/** The schema of {@link LyteboatStateDelta}. */
+export const lyteboatStateDeltaSchema: z.ZodType<LyteboatStateDelta> = lyteboatJsonObjectSchema
+
+/**
+ * What a tool result's presentation meta carries under `lyteboat`
+ * (`tool/result.meta.lyteboat`): the cards the call rendered, and the state
+ * delta it derived.
+ */
+export type LyteboatResultMeta = {
+  cards?: LyteboatResultCard[]
+  stateDelta?: LyteboatStateDelta
+}
+
+/** The schema of {@link LyteboatResultMeta}. */
+export const lyteboatResultMetaSchema: z.ZodType<LyteboatResultMeta> = z.object({
+  cards: z.array(lyteboatResultCardSchema).exactOptional(),
+  stateDelta: lyteboatStateDeltaSchema.exactOptional(),
+})
+
 /** The `lyteboatState` projection value: tool state accumulated by dot-path deep merge of `tool/result.meta.lyteboat.stateDelta`. */
 export type LyteboatStateValue = { [key: string]: JsonValue }
+
+/** The schema of {@link LyteboatStateValue}. */
+export const lyteboatStateValueSchema: z.ZodType<LyteboatStateValue> = lyteboatJsonObjectSchema
 
 /** One side model call, as its `lyteboat/aux-llm-call` record keeps it. */
 export interface LyteboatAuxLlmCallRecord {
@@ -170,6 +219,15 @@ export type LyteboatIntakeVerdict = {
   cards?: LyteboatResultCard[]
 }
 
+/** The schema of {@link LyteboatIntakeVerdict}. */
+export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.object({
+  by: z.string(),
+  decision: z.enum(['pass', 'reply']),
+  verdict: z.string().exactOptional(),
+  text: z.string().exactOptional(),
+  cards: z.array(lyteboatResultCardSchema).exactOptional(),
+})
+
 /**
  * The request a human message answers to, carried on its `source` beside
  * `kind: 'user'`, so every dsh consumer still reads the message as human
@@ -183,6 +241,13 @@ export type LyteboatRequest = {
   intake?: LyteboatIntakeVerdict
 }
 
+/** The schema of {@link LyteboatRequest}, the envelope on a human message's `source.lyteboatRequest`. */
+export const lyteboatRequestSchema: z.ZodType<LyteboatRequest> = z.object({
+  requestId: z.string().exactOptional(),
+  context: lyteboatJsonObjectSchema.exactOptional(),
+  intake: lyteboatIntakeVerdictSchema.exactOptional(),
+})
+
 /** The `lyteboatRequest` fold state: the session's request context and the latest request's verdict. */
 export type LyteboatRequestState = {
   /** Human messages that carried a request. */
@@ -193,6 +258,13 @@ export type LyteboatRequestState = {
   intake: LyteboatIntakeVerdict | null
 }
 
+/** The schema of {@link LyteboatRequestState}. */
+export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.object({
+  requests: z.number(),
+  context: lyteboatJsonObjectSchema,
+  intake: lyteboatIntakeVerdictSchema.nullable(),
+})
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */
@@ -200,6 +272,12 @@ export interface LyteboatActiveSkillState {
   /** `skill` tool calls still awaiting their result: the skill each loads, by call id. */
   loading: { [callId: string]: string }
 }
+
+/** The schema of {@link LyteboatActiveSkillState}. */
+export const lyteboatActiveSkillStateSchema: z.ZodType<LyteboatActiveSkillState> = z.object({
+  active: z.string().nullable(),
+  loading: z.record(z.string(), z.string()),
+})
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
