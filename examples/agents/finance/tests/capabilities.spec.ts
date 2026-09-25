@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { FixtureCustomerSource, centsOf, diagnoseAllocation, loadKnowledge, lookupKnowledge, moneyForModel, summarizeHoldings } from '@lyteboat/agent-finance/capabilities'
 
-const FIXTURES = fileURLToPath(new URL('../fixtures', import.meta.url))
-const customers = new FixtureCustomerSource(join(FIXTURES, 'customers'))
+const SAMPLE_DATA = fileURLToPath(new URL('../assets/sample-data', import.meta.url))
+const customers = new FixtureCustomerSource(join(SAMPLE_DATA, 'customers'))
 const diagnose = (id: string) => {
   const customer = customers.customer(id)
   return diagnoseAllocation(summarizeHoldings(customer), customer.age)
@@ -50,7 +50,7 @@ describe('diagnoseAllocation', () => {
 })
 
 describe('knowledge base', () => {
-  const knowledge = loadKnowledge(join(FIXTURES, 'knowledge.json'))
+  const knowledge = loadKnowledge(join(SAMPLE_DATA, 'knowledge.json'))
 
   it('finds a topic by name or alias and falls back to the list of topics', () => {
     expect(lookupKnowledge(knowledge, '什么是再平衡')).toMatchObject({ status: 'ok', entry: { topic: '再平衡' } })

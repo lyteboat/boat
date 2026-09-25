@@ -18,7 +18,7 @@ import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { reopenRefusal } from '@lyteboat/testing/session-reopen'
 import { scriptedModelEnv, startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
-/** The agents/ root this package lives in, as `--agents ./agents` names it. */
+/** The examples/agents root this package lives in, as `--agents ./examples/agents` names it. */
 const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
 
 /** The skill and tool call each task routes to. */

@@ -38,7 +38,7 @@
   - 准入前移：agent 登记准入函数，请求进循环前就放行或直接回复，回复可以带卡（`@lyteboat/intake-guard`）；底层的拒识钩子 `lyteboat/intake` 也可以直接用。
   - 旁路模型调用留痕：路由、分类这类旁路调用在会话里留下完整的 prompt 和回答（`@lyteboat/aux-llm`）。
   - 外部对话历史导入（`@lyteboat/history-import`）。
-- **一个业务 agent 就是一个目录。** 在 `lyteboat/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
+- **一个业务 agent 就是一个目录。** 在 `examples/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
 - **与 dsh 生态兼容。** 轻舟是 dsh 的一个发行版：它以原包名接管 dsh 内核 13 个包的源码（`dsh/`），官方包和社区插件不改一行就跑在轻舟的实现上。与所跟踪的 dsh 版本在协议、接口、行为上保持兼容，由 G1–G6 六道闸门证明（[`dsh-compat/`](dsh-compat/README.md)）。
 - **有迹可查。** 模型看到的一切都能从会话日志还原；轻舟记录的事实都放在 dsh 已有的日志信封里。
 
@@ -81,7 +81,7 @@ alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 
 ```sh
 lyteboat run "总结一下这个工作区"                              # 一次性任务：答完即退出
-lyteboat run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
+lyteboat run --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
 lyteboat web --no-open                                         # 浏览器界面
 ```
 
@@ -117,15 +117,14 @@ lyteboat web --no-open                                         # 浏览器界面
 
 ### 编写业务 agent
 
-一个业务 agent 是一个目录 `lyteboat/agents/<id>/`，目录名就是 id：
+一个业务 agent 是一个目录 `examples/agents/<id>/`，目录名就是 id。业务 agent 不属于发行版：它建在 `lyteboat/` 之上，`lyteboat/` 里没有任何包依赖它。
 
 - `agent.cordis.yml`（必需）：persona、技能路由、工具与策略等插件行；每一行只作用于这个 agent 的会话。
 - `preset.yml`：显示名等展示信息。
-- `skills/`：技能，每个技能一个 `SKILL.md`。
-- `a2ui/`：卡片模板。
+- `assets/`：运行时读的非代码文件，与 `src/`、`lib/` 同级：`skills/`（每个技能一个 `SKILL.md`）、`a2ui/`（卡片模板）、`sample-data/`（示例数据）。
 - `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
 
-完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`lyteboat/agents/finance`](lyteboat/agents/finance)：一个刻意做到最小、只为跑通端到端流程的金融智能体。
+完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`examples/agents/finance`](examples/agents/finance)：一个刻意做到最小、只为跑通端到端流程的金融智能体。
 
 ### 数据与会话日志
 
@@ -156,13 +155,14 @@ lyteboat/             轻舟自己的 14 个包，每层一个目录
   core/               声明
   agents/             业务 agent
   tooling/            测试支撑
+examples/agents/      业务 agent 示例，建在发行版之上
 dsh-compat/           兼容性承诺与证明：契约快照、扩展登记、G2/G4/G5/G6 测试
 scripts/              分层检查、版本钉检查、敏感词检查；dist/ 是发行版工具
 docs/                 文档
 dsh.upstream.json     所跟踪的 dsh 版本
 ```
 
-依赖只能向下：`apps` → `bundles` → `plugins` → `core`；`agents` 只依赖 `plugins` 与 `core`；`tooling` 只给测试用。`pnpm run lint` 会检查。
+依赖只能向下：`apps` → `bundles` → `plugins` → `core`；`examples` 只依赖 `plugins` 与 `core`（测试另可用 `apps`、`bundles`、`tooling`），发行版里没有包依赖它；`tooling` 只给测试用。`pnpm run lint` 会检查。
 
 | 路径 | 包 | 作用 |
 |---|---|---|
@@ -178,7 +178,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具，agent 自己的工具用 `renderCard`、`cardsPresentationMeta`、`cardMarker` 出卡；默认组件目录不含业务词汇 |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema |
-| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
+| `examples/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：单元宿主（dsh 不变量、dsh 服务、内核的 agent loop）与 `MockAdapter`、进程内组合启动、每个测试文件的临时 home 与工作区、会话日志读取与重开检查、脚本化模型、启动器进程 |
 
 ## 开发

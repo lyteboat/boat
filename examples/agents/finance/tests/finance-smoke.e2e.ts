@@ -1,18 +1,22 @@
 /**
- * The built launcher boots the finance agent from `--agents ./agents`. The
- * agent's behavior is agents/finance's own tests; this proves the installation
- * closure, the profile, and the agent directory load together from the built
- * artifact: the request context names the customer, the admission lets the
- * request in, and the routed tool's card is placed after the answer.
+ * The built launcher boots the finance agent from `--agents ./examples/agents`.
+ * The agent's behavior is this package's composition test; this proves the
+ * installation closure, the profile, and the agent directory load together from
+ * the built artifact: the request context names the customer, the admission lets
+ * the request in, and the routed tool's card is placed after the answer.
  */
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { lyteboatLauncher } from '@lyteboat/testing/process'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
-import { runLyteboat } from './support/lyteboat-process.ts'
 
-const AGENTS = fileURLToPath(new URL('../../../agents', import.meta.url))
+/** The examples/agents root this package lives in, as `--agents ./examples/agents` names it. */
+const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
+// The published artifact under plain Node, reached through this package's devDependency on the launcher.
+const { runLyteboat } = lyteboatLauncher(createRequire(import.meta.url).resolve('@lyteboat/cli/lib/bin.js'))
 
 function script(request: RecordedRequest) {
   if (request.systemText.includes('准入分类器')) return { text: JSON.stringify({ intent: 'asset', reason: '看资产' }) }
@@ -21,7 +25,7 @@ function script(request: RecordedRequest) {
   return offered && !request.calledTools.includes('asset_overview') ? { toolCall: { name: 'asset_overview', arguments: {}, id: 'call-overview' } } : { text: 'FINANCE-SMOKE-OK' }
 }
 
-describe('lyteboat run --agents ./agents --agent finance (built bin, scripted model)', () => {
+describe('lyteboat run --agents ./examples/agents --agent finance (built bin, scripted model)', () => {
   const scratch = createLyteboatScratch('finance-smoke')
   let model: ScriptedModel
 

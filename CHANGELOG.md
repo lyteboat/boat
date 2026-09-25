@@ -39,7 +39,7 @@ lyteboat is an agent harness for business agents, built as Cordis plugins on Dee
 
 ### Example agent
 
-- `@lyteboat/agent-finance` (`lyteboat/agents/finance`): an agent kept deliberately minimal, built from public financial knowledge only. Three routed skills and three tools: an asset overview (one card), an allocation diagnosis by the 100-minus-age rule (two cards the answer places by markers), investor education on three concepts. The request context names the customer; its admission classifies each request with a side call before the loop (investor education and small talk pass, a request about the customer's money needs a known customer with an authorized account and otherwise gets a reply, the unauthorized card included, anything else gets the service scope; a failed classification lets the request through). Its composition hides every inherited tool except `skill` (`undeclared: auto`).
+- `@lyteboat/agent-finance` (`examples/agents/finance`): an agent kept deliberately minimal, built from public financial knowledge only. Three routed skills and three tools: an asset overview (one card), an allocation diagnosis by the 100-minus-age rule (two cards the answer places by markers), investor education on three concepts. The request context names the customer; its admission classifies each request with a side call before the loop (investor education and small talk pass, a request about the customer's money needs a known customer with an authorized account and otherwise gets a reply, the unauthorized card included, anything else gets the service scope; a failed classification lets the request through). Its composition hides every inherited tool except `skill` (`undeclared: auto`).
 
 ### Testing
 

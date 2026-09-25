@@ -26,9 +26,7 @@
     "lib",
     "preset.yml",
     "agent.cordis.yml",
-    "skills",
-    "a2ui",
-    "fixtures"
+    "assets"
   ],
   "dependencies": {
     "@lyteboat/contracts": "workspace:*",
@@ -48,6 +46,7 @@
   "devDependencies": {
     "@lyteboat/a2ui": "workspace:*",
     "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/cli": "workspace:*",
     "@lyteboat/distro": "workspace:*",
     "@lyteboat/host": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",

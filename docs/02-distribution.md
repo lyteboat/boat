@@ -292,7 +292,7 @@ $ git diff --stat "$(git log -1 --format=%H --grep='^Dist-Import: ')" HEAD -- ds
 这是 §0.5 的第一条规则。
 
 - 能在内核外做的，放 lyteboat 层。
-- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `lyteboat/agents/*`，`CLAUDE.md`「Architecture boundaries」的 **Framework packages stay domain-neutral**）。
+- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `examples/agents/*`，`CLAUDE.md`「Architecture boundaries」的 **Framework packages stay domain-neutral**）。
 - 能折进已有信封的事实（`tool/result.meta`、消息的 `source`），不开新的内核入口（同节 **Model-visible ⟺ logged**、**A new session event type is proven reopenable before it ships**）。
 
 改内核是一个设计决定：先写明为什么放不到外面、属于下面哪一类，并在动手前和维护者确认（`CLAUDE.md`「Workflow」的 **Task types**）。
