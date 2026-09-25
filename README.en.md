@@ -213,7 +213,7 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 - Provides: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the finance agent; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. The [CHANGELOG](CHANGELOG.md) has the full list.
 - Known limitations:
   - There is no server mode (`/chat`, multiple users). `lyteboat web` does not read agent directories, and a message arriving through it is admitted in the loop without a recorded verdict.
-  - There is no memory, no suggested questions, and no per-agent choice of business and side-call models.
+  - There is no memory and there are no suggested questions. Side calls use the agent's own model by default; skill routing can name its own provider and model in the `@lyteboat/skill-router/agent` row, intake classification cannot yet.
 - What comes next: the forward plan in the [alignment analysis](docs/04-reference-alignment.md).
 
 ## Contributing

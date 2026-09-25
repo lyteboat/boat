@@ -211,7 +211,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 - 提供：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。完整清单见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
   - 没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
-  - 没有记忆、推荐问，也不能按 agent 分别配置业务模型和旁路模型。
+  - 没有记忆和推荐问。旁路调用默认用 agent 自己的模型；技能路由可以在 `@lyteboat/skill-router/agent` 行里另指 provider 和 model，准入分类还不能单独指定。
 - 后续计划见[参考实现对齐分析](docs/04-reference-alignment.md)。
 
 ## 参与贡献
