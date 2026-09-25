@@ -20,7 +20,8 @@ type Layer = typeof LAYERS[number]
 
 /** Layers a package may reach at runtime, by its own layer. */
 const RUNTIME: Readonly<Record<Layer, readonly Layer[]>> = {
-  apps: ['bundles', 'plugins', 'core'],
+  // An app boots compositions: the plugins it runs arrive through the bundles that wire them.
+  apps: ['bundles', 'core'],
   bundles: ['plugins', 'core'],
   plugins: ['plugins', 'core'],
   core: ['core'],
