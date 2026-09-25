@@ -1,8 +1,8 @@
 /**
  * The request a human message's source carries, read back against the
  * contract's schema, and the `lyteboatRequest` projection that folds the
- * session's context and latest verdict from it: a request that carries no
- * context keeps the earlier one.
+ * session's context, latest verdict, and owner from it: a request that carries
+ * no context keeps the earlier one, and the first owner named stays.
  * @module @lyteboat/request-context/request-projection
  */
 
@@ -29,7 +29,7 @@ export function lyteboatRequestOf(source: MessageSource): LyteboatRequest | unde
 export const lyteboatRequestProjectionDefinition = {
   key: 'lyteboatRequest',
   stateSchema: lyteboatRequestStateSchema,
-  init: (): LyteboatRequestState => ({ requests: 0, context: {}, intake: null }),
+  init: (): LyteboatRequestState => ({ requests: 0, context: {}, intake: null, owner: null }),
   apply(state: LyteboatRequestState, event) {
     if (event.type !== 'user/message' || event.surfaceOp !== 'append') return state
     let request: LyteboatRequest | undefined
@@ -39,8 +39,8 @@ export const lyteboatRequestProjectionDefinition = {
       throw new Error(`human message at session seq ${String(event.seq)} carries an invalid source.lyteboatRequest`, { cause: error })
     }
     if (request === undefined) return state
-    return { requests: state.requests + 1, context: request.context ?? state.context, intake: request.intake ?? null }
+    return { requests: state.requests + 1, context: request.context ?? state.context, intake: request.intake ?? null, owner: state.owner ?? request.owner ?? null }
   },
   wire: { viewSchema: lyteboatRequestStateSchema, view: (state: LyteboatRequestState) => state },
-  stateVersion: 1,
+  stateVersion: 2,
 } satisfies ProjectionDefinition<'lyteboatRequest', LyteboatRequestState>

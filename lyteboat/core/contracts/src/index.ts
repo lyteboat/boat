@@ -237,6 +237,10 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 export type LyteboatRequest = {
   /** The caller's id for the request, when it gave one. */
   requestId?: string
+  /** Who sent the request, as the caller identifies them; a session's owner is its first request's. */
+  owner?: string
+  /** The caller's trace id for the request, so its logs and the session's can be joined. */
+  traceId?: string
   /** The request context as the caller passed it; absent keeps the session's earlier context. */
   context?: { [key: string]: JsonValue }
   intake?: LyteboatIntakeVerdict
@@ -245,6 +249,8 @@ export type LyteboatRequest = {
 /** The schema of {@link LyteboatRequest}, the envelope on a human message's `source.lyteboatRequest`. */
 export const lyteboatRequestSchema: z.ZodType<LyteboatRequest> = z.object({
   requestId: z.string().exactOptional(),
+  owner: z.string().exactOptional(),
+  traceId: z.string().exactOptional(),
   context: lyteboatJsonObjectSchema.exactOptional(),
   intake: lyteboatIntakeVerdictSchema.exactOptional(),
 })
@@ -257,6 +263,8 @@ export type LyteboatRequestState = {
   context: { [key: string]: JsonValue }
   /** The latest request's verdict, when an admission function ran on it. */
   intake: LyteboatIntakeVerdict | null
+  /** The first owner a request named; null before any did. */
+  owner: string | null
 }
 
 /** The schema of {@link LyteboatRequestState}. */
@@ -264,6 +272,7 @@ export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.obj
   requests: z.number(),
   context: lyteboatJsonObjectSchema,
   intake: lyteboatIntakeVerdictSchema.nullable(),
+  owner: z.string().nullable(),
 })
 
 /** The `lyteboatActiveSkill` fold state. */
