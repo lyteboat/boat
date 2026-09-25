@@ -1,5 +1,5 @@
 /**
- * The render tool at the driver's seams: raw data from lyteboatState, the card on
+ * The render tool at the agent loop's seams: raw data from lyteboatState, the card on
  * tool/result.meta, the lyteboatCards projection (tool results, surfaceUpdate
  * replacement), the digest as model text, terminal cards.
  */

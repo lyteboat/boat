@@ -1,7 +1,7 @@
 /**
  * lyteboat's unit-test harness: the unit host (a context with dsh's invariants,
  * the dsh services, the kernel's agent loop, and a scripted adapter), the
- * in-process MockAdapter, and the follow-up step every driver test takes. Tests
+ * in-process MockAdapter, and the follow-up step every agent-loop test takes. Tests
  * mount the lyteboat services under test on the host themselves, so their load
  * order stays the test's decision.
  * @module @lyteboat/testing
@@ -23,7 +23,7 @@ export { MockAdapter, maxTokensResponse, textResponse, toolCallResponse, type Ha
 export type DshTestServicesOptions = AgentLoopTestDependenciesOptions
 
 /**
- * Mount the dsh services a driver injects: llm, sessions, projections, system
+ * Mount the dsh services the agent loop injects: llm, sessions, projections, system
  * prompt, tools, and the agent registry, through the kernel testkit's own
  * mounting. The context owns every service; a failed plugin load rejects and
  * leaves earlier services for the context to unwind.

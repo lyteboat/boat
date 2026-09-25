@@ -136,7 +136,7 @@ export const lyteboatCardsProjectionDefinition = {
     return preparedCardsOf(event).reduce(appendCard, state)
   },
   wire: { viewSchema: lyteboatCardsSchema, view: (state: LyteboatCard[]) => state },
-  stateVersion: 4,
+  stateVersion: 1,
 } satisfies ProjectionDefinition<'lyteboatCards', LyteboatCard[]>
 
 /** The reference `_collect_raw_data`: each state key namespaced and flattened. */

@@ -1,5 +1,5 @@
 /**
- * A seeded session under the driver: the header, the turn numbering, the
+ * A seeded session under the agent loop: the header, the turn numbering, the
  * derived request, the projection, and the invariants.
  */
 import { describe, expect, it } from 'vitest'

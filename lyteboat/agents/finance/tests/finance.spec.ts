@@ -1,5 +1,5 @@
 /**
- * The finance agent on the unit host: the real driver, tool policy, skill
+ * The finance agent on the unit host: the kernel's agent loop, tool policy, skill
  * router, a2ui, request context and admission services, the agent's own row,
  * and a scripted model that classifies each request, routes it, and calls the
  * routed skill's tool. Each request carries its context and is admitted

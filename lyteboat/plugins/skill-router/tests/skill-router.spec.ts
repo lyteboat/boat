@@ -1,5 +1,5 @@
 /**
- * The skill router at the driver's seams: dynamic routing per user input,
+ * The skill router at the agent loop's seams: dynamic routing per user input,
  * same-step body and tool visibility, sticky decisions, model-initiated
  * activation, a session continued by a fresh agent, full mode, and off.
  */

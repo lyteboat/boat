@@ -155,7 +155,7 @@ export const lyteboatActiveSkillProjectionDefinition = {
     }
   },
   wire: { viewSchema: activeSkillViewSchema, view: (state: LyteboatActiveSkillState) => state.active },
-  stateVersion: 2,
+  stateVersion: 1,
 } satisfies ProjectionDefinition<'lyteboatActiveSkill', LyteboatActiveSkillState>
 
 /**

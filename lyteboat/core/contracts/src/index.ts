@@ -81,8 +81,9 @@ declare module '@deepseek-ai/cordis' {
 
 /**
  * `source.kind` of the user messages imported history writes; consumers treat
- * them as conversation, not as context. dsh's V3→V4 session migration turns a
- * V3 `{ kind: 'plugin', plugin: 'lyteboat-history-import' }` into this same kind.
+ * them as conversation, not as context. It is dsh's producer kind for the
+ * plugin `lyteboat-history-import` (`plugin:<name>`), the kind dsh's session
+ * format also reads a stored `{ kind: 'plugin', plugin: 'lyteboat-history-import' }` source as.
  */
 export const LYTEBOAT_HISTORY_IMPORT_SOURCE = 'plugin:lyteboat-history-import'
 

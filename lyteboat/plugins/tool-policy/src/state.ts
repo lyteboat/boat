@@ -93,7 +93,7 @@ export const lyteboatStateProjectionDefinition = {
     }
   },
   wire: { viewSchema: lyteboatStateValueSchema, view: (state: LyteboatStateValue) => state },
-  stateVersion: 2,
+  stateVersion: 1,
 } satisfies ProjectionDefinition<'lyteboatState', LyteboatStateValue>
 
 /** The model-facing rendering of the current state; empty when there is none. */

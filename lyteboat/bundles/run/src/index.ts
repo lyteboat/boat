@@ -1,5 +1,5 @@
 /**
- * @lyteboat/run — lyteboat's one-shot direct Agent driver. The bundle patch rides over
+ * @lyteboat/run — lyteboat's one-shot mode. The bundle patch rides over
  * dsh-base; this runner creates one Agent through the core registry — composed
  * from an agent preset when the invocation named one — or resumes a stored
  * session, drives the task to quiescence, streams provider reasoning to stderr,
@@ -278,7 +278,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
     installModelSelection(agentCtx, selected)
     if (agentPreset !== undefined && presets !== undefined) await presets.mount(agentCtx, agentPreset)
   }
-  // History arrives as a seed: closed turns the driver counts from, so the task
+  // History arrives as a seed: closed turns the agent loop counts from, so the task
   // becomes turn N+1 and the first request already derives the imported rounds.
   let seed: SeedResult | undefined
   if (config.history !== undefined) {
@@ -324,7 +324,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
 }
 
 /**
- * Mount the one-shot direct driver.
+ * Mount the one-shot runner.
  * @param ctx - plugin context carrying core services and the launcher-provided exit request.
  * @param config - validated task config.
  */

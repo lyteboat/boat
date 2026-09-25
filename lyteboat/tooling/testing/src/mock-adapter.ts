@@ -1,6 +1,6 @@
 /**
  * A scripted in-process LlmAdapter and chunk builders for unit tests that mount
- * the real driver. lyteboat's own copy: the kernel's upstream tests keep theirs in
+ * the kernel's agent loop. lyteboat's own copy: the kernel's upstream tests keep theirs in
  * dsh/core/agent-loop/tests, which every import overwrites.
  *
  * Adapted from deepseek-ai/deepseek-harness packages/core/agent-loop/tests/mock-adapter.ts

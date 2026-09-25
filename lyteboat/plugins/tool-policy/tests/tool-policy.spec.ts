@@ -1,5 +1,5 @@
 /**
- * The tool policy at the driver's seams: visibility through restriction,
+ * The tool policy at the agent loop's seams: visibility through restriction,
  * confirmation through `ask`, and state deltas folded from `tool/result.meta`.
  */
 import { describe, expect, it } from 'vitest'
