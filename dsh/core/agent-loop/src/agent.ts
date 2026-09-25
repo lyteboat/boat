@@ -33,6 +33,8 @@ import { joinContextSections, renderContextSections, renderPrompt } from '@deeps
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
+import { appendLyteboatIntakeReply } from './lyteboat/intake-reply.ts'
+import type { LyteboatIntakeDecision, LyteboatIntakeReply } from './lyteboat/step-hooks.ts'
 import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { AssistantStreamAttempt } from './assistant-stream.ts'
@@ -53,6 +55,8 @@ type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }
 
 type PreparedStep =
   | { kind: 'reject' }
+  // lyteboat: an intake listener answered the claimed messages without a model call.
+  | { kind: 'reply'; messages: UserMessage[]; reply: LyteboatIntakeReply }
   | {
     kind: 'enter'
     messages: UserMessage[]
@@ -269,6 +273,20 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
+    // lyteboat: the intake gate and the pre-assembly hook run before the prompt is
+    // assembled, so a reply spends no assembly and routing done here shapes
+    // this very step's request. The official driver has neither event.
+    const intake = await this.dispatch.waterfall(
+      'lyteboat/intake', { messages: claimed, ...position, signal },
+      (): Promise<LyteboatIntakeDecision> => Promise.resolve<LyteboatIntakeDecision>({ kind: 'pass' }),
+    )
+    signal.throwIfAborted()
+    if (intake.kind === 'reply') return { kind: 'reply', messages: claimed, reply: intake }
+    await this.dispatch.waterfall(
+      'lyteboat/pre-assemble', { messages: claimed, ...position, signal },
+      (): Promise<void> => Promise.resolve(),
+    )
+    signal.throwIfAborted()
     const assembly = await this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))
     signal.throwIfAborted()
     const sections = renderContextSections(assembly)
@@ -317,6 +335,30 @@ export class ReactLoopAgent implements Agent {
         if (decision.kind === 'reject') {
           turnEnds = { kind: 'blocked' }
           return false
+        }
+        if (decision.kind === 'reply') {
+          // lyteboat: a fixed reply is one step without a request: the claimed
+          // messages and the reply land in the log inside an open step so the
+          // invariants and token accounting see an ordinary shape.
+          signal.throwIfAborted()
+          this.session.append('step/start', { turn, step })
+          phase.step = step
+          try {
+            appendLyteboatIntakeReply(this.session, { turn, step }, decision.messages, decision.reply)
+          } finally {
+            this.session.append('step/end', { turn, step })
+          }
+          // max-tokens stays sticky here too: a reply to steering queued after
+          // a truncated step must not report the turn as completed.
+          if (turnEnds === null || turnEnds.kind !== 'max-tokens') turnEnds = { kind: 'completed' }
+          signal.throwIfAborted()
+          if (this.inbox.nextStep.length === 0) {
+            await this.dispatch.serial('agent/turn-stopping', { turn, signal })
+            signal.throwIfAborted()
+          }
+          if (this.inbox.nextStep.length === 0) break
+          target = 'next-step'
+          continue
         }
         if (turnEnds && decision.messages.length === 0) break
         // A removed waking message or an enter decision rewritten to empty
@@ -390,9 +432,13 @@ export class ReactLoopAgent implements Agent {
     while (true) {
       const { config, preparedCall } = await this.prepareRequest(turn, step, signal)
       const startsRequestSeries = firstAttempt && decision.startsRequestSeries === true
+      // lyteboat: before the first request there is no series to continue, so an
+      // empty head left by an intake reply or a history seed is replaced on
+      // every route; upstream only ever meets a head it wrote itself.
       const commits = this.systemPrompt.project(renderedPrompt, {
         inHistory: preparedCall?.systemPromptUpdate === 'in-history',
         startsSeries: startsRequestSeries
+          || this.session.requestHeader() === undefined
           || this.requestSurfaceGeneration !== this.session.surface.contentGeneration
           || (preparedCall?.toolUpdate === undefined && this.toolsChanged(assembly.tools)),
       })
