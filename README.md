@@ -80,8 +80,8 @@ alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 ### 运行
 
 ```sh
-lyteboat run "总结一下这个工作区"                              # 一次性任务：答完即退出
-lyteboat run --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
+lyteboat headless "总结一下这个工作区"                              # 一次性任务：答完即退出
+lyteboat headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
 lyteboat web --no-open                                         # 浏览器界面
 ```
 
@@ -91,7 +91,7 @@ lyteboat web --no-open                                         # 浏览器界面
 
 | 命令 | 作用 |
 |---|---|
-| `lyteboat run [选项] "任务"` | 回答一个任务，打印结果后退出（profile `run`） |
+| `lyteboat headless [选项] "任务"` | 回答一个任务，打印结果后退出（profile `headless`） |
 | `lyteboat web [选项]` | 启动浏览器界面（profile `web`）；`lyteboat web --help` 查看它自己的参数 |
 | `lyteboat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
 
@@ -103,7 +103,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | `--patch <路径>` | 在 profile 层之后再叠一层 patch（可重复） |
 | `--plugin <文件>` | 把一个本地 ESM 插件文件插进插件树（可重复） |
 
-`lyteboat run` 另有：
+`lyteboat headless` 另有：
 
 | 选项 | 作用 |
 |---|---|
@@ -113,7 +113,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | `--session-id <id>` | 在已存的会话上续聊；每次运行都把会话 id 打到 stderr |
 | `--context <json>` | 请求上下文：一个 JSON 对象，内联或放在文件里；随请求落日志，工具读取，模型看不到 |
 
-`lyteboat run -h` 列出一次性模式的全部参数。
+`lyteboat headless -h` 列出一次性模式的全部参数。
 
 ### 编写业务 agent
 
@@ -150,7 +150,7 @@ lyteboat web --no-open                                         # 浏览器界面
 dsh/                  内核：dsh/kernel.json 列出的 14 个 dsh 包，沿用 @deepseek-ai/* 包名
 lyteboat/             轻舟自己的 14 个包，每层一个目录
   apps/               进程：lyteboat 启动器
-  bundles/            组合：每个 profile 都带的 host，lyteboat run 用的 run
+  bundles/            组合：每个 profile 都带的 host，lyteboat headless 用的 run
   plugins/            能力插件
   core/               声明
   agents/             业务 agent
@@ -168,7 +168,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 |---|---|---|
 | `lyteboat/apps/cli` | `@lyteboat/cli` | `lyteboat` 启动器：profile 模板、patch 叠加、启动（改编自 dsh 的 CLI） |
 | `lyteboat/bundles/host` | `@lyteboat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
-| `lyteboat/bundles/run` | `@lyteboat/run` | `lyteboat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history`、`--session-id`、`--context`；请求进循环前先准入，输出按轮组合卡片 |
+| `lyteboat/bundles/headless` | `@lyteboat/headless` | `lyteboat headless` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history`、`--session-id`、`--context`；请求进循环前先准入，输出按轮组合卡片 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略，`undeclared: always \| auto` 决定它没有点名的继承工具是否可见 |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | 旁路模型调用（技能路由、准入分类）：各自带超时，每次调用在会话里留一条可忽略的审计记录；在 `maxTokens` 处截断的回答算失败；`reasoningEffort` 配置旁路调用请求的推理强度 |
@@ -176,7 +176,8 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | 准入前移：agent 登记准入函数，调用方用 `submit` 提交每个请求，先准入，再把请求连同判定记进会话；循环里按记录的回复判定直接作答，没有经过准入的消息在循环内补做 |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由（`historyWindow`、`timeoutMs`、`maxTokens` 可配）；`./agent` 在 agent 的组合文件里声明模式 |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具，agent 自己的工具用 `renderCard`、`cardsPresentationMeta`、`cardMarker` 出卡；默认组件目录不含业务词汇 |
-| `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |
+| `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat headless --history` 用的会话种子 |
+| `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | agent 目录：扫描 agent 根目录，把每个 agent 声明成 dsh preset，报告挂载失败的 agent |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：单元宿主（dsh 不变量、dsh 服务、内核的 agent loop）与 `MockAdapter`、进程内组合启动、每个测试文件的临时 home 与工作区、会话日志读取与重开检查、脚本化模型、启动器进程 |

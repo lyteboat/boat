@@ -1,5 +1,5 @@
 /**
- * The finance agent in the run composition (in process, scripted DeepSeek
+ * The finance agent in the headless composition (in process, scripted DeepSeek
  * Messages server): each request names its customer in `--context` and is
  * admitted before the loop (the unauthorized card and the service scope
  * answer without the model); the persona is the whole system prompt, the
@@ -12,7 +12,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { LYTEBOAT_RUN_BUNDLES, bootComposition, printedSessionId } from '@lyteboat/testing/composition'
+import { LYTEBOAT_HEADLESS_BUNDLES, bootComposition, printedSessionId } from '@lyteboat/testing/composition'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { reopenRefusal } from '@lyteboat/testing/session-reopen'
@@ -63,7 +63,7 @@ function script(request: RecordedRequest) {
   return { text: ['FINANCE-OK', ...markers].join('\n') }
 }
 
-describe('finance agent in the run composition (in process, scripted model)', () => {
+describe('finance agent in the headless composition (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('finance')
   let model: ScriptedModel
 
@@ -80,7 +80,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
     const { home, workspace } = scratch.run(label)
     const before = model.requests.length
     const result = await bootComposition({
-      bundles: LYTEBOAT_RUN_BUNDLES,
+      bundles: LYTEBOAT_HEADLESS_BUNDLES,
       args: ['--agents', AGENTS, '--agent', 'finance', ...customer === undefined ? [] : ['--context', JSON.stringify({ customer })], ...extra, task],
       cwd: workspace,
       home,
@@ -181,7 +181,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
   it('--session-id continues in a new process: the diagnosis turn keeps the customer and sees the overview it already gave', async () => {
     const { home, workspace } = scratch.run('continue')
     const boot = (args: string[]) => bootComposition({
-      bundles: LYTEBOAT_RUN_BUNDLES,
+      bundles: LYTEBOAT_HEADLESS_BUNDLES,
       args: ['--agents', AGENTS, '--agent', 'finance', ...args],
       cwd: workspace,
       home,

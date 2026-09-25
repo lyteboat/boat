@@ -1,6 +1,6 @@
 // A host-scope admission function: a stock question gets a fixed reply and a
 // card before the loop, everything else passes. Tests insert it the way
-// `lyteboat run --plugin <this file>` would.
+// `lyteboat headless --plugin <this file>` would.
 export const name = 'example-admission'
 export const inject = ['intakeGuard']
 

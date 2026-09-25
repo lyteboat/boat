@@ -14,7 +14,7 @@
   "scripts": {},
   "dependencies": {
     "@lyteboat/host": "workspace:*",
-    "@lyteboat/run": "workspace:*",
+    "@lyteboat/headless": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",

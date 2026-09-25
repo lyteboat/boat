@@ -1,13 +1,13 @@
-# The @lyteboat/run bundle patch: one-shot task mode over dsh-base and @lyteboat/host,
+# The @lyteboat/headless bundle patch: one-shot task mode over dsh-base and @lyteboat/host,
 # lyteboat's replacement for dsh-headless. The startup row parses the task and the
 # `--agent` / `--agents` / `--history` / `--session-id` / `--context` flags from
 # the inner arguments, checks that an `--agents` root holds the agent, and
-# publishes them as the `lyteboatRunStartup` service; the agent catalog declares
+# publishes them as the `lyteboatHeadlessStartup` service; the agent catalog declares
 # that agent to the agent preset registry from its root, and the runner row
 # creates one agent composed from it (or resumes the stored session), drives the
 # task to quiescence, prints the final answer, and exits. lyteboat's service rows
 # come from @lyteboat/host and the agent loop (lyteboat's kernel) from dsh-base,
-# both listed before this bundle in the run profile.
+# both listed before this bundle in the headless profile.
 
 - id: system-prompt
   config:
@@ -20,31 +20,31 @@
     mode: !!js process.env.DSH_TOOLS_MODE
 
 - insert:
-    - id: lyteboat-run-startup
-      name: '@lyteboat/run/startup'
+    - id: lyteboat-headless-startup
+      name: '@lyteboat/headless/startup'
 
     - id: agent-catalog
       name: '@lyteboat/agent-catalog'
-      inject: [lyteboatRunStartup]
+      inject: [lyteboatHeadlessStartup]
       config:
-        roots: !!js ctx.lyteboatRunStartup.agentRoots
-        include: !!js "ctx.lyteboatRunStartup.agent === undefined ? [] : [ctx.lyteboatRunStartup.agent]"
+        roots: !!js ctx.lyteboatHeadlessStartup.agentRoots
+        include: !!js "ctx.lyteboatHeadlessStartup.agent === undefined ? [] : [ctx.lyteboatHeadlessStartup.agent]"
 
     - id: agent-preset-registry
       name: '@deepseek-ai/dsh-agent-preset-registry'
-      inject: [lyteboatRunStartup]
+      inject: [lyteboatHeadlessStartup]
       config:
-        default: !!js ctx.lyteboatRunStartup.agent ?? 'none'
+        default: !!js ctx.lyteboatHeadlessStartup.agent ?? 'none'
 
-    - id: lyteboat-run
-      name: '@lyteboat/run'
-      inject: [lyteboatRunStartup]
+    - id: lyteboat-headless
+      name: '@lyteboat/headless'
+      inject: [lyteboatHeadlessStartup]
       config:
-        task: !!js ctx.lyteboatRunStartup.task
-        agent: !!js ctx.lyteboatRunStartup.agent
-        history: !!js ctx.lyteboatRunStartup.history
-        sessionId: !!js ctx.lyteboatRunStartup.sessionId
-        context: !!js ctx.lyteboatRunStartup.context
+        task: !!js ctx.lyteboatHeadlessStartup.task
+        agent: !!js ctx.lyteboatHeadlessStartup.agent
+        history: !!js ctx.lyteboatHeadlessStartup.history
+        sessionId: !!js ctx.lyteboatHeadlessStartup.sessionId
+        context: !!js ctx.lyteboatHeadlessStartup.context
 
 # A one-shot run applies the user layers at startup only, as dsh-headless does.
 - id: hmr

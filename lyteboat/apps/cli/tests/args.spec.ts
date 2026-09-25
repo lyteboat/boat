@@ -26,17 +26,17 @@ function exitCode(argv: string[]): number {
 afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseLyteboatArgs', () => {
-  it('boots the run profile with the task handed to the app verbatim', () => {
-    expect(parse(['run', 'summarize', 'this', 'workspace']))
-      .toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: [], args: ['summarize', 'this', 'workspace'] })
-    expect(parse(['run', '--patch', 'a.yml', '--patch', 'b.yml', 'hello']))
-      .toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: ['a.yml', 'b.yml'], args: ['hello'] })
-    expect(parse(['run', '--profile', 'custom', 'hello']))
+  it('boots the headless profile with the task handed to the app verbatim', () => {
+    expect(parse(['headless', 'summarize', 'this', 'workspace']))
+      .toEqual({ mode: 'profile', profile: 'headless', plugins: [], patches: [], args: ['summarize', 'this', 'workspace'] })
+    expect(parse(['headless', '--patch', 'a.yml', '--patch', 'b.yml', 'hello']))
+      .toEqual({ mode: 'profile', profile: 'headless', plugins: [], patches: ['a.yml', 'b.yml'], args: ['hello'] })
+    expect(parse(['headless', '--profile', 'custom', 'hello']))
       .toEqual({ mode: 'profile', profile: 'custom', plugins: [], patches: [], args: ['hello'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
-    expect(parse(['run', '-h'])).toEqual({ mode: 'profile', profile: 'run', plugins: [], patches: [], args: ['-h'] })
+    expect(parse(['headless', '-h'])).toEqual({ mode: 'profile', profile: 'headless', plugins: [], patches: [], args: ['-h'] })
     expect(parse(['web', '--no-open', '--port', '0']))
       .toEqual({ mode: 'profile', profile: 'web', plugins: [], patches: [], args: ['--no-open', '--port', '0'] })
     expect(parse(['web', '--patch', 'w.yml', '--host', '127.0.0.1', '--patch', 'late.yml']))
@@ -44,24 +44,24 @@ describe('parseLyteboatArgs', () => {
   })
 
   it('inserts local plugin files that exist, each once', () => {
-    expect(parse(['run', '--plugin', INTAKE_PLUGIN, '--plugin', ANNOUNCE_PLUGIN, 'hi']))
-      .toEqual({ mode: 'profile', profile: 'run', plugins: [INTAKE_PLUGIN, ANNOUNCE_PLUGIN], patches: [], args: ['hi'] })
-    expect(exitCode(['run', '--plugin', '', 'hi'])).toBe(1)
-    expect(exitCode(['run', '--plugin', 'missing.mjs', 'hi'])).toBe(1)
-    expect(exitCode(['run', '--plugin', INTAKE_PLUGIN, '--plugin', INTAKE_PLUGIN, 'hi'])).toBe(1)
+    expect(parse(['headless', '--plugin', INTAKE_PLUGIN, '--plugin', ANNOUNCE_PLUGIN, 'hi']))
+      .toEqual({ mode: 'profile', profile: 'headless', plugins: [INTAKE_PLUGIN, ANNOUNCE_PLUGIN], patches: [], args: ['hi'] })
+    expect(exitCode(['headless', '--plugin', '', 'hi'])).toBe(1)
+    expect(exitCode(['headless', '--plugin', 'missing.mjs', 'hi'])).toBe(1)
+    expect(exitCode(['headless', '--plugin', INTAKE_PLUGIN, '--plugin', INTAKE_PLUGIN, 'hi'])).toBe(1)
   })
 
   it('resolves config dumps', () => {
-    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'run', defaultOnly: false, patches: [], plugins: [] })
+    expect(parse(['config', 'dump'])).toEqual({ mode: 'dump-config', profile: 'headless', defaultOnly: false, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--profile', 'web', '--default']))
       .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [], plugins: [] })
     expect(parse(['config', 'dump', '--patch', 'x.yml']))
-      .toEqual({ mode: 'dump-config', profile: 'run', defaultOnly: false, patches: ['x.yml'], plugins: [] })
+      .toEqual({ mode: 'dump-config', profile: 'headless', defaultOnly: false, patches: ['x.yml'], plugins: [] })
   })
 
   it('exits on usage errors, help, and version', () => {
-    expect(exitCode(['run', '--profile', '', 'x'])).toBe(1)
-    expect(exitCode(['run', '--patch', '', 'x'])).toBe(1)
+    expect(exitCode(['headless', '--profile', '', 'x'])).toBe(1)
+    expect(exitCode(['headless', '--patch', '', 'x'])).toBe(1)
     expect(exitCode(['config', 'dump', '--default', '--patch', 'x.yml'])).toBe(1)
     expect(exitCode(['bogus'])).toBe(1)
     expect(exitCode([])).toBe(1)

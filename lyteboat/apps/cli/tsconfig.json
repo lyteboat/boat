@@ -6,6 +6,6 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../bundles/run" }
+    { "path": "../../bundles/headless" }
   ]
 }

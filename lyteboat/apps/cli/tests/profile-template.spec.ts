@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { initProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
-import { LYTEBOAT_RUN_BUNDLES } from '@lyteboat/testing/composition'
+import { LYTEBOAT_HEADLESS_BUNDLES } from '@lyteboat/testing/composition'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { checkSkippedProfileBundles, ensureProfileInitialized } from '../src/profile-boot.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from '../src/templates.ts'
@@ -19,12 +19,12 @@ describe('lyteboat profile templates', () => {
     vi.restoreAllMocks()
   })
 
-  test('a new run profile lists dsh-base, the host bundle, and the run bundle', () => {
+  test('a new headless profile lists dsh-base, the host bundle, and the headless bundle', () => {
     const dir = home()
-    ensureProfileInitialized('run', dir)
-    const manifest = JSON.parse(readFileSync(join(resolveProfileDir('run', dir), 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
-    // The layers the composition tests boot as the run profile.
-    expect(manifest.dsh.profile.bundles).toEqual(LYTEBOAT_RUN_BUNDLES)
+    ensureProfileInitialized('headless', dir)
+    const manifest = JSON.parse(readFileSync(join(resolveProfileDir('headless', dir), 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
+    // The layers the composition tests boot as the headless profile.
+    expect(manifest.dsh.profile.bundles).toEqual(LYTEBOAT_HEADLESS_BUNDLES)
   })
 
   test('a web profile carries the host bundle too', () => {
@@ -33,23 +33,23 @@ describe('lyteboat profile templates', () => {
 
   test('an existing profile whose bundle list predates the template fails loud with the fix', () => {
     const dir = home()
-    initProfile(resolveProfileDir('run', dir), ['@deepseek-ai/dsh-base', '@lyteboat/run'])
-    expect(() => { ensureProfileInitialized('run', dir) }).toThrow(/profile "run" .* lists bundles \[@deepseek-ai\/dsh-base, @lyteboat\/run\].*\[@deepseek-ai\/dsh-base, @lyteboat\/host, @lyteboat\/run\]/su)
+    initProfile(resolveProfileDir('headless', dir), ['@deepseek-ai/dsh-base', '@lyteboat/headless'])
+    expect(() => { ensureProfileInitialized('headless', dir) }).toThrow(/profile "headless" .* lists bundles \[@deepseek-ai\/dsh-base, @lyteboat\/headless\].*\[@deepseek-ai\/dsh-base, @lyteboat\/host, @lyteboat\/headless\]/su)
   })
 
   test('an existing profile that matches the template boots unchanged', () => {
     const dir = home()
-    ensureProfileInitialized('run', dir)
-    const file = join(resolveProfileDir('run', dir), 'cordis.patch.yml')
+    ensureProfileInitialized('headless', dir)
+    const file = join(resolveProfileDir('headless', dir), 'cordis.patch.yml')
     writeFileSync(file, '- id: session-title-llm\n  disabled: true\n')
-    ensureProfileInitialized('run', dir)
+    ensureProfileInitialized('headless', dir)
     expect(readFileSync(file, 'utf8')).toBe('- id: session-title-llm\n  disabled: true\n')
   })
 
   test('a profile that dsh loaded without a bundle its template lists fails with the bundle and the reason', () => {
     const profile = { skippedBundles: [{ packageName: '@lyteboat/host', reason: 'Error: incompatible dsh peers' }] }
-    expect(() => { checkSkippedProfileBundles('run', profile) })
-      .toThrow('lyteboat: profile "run" cannot boot without the bundles its template lists; skipped: @lyteboat/host (Error: incompatible dsh peers)')
+    expect(() => { checkSkippedProfileBundles('headless', profile) })
+      .toThrow('lyteboat: profile "headless" cannot boot without the bundles its template lists; skipped: @lyteboat/host (Error: incompatible dsh peers)')
   })
 
   test('a profile without a lyteboat template reports a skipped bundle and boots on', () => {

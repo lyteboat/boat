@@ -51,7 +51,7 @@
     "@lyteboat/host": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
     "@lyteboat/request-context": "workspace:*",
-    "@lyteboat/run": "workspace:*",
+    "@lyteboat/headless": "workspace:*",
     "@lyteboat/skill-router": "workspace:*",
     "@lyteboat/testing": "workspace:*",
     "@lyteboat/tool-policy": "workspace:*",

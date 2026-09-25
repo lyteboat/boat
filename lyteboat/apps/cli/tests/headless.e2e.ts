@@ -18,7 +18,7 @@ const ANNOUNCE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/announce.mjs',
  */
 const TITLE_LLM_OVERLAY = '- id: session-title-llm\n  disabled: true\n'
 
-describe('lyteboat run (built bin, mock model)', () => {
+describe('lyteboat headless (built bin, mock model)', () => {
   const scratch = createLyteboatScratch('run-smoke')
   let mock: MockLlmServer
 
@@ -43,7 +43,7 @@ describe('lyteboat run (built bin, mock model)', () => {
   it('answers one task through the real tool path and persists the turn when a --plugin file joins the tree', async () => {
     const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(
-      ['run', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
+      ['headless', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
       { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(mock) } },
     )
     expect(result.code, result.stderr).toBe(0)

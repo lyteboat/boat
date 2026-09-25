@@ -1,5 +1,5 @@
 /**
- * @lyteboat/run — lyteboat's one-shot mode. The bundle patch rides over
+ * @lyteboat/headless — lyteboat's one-shot mode. The bundle patch rides over
  * dsh-base; this runner creates one Agent through the core registry — composed
  * from an agent preset when the invocation named one — or resumes a stored
  * session, drives the task to quiescence, streams provider reasoning to stderr,
@@ -17,7 +17,7 @@
  * `intakeGuard.submit` with its request context, the turn printed with its
  * cards placed, no stdin task and no `--json` event stream, and the
  * `lyteboat:` diagnostic prefix.
- * @module @lyteboat/run
+ * @module @lyteboat/headless
  */
 
 import { randomUUID } from 'node:crypto'
@@ -42,7 +42,7 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
 
 /** Stable Cordis plugin name. */
-export const name = 'lyteboat-run'
+export const name = 'lyteboat-headless'
 
 /** Core services required before the one-shot turn can start. */
 export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'agentCatalog', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
@@ -83,7 +83,7 @@ function summarize(session: Session, firstSeq: SessionLogOffset): SessionEvent<'
   for (let seq = firstSeq; seq < length; seq++) {
     const event = session.eventAt(SessionSeq(seq))
     if (event === undefined) {
-      throw new Error(`lyteboat run summary cannot read seq ${String(seq)} below captured length ${String(length)}`)
+      throw new Error(`lyteboat headless summary cannot read seq ${String(seq)} below captured length ${String(length)}`)
     }
     if (event.type === 'turn/start') {
       started = true
@@ -146,7 +146,7 @@ function streamReasoning(ctx: Context, agent: Agent, stderr: RunIo['stderr']): (
         return
       /* v8 ignore next -- closed-union exhaustiveness guard */
       default:
-        return assertNever(chunk, 'lyteboat run reasoning stream')
+        return assertNever(chunk, 'lyteboat headless reasoning stream')
     }
   })
   return () => {
@@ -277,7 +277,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
 export function apply(ctx: Context, config: Config): void {
   const exit = ctx.get('appExit')
   if (exit === undefined) {
-    throw new Error('lyteboat-run: the launcher must provide ctx.appExit before the tree mounts')
+    throw new Error('lyteboat-headless: the launcher must provide ctx.appExit before the tree mounts')
   }
   const io: RunIo = { stdout: process.stdout, stderr: process.stderr, exit }
   void run(ctx, config, io).catch((error: unknown) => { fail(io, error) })

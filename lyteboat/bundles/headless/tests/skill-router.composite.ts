@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { reopenRefusal } from '@lyteboat/testing/session-reopen'
-import { FIXTURES, runComposition } from './support/run-composition.ts'
+import { FIXTURES, headlessComposition } from './support/headless-composition.ts'
 import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const AGENTS = join(FIXTURES, 'agents')
@@ -29,7 +29,7 @@ description: 市场行情与新闻解读。
 MARKET-NEWS-BODY: 只解读公开行情。
 `
 
-describe('@lyteboat/skill-router in the run composition (in process, scripted model)', () => {
+describe('@lyteboat/skill-router in the headless composition (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('skill-router')
   let model: ScriptedModel
 
@@ -51,7 +51,7 @@ describe('@lyteboat/skill-router in the run composition (in process, scripted mo
   it('routes the task through the router model and puts the skill body and its tool into the same request', async () => {
     const { home, workspace } = fresh('dynamic')
     const before = model.requests.length
-    const result = await runComposition(
+    const result = await headlessComposition(
       ['--agents', AGENTS, '--agent', 'routed', '看看我的资产'],
       { cwd: workspace, home, env: scriptedModelEnv(model) },
     )
@@ -87,7 +87,7 @@ describe('@lyteboat/skill-router in the run composition (in process, scripted mo
   it('leaves the host composition alone without the preset: no router call, no skill injected', async () => {
     const { home, workspace } = fresh('off')
     const before = model.requests.length
-    const result = await runComposition(['看看我的资产'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const result = await headlessComposition(['看看我的资产'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code, result.stderr).toBe(0)
     const requests = model.requests.slice(before)
     expect(requests.filter(request => request.purpose === 'router')).toHaveLength(0)

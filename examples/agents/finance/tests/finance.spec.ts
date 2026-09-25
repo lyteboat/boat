@@ -3,7 +3,7 @@
  * router, a2ui, request context and admission services, the agent's own row,
  * and a scripted model that classifies each request, routes it, and calls the
  * routed skill's tool. Each request carries its context and is admitted
- * before it enters the loop, as `lyteboat run` does. What the run composition
+ * before it enters the loop, as `lyteboat headless` does. What the headless composition
  * already shows (finance.composite.ts) is not repeated here: these are the
  * outcomes it does not reach, and the strict validation of the cards.
  */
@@ -91,7 +91,7 @@ async function harness(plans: ReadonlyMap<string, TurnPlan>, intents: ReadonlyMa
   return { ctx, adapter }
 }
 
-/** One request as `lyteboat run` sends it: submitted (admitted, then followed up with its context and verdict), then settled. */
+/** One request as `lyteboat headless` sends it: submitted (admitted, then followed up with its context and verdict), then settled. */
 async function send(ctx: Context, agent: Agent, text: string, customer?: string): Promise<void> {
   await ctx.intakeGuard.submit(agent, { text, context: customer === undefined ? undefined : { customer } }, AbortSignal.timeout(5000))
   await agent.whenIdle()

@@ -751,6 +751,9 @@ importers:
       '@lyteboat/distro':
         specifier: workspace:*
         version: link:../../../lyteboat/plugins/distro
+      '@lyteboat/headless':
+        specifier: workspace:*
+        version: link:../../../lyteboat/bundles/headless
       '@lyteboat/host':
         specifier: workspace:*
         version: link:../../../lyteboat/bundles/host
@@ -760,9 +763,6 @@ importers:
       '@lyteboat/request-context':
         specifier: workspace:*
         version: link:../../../lyteboat/plugins/request-context
-      '@lyteboat/run':
-        specifier: workspace:*
-        version: link:../../../lyteboat/bundles/run
       '@lyteboat/skill-router':
         specifier: workspace:*
         version: link:../../../lyteboat/plugins/skill-router
@@ -1012,12 +1012,12 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 'catalog:'
         version: 3.18.4
+      '@lyteboat/headless':
+        specifier: workspace:*
+        version: link:../../bundles/headless
       '@lyteboat/host':
         specifier: workspace:*
         version: link:../../bundles/host
-      '@lyteboat/run':
-        specifier: workspace:*
-        version: link:../../bundles/run
       commander:
         specifier: 'catalog:'
         version: 15.0.0
@@ -1041,34 +1041,7 @@ importers:
         specifier: 'catalog:'
         version: 4.0.9
 
-  lyteboat/bundles/host:
-    dependencies:
-      '@lyteboat/a2ui':
-        specifier: workspace:*
-        version: link:../../plugins/a2ui
-      '@lyteboat/aux-llm':
-        specifier: workspace:*
-        version: link:../../plugins/aux-llm
-      '@lyteboat/distro':
-        specifier: workspace:*
-        version: link:../../plugins/distro
-      '@lyteboat/history-import':
-        specifier: workspace:*
-        version: link:../../plugins/history-import
-      '@lyteboat/intake-guard':
-        specifier: workspace:*
-        version: link:../../plugins/intake-guard
-      '@lyteboat/request-context':
-        specifier: workspace:*
-        version: link:../../plugins/request-context
-      '@lyteboat/skill-router':
-        specifier: workspace:*
-        version: link:../../plugins/skill-router
-      '@lyteboat/tool-policy':
-        specifier: workspace:*
-        version: link:../../plugins/tool-policy
-
-  lyteboat/bundles/run:
+  lyteboat/bundles/headless:
     dependencies:
       '@deepseek-ai/dsh-agent-preset-registry':
         specifier: 0.1.7-rc.2
@@ -1140,6 +1113,33 @@ importers:
       '@lyteboat/testing':
         specifier: workspace:*
         version: link:../../tooling/testing
+
+  lyteboat/bundles/host:
+    dependencies:
+      '@lyteboat/a2ui':
+        specifier: workspace:*
+        version: link:../../plugins/a2ui
+      '@lyteboat/aux-llm':
+        specifier: workspace:*
+        version: link:../../plugins/aux-llm
+      '@lyteboat/distro':
+        specifier: workspace:*
+        version: link:../../plugins/distro
+      '@lyteboat/history-import':
+        specifier: workspace:*
+        version: link:../../plugins/history-import
+      '@lyteboat/intake-guard':
+        specifier: workspace:*
+        version: link:../../plugins/intake-guard
+      '@lyteboat/request-context':
+        specifier: workspace:*
+        version: link:../../plugins/request-context
+      '@lyteboat/skill-router':
+        specifier: workspace:*
+        version: link:../../plugins/skill-router
+      '@lyteboat/tool-policy':
+        specifier: workspace:*
+        version: link:../../plugins/tool-policy
 
   lyteboat/core/contracts:
     dependencies:

@@ -75,7 +75,7 @@
       "path": "./lyteboat/plugins/agent-catalog"
     },
     {
-      "path": "./lyteboat/bundles/run"
+      "path": "./lyteboat/bundles/headless"
     },
     {
       "path": "./lyteboat/apps/cli"

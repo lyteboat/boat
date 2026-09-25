@@ -42,16 +42,16 @@ const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', impor
 /** The launcher disables telemetry export when `DSH_TELEMETRY_DISABLED` is set, as tests do. */
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]
 
-/** The `run` profile's bundle layers, in the order the launcher's profile template lists them. */
-export const LYTEBOAT_RUN_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
+/** The `headless` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_HEADLESS_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/headless']
 
 /** What to boot and how. */
 export interface CompositionOptions {
-  /** Bundle packages in layer order, e.g. {@link LYTEBOAT_RUN_BUNDLES}. */
+  /** Bundle packages in layer order, e.g. {@link LYTEBOAT_HEADLESS_BUNDLES}. */
   bundles: readonly string[]
   /** Layers above the bundles: row overrides and inserted rows (see {@link pluginFileRow}). */
   patches?: readonly PatchOptions[]
-  /** The inner arguments, as they would follow `lyteboat run` on a command line. */
+  /** The inner arguments, as they would follow `lyteboat headless` on a command line. */
   args: readonly string[]
   /** The working directory the tree sees. */
   cwd: string
@@ -86,7 +86,7 @@ export function pluginFileRow(file: string): PatchOptions {
 }
 
 /**
- * The session id a `lyteboat run` composition prints to stderr (`lyteboat: session <id>`).
+ * The session id a `lyteboat headless` composition prints to stderr (`lyteboat: session <id>`).
  * @param stderr - the run's captured stderr.
  * @returns the id.
  * @throws when the run printed no id; the message carries the stderr.

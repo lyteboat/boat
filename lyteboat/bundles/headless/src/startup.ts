@@ -2,14 +2,14 @@
  * The one-shot app's command-line provider: it parses the task positional and
  * the `--agent`, `--agents`, `--history`, `--session-id`,
  * and `--context` flags, checks that a root holds the agent, then publishes
- * {@link LYTEBOAT_RUN_STARTUP_SERVICE}. The agent catalog, preset registry, and
+ * {@link LYTEBOAT_HEADLESS_STARTUP_SERVICE}. The agent catalog, preset registry, and
  * runner rows inject that service and read it from lazy config.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/startup.ts
  * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
  * the agent, agent-root, history, and context flags, resolved and checked
  * here; no stdin task and no `--json`.
- * @module @lyteboat/run/startup
+ * @module @lyteboat/headless/startup
  */
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
@@ -21,16 +21,16 @@ import type { JsonValue } from '@lyteboat/contracts'
 import { agentIds } from '@lyteboat/agent-catalog'
 
 /** Stable Cordis plugin name. */
-export const name = 'lyteboat-run-startup'
+export const name = 'lyteboat-headless-startup'
 
 /** Services required before the task can be resolved. */
 export const inject = ['cmdlineArgs']
 
 /** Service provided by this plugin and injected by the agent catalog, preset registry, and runner rows. */
-export const LYTEBOAT_RUN_STARTUP_SERVICE = 'lyteboatRunStartup'
+export const LYTEBOAT_HEADLESS_STARTUP_SERVICE = 'lyteboatHeadlessStartup'
 
-/** What the rows read from {@link LYTEBOAT_RUN_STARTUP_SERVICE}. */
-export interface LyteboatRunStartupValues {
+/** What the rows read from {@link LYTEBOAT_HEADLESS_STARTUP_SERVICE}. */
+export interface LyteboatHeadlessStartupValues {
   /** The task text this invocation asked for. */
   task: string
   /** The agent to compose from (its agent preset id, `--agent`); absent runs the host composition alone. */
@@ -47,7 +47,7 @@ export interface LyteboatRunStartupValues {
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
-    lyteboatRunStartup: LyteboatRunStartupValues
+    lyteboatHeadlessStartup: LyteboatHeadlessStartupValues
   }
 }
 
@@ -75,7 +75,7 @@ function readContext(value: string): { kind: 'context'; context: { [key: string]
 
 function command(): Command {
   return new Command()
-    .name('lyteboat run')
+    .name('lyteboat headless')
     .description('Answer one task, stream reasoning to stderr, print the final assistant message, and exit.')
     .helpOption('-h, --help', 'show this help')
     .argument('[task...]', 'the task text; multiple words are joined by spaces')
@@ -86,10 +86,10 @@ function command(): Command {
     .option('--context <json>', 'the request context: a JSON object, inline or in a file; logged with the request, read by tools, not shown to the model (an empty one keeps the session\'s)')
     .addHelpText('after', `
 Examples:
-  lyteboat run "run the tests"                              answer one task and exit
-  lyteboat run --agents ./agents --agent <id> --context '{"key":"value"}' "<task>"
+  lyteboat headless "run the tests"                         answer one task and exit
+  lyteboat headless --agents ./agents --agent <id> --context '{"key":"value"}' "<task>"
                                                             run an agent from ./agents with a request context
-  lyteboat run --agents ./agents --agent <id> --session-id session-… "<task>"
+  lyteboat headless --agents ./agents --agent <id> --session-id session-… "<task>"
                                                             continue that session
 `)
 }
@@ -105,7 +105,7 @@ export function apply(ctx: Context): void {
   program.action(() => {
     const options = program.opts<{ agent?: string; agents?: string[]; history?: string; sessionId?: string; context?: string }>()
     const task = program.args.join(' ')
-    if (task.trim() === '') program.error('error: a task is required, for example: lyteboat run "run the tests"')
+    if (task.trim() === '') program.error('error: a task is required, for example: lyteboat headless "run the tests"')
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
     for (const dir of agentRoots) {
       if (!existsSync(dir) || !statSync(dir).isDirectory()) program.error(`error: --agents directory not found: ${dir}`)
@@ -123,9 +123,9 @@ export function apply(ctx: Context): void {
     if (sessionId !== undefined && history !== undefined) program.error('error: --history seeds a new session; it cannot be combined with --session-id')
     const read = options.context === undefined ? undefined : readContext(options.context)
     if (read?.kind === 'problem') program.error(`error: ${read.problem}`)
-    ctx.provide(LYTEBOAT_RUN_STARTUP_SERVICE, {
+    ctx.provide(LYTEBOAT_HEADLESS_STARTUP_SERVICE, {
       task, agent, agentRoots, history, sessionId, context: read?.kind === 'context' ? read.context : undefined,
-    } satisfies LyteboatRunStartupValues)
+    } satisfies LyteboatHeadlessStartupValues)
   })
   parseCmdline(ctx, program)
 }

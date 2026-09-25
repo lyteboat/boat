@@ -105,7 +105,7 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 |---|---|---|---|---|
 | **内核** `dsh/` | lyteboat 拥有的 14 个 dsh 包，保留 `@deepseek-ai/dsh-*` 包名：`llm/llm`、`core/session`、`core/system-prompt`、`core/tools`、`skill/skill`、`core/agent`、`core/agent-loop`、`session/session-projection`、`session/session-persistence`、`session/session-persistence-jsonl`、`compaction/compaction`、`compaction/compaction-basic`、`test-support/agent-loop-testkit`、`api/session-controller` | 权威清单是 `dsh/kernel.json`。`pnpm-workspace.yaml:16-30` 的 overrides 和根 `tsconfig.json` 的 references 是它的镜像；`scripts/upstream-pins.spec.ts:31-34` 核对 overrides 与清单一致 | overrides 把每个内核包名改写成 `workspace:*`；lyteboat 自己的清单也写 `workspace:*` | 每个 tag 一个导入提交，三方合并（§2） |
 | **npm 原样层** | 上游其余 298 个 dsh 包都不改源码；工作区实际装其中 264 个：seam 与 provider、可选插件、基础设施、Web 产品等 | `pnpm-workspace.yaml:79-165` 的 `catalogs.dsh`（86 项）、`:166-171` 的 `catalogs.cordis`、`dsh.upstream.json` | `.pnpmfile.cjs` 把所有非内核的 `@deepseek-ai/dsh*` 依赖改写成 `dsh.upstream.json` 里的版本 | 改 catalog、版本钉文件和精确 peer（§7、§8） |
-| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,run}`、`plugins/{distro,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/contracts`、`agents/finance`、`tooling/testing`，共 14 个（`CLAUDE.md`「Repository layout」） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`） | `workspace:*` | 不适用 |
+| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,headless}`、`plugins/{distro,agent-catalog,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/contracts`、`agents/finance`、`tooling/testing`，共 14 个（`CLAUDE.md`「Repository layout」） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`） | `workspace:*` | 不适用 |
 
 **一个包归哪一层？** 规则见 `CLAUDE.md`「Architecture boundaries」的 **Promotion**，满足任一条就进内核：
 
@@ -133,7 +133,7 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 
 **机制三：公开提升**（`pnpm-workspace.yaml:48-56`）。`publicHoistPattern` 把 `@deepseek-ai/*` 和 `@lyteboat/*` 提升到根 `node_modules`，原因有两个：
 
-- agent 目录（`lyteboat run --agents`）里的行用裸包名，从 agent 目录向上查找；
+- agent 目录（`lyteboat headless --agents`）里的行用裸包名，从 agent 目录向上查找；
 - 组合测试从仓库根解析行。
 
 pnpm 的隔离布局下，只有提升到根的包才能被这两种查找找到。所有包都被机制二钉在同一个版本，所以提升不会产生版本冲突。
@@ -520,7 +520,7 @@ G1 stale registration: <extension> lists <key>, which does not differ from upstr
 - **防过期。** `pnpm run lint` 带 `--check` 跑一次生成器，产物过期就失败（`package.json:14`）。
 - **谁 inject 它。** lyteboat 里每个用到扩展的插件都 inject 它：`@lyteboat/tool-policy`、`@lyteboat/skill-router`、`@lyteboat/intake-guard`、`@lyteboat/aux-llm`（各自 `src/index.ts` 的 `static inject`）。放到官方 dsh 上，它们与第三方插件一样停在等待状态。
 
-**例子：按第三方写法的插件。** 仓库里的 fixture `lyteboat/bundles/run/tests/fixtures/plugins/distro-aware.mjs`：
+**例子：按第三方写法的插件。** 仓库里的 fixture `lyteboat/bundles/headless/tests/fixtures/plugins/distro-aware.mjs`：
 
 ```js
 export const name = 'example-distro-aware'
@@ -538,13 +538,13 @@ export function apply(ctx) {
 **[实跑]** 用 §6.12 的脚本（起脚本化模型、临时 `LYTEBOAT_HOME`，再调用构建好的 launcher）：
 
 ```console
-$ node <临时目录>/scripted-run.mjs run --plugin lyteboat/bundles/run/tests/fixtures/plugins/distro-aware.mjs "hello"
+$ node <临时目录>/scripted-run.mjs headless --plugin lyteboat/bundles/headless/tests/fixtures/plugins/distro-aware.mjs "hello"
 exit=0 requests=0 []
 stdout: lyteboat on dsh 0.1.7-rc.2: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable, session-controller-prompt-source
 stderr: lyteboat: session session-0ab2a9c7-e975-4c2f-89f0-f724d2160f3e
 ```
 
-脚本化模型收到 **0** 次请求：`lyteboat/intake` 的 `reply` 不发模型请求。作为对照，不带插件的 `run "hello"` 输出 `exit=0 requests=2 [loop,title]`：一次主循环请求，一次会话标题请求。stderr 那一行是会话 id，供 `--session-id` 续写。
+脚本化模型收到 **0** 次请求：`lyteboat/intake` 的 `reply` 不发模型请求。作为对照，不带插件的 `headless "hello"` 输出 `exit=0 requests=2 [loop,title]`：一次主循环请求，一次会话标题请求。stderr 那一行是会话 id，供 `--session-id` 续写。
 
 放到官方 dsh 上，同一个插件没有 `lyteboatDistro` 可注入，cordis 让它停在 `pending (waiting for service: lyteboatDistro)`，而不是监听一个没人派发的事件（`dsh-compat/COMPAT.md` §4）。
 
@@ -866,7 +866,7 @@ typert vs dsh 0.1.7-rc.2: @deepseek-ai/dsh-llm, @deepseek-ai/dsh-api-session-con
 下面这个脚本放在仓库**外**任意位置（`<临时目录>`），先 `pnpm run build`，再从仓库根运行。本文的 [实跑] 就是这样跑的：
 
 ```js
-// scripted-run.mjs —— 从 lyteboat 仓库根运行：node <临时目录>/scripted-run.mjs run "hello"
+// scripted-run.mjs —— 从 lyteboat 仓库根运行：node <临时目录>/scripted-run.mjs headless "hello"
 import { spawn } from 'node:child_process'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -897,7 +897,7 @@ if (stderr.trim() !== '') console.log(`stderr: ${stderr.trim()}`)
 **[实跑]**（stderr 那一行是会话 id，每次不同）：
 
 ```console
-$ node <临时目录>/scripted-run.mjs run "hello"
+$ node <临时目录>/scripted-run.mjs headless "hello"
 exit=0 requests=2 [loop,title]
 stdout: scripted answer
 stderr: lyteboat: session session-9ffeb381-5d57-42ca-afa8-95c7f4fcb57c
@@ -907,7 +907,7 @@ stderr: lyteboat: session session-9ffeb381-5d57-42ca-afa8-95c7f4fcb57c
 
 ```sh
 export LYTEBOAT_HOME=$(mktemp -d) DSH_HOME=$(mktemp -d) DSH_TELEMETRY_DISABLED=1
-node lyteboat/apps/cli/lib/bin.js config dump --profile run > $SCRATCH/dump.yml 2> $SCRATCH/dump.err
+node lyteboat/apps/cli/lib/bin.js config dump --profile headless > $SCRATCH/dump.yml 2> $SCRATCH/dump.err
 ```
 
 ---
@@ -954,7 +954,7 @@ node lyteboat/apps/cli/lib/bin.js config dump --profile run > $SCRATCH/dump.yml 
    - 金丝雀：跟踪版本变了就按 §6.7 重选；在官方新版本上坏了的替换掉；
    - `COMPAT.md` 里写着跟踪版本的地方、README、`CLAUDE.md` 的 Stack 一行、本文；
    - 从 dsh 改编来的文件保留 `Adapted from deepseek-ai/deepseek-harness` 文件头，`THIRD_PARTY_NOTICES.md` 按这个文件头列出它们。
-10. **验证准入，提交。** 用构建好的 launcher 跑 `node lyteboat/apps/cli/lib/bin.js config dump --profile run 2> $SCRATCH/dump.err`，`dump.err` 里不能有 `disabling profile plugin` 或 `skipping profile bundle`（§8.2）。**[实跑]** 在跟踪版本上：退出码 0，stderr 为空，stdout 有 104 个 `- id:` 行。stdout 里本来就有 5 行 `disabled: true`：dsh-base 的 `tool-plugin-manager`、`skill-badge`、`tool-ralph`，`@lyteboat/run` 关掉的 `hmr`，以及 `@lyteboat/host` 关掉的 `session-telemetry-otel`；它们是配置，与准入无关。然后提交合并，标题 `dist(sync): track dsh-v<新版本>`，正文列出每道闸门的数字。合并提交不受 `delta-report --check` 检查，用 §3.3 的 `git merge-tree` 办法确认合并没有夹带内核包目录下的改动。
+10. **验证准入，提交。** 用构建好的 launcher 跑 `node lyteboat/apps/cli/lib/bin.js config dump --profile headless 2> $SCRATCH/dump.err`，`dump.err` 里不能有 `disabling profile plugin` 或 `skipping profile bundle`（§8.2）。**[实跑]** 在跟踪版本上：退出码 0，stderr 为空，stdout 有 104 个 `- id:` 行。stdout 里本来就有 5 行 `disabled: true`：dsh-base 的 `tool-plugin-manager`、`skill-badge`、`tool-ralph`，`@lyteboat/headless` 关掉的 `hmr`，以及 `@lyteboat/host` 关掉的 `session-telemetry-otel`；它们是配置，与准入无关。然后提交合并，标题 `dist(sync): track dsh-v<新版本>`，正文列出每道闸门的数字。合并提交不受 `delta-report --check` 检查，用 §3.3 的 `git merge-tree` 办法确认合并没有夹带内核包目录下的改动。
 
 ---
 
@@ -1109,7 +1109,7 @@ pnpm 11 拒绝安装发布不到一天的包。被钉的版本刚发布时，要
 2. 在 `tests/lyteboat/<name>.spec.ts` 写测试。扩展涉及持久化时，在持久化层所在的包里另写一个"存盘再读回"的测试（如 `reopen-ignorable.spec.ts`）。
 3. `pnpm run build && pnpm run contract:check`：G1 列出的 `unregistered addition` / `unregistered change` 就是要登记的键。
 4. 在 `dsh-compat/contract/extensions.yml` 加条目：`id`、`package`、`kind`、`surface`、`contract`（上一步的键或它们的前缀）、`exit`、`tests`。再跑 G1，应当变成 `N registered difference(s), 0 failure(s)`。
-5. `node --import tsx scripts/dist/gen-distro-manifest.ts` 重新生成 distro manifest；断言完整扩展清单的 `lyteboat/bundles/run/tests/distro.composite.ts` 跟着改；`pnpm run lint` 确认不过期。
+5. `node --import tsx scripts/dist/gen-distro-manifest.ts` 重新生成 distro manifest；断言完整扩展清单的 `lyteboat/bundles/headless/tests/distro.composite.ts` 跟着改；`pnpm run lint` 确认不过期。
 6. lyteboat 插件要用这个扩展的新类型，从 `@lyteboat/contracts` 再导出（参照 `lyteboat/core/contracts/src/index.ts:49-50`）；用到扩展的插件 inject `lyteboatDistro`（§4.4）。
 7. 在 `COMPAT.md` §4 补一句人读说明（如需）。
 8. 提交带全 §3.3 的六个 trailer。
@@ -1137,8 +1137,8 @@ pnpm 11 拒绝安装发布不到一天的包。被钉的版本刚发布时，要
 | 生成某 tag 的契约快照 | `pnpm run dist:snapshot <checkout>` | `package.json:19` |
 | 导入某 tag 的内核（然后 `git merge`，或在 unborn `HEAD` 上从它开分支） | `pnpm run dist:import <checkout>` | `package.json:20` |
 | persistence / G3 / typert | `pnpm run dist:overlay <checkout> persistence` / `g3 [--match <regex>]` / `typert [--write]` | `package.json:22` |
-| 看组合后的插件树（也能验证准入） | `node lyteboat/apps/cli/lib/bin.js config dump --profile run` | `CLAUDE.md`「Commands」 |
-| 用脚本化模型跑一次 launcher | `node <临时目录>/scripted-run.mjs run "hello"` | §6.12 |
+| 看组合后的插件树（也能验证准入） | `node lyteboat/apps/cli/lib/bin.js config dump --profile headless` | `CLAUDE.md`「Commands」 |
+| 用脚本化模型跑一次 launcher | `node <临时目录>/scripted-run.mjs headless "hello"` | §6.12 |
 | 列出上游线 | `git log --format='%h %p %s' --grep='^Dist-Import: '` | §2.2 |
 | 看 lyteboat 在内核上的全部差量 | `git diff --stat "$(git log -1 --format=%H --grep='^Dist-Import: ')" HEAD -- dsh/` | §2.3 |
 | 核对合并提交没有夹带内核改动 | `git merge-tree --write-tree <父1> <父2>`，再 `git diff --stat <树> <合并> -- <内核包目录>` | §3.3 |

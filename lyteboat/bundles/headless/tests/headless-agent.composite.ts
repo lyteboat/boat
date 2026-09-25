@@ -2,13 +2,13 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
-import { FIXTURES, runComposition } from './support/run-composition.ts'
+import { FIXTURES, headlessComposition } from './support/headless-composition.ts'
 import { scriptedModelEnv, startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const AGENTS = join(FIXTURES, 'agents')
 const ANSWER = 'PRESET-RUN-OK'
 
-describe('lyteboat run --agents --agent (in process, scripted model)', () => {
+describe('lyteboat headless --agents --agent (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('preset')
   let model: ScriptedModel
 
@@ -24,7 +24,7 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
   it('composes the named agent and records it in the session header', async () => {
     const { home, workspace } = scratch.run('preset')
     const before = model.requests.length
-    const result = await runComposition(['--agents', AGENTS, '--agent', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const result = await headlessComposition(['--agents', AGENTS, '--agent', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
@@ -43,7 +43,7 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
   it('runs the host composition alone without --agents', async () => {
     const { home, workspace } = scratch.run('plain')
     const before = model.requests.length
-    const result = await runComposition(['hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const result = await headlessComposition(['hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
@@ -57,10 +57,10 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
 
   it('rejects an unknown agent and an agent without roots as usage errors', async () => {
     const { home, workspace } = scratch.run('errors')
-    const unknown = await runComposition(['--agents', AGENTS, '--agent', 'nope', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const unknown = await headlessComposition(['--agents', AGENTS, '--agent', 'nope', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(unknown.code).not.toBe(0)
     expect(unknown.stderr).toMatch(/nope/u)
-    const rootless = await runComposition(['--agent', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const rootless = await headlessComposition(['--agent', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(rootless.code).not.toBe(0)
     expect(rootless.stderr).toContain('--agents')
   })
@@ -68,7 +68,7 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
   it('fails with the agent catalog\'s diagnosis when the agent does not mount', async () => {
     const { home, workspace } = scratch.run('unmountable')
     const before = model.requests.length
-    const result = await runComposition(['--agents', AGENTS, '--agent', 'unmountable', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
+    const result = await headlessComposition(['--agents', AGENTS, '--agent', 'unmountable', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('agent-catalog: 1 agent(s) failed')
     expect(result.stderr).toContain('@lyteboat/no-such-package')

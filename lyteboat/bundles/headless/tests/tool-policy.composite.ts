@@ -4,7 +4,7 @@ import { pluginFileRow } from '@lyteboat/testing/composition'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { reopenRefusal } from '@lyteboat/testing/session-reopen'
-import { FIXTURES, runComposition } from './support/run-composition.ts'
+import { FIXTURES, headlessComposition } from './support/headless-composition.ts'
 import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest } from '@lyteboat/testing/scripted-model'
 
 const PLUGIN = join(FIXTURES, 'plugins', 'tools.mjs')
@@ -18,7 +18,7 @@ function callThenAnswer(name: string, args: unknown) {
     : { toolCall: { name, arguments: args, id: `call-${name}` } })
 }
 
-describe('@lyteboat/tool-policy in the run composition (in process, scripted model)', () => {
+describe('@lyteboat/tool-policy in the headless composition (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('tool-policy')
 
   afterAll(() => {
@@ -29,7 +29,7 @@ describe('@lyteboat/tool-policy in the run composition (in process, scripted mod
     const model = await startScriptedModel(callThenAnswer('lookup_assets', {}), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = scratch.run('state')
-      const result = await runComposition(['查一下资产'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [pluginFileRow(PLUGIN)])
+      const result = await headlessComposition(['查一下资产'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [pluginFileRow(PLUGIN)])
       expect(result.code, result.stderr).toBe(0)
       expect(result.stdout).toContain(ANSWER)
       const loop = model.loopRequests()
@@ -59,7 +59,7 @@ describe('@lyteboat/tool-policy in the run composition (in process, scripted mod
     const model = await startScriptedModel(callThenAnswer('rebalance', { target: '股债均衡' }), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = scratch.run('confirm')
-      const result = await runComposition(['帮我调仓'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [pluginFileRow(PLUGIN)])
+      const result = await headlessComposition(['帮我调仓'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [pluginFileRow(PLUGIN)])
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
@@ -85,7 +85,7 @@ describe('@lyteboat/tool-policy in the run composition (in process, scripted mod
     const model = await startScriptedModel(callThenAnswer('bash', { command: 'echo hi' }), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = scratch.run('preset')
-      const result = await runComposition(
+      const result = await headlessComposition(
         ['--agents', AGENTS, '--agent', 'policy', 'list the files'],
         { cwd: workspace, home, env: scriptedModelEnv(model) },
       )
