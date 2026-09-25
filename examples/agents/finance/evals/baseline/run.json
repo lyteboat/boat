@@ -1,0 +1,40 @@
+{
+  "agent": "finance",
+  "mode": "real",
+  "cases": [
+    {
+      "id": "overview-then-diagnosis",
+      "pass": true
+    },
+    {
+      "id": "diagnosis-midlife",
+      "pass": true
+    },
+    {
+      "id": "education-rebalance",
+      "pass": true
+    },
+    {
+      "id": "education-without-customer",
+      "pass": true
+    },
+    {
+      "id": "out-of-scope",
+      "pass": true
+    },
+    {
+      "id": "unauthorized",
+      "pass": true
+    }
+  ],
+  "turns": {
+    "total": 7,
+    "passed": 7
+  },
+  "checks": {
+    "total": 30,
+    "passed": 30
+  },
+  "startedAt": "2026-09-25T21:02:33.654Z",
+  "durationMs": 31473
+}

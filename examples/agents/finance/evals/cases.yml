@@ -1,0 +1,71 @@
+# The finance agent's eval cases: `lyteboat eval --agents ./examples/agents --agent finance`.
+# Each case is a new session; the request context names the customer (a
+# sample-data fixture). The checks hold the agent's framework behaviour —
+# which skill routes, which tools run, which cards show, how the turn ends —
+# and leave the wording to the model. baseline/ is a real run of these cases,
+# which `--model replay --from examples/agents/finance/evals/baseline` plays back.
+cases:
+  - id: overview-then-diagnosis
+    context: { customer: young-idle-cash }
+    turns:
+      - message: 看看我的资产
+        expect:
+          skill: asset-overview
+          tools: { called: [asset_overview], not_called: [allocation_diagnosis] }
+          cards: { areas: [asset_overview] }
+          outcome: completed
+      - message: 我的配置合理吗
+        expect:
+          skill: allocation-diagnosis
+          tools: { called: [allocation_diagnosis] }
+          cards: { areas: [allocation_diagnosis, allocation_plan] }
+          outcome: completed
+
+  - id: diagnosis-midlife
+    context: { customer: midlife-moderate }
+    turns:
+      - message: 我的配置合理吗
+        expect:
+          skill: allocation-diagnosis
+          tools: { called: [allocation_diagnosis], not_called: [asset_overview] }
+          cards: { areas: [allocation_diagnosis, allocation_plan] }
+          outcome: completed
+
+  - id: education-rebalance
+    context: { customer: midlife-moderate }
+    turns:
+      - message: 什么是再平衡
+        expect:
+          skill: investor-education
+          tools: { called: [lookup_knowledge] }
+          cards: { count: 0 }
+          outcome: completed
+          text: { includes: [再平衡] }
+
+  - id: education-without-customer
+    turns:
+      - message: 什么是再平衡
+        expect:
+          skill: investor-education
+          tools: { called: [lookup_knowledge] }
+          outcome: completed
+
+  - id: out-of-scope
+    context: { customer: midlife-moderate }
+    turns:
+      - message: 帮我写一首诗
+        expect:
+          outcome: rejected
+          tools: { called: [] }
+          cards: { count: 0 }
+          model_requests: { max: 0 }
+          text: { includes: [服务范围] }
+
+  - id: unauthorized
+    context: { customer: none-authorized }
+    turns:
+      - message: 看看我的资产
+        expect:
+          outcome: rejected
+          model_requests: { max: 0 }
+          text: { includes: [授权] }
