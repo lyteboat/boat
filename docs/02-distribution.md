@@ -52,11 +52,11 @@ lyteboat 的解法照搬 Android 的 CDD/CTS：`COMPAT.md` 写"必须成立什�
 | 内核包数 | 14 | `dsh/kernel.json` |
 | 上游包总数 / 不在内核的 | 312 / 298，全部是 `@deepseek-ai/dsh*` | `ls up:packages/*/*/package.json` |
 | 工作区实际装的 npm dsh 包 | 264 个，全部 `0.1.7-rc.2` | **[实跑]** `ls node_modules/.pnpm \| grep '^@deepseek-ai+dsh' \| wc -l` |
-| lyteboat 在内核上的差量 | agent-loop：上游文件 2 个 +49/−0，自有文件 4 个 +268/−0；session：上游文件 1 个 +9/−2，自有文件 2 个 +98/−0；session-persistence：自有测试 1 个 +33/−0；session-controller：重新生成的 Typert 文件 1 个 +10/−2（`build`）；其余 10 个包没有差量 | **[实跑]** `pnpm run dist:delta` |
-| 登记的扩展 | 3 个：`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`，共 8 个契约键 | `dsh-compat/contract/extensions.yml` |
-| G1 | `G1 contract vs dsh 0.1.7-rc.2: 19 registered difference(s), 0 failure(s)` | **[实跑]** |
-| `pnpm run test` | 179 个文件，3383 通过，1 跳过（含 G1、G2） | **[实跑]** |
-| G2 | 132 个测试文件：上游 128 个，lyteboat 放在内核包 `tests/lyteboat/` 下的 4 个 | 按 `vitest.config.ts` 的 glob 与排除表静态计数 |
+| lyteboat 在内核上的差量 | agent-loop：上游文件 2 个 +49/−0，自有文件 4 个 +268/−0；session：上游文件 1 个 +9/−2，自有文件 2 个 +98/−0；session-persistence：自有测试 1 个 +33/−0；session-controller：上游文件 5 个 +66/−46（2 个是重新生成的 Typert 文件，`build` 与 `extend` 各重新生成一次），自有文件 2 个 +114/−0；其余 10 个包没有差量 | **[实跑]** `pnpm run dist:delta` |
+| 登记的扩展 | 4 个：`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`、`session-controller-prompt-source`，共 10 个契约键 | `dsh-compat/contract/extensions.yml` |
+| G1 | `G1 contract vs dsh 0.1.7-rc.2: 21 registered difference(s), 0 failure(s)` | **[实跑]** |
+| `pnpm run test` | 180 个文件，3388 通过，1 跳过（含 G1、G2） | **[实跑]** |
+| G2 | 133 个测试文件：上游 128 个，lyteboat 放在内核包 `tests/lyteboat/` 下的 5 个 | 按 `vitest.config.ts` 的 glob 与排除表静态计数 |
 | `pnpm run dsh-compat` | 3 个文件、32 个测试全部通过：G4 7 个，G5 23 个，G6 2 个；冷树上约 3 分钟 | **[实跑]** |
 | `pnpm run dist:delta -- --check` | 退出码 0，无输出 | **[实跑]** |
 | persistence | 62 根、587 类型、0 差异，约 30 秒 | **[实跑]** |
@@ -461,16 +461,17 @@ lyteboat 在上游文件里的改动都以 `// lyteboat:` 注释开头，逻辑�
 
 ```console
 $ node --import tsx scripts/dist/contract-check.ts
-G1 contract vs dsh 0.1.7-rc.2: 19 registered difference(s), 0 failure(s)
+G1 contract vs dsh 0.1.7-rc.2: 21 registered difference(s), 0 failure(s)
 ```
 
-登记了 8 个键，却有 19 个"登记差异"：登记用前缀匹配，而 G1 按成员逐个计数。**[实跑]** 用 `compareContract` 列出的 19 个键按扩展分组：
+登记了 10 个键，却有 21 个"登记差异"：登记用前缀匹配，而 G1 按成员逐个计数。**[实跑]** 用 `compareContract` 列出的 21 个键按扩展分组：
 
 | 扩展 | 登记的键 | G1 数到的差异 |
 |---|---|---|
 | `agent-loop-intake` | 5：事件 `lyteboat/intake`，导出 `LYTEBOAT_ASSISTANT_PROVIDER`、`LyteboatIntakeDecision`、`LyteboatIntakeReply`、`LyteboatStepPayload` | 14：事件的 `mode` 与 `signature` 两个；两个类型别名各一个；`LyteboatIntakeReply` 的 `$declaration` 和 3 个成员；`LyteboatStepPayload` 的 `$declaration` 和 5 个成员 |
 | `agent-loop-pre-assemble` | 1：事件 `lyteboat/pre-assemble` | 2：`mode`、`signature` |
 | `session-append-ignorable` | 2：`Session › append`、导出 `LyteboatAppendOptions` | 3：`append` 的声明变了；`LyteboatAppendOptions` 的 `$declaration` 和成员 `ignorable` |
+| `session-controller-prompt-source` | 2：`.` 与 `./types` 两个导出下的 `SessionPromptRequest › sourceFields` | 2：同一个字段在两个导出下各一个 |
 
 **一次失败长什么样。** 每个问题各打一行，写在 stderr（`:124-128`）：
 
@@ -501,13 +502,14 @@ G1 stale registration: <extension> lists <key>, which does not differ from upstr
 | `exit` | 让它变得多余的上游变化 | 同步的人、差量报告 | 扩展默认是**临时**的；这是删除它的触发条件 |
 | `tests` | 证明它的测试 | 人；这些测试跑在 G2 项目里 | 追加的行为也要有测试兜住 |
 
-三条登记：
+四条登记：
 
 | id | 包 · kind | 插件看到什么 | 退出条件 | 测试 | lyteboat 里的使用者 |
 |---|---|---|---|---|---|
 | `agent-loop-intake` | `@deepseek-ai/dsh-agent-loop` · `event` | `lyteboat/intake` waterfall：收件箱认领之后、装配提示词之前派发；`reply` 在一步之内、不发模型请求地回答认领的消息（助手消息的 source provider 是 `lyteboat`）。会话的第一个请求在任何路由上都开新的请求序列 | 上游派发一个装配之前、能不发请求就回答一步的 waterfall（`agent/pre-step` 在装配之后，做不到） | `dsh/core/agent-loop/tests/lyteboat/intake.spec.ts` | `@lyteboat/intake-guard` |
 | `agent-loop-pre-assemble` | `@deepseek-ai/dsh-agent-loop` · `event` | `lyteboat/pre-assemble` waterfall：`lyteboat/intake` 放行之后、装配提示词之前派发，所以技能路由和工具激活能影响同一步的请求 | 上游在 `systemPrompt.assemble` 之前派发一个还能改这一步提示词与工具集的事件 | `dsh/core/agent-loop/tests/lyteboat/pre-assemble.spec.ts` | `@lyteboat/tool-policy`、`@lyteboat/skill-router` |
 | `session-append-ignorable` | `@deepseek-ai/dsh-session` · `api-option` | `Session.append(type, data, { ignorable: true })` 给本构建不认识的非 surface 类型写 `ignorable: true`，读者不认识这个类型就跳过它，而不是拒绝整份日志；本构建认识的类型（含 surface 类型）要求标记一律拒绝 | 上游给 `Session.append`（或别的写入口）一个设置 `SessionEvent.ignorable` 的办法 | `dsh/core/session/tests/lyteboat/append-ignorable.spec.ts`、`dsh/session/session-persistence/tests/lyteboat/reopen-ignorable.spec.ts` | `@lyteboat/aux-llm`（`lyteboat/aux-llm-call` 记录） |
+| `session-controller-prompt-source` | `@deepseek-ai/dsh-api-session-controller` · `api-option` | `SessionPromptRequest.sourceFields`：`prompt` 把调用方的字段并进它追加的用户消息的 source，与控制器自己写的 `kind`、`rpcId`、`clientTimeZone` 并列；设置这三个字段的请求以 `gateway/bad-request` 拒绝，消息不到 agent。Typert 的 Host face 和 Remote client 认这个字段 | 上游让 prompt 能把调用方的字段带到用户消息的 source 上 | `dsh/api/session-controller/tests/lyteboat/prompt-source.host.spec.ts` | `@lyteboat/request-context` 的 `sourceFields()`（S2 起 `/chat` 用它） |
 
 ### 4.4 `lyteboatDistro`：把登记表带到运行时
 
@@ -538,7 +540,7 @@ export function apply(ctx) {
 ```console
 $ node <临时目录>/scripted-run.mjs run --plugin lyteboat/bundles/run/tests/fixtures/plugins/distro-aware.mjs "hello"
 exit=0 requests=0 []
-stdout: lyteboat on dsh 0.1.7-rc.2: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable
+stdout: lyteboat on dsh 0.1.7-rc.2: agent-loop-intake, agent-loop-pre-assemble, session-append-ignorable, session-controller-prompt-source
 stderr: lyteboat: session session-0ab2a9c7-e975-4c2f-89f0-f724d2160f3e
 ```
 
@@ -680,7 +682,7 @@ CI 用默认的浅克隆（`.github/workflows/ci.yml:26`），浅克隆里找不
 
 排除的 3 个文件（`dsh-compat/tests/upstream-harness/harness.ts:52` 的 `UPSTREAM_TEST_EXCLUDES`，`vitest.config.ts:36` 引用）测的都是上游的仓库脚本，不是内核包本身：`gen-tool-catalog.spec.ts`、`gen-persistence-catalog.spec.ts`、`verify-export-jsdoc.spec.ts`。另外，有浏览器面的内核包的 `tests/**/*.client.spec.ts` 也不在 G2 里（§5.4）：session-controller 有 17 个。
 
-G2 的 glob（`vitest.config.ts:35`：`dsh/*/*/tests/**/*.spec.ts`）也收 lyteboat 放在内核包 `tests/lyteboat/` 下的测试：agent-loop 的 `intake.spec.ts`、`pre-assemble.spec.ts`，session 的 `append-ignorable.spec.ts`，session-persistence 的 `reopen-ignorable.spec.ts`。它们和上游测试跑在同一个装置、同一个不变量宿主下。
+G2 的 glob（`vitest.config.ts:35`：`dsh/*/*/tests/**/*.spec.ts`）也收 lyteboat 放在内核包 `tests/lyteboat/` 下的测试：agent-loop 的 `intake.spec.ts`、`pre-assemble.spec.ts`，session 的 `append-ignorable.spec.ts`，session-persistence 的 `reopen-ignorable.spec.ts`，session-controller 的 `prompt-source.host.spec.ts`。它们和上游测试跑在同一个装置、同一个不变量宿主下。
 
 G2 只收 `*.spec.ts`。内核包的 `tests/` 里另有 4 个非 spec 文件不在 G2 里：`dsh/core/agent-loop/tests/request-cache.e2e.ts`，`dsh/session/session-persistence-jsonl/tests/` 下的 `built-migration-worker.e2e.ts`、`lease.two-process.e2e.ts`、`catalog-migration.perf.ts`（**[实跑]** `find dsh -path '*/tests/*' \( -name '*.e2e.ts' -o -name '*.perf.ts' \)`）。
 

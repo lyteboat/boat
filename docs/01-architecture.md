@@ -224,7 +224,7 @@ flowchart LR
 | preset 注册表 | `agentPresets` | npm `dsh-agent-preset-registry`（`dsh@rc.2:packages/preset/agent-preset-registry/src/index.ts:51-71`） | 把 agent 目录的行挂到 standing scope，再绑定到每个 agent 实例 |
 | 默认模型 | `agentDefaultModel` | npm `dsh-agent-default-model` | 给 runner 提供 provider/model 选择 |
 | 会话查询 | `sessionQuery` | npm `dsh-session-query-sqlite` | runner 续接会话时读存下的 header 和事件 |
-| 发行版标记 | `lyteboatDistro` | `lyteboat/plugins/distro/src/index.ts:16-27` | 列出本构建携带的内核扩展（`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`）和内核导入自哪个 dsh release |
+| 发行版标记 | `lyteboatDistro` | `lyteboat/plugins/distro/src/index.ts:16-27` | 列出本构建携带的内核扩展（`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`、`session-controller-prompt-source`）和内核导入自哪个 dsh release |
 | 工具策略 | `toolPolicy` | `lyteboat/plugins/tool-policy/src/index.ts:102-136` | `always` / `auto` 可见性、一个 scope 对它没声明的继承工具的可见性（`declareUndeclared`，agent 行的 `undeclared`）、确认、state delta，`lyteboat:state` context |
 | 旁路模型调用 | `auxLlm` | `lyteboat/plugins/aux-llm/src/index.ts:94-160` | `generate({agent, purpose, system, prompt, maxTokens, timeoutMs, …})`：在自己的时限里经 `ctx.llm.stream` 发一次调用，结果（回答或失败原因）作为一条 `ignorable` 的 `lyteboat/aux-llm-call` 记进 agent 的会话 |
 | 请求上下文 | `requestContext` | `lyteboat/plugins/request-context/src/index.ts:31-66` | `message(text, request)` 把请求 id、上下文、准入结论放进人类消息的 `source.lyteboatRequest`；`requestOf` / `contextOf` 读回；`lyteboatRequest` 投影（`request-projection.ts:29-46`） |

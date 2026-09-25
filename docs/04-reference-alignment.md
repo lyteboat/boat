@@ -3,7 +3,7 @@
 > 本文把参考实现的能力逐项对到 lyteboat 的代码上：lyteboat 有没有这项能力、在哪个包哪个文件；只有一部分的，缺什么。然后写下决定能力怎样落进 lyteboat 的设计规则，以及接下来引入能力的顺序。
 >
 > **基线**
-> - lyteboat：本仓库的代码。内核是 dsh 0.1.7-rc.2（tag `dsh-v0.1.7-rc.2`，`dsh.upstream.json`）的 14 个包，带三项登记过的扩展。
+> - lyteboat：本仓库的代码。内核是 dsh 0.1.7-rc.2（tag `dsh-v0.1.7-rc.2`，`dsh.upstream.json`）的 14 个包，带四项登记过的扩展。
 > - 参考实现：它的 master 分支。
 >
 > **路径约定**
@@ -21,7 +21,7 @@
 
 ## 0. 摘要
 
-- **怎样落地。** lyteboat 把参考实现的运行时事实重新表达为 dsh 接缝上的 Cordis 插件：七个能力插件（tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import）和发行版标记 distro，由 `@lyteboat/host` 挂到每个 profile 上。内核只带三项登记过的扩展，14 个内核包里 11 个的上游文件没有改动。
+- **怎样落地。** lyteboat 把参考实现的运行时事实重新表达为 dsh 接缝上的 Cordis 插件：七个能力插件（tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import）和发行版标记 distro，由 `@lyteboat/host` 挂到每个 profile 上。内核只带四项登记过的扩展，14 个内核包里 11 个的上游文件没有改动。
 - **能力对照（第 3 节）。**
   - **有**：工具可见性与调用前确认；技能加载与模型路由，路由过的会话能重开、能续聊；A2UI 模板卡片，工具直接出卡、一个结果多张卡、按标记和出卡模式排进一轮；终态卡结束本轮；进循环前的准入，判定、回复和卡片记在请求上；请求上下文；旁路模型调用留痕；外部历史作为新会话的种子；数据层单例；目录形态的业务 agent。
   - **部分**：LLM 准入分类（没有 friction 计数和授权回流后的刷新）；会话状态（深合并，整份给模型看，没有可见键）；trace id（只有可选的 `requestId`）；业务工具面（工具挡住了，注入没挡住）；按角色选模型（只有旁路调用能选路由）；Studio（只有 dsh web）。
@@ -62,8 +62,9 @@
 | `agent-loop-intake` | `@deepseek-ai/dsh-agent-loop` | `lyteboat/intake` waterfall：在收件箱认领之后、组装提示之前派发；`reply` 不发模型请求，在一步里用一条 assistant 消息（source 的 provider 为 `lyteboat`）作答。reply 往会话里写什么在 `dsh/core/agent-loop/src/lyteboat/intake-reply.ts` | 上游在组装前派发一个能不发请求就作答的 waterfall |
 | `agent-loop-pre-assemble` | `@deepseek-ai/dsh-agent-loop` | `lyteboat/pre-assemble` waterfall：`lyteboat/intake` 放行之后、组装系统提示之前派发，所以技能路由和工具激活作用于同一步的请求 | 上游在 `systemPrompt.assemble` 之前派发一个还能改本步提示和工具集的事件 |
 | `session-append-ignorable` | `@deepseek-ai/dsh-session` | `Session.append(type, data, { ignorable: true })`：给本构建不认识的非 surface 事件打上可忽略标记；认识的类型带这个标记直接抛错 | 上游给 `Session.append`（或别的写入口）一个设置 `SessionEvent.ignorable` 的办法 |
+| `session-controller-prompt-source` | `@deepseek-ai/dsh-api-session-controller` | `SessionPromptRequest.sourceFields`：`prompt` 把调用方的字段并进用户消息的 source；`kind`、`rpcId`、`clientTimeZone` 不能覆盖 | 上游让 prompt 能把调用方的字段带到用户消息的 source 上 |
 
-`pnpm run dist:delta`（实跑）：上游文件里 agent-loop 两个文件多 49 行，session 一个文件多 9 行、删 2 行；其余 11 个包的上游文件没有改动。lyteboat 自己的逻辑和测试放在各包的 `src/lyteboat/`、`tests/lyteboat/` 下。`pnpm run contract:check`（实跑）：`G1 contract vs dsh 0.1.7-rc.2: 19 registered difference(s), 0 failure(s)`。
+`pnpm run dist:delta`（实跑）：上游文件里 agent-loop 两个文件多 49 行，session 一个文件多 9 行、删 2 行，session-controller 五个文件多 66 行、删 46 行（其中两个是重新生成的 Typert 文件）；其余 11 个包的上游文件没有改动。lyteboat 自己的逻辑和测试放在各包的 `src/lyteboat/`、`tests/lyteboat/` 下。`pnpm run contract:check`（实跑）：`G1 contract vs dsh 0.1.7-rc.2: 21 registered difference(s), 0 failure(s)`。
 
 **宿主 bundle（`lyteboat/bundles/host/cordis.patch.yml`）。** 关掉 dsh-base 的两行：`session-log-deepseek`（模型服务只收到请求本身，不附会话日志）和 `session-telemetry-otel`（用户反馈时不上传会话前缀）；插入 distro、tool-policy、aux-llm、request-context、intake-guard、skill-router、a2ui、history-import 八行，都是宿主服务，agent 行 inject 它们。
 
@@ -115,9 +116,10 @@
    - 提示：`ctx.systemPrompt`，运行时上下文 `lyteboat:state`（130）、系统提示段 `lyteboat:skills`（450）；
    - 确认：approval 接缝，`requiresConfirmation` 的工具在 `tools/pre-execute` 上答 `ask`，没有答复方时拒绝。
 2. **落点有先后**（`CLAUDE.md`「Architecture boundaries」的 "Outside the kernel first"）：先用 dsh 原样的包，只做配置；不够再写 lyteboat 插件；再不够，建 lyteboat 自有的 seam；最后才是内核扩展。lyteboat 的自有 seam 用登记表的写法：宿主服务持有登记表，agent 行在自己的常驻作用域里 `register` 一个实现并拿回 disposer，取用时沿 agent 的作用域链找最近的一个；实现的接口是类型，消费方 `import type`。`ctx.intakeGuard.register(admission)`（`lyteboat/plugins/intake-guard/src/index.ts:83`）就是这样。
-3. **内核只在插件做不到时扩展。** 三项扩展各有一个插件绕不过去的原因：
+3. **内核只在插件做不到时扩展。** 四项扩展各有一个插件绕不过去的原因：
    - `agent/pre-step` 在系统提示组装之后才派发（`dsh/core/agent-loop/src/agent.ts:290-300`），插件在那里既不能不发模型请求就作答，也改不了同一步的提示和工具集：所以有 `agent-loop-intake` 和 `agent-loop-pre-assemble`。
    - 事件信封由 `Session.append` 在内部拼装，插件碰不到 `ignorable` 标记：所以有 `session-append-ignorable`。
+   - session-controller 的 `prompt` 在自己的校验、附件准入和去重之后才构造用户消息，source 由它自己写；另开一条写入路径就丢了这三样：所以有 `session-controller-prompt-source`。
 
    上游文件里的钩子保持几行，逻辑放在 `src/lyteboat/`（`CLAUDE.md`「Architecture boundaries」的 "The kernel changes only by classified commits"）；每项扩展登记退出条件，上游提供替代能力后在下一次同步里退役。这样做是因为内核的每一行差量都要长期携带：dsh 不接受外部 PR（`dsh:CONTRIBUTING.md:9`），而扩展所在的文件是上游改得最勤的：在 dsh-0.1.7-rc.2 的 checkout 上执行 `git log --since=2026-08-01`，`packages/core/agent-loop/src/agent.ts` 有 82 个提交（不算合并提交 58 个），`packages/core/session/src/index.ts` 有 69 个（不算合并提交 56 个）。
 
@@ -725,7 +727,7 @@ flowchart TB
     MULTI["session-persistence-sql · datasource-sql<br/>lease · telemetry-traces"]
   end
   CT["@lyteboat/contracts"]
-  K["内核 dsh/：13 包<br/>agent-loop-intake · agent-loop-pre-assemble · session-append-ignorable"]
+  K["内核 dsh/：14 包<br/>agent-loop-intake · agent-loop-pre-assemble · session-append-ignorable · session-controller-prompt-source"]
   CLI --> HOST
   CLI --> RUN
   CLIN -.-> SERVE
@@ -926,7 +928,7 @@ sequenceDiagram
 | 一批参考实现语义在 lyteboat 里不同（5.5） | 行为偏离参考实现的 eval 基线 | 6.1 的语料在真实模型上跑；差异写进迁移说明 |
 | lyteboat 用到的非内核 dsh 包在 0.x 版本里会有破坏性变化，不受 G1 保护；上游的架构决策记在 `dsh:.agents/notes/implemented/architecture/` 下 | 每次同步都要适配 lyteboat 插件 | 每个插件有自己的 spec，每个 bundle 和 agent 有组合测试；每次同步跑全部闸门 |
 | 依赖上游不承诺的内部行为：运行时上下文的整块快照、session-controller 按 `rpcId` 去重、tool-skill 只把 kind `'user'` 当人类输入 | 上游改动时静默失配 | 同步时逐条核对；把关键的几条写成组合测试断言，例如请求体里不出现 `lyteboatRequest`（2.2 的实跑结论，没有测试守着） |
-| 三项内核扩展可能要长期携带（dsh 不接受外部 PR） | 长期的同步成本 | 钩子留在少数几行，逻辑在 `src/lyteboat/`；`pnpm run dist:delta` 报告携带量与退出条件 |
+| 四项内核扩展可能要长期携带（dsh 不接受外部 PR） | 长期的同步成本 | 钩子留在少数几行，逻辑在 `src/lyteboat/`；`pnpm run dist:delta` 报告携带量与退出条件 |
 | 上游将来可能移除 `ignorable` 字段（决策笔记写明替代机制完成切换后可以删） | `session-append-ignorable` 和可忽略这一档词表失去依据 | 只让纯信息记录用它，丢了不影响重建，随时可以退回到只写 logger 或 OTel；用它的只有 `lyteboat/aux-llm-call` |
 | dsh 的信任模型只有单一操作者；session-query 不做授权 | 终端用户鉴权和多租户隔离的责任在 lyteboat | serve 默认要求共享密钥或签名；resume 之前校验归属；session-query 不对外暴露 |
 | 业务组合关掉 jobs、goal 等服务后，依赖它们的社区插件会一直等待而不报错 | 这些插件在业务 profile 里用不了 | 写进 COMPAT.md；加装插件时比对它的 inject 清单与关掉的行，给出提示 |

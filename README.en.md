@@ -209,7 +209,7 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 
 ## Status and roadmap
 
-- Tracks dsh **0.1.7-rc.2** (`dsh.upstream.json`). The kernel is its import plus lyteboat's three registered extensions (`agent-loop-intake`, `agent-loop-pre-assemble`, `session-append-ignorable`), and every gate above passes against it.
+- Tracks dsh **0.1.7-rc.2** (`dsh.upstream.json`). The kernel is its import plus lyteboat's four registered extensions (`agent-loop-intake`, `agent-loop-pre-assemble`, `session-append-ignorable`, `session-controller-prompt-source`), and every gate above passes against it.
 - Provides: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the finance agent; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. The [CHANGELOG](CHANGELOG.md) has the full list.
 - Known limitations:
   - There is no server mode (`/chat`, multiple users). `lyteboat web` does not read agent directories, and a message arriving through it is admitted in the loop without a recorded verdict.

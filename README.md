@@ -207,7 +207,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 状态与路线图
 
-- 跟踪 dsh **0.1.7-rc.2**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的三个扩展（`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`），上面所有闸门都对它通过。
+- 跟踪 dsh **0.1.7-rc.2**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的四个扩展（`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`、`session-controller-prompt-source`），上面所有闸门都对它通过。
 - 提供：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。完整清单见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
   - 没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
