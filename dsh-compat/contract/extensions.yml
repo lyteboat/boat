@@ -63,3 +63,20 @@ extensions:
     tests:
       - dsh/core/session/tests/lyteboat/append-ignorable.spec.ts
       - dsh/session/session-persistence/tests/lyteboat/reopen-ignorable.spec.ts
+  - id: session-controller-prompt-source
+    package: '@deepseek-ai/dsh-api-session-controller'
+    kind: api-option
+    surface: >-
+      SessionPromptRequest takes `sourceFields`, a JSON object whose fields `prompt` adds to the
+      source of the user message it appends, beside the ones the controller writes (`kind: 'user'`,
+      the request id as `rpcId`, `clientTimeZone`); a request that sets one of those fails with
+      `gateway/bad-request` before the message reaches the agent. The Typert Host face and Remote
+      client accept the field.
+    contract:
+      - api › @deepseek-ai/dsh-api-session-controller › exports › . › SessionPromptRequest › sourceFields
+      - api › @deepseek-ai/dsh-api-session-controller › exports › ./types › SessionPromptRequest › sourceFields
+    exit: >-
+      Upstream lets a prompt carry a caller's fields onto the source of its user message; then
+      @lyteboat plugins pass them that way.
+    tests:
+      - dsh/api/session-controller/tests/lyteboat/prompt-source.host.spec.ts

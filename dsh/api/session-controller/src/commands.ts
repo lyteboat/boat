@@ -34,6 +34,7 @@ import {
   hasApiSessionSubagentOwner,
   inspectApiSession,
 } from './agent.ts'
+import { lyteboatPromptSourceFields } from './lyteboat/prompt-source.ts'
 import type {
   SessionAttachmentRequest,
   SessionAttachmentValue,
@@ -332,6 +333,8 @@ export class SessionCommandController {
       kind: 'user',
       rpcId: request.requestId,
       ...(clientTimeZone === undefined ? {} : { clientTimeZone }),
+      // lyteboat: the caller's own source fields (session-controller-prompt-source).
+      ...lyteboatPromptSourceFields(request.sourceFields),
     }
     const hasImage = request.content.some(part => part.type === 'image')
     const admit = async (): Promise<SessionPromptValue> => {
