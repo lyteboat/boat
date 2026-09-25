@@ -120,6 +120,15 @@ function persistence(checkout: string): number {
   }
 }
 
+/** The spec files under an upstream package's `tests/`, as paths in the checkout. */
+function packageSpecFiles(checkout: string, dir: string): string[] {
+  const tests = join(checkout, 'packages', dir, 'tests')
+  if (!existsSync(tests)) return []
+  return readdirSync(tests, { recursive: true, encoding: 'utf8' })
+    .filter(file => /\.spec\.tsx?$/u.test(file))
+    .map(file => `packages/${dir}/tests/${file}`)
+}
+
 /** Upstream packages outside the kernel that declare a dependency on a kernel package. */
 function dependentTestFiles(checkout: string, match: RegExp): string[] {
   const kernel = new Set(kernelPackages().map(pkg => pkg.name))
@@ -133,12 +142,7 @@ function dependentTestFiles(checkout: string, match: RegExp): string[] {
       if (!pkg.isDirectory() || kernelDirs.has(dir) || !match.test(dir) || !existsSync(manifestPath)) continue
       const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, Record<string, string> | undefined>
       const deps = { ...manifest['dependencies'], ...manifest['peerDependencies'], ...manifest['devDependencies'] }
-      if (!Object.keys(deps).some(name => kernel.has(name))) continue
-      const tests = join(checkout, 'packages', dir, 'tests')
-      if (!existsSync(tests)) continue
-      for (const file of readdirSync(tests, { recursive: true, encoding: 'utf8' })) {
-        if (/\.spec\.tsx?$/u.test(file)) files.push(`packages/${dir}/tests/${file}`)
-      }
+      if (Object.keys(deps).some(name => kernel.has(name))) files.push(...packageSpecFiles(checkout, dir))
     }
   }
   return files.sort()
@@ -211,6 +215,32 @@ function typertArtifactFiles(artifacts: readonly WorkspaceEmitResult[]): Map<str
   return files
 }
 
+/**
+ * Compare one kernel package's published Typert files with what upstream's generator
+ * emits; with `write`, replace a differing file instead of failing.
+ * @returns the number of failures.
+ */
+function compareTypertFiles(name: string, dir: string, generated: ReadonlyMap<string, string>, write: boolean): number {
+  let failures = 0
+  for (const file of kernelTypertFiles(dir)) {
+    const text = generated.get(file)
+    const path = join(repoRoot, 'dsh', dir, file)
+    if (text === undefined) {
+      console.error(`typert: ${name} publishes ${file}, but upstream's generator emits none from lyteboat's source`)
+      failures += 1
+      continue
+    }
+    if (existsSync(path) && readFileSync(path, 'utf8') === text) continue
+    if (write) {
+      writeFileSync(path, text)
+      continue
+    }
+    console.error(`typert: dsh/${dir}/${file} differs from what upstream's generator emits from lyteboat's source`)
+    failures += 1
+  }
+  return failures
+}
+
 function typert(checkout: string, write: boolean): number {
   const { dsh } = readUpstreamPin()
   const packages = kernelPackages().filter(({ dir }) => kernelTypertFiles(dir).length > 0)
@@ -230,22 +260,7 @@ function typert(checkout: string, write: boolean): number {
     const artifacts = generator.generate(contributors, ['host'])
     let failures = 0
     for (const { name, dir } of packages) {
-      const generated = typertArtifactFiles(artifacts.filter(artifact => artifact.package === name))
-      for (const file of kernelTypertFiles(dir)) {
-        const text = generated.get(file)
-        const path = join(repoRoot, 'dsh', dir, file)
-        if (text === undefined) {
-          console.error(`typert: ${name} publishes ${file}, but upstream's generator emits none from lyteboat's source`)
-          failures += 1
-        } else if (!existsSync(path) || readFileSync(path, 'utf8') !== text) {
-          if (write) {
-            writeFileSync(path, text)
-          } else {
-            console.error(`typert: dsh/${dir}/${file} differs from what upstream's generator emits from lyteboat's source`)
-            failures += 1
-          }
-        }
-      }
+      failures += compareTypertFiles(name, dir, typertArtifactFiles(artifacts.filter(artifact => artifact.package === name)), write)
       if (write && failures === 0) writeTypertStamp(name, typertSourceDigest(dir))
     }
     console.log(`typert vs dsh ${dsh}: ${packages.map(({ name }) => name).join(', ')}; ${String(failures)} failure(s)${write ? ', files written' : ''}`)
