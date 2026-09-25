@@ -4,7 +4,7 @@ import { parseLyteboatArgs } from '../src/args.ts'
 import { pluginRowId } from '../src/plugins.ts'
 
 const INTAKE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/intake-gate.mjs', import.meta.url))
-const NOOP_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/noop.mjs', import.meta.url))
+const ANNOUNCE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/announce.mjs', import.meta.url))
 
 const parse = (argv: string[]) => parseLyteboatArgs(argv, { lyteboat: '0.0.1', dsh: '0.0.0-test' })
 
@@ -44,8 +44,8 @@ describe('parseLyteboatArgs', () => {
   })
 
   it('inserts local plugin files that exist, each once', () => {
-    expect(parse(['run', '--plugin', INTAKE_PLUGIN, '--plugin', NOOP_PLUGIN, 'hi']))
-      .toEqual({ mode: 'profile', profile: 'run', plugins: [INTAKE_PLUGIN, NOOP_PLUGIN], patches: [], args: ['hi'] })
+    expect(parse(['run', '--plugin', INTAKE_PLUGIN, '--plugin', ANNOUNCE_PLUGIN, 'hi']))
+      .toEqual({ mode: 'profile', profile: 'run', plugins: [INTAKE_PLUGIN, ANNOUNCE_PLUGIN], patches: [], args: ['hi'] })
     expect(exitCode(['run', '--plugin', '', 'hi'])).toBe(1)
     expect(exitCode(['run', '--plugin', 'missing.mjs', 'hi'])).toBe(1)
     expect(exitCode(['run', '--plugin', INTAKE_PLUGIN, '--plugin', INTAKE_PLUGIN, 'hi'])).toBe(1)
@@ -73,7 +73,7 @@ describe('parseLyteboatArgs', () => {
 describe('pluginRowId', () => {
   it('names the row after the path, so files sharing a basename get distinct rows', () => {
     expect(pluginRowId('tests/fixtures/plugins/intake-gate.mjs', '/repo')).toBe('plugin:tests/fixtures/plugins/intake-gate')
-    expect(pluginRowId('/repo/tests/fixtures/plugins/noop.mjs', '/repo')).toBe('plugin:tests/fixtures/plugins/noop')
+    expect(pluginRowId('/repo/tests/fixtures/plugins/announce.mjs', '/repo')).toBe('plugin:tests/fixtures/plugins/announce')
     expect(pluginRowId('/elsewhere/plugin.mjs', '/repo')).toBe('plugin:/elsewhere/plugin')
   })
 })

@@ -9,7 +9,7 @@ import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/s
 import { runLyteboat } from './support/lyteboat-process.ts'
 
 const SUCCESS_TEXT = 'LYTEBOAT-RUN-SMOKE-OK'
-const NOOP_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/noop.mjs', import.meta.url))
+const ANNOUNCE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/announce.mjs', import.meta.url))
 
 /**
  * The session-title provider issues its own model request whose events land at
@@ -43,12 +43,13 @@ describe('lyteboat run (built bin, mock model)', () => {
   it('answers one task through the real tool path and persists the turn when a --plugin file joins the tree', async () => {
     const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(
-      ['run', '--plugin', NOOP_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
+      ['run', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
       { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(mock) } },
     )
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(SUCCESS_TEXT)
-    // The launcher reports a row that failed to import or apply; the plugin file's row activated.
+    // The plugin file's row was applied once, and no row failed to import or apply.
+    expect(result.stderr.split('\n').filter(line => line === 'fixture-announce: applied')).toHaveLength(1)
     expect(result.stderr).not.toContain('did not activate')
 
     // The world, not the self-report: the persisted log carries the tool round trip.
