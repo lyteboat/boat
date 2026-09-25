@@ -83,6 +83,7 @@ Side calls (skill routing, intake classification) use their route's default reas
 lyteboat headless "summarize this workspace"                       # one-shot task: answer and exit
 lyteboat headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat serve --agents ./examples/agents                     # HTTP service: POST /chat, answered at once or as an enterprise stream
+lyteboat eval --agents ./examples/agents --agent finance      # run an agent's eval cases and check every turn
 lyteboat web --no-open                                        # browser UI
 ```
 
@@ -94,10 +95,11 @@ lyteboat web --no-open                                        # browser UI
 |---|---|
 | `lyteboat headless [options] "task"` | Answers one task, prints the result, and exits (profile `headless`) |
 | `lyteboat serve [options]` | Serves every agent of the `--agents` directories over HTTP (profile `serve`): `POST /chat`, `GET /agents`, `GET /health` |
+| `lyteboat eval [options]` | Runs an agent's eval cases and checks every turn (profile `eval`); `lyteboat eval compare <before> <after>` compares two runs |
 | `lyteboat web [options]` | Serves the browser UI (profile `web`); `lyteboat web --help` lists its own flags |
 | `lyteboat config dump [options]` | Prints the composed plugin tree and exits; `--default` shows the bundle layers only |
 
-All four accept:
+All five accept:
 
 | Option | What it does |
 |---|---|
@@ -136,6 +138,18 @@ A `/chat` request:
   "stream": false, "context": { "customer": "young-idle-cash" } }
 ```
 
+`lyteboat eval` also takes:
+
+| Option | What it does |
+|---|---|
+| `--agents <dir>`, `--agent <id>` | The agent the cases talk to (both required) |
+| `--cases <path>` | A case file or a directory of them (repeatable); the agent directory's `evals/` by default |
+| `--model real\|replay` | `real` (the default) calls the model and records every case's session; `replay` plays back the run `--from` names, with no model and no key |
+| `--from <run>` | The run a replay plays back: its directory, or its id under `$LYTEBOAT_HOME/evals` |
+| `--workspace <dir>` | The working directory of the sessions; the current directory by default |
+
+Every case is a new session whose turns go through the session controller (the path a `/chat` message takes). After each turn the session is read for the active skill, the tools called, the cards shown, the outcome, the answer text, and the loop's model calls, and each `expect` of the case is checked. A run is written to `$LYTEBOAT_HOME/evals/<run id>/`: `run.json`, `results.jsonl` (one line per turn and no timings, so one recording replays into the same lines), `sessions/` (a real run's recordings), and `report.md`. It exits 0 when every check passed, 1 when one failed, and 2 when it could not run (an invalid case file, a missing recording). [`examples/agents/finance/evals/cases.yml`](examples/agents/finance/evals/cases.yml) shows how cases are written.
+
 Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outcome` (`completed`, `tool_stopped`, `rejected`, `stopped_by_limit`, `aborted`, `errored`), `response`, `cards` (`area`, `surface_id`, `a2ui`), and `tool_calls`. With `"stream": true` it is the enterprise event stream (SSE, AGUI envelopes): `run_started`, at most one `reasoning_*` pair (reasoning deltas and tool calls), at most one `text_message_*` pair (text deltas, with each card as a `ui_protocol: "A2UI"` frame where the answer marks it), and exactly one `run_finished` or `run_error`; an idle stream sends `: keep-alive` every 15 seconds. A session belongs to the `user_id` that created it, and another caller's session answers as one that does not exist (404); a repeated `message_id` in a session is refused with 409; a session's messages queue and are answered in turn; a stream whose caller disconnects cancels that message's running turn.
 
 ### Writing a business agent
@@ -146,6 +160,7 @@ A business agent is a directory `examples/agents/<id>/`, named by its id. Busine
 - `preset.yml`: display information such as the name.
 - `assets/`: the non-code files read at runtime, beside `src/` and `lib/`: `skills/` (one `SKILL.md` per skill), `a2ui/` (card templates), `sample-data/`.
 - `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
+- `evals/`: eval cases (where `lyteboat eval` looks by default) and a baseline recorded against the real model, which the composition test replays without a key.
 
 The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`examples/agents/finance`](examples/agents/finance) is a working agent kept deliberately minimal, there to exercise the end-to-end flow.
 
@@ -173,9 +188,9 @@ The guides are written in Chinese.
 
 ```
 dsh/                  the kernel: the 14 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
-lyteboat/             lyteboat's 16 packages, one directory per layer
+lyteboat/             lyteboat's 18 packages, one directory per layer
   apps/               processes: the lyteboat launcher
-  bundles/            compositions: host (in every profile), headless (behind lyteboat headless), serve (behind lyteboat serve)
+  bundles/            compositions: host (in every profile), and one each behind lyteboat headless, serve, and eval
   plugins/            capability plugins
   core/               declarations
   tooling/            test infrastructure
@@ -193,6 +208,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/apps/cli` | `@lyteboat/cli` | The `lyteboat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `lyteboat/bundles/host` | `@lyteboat/host` | The host bundle every profile lists: the distribution marker and the capability plugins' service rows |
 | `lyteboat/bundles/headless` | `@lyteboat/headless` | The one-shot bundle behind `lyteboat headless`: task, `--agent`, `--agents`, `--history`, `--session-id`, `--context`; a request is admitted before the loop, and the output composes the turn's cards |
+| `lyteboat/bundles/eval` | `@lyteboat/eval` | The bundle behind `lyteboat eval`: declares the one agent the cases talk to, mounts the session controller (without the web UI) and the eval runner, and exits with the run's result; it keeps session titles (a replay has no recording of them), the package inventory, and the workspace's AGENTS.md out |
 | `lyteboat/bundles/serve` | `@lyteboat/serve` | The service bundle behind `lyteboat serve`: declares every agent of the `--agents` directories, mounts dsh's session controller (without the web UI) and `/chat`, and keeps the local package inventory and the workspace's AGENTS.md out of model requests |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file, and its `undeclared: always \| auto` sets whether the inherited tools it does not name are visible |
@@ -204,6 +220,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat headless --history` |
 | `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | The agent catalog: scans agent roots, declares each agent as a dsh preset, and reports the agents that fail to mount |
 | `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`, a business caller's entry: each message enters its session through dsh's session controller with its request (owner, trace id, context) on the human message; the answer is one JSON body or the enterprise event stream with its cards where the answer marks them; shared-secret auth, session ownership, duplicate `message_id` refusal, and cancellation when the caller leaves; an agent row may register a frame decorator that adds fields to its frames |
+| `lyteboat/plugins/eval-runner` | `@lyteboat/eval-runner` | Evals: reads the cases (YAML, checked strictly), runs every case as a new session whose turns go through the session controller, reads each turn from the session log and checks it; a real run records the sessions, a replay answers every model call from them through an `llm/stream` listener bound per session (loop calls from the recorded assistant messages, side calls from the `lyteboat/aux-llm-call` records); writes the run and its report, and compares two runs |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, projection keys, prompt orders, `LyteboatDistro`, and the zod schemas of the JSON types it declares |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, in-process composition boots (a one-shot run until it exits, a service while the test talks to it), per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted model, a `/chat` test client, launcher processes |

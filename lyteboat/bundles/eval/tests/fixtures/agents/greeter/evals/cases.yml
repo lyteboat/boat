@@ -1,0 +1,21 @@
+# The greeter's own cases: `lyteboat eval --agent greeter` reads this directory.
+cases:
+  - id: hello
+    context: { channel: app }
+    turns:
+      - message: hello
+        expect:
+          outcome: completed
+          text: { includes: ['OK:hello'], matches: '^OK:' }
+          tools: { called: [] }
+          cards: { count: 0 }
+          model_requests: { min: 1, max: 1 }
+      - message: again
+        expect:
+          skill: null
+          text: { includes: ['OK:again'], excludes: ['hello'] }
+  - id: short
+    turns:
+      - message: bye
+        expect:
+          text: { includes: ['OK:bye'] }

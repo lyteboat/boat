@@ -48,6 +48,7 @@
     "@lyteboat/aux-llm": "workspace:*",
     "@lyteboat/cli": "workspace:*",
     "@lyteboat/distro": "workspace:*",
+    "@lyteboat/eval": "workspace:*",
     "@lyteboat/host": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
     "@lyteboat/request-context": "workspace:*",

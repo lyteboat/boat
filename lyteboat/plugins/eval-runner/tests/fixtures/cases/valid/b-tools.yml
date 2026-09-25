@@ -1,0 +1,9 @@
+cases:
+  - id: tool-use
+    turns:
+      - message: use the tool
+        expect:
+          skill: lookup
+          tools: { called: [lookup], not_called: [write] }
+          cards: { areas: [summary], count: 1 }
+          model_requests: { max: 2 }

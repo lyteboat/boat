@@ -43,6 +43,8 @@ describe('parseLyteboatArgs', () => {
       .toEqual({ mode: 'profile', profile: 'web', plugins: [], patches: ['w.yml'], args: ['--host', '127.0.0.1', '--patch', 'late.yml'] })
     expect(parse(['serve', '--patch', 's.yml', '--agents', './agents', '--port', '0']))
       .toEqual({ mode: 'profile', profile: 'serve', plugins: [], patches: ['s.yml'], args: ['--agents', './agents', '--port', '0'] })
+    expect(parse(['eval', 'compare', 'a', 'b']))
+      .toEqual({ mode: 'profile', profile: 'eval', plugins: [], patches: [], args: ['compare', 'a', 'b'] })
   })
 
   it('inserts local plugin files that exist, each once', () => {

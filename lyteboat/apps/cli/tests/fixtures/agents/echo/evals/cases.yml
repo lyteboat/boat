@@ -1,0 +1,8 @@
+# One case for the launcher's `lyteboat eval` smoke.
+cases:
+  - id: smoke
+    turns:
+      - message: hello
+        expect:
+          outcome: completed
+          text: { includes: [SMOKE-OK] }

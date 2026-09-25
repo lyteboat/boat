@@ -1,0 +1,4 @@
+cases:
+  - id: Greeting_Case
+    turns:
+      - message: hello

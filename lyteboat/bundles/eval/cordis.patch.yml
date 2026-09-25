@@ -1,0 +1,71 @@
+# The @lyteboat/eval bundle patch: lyteboat's eval mode over dsh-base and
+# @lyteboat/host. The startup row parses `lyteboat eval` into the
+# `lyteboatEvalStartup` service; the agent catalog declares the one agent the
+# cases talk to; dsh's session controller runs without the web UI (workspace,
+# connection, and file upload are its host services); the eval runner sends
+# every case's turns through it, and the last row runs the invocation and
+# exits with its result. lyteboat's service rows come from @lyteboat/host and
+# the agent loop (lyteboat's kernel) from dsh-base, both listed before this
+# bundle in the eval profile.
+
+- id: system-prompt
+  config:
+    personaSuffix: Your working directory is {{cwd}}.
+    personaPrefix: >-
+      You are a coding agent powered by the {{model}} model.
+
+- id: tools
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+# The cases see what a /chat caller's requests carry: not the list of installed
+# packages dsh-base attaches on DeepSeek's route, and not the working directory's
+# AGENTS.md.
+- id: plugin-package-inventory-deepseek
+  disabled: true
+
+- id: agent-instructions
+  disabled: true
+
+# A session title is a model call of its own; a replay has no recording of it.
+- id: session-title-llm
+  disabled: true
+
+- insert:
+    - id: lyteboat-eval-startup
+      name: '@lyteboat/eval/startup'
+
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatEvalStartup]
+      config:
+        roots: !!js ctx.lyteboatEvalStartup.agentRoots
+        include: !!js ctx.lyteboatEvalStartup.include
+
+    # Every case's session names its agent; a session without one runs none.
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: none
+
+    - id: workspace
+      name: '@deepseek-ai/dsh-workspace'
+
+    - id: connection
+      name: '@deepseek-ai/dsh-client-connection'
+
+    - id: file-upload
+      name: '@deepseek-ai/dsh-client-file-upload'
+
+    - id: session-controller
+      name: '@deepseek-ai/dsh-api-session-controller'
+
+    - id: eval-runner
+      name: '@lyteboat/eval-runner'
+
+    - id: lyteboat-eval
+      name: '@lyteboat/eval'
+
+# An eval run applies the user layers at startup only, as the headless mode does.
+- id: hmr
+  disabled: true

@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { initProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
-import { LYTEBOAT_HEADLESS_BUNDLES, LYTEBOAT_SERVE_BUNDLES } from '@lyteboat/testing/composition'
+import { LYTEBOAT_EVAL_BUNDLES, LYTEBOAT_HEADLESS_BUNDLES, LYTEBOAT_SERVE_BUNDLES } from '@lyteboat/testing/composition'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { checkSkippedProfileBundles, ensureProfileInitialized } from '../src/profile-boot.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from '../src/templates.ts'
@@ -33,6 +33,10 @@ describe('lyteboat profile templates', () => {
 
   test('a serve profile lists the layers the serve composition tests boot', () => {
     expect(LYTEBOAT_PROFILE_TEMPLATES['serve']?.bundles).toEqual(LYTEBOAT_SERVE_BUNDLES)
+  })
+
+  test('an eval profile lists the layers the eval composition tests boot', () => {
+    expect(LYTEBOAT_PROFILE_TEMPLATES['eval']?.bundles).toEqual(LYTEBOAT_EVAL_BUNDLES)
   })
 
   test('an existing profile whose bundle list predates the template fails loud with the fix', () => {

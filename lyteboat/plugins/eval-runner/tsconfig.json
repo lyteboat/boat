@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../dsh/api/session-controller/tsconfig.host.json" },
+    { "path": "../../../dsh/core/agent" },
+    { "path": "../../../dsh/core/session" },
+    { "path": "../../../dsh/llm/llm" },
+    { "path": "../../core/contracts" },
+    { "path": "../a2ui" },
+    { "path": "../agent-catalog" },
+    { "path": "../request-context" }
+  ]
+}

@@ -78,10 +78,16 @@
       "path": "./lyteboat/plugins/chat-api"
     },
     {
+      "path": "./lyteboat/plugins/eval-runner"
+    },
+    {
       "path": "./lyteboat/bundles/headless"
     },
     {
       "path": "./lyteboat/bundles/serve"
+    },
+    {
+      "path": "./lyteboat/bundles/eval"
     },
     {
       "path": "./lyteboat/apps/cli"

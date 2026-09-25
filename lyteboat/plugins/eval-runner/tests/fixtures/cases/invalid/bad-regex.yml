@@ -1,0 +1,6 @@
+cases:
+  - id: greeting
+    turns:
+      - message: hello
+        expect:
+          text: { matches: '(' }

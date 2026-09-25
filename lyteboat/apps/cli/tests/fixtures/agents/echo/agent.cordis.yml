@@ -1,4 +1,4 @@
-# A persona and nothing else: the smallest agent `lyteboat serve` can answer with.
+# A persona and nothing else: the smallest agent `lyteboat serve` and `lyteboat eval` run.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:

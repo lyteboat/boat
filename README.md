@@ -83,6 +83,7 @@ alias lyteboat="node $PWD/lyteboat/apps/cli/lib/bin.js"
 lyteboat headless "总结一下这个工作区"                              # 一次性任务：答完即退出
 lyteboat headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
 lyteboat serve --agents ./examples/agents                      # HTTP 服务：POST /chat，同步或 enterprise 流式
+lyteboat eval --agents ./examples/agents --agent finance       # 跑 agent 的评测用例，逐轮检查
 lyteboat web --no-open                                         # 浏览器界面
 ```
 
@@ -94,10 +95,11 @@ lyteboat web --no-open                                         # 浏览器界面
 |---|---|
 | `lyteboat headless [选项] "任务"` | 回答一个任务，打印结果后退出（profile `headless`） |
 | `lyteboat serve [选项]` | 把 `--agents` 目录里的全部 agent 以 HTTP 服务出去（profile `serve`）：`POST /chat`、`GET /agents`、`GET /health` |
+| `lyteboat eval [选项]` | 跑一个 agent 的评测用例并逐轮检查（profile `eval`）；`lyteboat eval compare <前> <后>` 比较两次运行 |
 | `lyteboat web [选项]` | 启动浏览器界面（profile `web`）；`lyteboat web --help` 查看它自己的参数 |
 | `lyteboat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
 
-四个命令都接受：
+五个命令都接受：
 
 | 选项 | 作用 |
 |---|---|
@@ -136,6 +138,18 @@ lyteboat web --no-open                                         # 浏览器界面
   "stream": false, "context": { "customer": "young-idle-cash" } }
 ```
 
+`lyteboat eval` 另有：
+
+| 选项 | 作用 |
+|---|---|
+| `--agents <目录>`、`--agent <id>` | 用例对着哪个 agent 跑（都必填） |
+| `--cases <路径>` | 用例文件或目录（可重复）；默认是 agent 目录下的 `evals/` |
+| `--model real\|replay` | `real`（默认）调模型并录下每个用例的会话；`replay` 按 `--from` 那次运行的录音回放，不调模型、不要 key |
+| `--from <运行>` | 回放哪次运行：它的目录，或 `$LYTEBOAT_HOME/evals` 下的运行 id |
+| `--workspace <目录>` | 会话的工作目录，默认当前目录 |
+
+每个用例是一个新会话，逐轮经 session-controller 提交（和 `/chat` 同一条路），一轮结束后从会话里读出激活的技能、调用的工具、出的卡片、结局、正文和主循环的模型调用次数，按用例里写的 `expect` 逐项检查。结果写在 `$LYTEBOAT_HOME/evals/<运行 id>/`：`run.json`、`results.jsonl`（每轮一行，不含耗时，同一份录音回放出来逐行相同）、`sessions/`（real 模式的录音）、`report.md`。全部通过退出 0，有检查失败退出 1，跑不起来（用例文件不合法、没有录音）退出 2。用例的写法见 [`examples/agents/finance/evals/cases.yml`](examples/agents/finance/evals/cases.yml)。
+
 不带 `stream` 时返回一个 JSON：`session_id`、`message_id`、`outcome`（`completed`、`tool_stopped`、`rejected`、`stopped_by_limit`、`aborted`、`errored`）、`response`、`cards`（`area`、`surface_id`、`a2ui`）、`tool_calls`。`"stream": true` 时返回 enterprise 事件流（SSE，AGUI 信封）：`run_started`，至多一对 `reasoning_*`（思考增量与工具调用），至多一对 `text_message_*`（文字增量，卡片以 `ui_protocol: "A2UI"` 插在正文标记的位置），最后恰好一个 `run_finished` 或 `run_error`；空闲时每 15 秒发一次 `: keep-alive`。会话属于第一次创建它的 `user_id`：别人的会话按不存在处理（404）；同一会话里重复的 `message_id` 返回 409；同一会话的消息排队依次作答；流式连接断开会取消这条消息正在跑的那一轮。
 
 ### 编写业务 agent
@@ -146,6 +160,7 @@ lyteboat web --no-open                                         # 浏览器界面
 - `preset.yml`：显示名等展示信息。
 - `assets/`：运行时读的非代码文件，与 `src/`、`lib/` 同级：`skills/`（每个技能一个 `SKILL.md`）、`a2ui/`（卡片模板）、`sample-data/`（示例数据）。
 - `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
+- `evals/`：评测用例（`lyteboat eval` 默认读这里）和一份真模型录下的基线，组合测试免 key 回放它。
 
 完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`examples/agents/finance`](examples/agents/finance)：一个刻意做到最小、只为跑通端到端流程的金融智能体。
 
@@ -171,9 +186,9 @@ lyteboat web --no-open                                         # 浏览器界面
 
 ```
 dsh/                  内核：dsh/kernel.json 列出的 14 个 dsh 包，沿用 @deepseek-ai/* 包名
-lyteboat/             轻舟自己的 16 个包，每层一个目录
+lyteboat/             轻舟自己的 18 个包，每层一个目录
   apps/               进程：lyteboat 启动器
-  bundles/            组合：每个 profile 都带的 host，lyteboat headless 用的 headless，lyteboat serve 用的 serve
+  bundles/            组合：每个 profile 都带的 host，lyteboat headless、serve、eval 各自的 bundle
   plugins/            能力插件
   core/               声明
   tooling/            测试支撑
@@ -191,6 +206,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/apps/cli` | `@lyteboat/cli` | `lyteboat` 启动器：profile 模板、patch 叠加、启动（改编自 dsh 的 CLI） |
 | `lyteboat/bundles/host` | `@lyteboat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
 | `lyteboat/bundles/headless` | `@lyteboat/headless` | `lyteboat headless` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history`、`--session-id`、`--context`；请求进循环前先准入，输出按轮组合卡片 |
+| `lyteboat/bundles/eval` | `@lyteboat/eval` | `lyteboat eval` 背后的 bundle：只声明选中的 agent，挂上 session-controller（不带 Web 界面）和 eval-runner，跑完按结果退出；关掉会话标题请求（回放里没有它）、本机包清单、工作区 AGENTS.md |
 | `lyteboat/bundles/serve` | `@lyteboat/serve` | `lyteboat serve` 背后的服务 bundle：声明 `--agents` 里的全部 agent，挂上 dsh 的 session-controller（不带 Web 界面）和 `/chat`，关掉本机包清单与工作区 AGENTS.md 进模型请求 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略，`undeclared: always \| auto` 决定它没有点名的继承工具是否可见 |
@@ -202,6 +218,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat headless --history` 用的会话种子 |
 | `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | agent 目录：扫描 agent 根目录，把每个 agent 声明成 dsh preset，报告挂载失败的 agent |
 | `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`：业务调用方的入口。消息经 dsh 的 session-controller 进会话，请求（owner、trace id、上下文）记在人类消息上；回答是一个 JSON 或 enterprise 事件流，卡片放在正文标记处；共享密钥鉴权、会话归属、重复 `message_id` 检查、断连取消；agent 行可以登记帧装饰器给帧加字段 |
+| `lyteboat/plugins/eval-runner` | `@lyteboat/eval-runner` | 评测：读用例（YAML，严格校验），每个用例一个新会话、逐轮经 session-controller 提交，从会话日志读出每轮的表现并检查；real 模式录下会话，replay 模式用一个 `llm/stream` 监听按会话绑定的录音回答全部模型调用（主循环的从录下的助手消息推出，旁路调用的从 `lyteboat/aux-llm-call` 记录取）；写出运行结果、报告，比较两次运行 |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：单元宿主（dsh 不变量、dsh 服务、内核的 agent loop）与 `MockAdapter`、进程内组合启动（一次性的跑到退出，服务型的边跑边测）、每个测试文件的临时 home 与工作区、会话日志读取与重开检查、脚本化模型、`/chat` 测试客户端、启动器进程 |
