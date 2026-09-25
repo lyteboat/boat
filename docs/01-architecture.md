@@ -216,7 +216,7 @@ flowchart LR
 | 投影注册表 | `sessionProjections` | `dsh/session/session-projection/src/index.ts:208` | 每次 append 后跑所有投影的 `apply` |
 | 持久化 | `sessionPersistence` | 抽象基类 `dsh/session/session-persistence/src/index.ts:140`，JSONL 实现 `dsh/session/session-persistence-jsonl` | 创建 / 追加 / 读取会话日志 |
 | agent 注册表 | `agents` | `dsh/core/agent/src/index.ts:245-256` | `create`，工厂由 agent-loop 注入（`setFactory`） |
-| driver 工厂 | `agentLoop` | `dsh/core/agent-loop/src/index.ts:333-375` | 创建并托管 `ReactLoopAgent`（作为 `agents` 的工厂）；turn / step 循环本身在 `ReactLoopAgent.turn` / `step`（`dsh/core/agent-loop/src/agent.ts:314-611`） |
+| driver 工厂 | `agentLoop` | `dsh/core/agent-loop/src/index.ts:333-375` | 创建并托管 `ReactLoopAgent`（作为 `agents` 的工厂）；turn / step 循环本身在 `ReactLoopAgent.turn` / `step`（`dsh/core/agent-loop/src/agent.ts:314-573`） |
 | 审批 | `approval` | npm `dsh-user-approval` | `tools/pre-execute` 返回 `ask` 时的确认通道 |
 | preset 注册表 | `agentPresets` | npm `dsh-agent-preset-registry`（`dsh@rc.1:packages/preset/agent-preset-registry/src/index.ts:51-72`） | 把 agent 目录的行挂到 standing scope，再绑定到每个 agent 实例 |
 | 默认模型 | `agentDefaultModel` | npm `dsh-agent-default-model` | 给 runner 提供 provider/model 选择 |
@@ -237,7 +237,7 @@ flowchart LR
 | lyteboat 的内核扩展 API | `Session.append(type, data, { ignorable: true })`（`session-append-ignorable`） | 内核 dsh-session（`dsh/core/session/src/lyteboat/append-ignorable.ts`） | aux-llm |
 | dsh 事件 | `agent/pre-step`、`tools/pre-execute` | driver、tools 运行时 | skill-router（追加 skill 正文）；tool-policy（确认） |
 | lyteboat 自己的日志记录 | `lyteboat/aux-llm-call`（`ignorable: true`） | aux-llm，每次旁路调用一条（路由、准入分类） | 人（审计）；没有投影读它 |
-| lyteboat 借用的 dsh 信封 | `tool/result.meta.lyteboat.{cards,stateDelta}`；skill-invocation 的 `user/message`（`source: {kind: 'skill-invocation', name, form: 'instructions'}`）；人类消息的 `source.lyteboatRequest`；回复的 `assistant/message.source.provider = 'lyteboat'` | 工具的 `presentationMeta`；skill-router；调用方经 `requestContext.message`；driver 的 `replyStep` | `lyteboatCards`、`lyteboatState`；`lyteboatActiveSkill`；`lyteboatRequest`、`lyteboatCards`、intake-guard；人、UI |
+| lyteboat 借用的 dsh 信封 | `tool/result.meta.lyteboat.{cards,stateDelta}`；skill-invocation 的 `user/message`（`source: {kind: 'skill-invocation', name, form: 'instructions'}`）；人类消息的 `source.lyteboatRequest`；回复的 `assistant/message.source.provider = 'lyteboat'` | 工具的 `presentationMeta`；skill-router；调用方经 `requestContext.message`；driver 的 `appendLyteboatIntakeReply` | `lyteboatCards`、`lyteboatState`；`lyteboatActiveSkill`；`lyteboatRequest`、`lyteboatCards`、intake-guard；人、UI |
 | lyteboat 的投影 | `lyteboatState`、`lyteboatCards`、`lyteboatActiveSkill`、`lyteboatRequest` | tool-policy、a2ui、skill-router、request-context 注册 | `lyteboat:state` context、`a2ui.turnParts`、web 客户端、工具读请求上下文 |
 
 **为什么宿主服务 + agent 行两段式**：`toolPolicy`、`skillRouter` 这些服务在根 realm 里只有一份，监听所有 agent 的事件；每个 agent 自己的策略（路由模式、哪些工具归它）由 agent 行在自己的 scope 里声明，服务按 agent 的 scope 链去读（`ScopedLayers`）。所以 finance 的行 `lyteboat-skill-router`（`@lyteboat/skill-router/agent`）只写配置 `{mode: dynamic, historyWindow: 6, timeoutMs: 10000}`（`lyteboat/agents/finance/agent.cordis.yml:23-28`），不发布服务；finance 的准入函数也是 agent 行在自己的 scope 里 `ctx.intakeGuard.register(...)` 进去的（`lyteboat/agents/finance/src/agent.ts:42`）。agent 行禁止往根 realm 发布服务（`CLAUDE.md:77`），dsh 的 preset 挂载会直接拒绝（`dsh@rc.1:packages/preset/agent-preset-registry/src/mount.ts:265-267`）。
@@ -287,7 +287,7 @@ flowchart TB
 | 类型 / 文件 | 作用 | 要点 |
 |---|---|---|
 | `Agent`（`dsh/core/agent/src/types.ts:15`，成员由 `runtime-types.ts:163-243` 的 `declare module` 补上） | agent 实例接口 | `session`、`ctx`、`options`、`followup` / `steer` / `inject`、`whenIdle()` |
-| `ReactLoopAgent`（`dsh/core/agent-loop/src/agent.ts:102`） | 唯一的 driver 实现 | 构造时 `createScope(loopCtx, this)` 造出 agent scope（`agent.ts:134`）；`preStep`（271-304）、`turn`（314-421）、`step`（461-611）、`replyStep`（438-459） |
+| `ReactLoopAgent`（`dsh/core/agent-loop/src/agent.ts:102`） | 唯一的 driver 实现 | 构造时 `createScope(loopCtx, this)` 造出 agent scope（`agent.ts:134`）；`preStep`（271-304）、`turn`（314-421）、`step`（423-573）；reply 一步的日志由 `lyteboat/intake-reply.ts` 的 `appendLyteboatIntakeReply`（32-58）写 |
 | `LyteboatStepPayload` / `LyteboatIntakeDecision`（`dsh/core/agent-loop/src/lyteboat/step-hooks.ts:23-63`） | 两个扩展事件的声明 | `lyteboat/intake` 返回 `{kind:'pass'}` 或 `{kind:'reply', plugin, content}`；`LYTEBOAT_ASSISTANT_PROVIDER = 'lyteboat'`（16） |
 | `Session`（`dsh/core/session/src/index.ts:448`） | 一个会话的事件日志 | `append`（724-778）是唯一写入口；`deriveMessages`（849）从带 `surfaceOp` 的事件推导出模型看到的消息 |
 | `lyteboatAppendOptions`（`dsh/core/session/src/lyteboat/append-ignorable.ts:28-36`） | 扩展 `session-append-ignorable` 的写路径 | `append` 的第三个参数对非 surface 类型可以是 `{ ignorable: true }`，信封上就写 `ignorable: true`；本构建认识的类型（含 surface 类型）要这个标记会被拒（32-34）。上游文件里只多了 import / export、放宽的签名和两行钩子（`index.ts:24-25,37-38,727-731,754`） |
@@ -794,7 +794,7 @@ flowchart TB
   wake --> ts["append turn/start"]
   ts --> claim["inbox.claim<br/>append agent/inbox/spliced · emit agent/inbox/claimed"]
   claim --> intake{"lyteboat/intake<br/>waterfall，默认 pass<br/>intake-guard 在 next 之后：消息带 reply 结论就回复"}
-  intake -->|"reply"| reply["replyStep<br/>step/start · 空的 system/message · user/message<br/>assistant/message provider=lyteboat · step/end"]
+  intake -->|"reply"| reply["turn 的 reply 分支 + appendLyteboatIntakeReply<br/>step/start · 空的 system/message · user/message<br/>assistant/message provider=lyteboat · step/end"]
   intake -->|"pass"| pre["lyteboat/pre-assemble<br/>waterfall：skill-router 经 auxLlm 路由、激活所需工具<br/>tool-policy 在 next 之后对齐可见性"]
   pre --> asm["systemPrompt.assemble<br/>sections · contexts · 可见工具"]
   asm --> pstep["agent/pre-step<br/>waterfall：压缩、检查点 flush、AGENTS.md 指令<br/>skill catalog、plan-mode、重复工具提醒、模型选择<br/>skill-router 追加 skill-invocation 消息"]
@@ -830,9 +830,9 @@ flowchart TB
 | S5 组装前 | `lyteboat/pre-assemble` | waterfall | `agent.ts:285-288` | skill-router 在 `next()` 前路由、激活工具、备好要注入的 skill 正文（`skill-router/src/index.ts:229-235,291-307`）；agent 行或 `--plugin` 行可以在这里按用户文字激活工具（`lyteboat/bundles/run/tests/fixtures/plugins/tools.mjs:53-56`）；tool-policy 在 `next()` 后对齐（`tool-policy/src/index.ts:117-123`） |
 | S6 组装 | `system-prompt/assemble` | waterfall | `agent.ts:290`；`dsh/core/system-prompt/src/index.ts:558,626` | lyteboat 不监听，只通过 `section` / `context` 注册内容 |
 | S7 进入前 | `agent/pre-step` | waterfall | `agent.ts:294-300` | skill-router 在 `next()` 之后把 skill-invocation 消息接在这一步的消息后面（`skill-router/src/index.ts:236-244`）。run 组合里挂在这里的 dsh 监听：compaction-basic（压缩，`dsh/compaction/compaction-basic/src/index.ts:158`）、session-checkpoint-policy（flush）、agent-instructions（AGENTS.md 类指令，`dsh@rc.1:packages/context/agent-instructions/src/index.ts:315`）、tool-skill（skill catalog）、plan-mode、repeat-tool-reminder、goal-round-driver，以及 `lyteboat-run` 通过 `installModelSelection` 装的模型选择 |
-| S8–S11 请求 | `agent/request`、`llm/stream` | waterfall | `agent.ts:643,503`；`dsh/llm/llm/src/index.ts:73,1122` | finance-agent 在 `agent/request` 里把温度定成 0（`lyteboat/agents/finance/src/agent.ts:41`） |
-| S11′ 请求失败 | `agent/request-error` | waterfall，默认不重试 | `agent.ts:555-575`（先追加 `assistant/attempt`） | — （llm-retry 在这里返回 `{kind: 'retry'}`，`dsh@rc.1:packages/llm/llm-retry/src/index.ts:243`） |
-| S12 流 | `agent/assistant-stream` | emit，不持久化 | `agent.ts:499` | `lyteboat run` 把推理打到 stderr（`lyteboat/bundles/run/src/index.ts:130-178`） |
+| S8–S11 请求 | `agent/request`、`llm/stream` | waterfall | `agent.ts:606,465`；`dsh/llm/llm/src/index.ts:73,1122` | finance-agent 在 `agent/request` 里把温度定成 0（`lyteboat/agents/finance/src/agent.ts:41`） |
+| S11′ 请求失败 | `agent/request-error` | waterfall，默认不重试 | `agent.ts:518-539`（先追加 `assistant/attempt`） | — （llm-retry 在这里返回 `{kind: 'retry'}`，`dsh@rc.1:packages/llm/llm-retry/src/index.ts:243`） |
+| S12 流 | `agent/assistant-stream` | emit，不持久化 | `agent.ts:461` | `lyteboat run` 把推理打到 stderr（`lyteboat/bundles/run/src/index.ts:130-178`） |
 | S13 工具 | `tools/pre-execute`、`tools/execute`、`tools/post-execute`、`tools/result` | waterfall ×3、emit | `dsh/core/tools/src/index.ts:1505,1605,1781,1703` | tool-policy 对需确认的工具返回 `ask`（124-131）；工具的 `presentationMeta` 带出 `meta.lyteboat.{cards,stateDelta}`；模型自己调 `skill` 工具加载的 skill 由 `lyteboatActiveSkill` 投影从这次调用的 `tool/call` 和成功的 `tool/result` 折叠出来（`skill-router/src/index.ts:152-163`），lyteboat 没有 `tools/result` 监听 |
 | S14 结束 | `agent/turn-stopping` | serial | `agent.ts:385` | — |
 | S15 输出（调用方） | 不是事件：`ctx.a2ui.turnParts` | — | `lyteboat/bundles/run/src/index.ts:316-319`；`lyteboat/plugins/a2ui/src/index.ts:242-262`，`turn-parts.ts:35-64` | `immediate` 卡片在前；回答里的每个 `[[card:<area>]]` 换成那个区域还没出现的 `deferred` / `deferred_discard` 卡片；turn 完成时没放下的 `deferred` 卡片跟在最后，`deferred_discard` 丢掉；`lyteboat run` 把每张卡打成一行 `[card <area>]` |
@@ -1068,7 +1068,7 @@ run a 的完整事件表（时间是相对 seq 0 的毫秒数，帧号来自逐�
 | 25 | 249 | `step/end` | | 10 |
 | 26 | 249 | `turn/end` | `reason: {kind: completed}` | 10 |
 
-几个观察：step 2 没有第二条 `request/header`（头没变、也没开新请求序列，`agent.ts:683-694`）；`request/context` 只在值变化时追加（705-711）；准入分类本身 61 ms、路由调用 12 ms（`durationMs`；第一次旁路调用还要建连接），seq 6 到 seq 7 之间的 45 ms 还包括取 skill 快照和 flush；step 2 没有 runtime-context 消息——内容和 seq 11 一样，内核就不追加（`dsh/core/agent-loop/src/runtime-context.ts:155`）；skill 正文只在 seq 12 出现一次，step 2 的 `lyteboat/pre-assemble` 看它已经在对话里，就不再注入。
+几个观察：step 2 没有第二条 `request/header`（头没变、也没开新请求序列，`agent.ts:647-663`）；`request/context` 只在值变化时追加（689-695）；准入分类本身 61 ms、路由调用 12 ms（`durationMs`；第一次旁路调用还要建连接），seq 6 到 seq 7 之间的 45 ms 还包括取 skill 快照和 flush；step 2 没有 runtime-context 消息——内容和 seq 11 一样，内核就不追加（`dsh/core/agent-loop/src/runtime-context.ts:155`）；skill 正文只在 seq 12 出现一次，step 2 的 `lyteboat/pre-assemble` 看它已经在对话里，就不再注入。
 
 ### 5.3 真实 JSONL 片段（裁剪过）
 
@@ -1095,11 +1095,11 @@ lyteboat 的事实都骑在 dsh 已有的信封上，唯一一种 lyteboat 自�
 | 当前 skill | skill-invocation 的 `user/message`（seq 12）；模型自己调 `skill` 工具时是那次 `tool/call` 和成功的 `tool/result` | skill-router 在 `agent/pre-step` 追加（`skill-router/src/index.ts:236-244`）；dsh 的工具运行时 | `lyteboatActiveSkill` 投影（`skill-router/src/index.ts:141-170`） |
 | 旁路调用审计 | `lyteboat/aux-llm-call`，`ignorable: true`（seq 3 准入分类、seq 7 路由） | aux-llm（`lyteboat/plugins/aux-llm/src/index.ts:131`） | 人；没有投影读它，模型也看不到 |
 | 请求上下文和准入结论 | 人类消息的 `user/message.data.source.lyteboatRequest`（seq 10；见 [5.6](#56-带请求上下文的请求准入在循环之前)） | 调用方经 `requestContext.message`（`lyteboat/plugins/request-context/src/index.ts:106-112`） | `lyteboatRequest` 投影（76-88）、intake-guard、`lyteboatCards`（结论里的卡片） |
-| 拒识 / 准入回复 | `assistant/message.message.source = {provider: 'lyteboat', model: <插件或准入函数名>}` | driver 的 `replyStep`（`agent.ts:450-458`） | 人、UI |
+| 拒识 / 准入回复 | `assistant/message.message.source = {provider: 'lyteboat', model: <插件或准入函数名>}` | driver 调用的 `appendLyteboatIntakeReply`（`dsh/core/agent-loop/src/lyteboat/intake-reply.ts:49-57`） | 人、UI |
 
 ### 5.4 日志怎么映射回模型看到的内容
 
-**规则：模型看得到的，日志里都能还原**（`CLAUDE.md:79`，dsh 的规则）。driver 发请求时不是自己拼消息，而是追加 `request/header` / `request/context` 之后，直接用 `session.deriveMessages()` 当消息列表（`agent.ts:716-729`）。`deriveMessages`（`dsh/core/session/src/index.ts:849`）只遍历带 `surfaceOp` 的事件；对 `tool/result` 只取 `data.message`（`dsh/core/session/src/surface.ts:150-151`）；不认识且带 `ignorable` 的记录保留在日志里，但不碰 surface（`surface.ts:311-312`）。所以：
+**规则：模型看得到的，日志里都能还原**（`CLAUDE.md:79`，dsh 的规则）。driver 发请求时不是自己拼消息，而是追加 `request/header` / `request/context` 之后，直接用 `session.deriveMessages()` 当消息列表（`agent.ts:700-715`）。`deriveMessages`（`dsh/core/session/src/index.ts:849`）只遍历带 `surfaceOp` 的事件；对 `tool/result` 只取 `data.message`（`dsh/core/session/src/surface.ts:150-151`）；不认识且带 `ignorable` 的记录保留在日志里，但不碰 surface（`surface.ts:311-312`）。所以：
 
 - `meta.lyteboat.cards` 和 `stateDelta` **永远不进对话记录**，模型看到的是工具 `render` 出来的 digest（finance 的 `render` 只取 digest，`lyteboat/agents/finance/src/tools/finance-tool-support.ts:42`：`[tool:asset_overview status=ok areas=asset_overview]`、【事实】…）。卡片只给 UI 和 `turnParts`；模型只知道卡片的名字（digest 里的 `areas=` 和【回答要点】里的标记）。
 - 状态进模型的唯一路径是下一步的 `lyteboat:state` runtime context（run g 的 seq 20；run a 没有状态，`lyteboat:state` 这一段为空，不出现在快照里）。
@@ -1150,7 +1150,7 @@ DeepSeek 适配器在线上做了四件事：
 - **一个模型请求，而且在循环之外**：脚本化模型只收到准入分类（seq 3 的 `lyteboat/aux-llm-call`，`output: {"intent":"other","reason":"脚本"}`，在 inbox 之前）。turn 里没有 `request/header`、`request/context`、路由、runtime-context、skill-invocation，也没有标题 LLM 请求（标题插件要等到有 `request/header` 才启动）。`turn/start` 到 `turn/end` 共 13 ms。
 - **谁回的**：finance 的准入函数把分类 `other` 变成 `{decision: reply, verdict: out_of_scope, text}`（`lyteboat/agents/finance/src/intake/finance-admission.ts:111`），`lyteboat run` 把它记在人类消息的 `source.lyteboatRequest.intake` 上（seq 9）；循环里的 `lyteboat/intake`，intake-guard 读到这个 `reply` 结论就用结论里的文字回复（`lyteboat/plugins/intake-guard/src/index.ts:69-75,116-123`），driver 按 reply 分支写日志，`model` 记的是准入函数名 `finance-admission`。
 - **不经准入的拒识门也还在**：`lyteboat/intake` 这个内核扩展事件本身照旧可用，一个直接挂在上面、不调 `next()` 就返回 reply 的监听（agent 行或 `--plugin` 行）不做分类，零个模型请求。run bundle 的测试夹具 `lyteboat/bundles/run/tests/fixtures/plugins/intake-gate.mjs` 就是这样一个拒识门，`lyteboat/bundles/run/tests/reopen.composite.ts:88-93` 用它测这条路（`lyteboat/apps/cli/tests/intake.e2e.ts` 在构建好的 CLI 上用 CLI 测试目录里的同名夹具再测一遍）。用 `--plugin` 挂上它、不带 agent 跑“帮我炒股”（run i）：`requests=[]`，回答的 `model` 记为 `example-intake-gate`，`turn/start` 到 `turn/end` 9 ms，其余日志形状和上面一样（空 `system/message`、人类消息、回答，只是人类消息的 source 只有 `kind: user`）。
-- **为什么要写一个空的 `system/message`**：surface 的第 0 个节点保留给系统提示。reply 先放一个空头（`agent.ts:439-445`），之后真正的模型 step 会**替换**它而不是追加在历史末尾；第一次请求总是被当作新请求序列，所以空头一定被换掉（`agent.ts:473-481`）。
+- **为什么要写一个空的 `system/message`**：surface 的第 0 个节点保留给系统提示。reply 先放一个空头（`lyteboat/intake-reply.ts:39-45`），之后真正的模型 step 会**替换**它而不是追加在历史末尾；第一次请求总是被当作新请求序列，所以空头一定被换掉（`agent.ts:434-443`）。
 - **落盘只有两次**：帧 0+1 是 header 和 seq 0–2（投影缓存的 `session/created` 检查点）；准入分类的 `llm/stream` 触发检查点时 seq 3 还没追加，没有东西可写；帧 2 一次写下 seq 3–13，由投影缓存的 `turn/end` 检查点触发（`dsh@rc.1:packages/session/session-projection-cache/src/index.ts:316-317`），runner 的 `sessions.flush`（`lyteboat/bundles/run/src/index.ts:316`）随后并入同一次排空。reply 分支在 `agent/pre-step` 之前就返回，没有 `llm/stream`、没有 `tools/execute`，检查点策略在 turn 里一次都没触发——**直接回复的路径在 turn 内部没有持久化点**（run i 也一样：帧 2 一次写下 seq 3–12）。
 
 ### 5.6 带请求上下文的请求：准入在循环之前
@@ -1358,10 +1358,10 @@ fixture 里有 6 条历史记录：两轮完整的问答被保留；第三轮“
 | `system-prompt/assemble` | waterfall | systemPrompt（`system-prompt/src/index.ts:626`） | 无 lyteboat 监听 | — |
 | `agent/pre-step` | waterfall，默认 enter + context | driver（`agent.ts:294-300`） | compaction-basic、checkpoint-policy、agent-instructions、tool-skill、plan-mode、repeat-tool-reminder、goal-round-driver、模型选择；**skill-router**（`next` 之后追加 skill-invocation 消息） | 可能触发 `session/flush`；压缩时追加 `compaction/*`；决定里的消息随后在 `step/start` 之后作为 `user/message` 追加 |
 | `session/flush` | parallel 语义（经 `sessions.flush`） | `session/src/index.ts:1183-1200` | JSONL 后端、投影缓存 | 缓冲的事件落盘 |
-| `agent/request` | waterfall | driver（`agent.ts:643`） | 模型选择；finance-agent（温度 0） | 随后 `system/message`、`user/message`×N、`request/header`、`request/context` |
-| `llm/stream`（循环） | waterfall | driver（`agent.ts:503`）→ llm（`llm/src/index.ts:1122`） | checkpoint-policy、适配器 | — |
-| `agent/assistant-stream` | emit，不持久化 | driver（`agent.ts:499`） | `lyteboat run` 推理打印、web 历史流 | — |
-| `agent/request-error` | waterfall | driver（`agent.ts:561`） | llm-retry | `assistant/attempt` |
+| `agent/request` | waterfall | driver（`agent.ts:606`） | 模型选择；finance-agent（温度 0） | 随后 `system/message`、`user/message`×N、`request/header`、`request/context` |
+| `llm/stream`（循环） | waterfall | driver（`agent.ts:465`）→ llm（`llm/src/index.ts:1122`） | checkpoint-policy、适配器 | — |
+| `agent/assistant-stream` | emit，不持久化 | driver（`agent.ts:461`） | `lyteboat run` 推理打印、web 历史流 | — |
+| `agent/request-error` | waterfall | driver（`agent.ts:524`） | llm-retry | `assistant/attempt` |
 | `tools/pre-execute` | waterfall，默认 `allow` | tools（`tools/src/index.ts:1505`） | tool-policy（需确认时 `ask`） | 之前已追加 `tool/call` |
 | `approval/request` | waterfall，默认 `unavailable` | user-approval | — | `approval/asked`、`approval/decided` |
 | `tools/execute` | waterfall | tools（`tools/src/index.ts:1605`） | checkpoint-policy、timeout | —（`meta.lyteboat.*` 在这里由 `presentationMeta` 算出） |

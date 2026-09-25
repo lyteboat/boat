@@ -21,7 +21,6 @@ import {
   LlmError,
   createAssistantMessage,
   createDeveloperMessage,
-  createSystemMessage,
   errorChain,
   markAgentLoopRequest,
 } from '@deepseek-ai/dsh-llm'
@@ -34,7 +33,7 @@ import { joinContextSections, renderContextSections, renderPrompt } from '@deeps
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
-import { LYTEBOAT_ASSISTANT_PROVIDER } from './lyteboat/step-hooks.ts'
+import { appendLyteboatIntakeReply } from './lyteboat/intake-reply.ts'
 import type { LyteboatIntakeDecision, LyteboatIntakeReply } from './lyteboat/step-hooks.ts'
 import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
@@ -345,7 +344,7 @@ export class ReactLoopAgent implements Agent {
           this.session.append('step/start', { turn, step })
           phase.step = step
           try {
-            this.replyStep(turn, step, decision)
+            appendLyteboatIntakeReply(this.session, { turn, step }, decision.messages, decision.reply)
           } finally {
             this.session.append('step/end', { turn, step })
           }
@@ -419,44 +418,6 @@ export class ReactLoopAgent implements Agent {
     phase.wakeRequested = false
     phase.step = 0
     return true
-  }
-
-  /** Whether the surface already holds a system node (surface node 0 is reserved for the prompt). */
-  private hasSystemNode(): boolean {
-    for (const seq of this.session.surface.nodes) {
-      if (this.session.eventAt(seq)?.type === 'system/message') return true
-    }
-    return false
-  }
-
-  /**
-   * lyteboat: commit an intake reply inside the open step. An empty system head is
-   * appended first when none exists, so the next real step's prompt replaces
-   * node 0 instead of trailing the history; the claimed messages are admitted
-   * as they would be on a model step; the reply is an assistant message whose
-   * provider is lyteboat and whose model names the deciding plugin.
-   */
-  private replyStep(turn: number, step: number, decision: Extract<PreparedStep, { kind: 'reply' }>): void {
-    if (!this.hasSystemNode()) {
-      this.session.append(
-        'system/message',
-        { turn, step, message: createSystemMessage('') },
-        { surfaceOp: 'append' },
-      )
-    }
-    for (const message of decision.messages) {
-      this.session.append('user/message', message, { surfaceOp: 'append' })
-    }
-    const { reply } = decision
-    this.session.append('assistant/message', {
-      turn,
-      step,
-      message: createAssistantMessage({
-        content: reply.content,
-        source: { provider: LYTEBOAT_ASSISTANT_PROVIDER, model: reply.plugin },
-      }),
-      stream: [],
-    }, { surfaceOp: 'append' })
   }
 
   private async step(decision: Extract<PreparedStep, { kind: 'enter' }>): Promise<StepEndReason | null> {
