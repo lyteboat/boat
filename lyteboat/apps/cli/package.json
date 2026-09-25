@@ -101,7 +101,6 @@
   "devDependencies": {
     "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
-    "@deepseek-ai/dsh-session": "workspace:*",
     "@deepseek-ai/dsh-session-persistence": "workspace:*",
     "@types/js-yaml": "catalog:"
   }

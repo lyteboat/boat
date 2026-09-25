@@ -877,9 +877,6 @@ importers:
       '@deepseek-ai/dsh-llm-mock-server':
         specifier: catalog:dsh
         version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)
-      '@deepseek-ai/dsh-session':
-        specifier: workspace:*
-        version: link:../../../dsh/core/session
       '@deepseek-ai/dsh-session-persistence':
         specifier: workspace:*
         version: link:../../../dsh/session/session-persistence
