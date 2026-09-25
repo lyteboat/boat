@@ -9,6 +9,10 @@
  * by its dsh peers) fails the boot with the profile's reason; other skipped
  * bundles are reported as the launcher reports them.
  *
+ * A one-shot composition runs until the tree requests exit
+ * ({@link bootComposition}); a service runs until the test stops it
+ * ({@link startComposition}), and the test talks to it meanwhile.
+ *
  * One composition runs at a time per process: it sets `DSH_HOME`, the given
  * environment, and the working directory, captures stdout and stderr, and
  * restores all of them when the run settles. vitest's default `forks` pool
@@ -44,6 +48,9 @@ const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled
 
 /** The `headless` profile's bundle layers, in the order the launcher's profile template lists them. */
 export const LYTEBOAT_HEADLESS_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/headless']
+
+/** The `serve` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_SERVE_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/serve']
 
 /** What to boot and how. */
 export interface CompositionOptions {
@@ -100,6 +107,8 @@ export function printedSessionId(stderr: string): string {
 interface Capture {
   stdout: string
   stderr: string
+  /** Called after every stdout write. */
+  readonly written: Set<() => void>
   restore(): void
 }
 
@@ -109,12 +118,17 @@ function capture(): Capture {
   const state: Capture = {
     stdout: '',
     stderr: '',
+    written: new Set(),
     restore: () => {
       process.stdout.write = out
       process.stderr.write = err
     },
   }
-  process.stdout.write = ((chunk: string | Uint8Array) => { state.stdout += String(chunk); return true }) as typeof process.stdout.write
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    state.stdout += String(chunk)
+    for (const listener of [...state.written]) listener()
+    return true
+  }) as typeof process.stdout.write
   process.stderr.write = ((chunk: string | Uint8Array) => { state.stderr += String(chunk); return true }) as typeof process.stderr.write
   return state
 }
@@ -168,13 +182,28 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
   return { root, patches: structuredClone(patches) }
 }
 
+/** A composition that runs until the tree requests exit or the test stops it. */
+export interface RunningComposition {
+  /** The harness home the run writes its sessions under. */
+  readonly home: string
+  /** Settles with the code of the first exit request. */
+  readonly exited: Promise<number>
+  /** What the tree has printed so far. */
+  stdout(): string
+  stderr(): string
+  /** Resolve once the printed stdout matches; reject if the tree requests exit first. */
+  waitForStdout(pattern: RegExp, timeoutMs?: number): Promise<RegExpExecArray>
+  /** Request exit 0 unless the tree already requested one, dispose the tree, and restore the process. */
+  stop(): Promise<CompositionRun>
+}
+
 /**
- * Boot one composition, wait for the tree to request exit, and dispose it.
+ * Boot one composition and return while it runs.
  * @param options - bundles, extra layers, arguments, working directory, and environment.
- * @returns the exit code, the harness home, and the captured output.
+ * @returns the running composition; `timeoutMs` bounds its life, after which it exits with 1.
  * @throws when the profile skipped a bundle in `options.bundles`.
  */
-export async function bootComposition(options: CompositionOptions): Promise<CompositionRun> {
+export function startComposition(options: CompositionOptions): RunningComposition {
   const home = options.home ?? mkdtempSync(join(tmpdir(), 'lyteboat-composition-'))
   const restoreEnv = applyEnvironment({ ...options.env, DSH_HOME: home })
   const cwd = process.cwd()
@@ -187,13 +216,21 @@ export async function bootComposition(options: CompositionOptions): Promise<Comp
   const exit = (code: number): void => {
     requested ??= code
     settle(code)
+    for (const listener of [...output.written]) listener()
     void host?.fiber.dispose()
   }
   const timer = setTimeout(() => { output.stderr += `bootComposition: no exit request within ${String(options.timeoutMs ?? 90_000)}ms\n`; exit(1) }, options.timeoutMs ?? 90_000)
+  const restore = (): void => {
+    clearTimeout(timer)
+    output.restore()
+    process.chdir(cwd)
+    restoreEnv()
+  }
+  let booted: Promise<unknown>
   try {
     const { root, patches } = composedPatches(home, options)
     const ready = readiness()
-    const booted = boot(BIN_NAME, root, patches, (hostCtx) => {
+    booted = boot(BIN_NAME, root, patches, (hostCtx) => {
       host = hostCtx
       hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(BIN_NAME, options.cwd))
       provideCmdline(hostCtx, { args: options.args, exit, ready: ready.service })
@@ -203,14 +240,54 @@ export async function bootComposition(options: CompositionOptions): Promise<Comp
       output.stderr += `${error instanceof Error ? error.message : String(error)}\n`
       exit(1)
     })
-    const code = await exited
-    await booted.catch(() => undefined)
-    await host?.fiber.dispose()
-    return { code, home, stdout: output.stdout, stderr: output.stderr }
-  } finally {
-    clearTimeout(timer)
-    output.restore()
-    process.chdir(cwd)
-    restoreEnv()
+  } catch (error: unknown) {
+    restore()
+    throw error
   }
+  let stopped: Promise<CompositionRun> | undefined
+  return {
+    home,
+    exited,
+    stdout: () => output.stdout,
+    stderr: () => output.stderr,
+    waitForStdout(pattern, timeoutMs = 60_000) {
+      return new Promise((resolveMatch, reject) => {
+        const wait = setTimeout(() => { done(); reject(new Error(`timed out waiting for ${String(pattern)}\nstdout:\n${output.stdout}\nstderr:\n${output.stderr}`)) }, timeoutMs)
+        const check = (): void => {
+          const match = pattern.exec(output.stdout)
+          if (match !== null) { done(); resolveMatch(match); return }
+          if (requested !== undefined) { done(); reject(new Error(`the composition requested exit ${String(requested)} before ${String(pattern)}\nstdout:\n${output.stdout}\nstderr:\n${output.stderr}`)) }
+        }
+        const done = (): void => { clearTimeout(wait); output.written.delete(check) }
+        output.written.add(check)
+        check()
+      })
+    },
+    stop() {
+      stopped ??= (async () => {
+        exit(0)
+        try {
+          const code = await exited
+          await booted.catch(() => undefined)
+          await host?.fiber.dispose()
+          return { code, home, stdout: output.stdout, stderr: output.stderr }
+        } finally {
+          restore()
+        }
+      })()
+      return stopped
+    },
+  }
+}
+
+/**
+ * Boot one composition, wait for the tree to request exit, and dispose it.
+ * @param options - bundles, extra layers, arguments, working directory, and environment.
+ * @returns the exit code, the harness home, and the captured output.
+ * @throws when the profile skipped a bundle in `options.bundles`.
+ */
+export async function bootComposition(options: CompositionOptions): Promise<CompositionRun> {
+  const running = startComposition(options)
+  await running.exited
+  return running.stop()
 }

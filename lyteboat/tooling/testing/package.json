@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's test harness: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted DeepSeek Messages model, and launcher spawning for e2e tests",
+  "description": "lyteboat's test harness: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted DeepSeek Messages model, a /chat client, and launcher spawning for e2e tests",
   "type": "module",
   "exports": {
     ".": {
@@ -35,6 +35,11 @@
       "@lyteboat/source": "./src/composition.ts",
       "types": "./lib/composition.d.ts",
       "default": "./lib/composition.js"
+    },
+    "./chat-client": {
+      "@lyteboat/source": "./src/chat-client.ts",
+      "types": "./lib/chat-client.d.ts",
+      "default": "./lib/chat-client.js"
     },
     "./scratch": {
       "@lyteboat/source": "./src/scratch.ts",
