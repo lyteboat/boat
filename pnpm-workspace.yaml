@@ -2,11 +2,11 @@ packages:
   # lyteboat/<layer>/<package>: one directory per architecture layer; dependencies point
   # down only (scripts/check-layers.ts enforces it): apps own processes (the `lyteboat`
   # bin), bundles are compositions a profile includes by name, plugins are
-  # capabilities on the dsh seams, core are declarations and the driver fork, agents
-  # are the business agents, tooling is test infrastructure.
+  # capabilities on the dsh seams, core are declarations and the driver fork, tooling
+  # is test infrastructure. examples/<kind>/<package> build on it; it never names them.
   - lyteboat/*/*
-  # dsh/<group>/<package>: the kernel, the dsh packages lyteboat owns (dsh/kernel.json),
-  # imported per tag by scripts/dist/import-upstream.ts under their published names.
+  - examples/*/*
+  # dsh/<group>/<package>: the kernel (dsh/kernel.json), imported per tag under its published names.
   - dsh/*/*
 
 # Every kernel package resolves to its workspace copy, for lyteboat's packages and for

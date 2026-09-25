@@ -38,7 +38,7 @@ lyteboat turns that last mile into a reusable chassis for vertical agents. A tea
   - Admission ahead of the loop: an agent registers an admission function that lets a request in or answers it before the loop, cards included (`@lyteboat/intake-guard`); the lower-level `lyteboat/intake` hook remains available.
   - Audited side calls: routing and classification calls leave their full prompt and answer in the session (`@lyteboat/aux-llm`).
   - Import of external conversation history (`@lyteboat/history-import`).
-- **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `lyteboat/agents/<id>/`.
+- **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `examples/agents/<id>/`.
 - **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 13 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
 - **Traceable.** Everything a model sees is reconstructable from the session log, and every fact lyteboat records rides an envelope dsh already knows.
 
@@ -81,7 +81,7 @@ Side calls (skill routing, intake classification) use their route's default reas
 
 ```sh
 lyteboat run "summarize this workspace"                       # one-shot task: answer and exit
-lyteboat run --agents ./lyteboat/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
+lyteboat run --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat web --no-open                                        # browser UI
 ```
 
@@ -117,15 +117,14 @@ All three accept:
 
 ### Writing a business agent
 
-A business agent is a directory `lyteboat/agents/<id>/`, named by its id:
+A business agent is a directory `examples/agents/<id>/`, named by its id. Business agents are not part of the distribution: they build on `lyteboat/`, and nothing in `lyteboat/` depends on them.
 
 - `agent.cordis.yml` (required): the plugin rows for persona, skill routing, tools, and policy; each row applies to this agent's sessions only.
 - `preset.yml`: display information such as the name.
-- `skills/`: one `SKILL.md` per skill.
-- `a2ui/`: card templates.
+- `assets/`: the non-code files read at runtime, beside `src/` and `lib/`: `skills/` (one `SKILL.md` per skill), `a2ui/` (card templates), `sample-data/`.
 - `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
 
-The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`lyteboat/agents/finance`](lyteboat/agents/finance) is a working agent kept deliberately minimal, there to exercise the end-to-end flow.
+The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`examples/agents/finance`](examples/agents/finance) is a working agent kept deliberately minimal, there to exercise the end-to-end flow.
 
 ### Data and session logs
 
@@ -156,15 +155,15 @@ lyteboat/                 lyteboat's own packages, one directory per layer
   bundles/            compositions: host (in every profile), run (behind lyteboat run)
   plugins/            capability plugins
   core/               declarations and shims
-  agents/             business agents
   tooling/            test infrastructure
+examples/agents/      example business agents, built on the distribution
 dsh-compat/           the compatibility promise and its proof: contract snapshot, extension registry, G2/G4/G5/G6 tests
 scripts/              layer and pin checks; dist/ holds the distribution tooling
 docs/                 the guides
 dsh.upstream.json     the tracked dsh release
 ```
 
-Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `agents` depend on `plugins` and `core` only; `tooling` is for tests. `pnpm run lint` checks it.
+Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `examples` depend on `plugins` and `core` only (their tests may also reach `apps`, `bundles`, `tooling`), and nothing in the distribution depends on them; `tooling` is for tests. `pnpm run lint` checks it.
 
 | Path | Package | Role |
 |---|---|---|
@@ -181,7 +180,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat run --history` |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |
-| `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
+| `examples/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: dsh service mounting and `MockAdapter`, the session-log reader, the scripted model, launcher processes |
 
 ## Development

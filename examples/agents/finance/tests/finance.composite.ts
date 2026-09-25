@@ -19,7 +19,7 @@ import { bootComposition } from '@lyteboat/testing/composition'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
-/** The agents/ root this package lives in, as `--agents ./agents` names it. */
+/** The examples/agents root this package lives in, as `--agents ./examples/agents` names it. */
 const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
 const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
 

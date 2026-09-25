@@ -107,7 +107,7 @@ flowchart LR
 | waterfall 与 `next()` | 环绕式中间件：监听器收到 `(...args, next)`，调 `next()` 交给下一个，不调就短路后面所有监听器 | `dsh/core/agent-loop/src/agent.ts:279-282` 派发 `lyteboat/intake`，链尾的默认值是 `{ kind: 'pass' }`；lyteboat 规定 waterfall 监听器必须调 `next()`（`CLAUDE.md:82`） | 中间件链 | `up:docs/cordis-primer.md:29-35` |
 | seam、provider | seam 是一个可替换的能力：一个服务定义（占 `ctx.<key>`）、一个或多个 provider、一个或多个消费方 | `ctx.llm` 由内核 `dsh-llm` 定义，npm 上的 `dsh-llm-deepseek` 是 provider（它对 `dsh-llm` 是 peer 依赖）；lyteboat 列出的 seam 见 `CLAUDE.md:62` | Protocol + 可替换实现（参考实现的 DIP 规则） | `up:docs/glossary.md:9` |
 | profile、bundle、patch、行（row） | bundle 是作者分发的组合，profile 是用户用 `--profile <名字>` 启动的东西；patch 是一个 YAML 数组，里面是插件"行"（`id` + 包名 `name` + 可选 `config`/`disabled`），或按 `id` 覆盖已有行、用 `- insert:` 插入新行的操作。启动时按 bundle → profile → `$DSH_HOME` → `--patch` 的顺序叠加 | `lyteboat/bundles/host/cordis.patch.yml:10-24` 先按 `id` 覆盖 dsh-base 的 `session-log-deepseek` 行和 `session-telemetry-otel` 行（后者 `disabled: true`，F1 加的），再用 `- insert:` 插入从 `id: lyteboat-distro` 开始的 lyteboat 服务行；`config dump --profile run` 的输出里能看到 `# == @deepseek-ai/dsh-base, patched by @lyteboat/run` 这样的层标记（§2.4） | `app.py` 里的组装代码，只是这里变成了数据 | `up:docs/user/develop/basic/publish.md:16`、`:56`、`:119-125` |
-| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；lyteboat 把业务 agent 目录声明成预设 | `lyteboat run --agents ./lyteboat/agents --agent finance` | 一个 agent 的定义 | `CLAUDE.md:205-206` |
+| 预设（preset） | dsh 的 `dsh-agent-preset-registry` 对"一组插件行"的叫法；lyteboat 把业务 agent 目录声明成预设 | `lyteboat run --agents ./examples/agents --agent finance` | 一个 agent 的定义 | `CLAUDE.md:205-206` |
 | Typert Host face、Remote client | 上游生成器从 TypeScript 类型生成的运行时反射产物：包导出 `./typert`（Host face）和 `./remote`（Remote client），文件是 `lib/typert.*` | dsh-llm 的 `lib/typert.host.{js,d.ts}`、`lib/typert.remote-client.{js,d.ts}`（§5.4） | 无直接对应；类似按 schema 生成的客户端 | `up:packages/typert/generator/README.md:86`；`up:packages/typert/protocol/README.md:12` |
 | 准入（admission） | rc.1 起 `dsh-app-boot` 在启动时读每一行所属包的磁盘清单，`@deepseek-ai/dsh*` peer 与运行版本不匹配就禁用该行 | 这条规则让 lyteboat 包的非内核 dsh peer 必须写精确版本（§8.2） | 无 | `up:packages/boot/app-boot/src/plugin-compatibility.ts:61-88` |
 | 契约键 | 契约快照里一条 JSON 路径，用 `' › '` 连接 | `events › @deepseek-ai/dsh-agent-loop › lyteboat/intake` | 无 | `scripts/dist/contract-check.ts:27-28` |
@@ -123,7 +123,7 @@ flowchart LR
 |---|---|---|---|---|
 | **内核** `dsh/` | lyteboat 拥有的 13 个 dsh 包，保留 `@deepseek-ai/dsh-*` 包名：`llm/llm`、`core/session`、`core/system-prompt`、`core/tools`、`skill/skill`、`core/agent`、`core/agent-loop`、`session/session-projection`、`session/session-persistence`、`session/session-persistence-jsonl`、`compaction/compaction`、`compaction/compaction-basic`、`test-support/agent-loop-testkit` | 权威清单是 `dsh/kernel.json`。`pnpm-workspace.yaml:16-29` 的 overrides 和根 `tsconfig.json` 的 references 是它的镜像；`scripts/upstream-pins.spec.ts:31-34` 核对 overrides 与清单一致 | overrides 把每个内核包名改写成 `workspace:*`；lyteboat 自己的清单也写 `workspace:*` | 每个 tag 一个导入提交，三方合并（§2） |
 | **npm 原样层** | 上游其余 294 个 dsh 包都不改源码；工作区实际装其中 256 个：seam 与 provider、可选插件、基础设施、Web 产品等 | `pnpm-workspace.yaml:64-150` 的 `catalogs.dsh`（85 项）、`:151-156` 的 `catalogs.cordis`、`dsh.upstream.json` | `.pnpmfile.cjs:10-14` 把所有非内核的 `@deepseek-ai/dsh*` 依赖改写成 `dsh.upstream.json` 里的版本 | 改 catalog、版本钉文件和精确 peer（§8） |
-| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,run}`、`plugins/{distro,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/{contracts,cordis-compat}`、`agents/finance`、`tooling/testing`，共 16 个（`CLAUDE.md:22-37`） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`） | `workspace:*` | 不适用 |
+| **lyteboat 层** `lyteboat/` | `@lyteboat/*`：`apps/cli`、`bundles/{host,run}`、`plugins/{distro,tool-policy,aux-llm,request-context,intake-guard,skill-router,a2ui,history-import}`、`core/{contracts,cordis-compat}`、`tooling/testing`，共 14 个（`CLAUDE.md:22-36`）。业务 agent 示例不在这一层：`examples/agents/finance` 建在发行版之上，发行版里没有包依赖它（`CLAUDE.md:37`、`:46`） | 工作区 glob `lyteboat/*/*`（`pnpm-workspace.yaml:7`）；示例是 `examples/*/*`（`:8`） | `workspace:*` | 不适用 |
 
 **一个包归哪一层，看什么？** 规则在 `CLAUDE.md:76`，满足任一条就进内核：
 
@@ -479,7 +479,7 @@ flowchart TB
 这是 §0.5 的第一条规则（`CLAUDE.md:72`），也是蓝图 §7 决策流程的第一问。
 
 - 能在内核外做的，放 lyteboat 层。
-- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `lyteboat/agents/*`，`CLAUDE.md:78`）。
+- 内核只接 harness 级能力，从不接业务词汇（资产、人设、产品文案都在 `examples/agents/*`，`CLAUDE.md:78`）。
 
 改内核是一个设计决定：设计文档要写明为什么放不到外面，以及属于哪一类；动手前还要和用户确认（`CLAUDE.md:125`）。
 
@@ -1877,7 +1877,8 @@ exit 列就是 `Dist-Exit` 的内容。同步的人看上游这次有没有给 `
 | `dsh/kernel.json` | 内核清单的权威来源；overrides 与根 `tsconfig.json` 的 references 是它的镜像，`scripts/upstream-pins.spec.ts` 核对 overrides | 发行版 |
 | `dsh/tsdown.config.ts` | 上游根目录的打包选项，给没有自己配置的内核包用（今天包括 dsh-llm） | 发行版 |
 | `dsh/typert.json` | Typert 文件重新生成时的源码摘要（`--write` 之后才出现） | 发行版 |
-| `lyteboat/{apps,bundles,plugins,core,agents,tooling}/` | lyteboat 自己的包 | lyteboat |
+| `lyteboat/{apps,bundles,plugins,core,tooling}/` | lyteboat 自己的包 | lyteboat |
+| `examples/agents/` | 业务 agent 示例，建在发行版之上 | lyteboat |
 | `dsh-compat/COMPAT.md` | 给人读的承诺：稳定面、行为不变量、追加项、过渡接口、不承诺的、通道 | 发行版 |
 | `dsh-compat/README.md` | 闸门总表、金丝雀规则、上游测试规则 | 发行版 |
 | `dsh-compat/contract/dsh-0.1.7-rc.1/` | 契约快照：`api`、`services`、`events`、`config`、`persistence` | 生成，只随同步或晋升更新 |

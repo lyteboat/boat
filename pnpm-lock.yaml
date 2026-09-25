@@ -543,7 +543,7 @@ importers:
         specifier: workspace:*
         version: link:../../core/tools
 
-  lyteboat/agents/finance:
+  examples/agents/finance:
     dependencies:
       '@deepseek-ai/dsh-skill-filesystem':
         specifier: 0.1.7-rc.1
@@ -553,7 +553,7 @@ importers:
         version: link:../../../dsh/core/tools
       '@lyteboat/contracts':
         specifier: workspace:*
-        version: link:../../core/contracts
+        version: link:../../../lyteboat/core/contracts
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -587,34 +587,37 @@ importers:
         version: link:../../../dsh/skill/skill
       '@lyteboat/a2ui':
         specifier: workspace:*
-        version: link:../../plugins/a2ui
+        version: link:../../../lyteboat/plugins/a2ui
       '@lyteboat/aux-llm':
         specifier: workspace:*
-        version: link:../../plugins/aux-llm
+        version: link:../../../lyteboat/plugins/aux-llm
+      '@lyteboat/cli':
+        specifier: workspace:*
+        version: link:../../../lyteboat/apps/cli
       '@lyteboat/distro':
         specifier: workspace:*
-        version: link:../../plugins/distro
+        version: link:../../../lyteboat/plugins/distro
       '@lyteboat/host':
         specifier: workspace:*
-        version: link:../../bundles/host
+        version: link:../../../lyteboat/bundles/host
       '@lyteboat/intake-guard':
         specifier: workspace:*
-        version: link:../../plugins/intake-guard
+        version: link:../../../lyteboat/plugins/intake-guard
       '@lyteboat/request-context':
         specifier: workspace:*
-        version: link:../../plugins/request-context
+        version: link:../../../lyteboat/plugins/request-context
       '@lyteboat/run':
         specifier: workspace:*
-        version: link:../../bundles/run
+        version: link:../../../lyteboat/bundles/run
       '@lyteboat/skill-router':
         specifier: workspace:*
-        version: link:../../plugins/skill-router
+        version: link:../../../lyteboat/plugins/skill-router
       '@lyteboat/testing':
         specifier: workspace:*
-        version: link:../../tooling/testing
+        version: link:../../../lyteboat/tooling/testing
       '@lyteboat/tool-policy':
         specifier: workspace:*
-        version: link:../../plugins/tool-policy
+        version: link:../../../lyteboat/plugins/tool-policy
 
   lyteboat/apps/cli:
     dependencies:

@@ -46,6 +46,7 @@
   "devDependencies": {
     "@lyteboat/a2ui": "workspace:*",
     "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/cli": "workspace:*",
     "@lyteboat/distro": "workspace:*",
     "@lyteboat/host": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
