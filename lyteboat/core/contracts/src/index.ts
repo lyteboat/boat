@@ -275,6 +275,15 @@ export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.obj
   owner: z.string().nullable(),
 })
 
+/**
+ * How one turn ended, as a caller that submitted a request reads it:
+ * `completed` (the model answered), `rejected` (the admission answered in the
+ * loop, without a model request), `tool_stopped` (a tool was blocked and the
+ * turn stopped), `stopped_by_limit` (a step reached its output-token ceiling),
+ * `aborted` (cancelled), `errored` (failed).
+ */
+export type LyteboatTurnOutcome = 'completed' | 'rejected' | 'tool_stopped' | 'stopped_by_limit' | 'aborted' | 'errored'
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */
