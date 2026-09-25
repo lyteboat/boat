@@ -11,10 +11,10 @@ import { cardMarker } from '@lyteboat/a2ui'
 import { summarizeHoldings, type FinanceHoldings } from '../capabilities/finance-holdings.ts'
 import { moneyForModel, pctText, yuanPlain } from '../capabilities/money-text.ts'
 import { composeFinanceDigest } from '../digest/finance-digest.ts'
-import { FINANCE_TOOL_OUTPUT, callingAgent, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
+import { FINANCE_TOOL_OUTPUT, callingAgent, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
 
 /** The card's raw data: every line already worded, so the template only binds. */
-export function overviewCardData(holdings: FinanceHoldings): Record<string, unknown> {
+function overviewCardData(holdings: FinanceHoldings): Record<string, unknown> {
   return {
     overview: {
       total_line: `${yuanPlain(holdings.totalCents)} 元`,
@@ -25,7 +25,7 @@ export function overviewCardData(holdings: FinanceHoldings): Record<string, unkn
 }
 
 /** The facts the model may quote about the overview. */
-export function overviewFacts(holdings: FinanceHoldings): string[] {
+function overviewFacts(holdings: FinanceHoldings): string[] {
   return [
     `已授权资产合计 ${moneyForModel(holdings.totalCents)}`,
     `稳健资产（存款、货币基金、债券） ${moneyForModel(holdings.steadyCents)}，占 ${pctText(holdings.steadyPct)}`,
@@ -48,7 +48,7 @@ export function defineAssetOverviewTool(deps: FinanceToolDeps): ToolDefinition {
       const customer = deps.customers.customer(deps.customerId(agent))
       const holdings = summarizeHoldings(customer)
       if (!holdings.authorized) return unauthorizedResult(deps, agent, exec, 'asset_overview', customer)
-      const card = await prepareCard(deps, agent, 'asset_overview', overviewCardData(holdings))
+      const card = await deps.a2ui.renderCard(deps.templates, 'asset_overview', overviewCardData(holdings), { agent })
       return {
         status: 'ok',
         digest: composeFinanceDigest({

@@ -200,7 +200,7 @@ async function composeProfile(
 }
 
 /** Options for {@link runProfile}. */
-export interface RunProfileOptions {
+interface RunProfileOptions {
   /** This run's frozen environment snapshot, provided before any entry mounts. */
   environment: LaunchEnvironmentSnapshot
   /** The profile name to boot. */

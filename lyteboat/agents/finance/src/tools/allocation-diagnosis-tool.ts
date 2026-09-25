@@ -11,12 +11,12 @@ import { VERDICT_TEXT, diagnoseAllocation, type AllocationDiagnosis } from '../c
 import { summarizeHoldings, type FinanceHoldings } from '../capabilities/finance-holdings.ts'
 import { moneyForModel, pctText } from '../capabilities/money-text.ts'
 import { composeFinanceDigest } from '../digest/finance-digest.ts'
-import { FINANCE_TOOL_OUTPUT, callingAgent, prepareCard, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
+import { FINANCE_TOOL_OUTPUT, callingAgent, unauthorizedResult, type FinanceToolDeps, type FinanceToolValue } from './finance-tool-support.ts'
 
 const bandText = (diagnosis: AllocationDiagnosis): string => `${String(diagnosis.lowPct)}%–${String(diagnosis.highPct)}%`
 
 /** The two cards' raw data. */
-export function diagnosisCardData(diagnosis: AllocationDiagnosis, holdings: FinanceHoldings, age: number): { diagnosis: Record<string, unknown>; plan: Record<string, unknown> } {
+function diagnosisCardData(diagnosis: AllocationDiagnosis, holdings: FinanceHoldings, age: number): { diagnosis: Record<string, unknown>; plan: Record<string, unknown> } {
   return {
     diagnosis: {
       diagnosis: {
@@ -46,7 +46,7 @@ export function defineAllocationDiagnosisTool(deps: FinanceToolDeps): ToolDefini
       if (!holdings.authorized) return unauthorizedResult(deps, agent, exec, 'allocation_diagnosis', customer)
       const diagnosis = diagnoseAllocation(holdings, customer.age)
       const data = diagnosisCardData(diagnosis, holdings, customer.age)
-      const cards = [await prepareCard(deps, agent, 'allocation_diagnosis', data.diagnosis), await prepareCard(deps, agent, 'allocation_plan', data.plan)]
+      const cards = [await deps.a2ui.renderCard(deps.templates, 'allocation_diagnosis', data.diagnosis, { agent }), await deps.a2ui.renderCard(deps.templates, 'allocation_plan', data.plan, { agent })]
       return {
         status: 'ok',
         digest: composeFinanceDigest({

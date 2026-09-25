@@ -1,8 +1,7 @@
 /**
  * What the finance tools share: their dependencies, their output shape
- * (status, digest, prepared cards), how a card is prepared through the a2ui
- * service, and the unauthorized answer the data tools fall back to when the
- * agent can see no holding at all.
+ * (status, digest, rendered cards), and the unauthorized answer the data
+ * tools fall back to when the agent can see no holding at all.
  * @module @lyteboat/agent-finance/tools/finance-tool-support
  */
 
@@ -54,17 +53,6 @@ export function callingAgent(exec: ToolRunContext, tool: string): Agent {
 }
 
 /**
- * Render one card from the agent's templates.
- * @param deps - the card renderer and the templates root.
- * @param agent - the calling agent (its session names the surface).
- * @param area - the card, which is also its marker name.
- * @param raw - the card's raw data namespace.
- */
-export function prepareCard(deps: Pick<FinanceToolDeps, 'a2ui' | 'templates'>, agent: Agent, area: string, raw: Record<string, unknown>): Promise<LyteboatResultCard> {
-  return deps.a2ui.renderCard(deps.templates, area, raw, { agent })
-}
-
-/**
  * Nothing authorized: the unauthorized card, which concludes the turn.
  * @param deps - the tool dependencies.
  * @param agent - the calling agent.
@@ -73,7 +61,7 @@ export function prepareCard(deps: Pick<FinanceToolDeps, 'a2ui' | 'templates'>, a
  * @param customer - the customer, for the authorization link.
  */
 export async function unauthorizedResult(deps: FinanceToolDeps, agent: Agent, exec: ToolRunContext, tool: string, customer: FinanceCustomer): Promise<FinanceToolValue> {
-  const card = await prepareCard(deps, agent, 'unauthorized', { access: { authorize_link: customer.links.authorize } })
+  const card = await deps.a2ui.renderCard(deps.templates, 'unauthorized', { access: { authorize_link: customer.links.authorize } }, { agent })
   exec.concludeTurn()
   return {
     status: 'unauthorized',
