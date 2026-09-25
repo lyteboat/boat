@@ -1,8 +1,8 @@
 # The @lyteboat/studio bundle patch: dsh web with lyteboat's pages, over
 # dsh-base, @lyteboat/host, and dsh-web-app (the studio profile lists them in
 # that order). dsh web's startup row refuses a flag it does not know, so this
-# bundle disables it; lyteboat's startup parses dsh web's flags and `--agents`
-# and provides `webStartup` for dsh web's rows. The agent catalog declares
+# bundle disables it; lyteboat's startup parses dsh web's flags, `--agents`,
+# and `--agent`, and provides `webStartup` for dsh web's rows. The agent catalog declares
 # every agent of the roots and reloads them when a root changes; one that
 # fails is reported on the Agents page instead of stopping the page. The
 # Studio pages answer the browser on dsh's connection. dsh's coding presets
