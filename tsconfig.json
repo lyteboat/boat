@@ -81,6 +81,9 @@
       "path": "./lyteboat/plugins/eval-runner"
     },
     {
+      "path": "./lyteboat/plugins/studio-pages"
+    },
+    {
       "path": "./lyteboat/bundles/headless"
     },
     {

@@ -3,8 +3,11 @@
  * registry, and report the ones that cannot be served. A row that fails to
  * mount needs the host's loader tree; the headless composition covers it.
  */
+import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import { MockAdapter, createLyteboatUnitHost } from '@lyteboat/testing'
@@ -71,5 +74,42 @@ describe('the agent catalog', () => {
 
     await expect(duplicated.agentCatalog.whenReady()).rejects.toThrow(`agent-catalog: agent "alpha" is in two roots: ${fixture('good')} and ${fixture('dup')}`)
     await expect(unknown.agentCatalog.whenReady()).rejects.toThrow('agent-catalog: no root holds "gamma" (available: alpha, beta)')
+  })
+
+  describe('when the roots change', () => {
+    const roots: string[] = []
+    afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
+
+    /** A root holding copies of the named fixture agents. */
+    function rootWith(...ids: string[]): string {
+      const root = mkdtempSync(join(tmpdir(), 'agent-catalog-'))
+      roots.push(root)
+      for (const id of ids) cpSync(fixture(`good/${id}`), join(root, id), { recursive: true })
+      return root
+    }
+
+    it('reloads what the roots hold now: a new agent is declared, a removed one withdrawn', async () => {
+      const root = rootWith('alpha')
+      const ctx = await catalogHost({ roots: [root] })
+      await ctx.agentCatalog.whenReady()
+
+      cpSync(fixture('good/beta'), join(root, 'beta'), { recursive: true })
+      rmSync(join(root, 'alpha'), { recursive: true })
+      await ctx.agentCatalog.reload()
+
+      expect(ctx.agentCatalog.list().map(agent => agent.id)).toEqual(['beta'])
+      expect(await ctx.agentPresets.resolve('beta')).toEqual({ id: 'beta' })
+      expect((await ctx.agentPresets.list()).map(preset => preset.id)).not.toContain('alpha')
+    })
+
+    it('reloads by itself when watching and an agent appears under a root', async () => {
+      const root = rootWith('alpha')
+      const ctx = await catalogHost({ roots: [root], watch: true, watchDelayMs: 20 })
+      await ctx.agentCatalog.whenReady()
+
+      cpSync(fixture('good/beta'), join(root, 'beta'), { recursive: true })
+
+      await vi.waitFor(() => { expect(ctx.agentCatalog.list().map(agent => agent.id)).toEqual(['alpha', 'beta']) }, { timeout: 5000 })
+    })
   })
 })

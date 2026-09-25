@@ -26,8 +26,9 @@ lyteboat/
   bundles/serve/          @lyteboat/serve — the service bundle behind `lyteboat serve` (cordis.patch.yml, startup flags): the agent catalog, dsh's session controller without the web UI, /chat
   bundles/eval/           @lyteboat/eval — the bundle behind `lyteboat eval` (cordis.patch.yml, startup flags for a run or a comparison): one agent, the session controller, the eval runner; exits with the result
   plugins/distro/         @lyteboat/distro — the lyteboatDistro marker: the kernel's dsh base and the extensions it carries
-  plugins/agent-catalog/  @lyteboat/agent-catalog — scans agent roots, declares each agent directory as a dsh preset, reports the ones that fail (ctx.agentCatalog)
+  plugins/agent-catalog/  @lyteboat/agent-catalog — scans agent roots, declares each agent directory as a dsh preset, reports the ones that fail, reloads them (ctx.agentCatalog)
   plugins/eval-runner/    @lyteboat/eval-runner — an agent's eval cases run through the session controller, checked per turn from the session log, recorded (real) or played back without a model (replay), written and compared (ctx.evalRunner)
+  plugins/studio-pages/   @lyteboat/studio-pages — lyteboat's pages in dsh web; the Host face answers them on the /lyteboat channel of dsh's connection: agents and a reload, a session's lyteboat state, a message sent with its request context, eval runs and reports (ctx.studioPages)
   plugins/chat-api/       @lyteboat/chat-api — /chat on the host web server: a message through the session controller with its request on its source, answered as JSON or the enterprise event stream; frame decorators (ctx.chatApi)
   plugins/tool-policy/    @lyteboat/tool-policy — visibility always/auto + activation, an agent row's `undeclared`, confirmation, state deltas → lyteboatState projection
   plugins/aux-llm/        @lyteboat/aux-llm — side model calls (the router's, an intake classifier's), each recorded as an ignorable lyteboat/aux-llm-call

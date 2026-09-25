@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../dsh/api/session-controller/tsconfig.host.json" },
+    { "path": "../../../dsh/core/session" },
+    { "path": "../agent-catalog" },
+    { "path": "../eval-runner" },
+    { "path": "../request-context" }
+  ]
+}
