@@ -13,7 +13,6 @@
   ],
   "scripts": {},
   "dependencies": {
-    "@lyteboat/cordis-compat": "workspace:*",
     "@lyteboat/host": "workspace:*",
     "@lyteboat/run": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",

@@ -5,7 +5,7 @@
  * lyteboat compiles with `isolatedModules`, which turns such reads into TS2748; this
  * module is the one place that spells the values out. A test checks every value
  * against the installed `fiber.d.ts`.
- * @module @lyteboat/cordis-compat
+ * @module @lyteboat/cli/fiber-state
  */
 
 import type { FiberState } from '@deepseek-ai/cordis'

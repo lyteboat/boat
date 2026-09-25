@@ -858,9 +858,6 @@ importers:
       '@deepseek-ai/schemastery':
         specifier: 'catalog:'
         version: 3.18.4
-      '@lyteboat/cordis-compat':
-        specifier: workspace:*
-        version: link:../../core/cordis-compat
       '@lyteboat/host':
         specifier: workspace:*
         version: link:../../bundles/host
@@ -1019,12 +1016,6 @@ importers:
       '@deepseek-ai/dsh-session-projection':
         specifier: workspace:*
         version: link:../../../dsh/session/session-projection
-
-  lyteboat/core/cordis-compat:
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: catalog:cordis
-        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
 
   lyteboat/plugins/a2ui:
     dependencies:

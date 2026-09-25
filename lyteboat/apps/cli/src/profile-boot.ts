@@ -18,7 +18,7 @@
  * lyteboat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
  * dropped, the launcher's own overlays (`--plugin`) sit above the
- * `--patch` overlays, and `FiberState` reads go through `@lyteboat/cordis-compat`.
+ * `--patch` overlays, and `FiberState` reads go through `FIBER_STATE` (`fiber-state.ts`).
  * @module @lyteboat/cli/profile-boot
  */
 
@@ -48,7 +48,7 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
-import { FIBER_STATE } from '@lyteboat/cordis-compat'
+import { FIBER_STATE } from './fiber-state.ts'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from './templates.ts'
 
