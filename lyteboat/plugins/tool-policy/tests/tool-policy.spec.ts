@@ -93,6 +93,33 @@ describe('visibility', () => {
     expect(errorMessage(turnEnd)).toContain('registered in agent "own-layer"\'s own layer')
   })
 
+  it('hides every inherited tool the policy does not declare under undeclared: auto, keeps a declared always tool visible, and activates declared tools only', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two'), textResponse('three')])
+    const ctx = await harness(adapter)
+    ctx.tools.register(echo('official_tool'))
+    ctx.tools.register(echo('kept_tool'))
+    ctx.toolPolicy.register(echo('auto_tool'), { visibility: 'auto' })
+    const agent = await ctx.agentLoop.create(SessionId('undeclared-auto'), { provider: 'mock', model: 'mock' })
+    const plain = await ctx.agentLoop.create(SessionId('undeclared-default'), { provider: 'mock', model: 'mock' })
+    await agent.ctx.plugin(ToolPolicyAgent, { undeclared: 'auto', tools: { kept_tool: { visibility: 'always' } } })
+
+    await send(agent, 'hello')
+    expect(toolNames(adapter, 0)).toEqual(['kept_tool'])
+    expect(() => ctx.toolPolicy.activate(agent, ['official_tool'])).toThrow(/undeclared tool "official_tool"/u)
+    ctx.toolPolicy.activate(agent, ['auto_tool'])
+    await send(agent, 'again')
+    expect(toolNames(adapter, 1).sort()).toEqual(['auto_tool', 'kept_tool'])
+
+    await send(plain, 'hello')
+    expect(toolNames(adapter, 2).sort()).toEqual(['kept_tool', 'official_tool'])
+  })
+
+  it('refuses a second declaration of the undeclared visibility in one scope', async () => {
+    const ctx = await harness(new MockAdapter([]))
+    ctx.toolPolicy.declareUndeclared('auto')
+    expect(() => ctx.toolPolicy.declareUndeclared('always')).toThrow(/already declared in this scope/u)
+  })
+
   it('activate() rejects undeclared names and takes effect at once; clear() hides again', async () => {
     const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
     const ctx = await harness(adapter)

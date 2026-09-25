@@ -1,8 +1,9 @@
 # The finance agent's composition. Every row runs in this agent's standing
 # scope, so it reaches exactly the sessions of this agent: the persona, which
-# is the whole system prompt; the router's dynamic mode; the official tools
-# made `auto`, so only the routed skill's tool (and `skill`) reach the model;
-# and ./lib/agent.js with the skills, the admission, and the tools.
+# is the whole system prompt; the router's dynamic mode; every inherited tool
+# the policy does not declare made `auto` and `skill` kept, so only the routed
+# skill's tool (and `skill`) reach the model; and ./lib/agent.js with the
+# skills, the admission, and the tools.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
@@ -30,30 +31,9 @@
 - id: finance-tool-surface
   name: '@lyteboat/tool-policy/agent'
   config:
+    undeclared: auto
     tools:
-      bash: { visibility: auto }
-      read: { visibility: auto }
-      write: { visibility: auto }
-      edit: { visibility: auto }
-      glob: { visibility: auto }
-      grep: { visibility: auto }
-      read_image: { visibility: auto }
-      job_list: { visibility: auto }
-      job_output: { visibility: auto }
-      job_kill: { visibility: auto }
-      web_fetch: { visibility: auto }
-      web_search: { visibility: auto }
-      workflow: { visibility: auto }
-      subagent: { visibility: auto }
-      subagent_fork: { visibility: auto }
-      send_message: { visibility: auto }
-      list_agents: { visibility: auto }
-      interrupt_agent: { visibility: auto }
-      todo_write: { visibility: auto }
-      create_goal: { visibility: auto }
-      get_goal: { visibility: auto }
-      update_goal: { visibility: auto }
-      exit_plan_mode: { visibility: auto }
+      skill: { visibility: always }
 
 - id: finance-agent
   name: ./lib/agent.js
