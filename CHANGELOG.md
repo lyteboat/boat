@@ -2,6 +2,11 @@
 
 lyteboat has no releases yet; this file records what each milestone delivered, newest first. The tracked dsh release is in `dsh.upstream.json`.
 
+## Example agents beside the distribution
+
+- The finance agent moves from `lyteboat/agents/finance` to `examples/agents/finance`: business agents build on `lyteboat/` and nothing in `lyteboat/` names them (`scripts/check-layers.ts` enforces the new outermost layer `examples`). Run it with `lyteboat run --agents ./examples/agents --agent finance`.
+- An agent's runtime files live in its `assets/` (`skills/`, `a2ui/`, `sample-data/`), beside `src/` and `lib/`, and its built-binary smoke is in its own `tests/`.
+
 ## One minimal example agent
 
 - `lyteboat/agents/demo` is removed; `lyteboat/agents/finance` is the one example agent, and the run bundle's help, the README, and the guides use it.

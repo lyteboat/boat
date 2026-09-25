@@ -86,9 +86,9 @@ function command(): Command {
     .addHelpText('after', `
 Examples:
   lyteboat run "run the tests"                              answer one task and exit
-  lyteboat run --agents ./agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"
-                                                            run the finance agent from ./agents with a request context
-  lyteboat run --agents ./agents --agent finance --session-id session-… "诊断一下我的配置"
+  lyteboat run --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"
+                                                            run the finance agent from ./examples/agents with a request context
+  lyteboat run --agents ./examples/agents --agent finance --session-id session-… "诊断一下我的配置"
                                                             continue that session
 `)
 }

@@ -1,6 +1,7 @@
 /**
  * Enforce the layer rule: a lyteboat package's layer is its directory under
- * `lyteboat/`, and dependencies point down only. Runtime edges (dependencies,
+ * `lyteboat/`, the packages under `examples/<kind>/` form the outermost layer
+ * `examples`, and dependencies point down only. Runtime edges (dependencies,
  * peerDependencies) follow RUNTIME; devDependencies may also reach DEV_ONLY
  * (tests only). Between plugins the only allowed source import is
  * `import type`, the service declaration a plugin merges onto the cordis
@@ -15,28 +16,28 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const LAYERS = ['apps', 'bundles', 'plugins', 'core', 'agents', 'tooling'] as const
+const LAYERS = ['examples', 'apps', 'bundles', 'plugins', 'core', 'tooling'] as const
 type Layer = typeof LAYERS[number]
 
-/** Layers a package may reach at runtime, by its own layer. */
+/** Layers a package may reach at runtime, by its own layer. No layer reaches `examples`. */
 const RUNTIME: Readonly<Record<Layer, readonly Layer[]>> = {
+  examples: ['plugins', 'core'],
   apps: ['bundles', 'plugins', 'core'],
   bundles: ['plugins', 'core'],
   plugins: ['plugins', 'core'],
   core: ['core'],
-  agents: ['plugins', 'core'],
   tooling: ['core'],
 }
 
 /** Extra layers a package's tests may reach through devDependencies. */
 const DEV_ONLY: Readonly<Record<Layer, readonly Layer[]>> = {
+  // An agent's composition test boots the bundle that loads it; its smoke runs the built launcher.
+  examples: ['apps', 'bundles', 'tooling'],
   apps: ['tooling'],
   // A bundle's composition test boots the bundles its profiles list beside it.
   bundles: ['bundles', 'tooling'],
   plugins: ['tooling'],
   core: ['tooling'],
-  // An agent's composition test boots the bundle that loads it; bundles never import agents.
-  agents: ['bundles', 'tooling'],
   tooling: [],
 }
 
@@ -55,10 +56,17 @@ interface WorkspacePackage {
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 
+/** The directories whose subdirectories are a layer's packages: `lyteboat/<layer>`, or every `examples/<kind>`. */
+function layerDirs(layer: Layer): string[] {
+  if (layer !== 'examples') return [join(root, 'lyteboat', layer)]
+  const examples = join(root, 'examples')
+  if (!existsSync(examples)) return []
+  return readdirSync(examples, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => join(examples, entry.name))
+}
+
 function workspacePackages(): WorkspacePackage[] {
   const found: WorkspacePackage[] = []
-  for (const layer of LAYERS) {
-    const layerDir = join(root, 'lyteboat', layer)
+  for (const [layer, layerDir] of LAYERS.flatMap(owner => layerDirs(owner).map(dir => [owner, dir] as const))) {
     if (!existsSync(layerDir)) continue
     for (const entry of readdirSync(layerDir, { withFileTypes: true })) {
       const file = join(layerDir, entry.name, 'package.json')
