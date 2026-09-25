@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { loadBundle, type TemplateBundle } from '@lyteboat/a2ui'
+import { loadBundle, type TemplateBundle } from '../src/loader.ts'
 
 const TEMPLATE = '{"rootComponentId":"root","components":[{"id":"root","component":{"Column":{}}}]}'
 const roots: string[] = []

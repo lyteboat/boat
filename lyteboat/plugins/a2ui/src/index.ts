@@ -16,33 +16,23 @@
 
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { UserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionSeq, type Session, type SessionEvent, type SessionLogOffset } from '@deepseek-ai/dsh-session'
+import { SessionSeq, type Session, type SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import { lyteboatCardSchema, lyteboatRequestSchema, lyteboatResultMetaSchema } from '@lyteboat/contracts'
-import type { LyteboatCard, LyteboatResultCard, LyteboatResultMeta, LyteboatStateValue, JsonValue } from '@lyteboat/contracts'
+import type { LyteboatCard, JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
+import { cardsPresentationMeta, lyteboatCardsProjectionDefinition, preparedCardsOf } from './cards-projection.ts'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
 import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
 import type { A2uiComponentCatalog } from './contract.ts'
+import { collectRawData, parseObjectArgs } from './render-tool-input.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 import { composeTurnParts, type LyteboatTurnPart } from './turn-parts.ts'
 
-export { TemplateEngine, TemplateModeError, mintSurfaceId, renderTemplate } from './engine.ts'
 export type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
-export { loadBundle } from './loader.ts'
-export type { TemplateBundle } from './loader.ts'
-export { resolveManifest } from './resolver.ts'
-export { execOne, executeTransforms, resolvePath, TransformError } from './transforms.ts'
 export type { A2uiLog, RawData } from './transforms.ts'
-export { BoundPathTracker, walk } from './walker.ts'
-export type { TemplateDocument } from './walker.ts'
-export { DEFAULT_A2UI_COMPONENT_CATALOG, rowTemplateIds, validateDataCoverage, validateEventPayload, validateFullPayload, validatePayload } from './contract.ts'
-export type { A2uiComponentCatalog, GuardResult, ValidationResult } from './contract.ts'
-export { templateBusinessPayload, BUSINESS_PAYLOAD_KEY } from './business-payload.ts'
-export { composeTurnParts } from './turn-parts.ts'
+export { validateFullPayload } from './contract.ts'
+export type { A2uiComponentCatalog, GuardResult } from './contract.ts'
 export type { LyteboatTurnPart } from './turn-parts.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -71,118 +61,6 @@ export interface RenderToolOptions {
   components?: A2uiComponentCatalog
 }
 
-const lyteboatCardsSchema = lyteboatCardSchema.array()
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/**
- * The cards a tool result's presentation meta carries (`lyteboat.cards`).
- * @throws when the meta's `lyteboat` envelope fails its schema.
- */
-export function cardsOfMeta(meta: JsonValue | undefined): LyteboatResultCard[] {
-  if (!isRecord(meta) || meta['lyteboat'] === undefined) return []
-  return lyteboatResultMetaSchema.parse(meta['lyteboat']).cards ?? []
-}
-
-/**
- * The presentation meta that puts a tool's cards where the `lyteboatCards`
- * projection reads them (`meta.lyteboat.cards`); no cards, no envelope.
- * @param cards - the cards the tool's value carries.
- * @throws when a card fails its schema, so the call fails instead of the log keeping an envelope the projection refuses.
- */
-function cardsPresentationMeta(cards: readonly JsonValue[]): { lyteboat?: LyteboatResultMeta } {
-  return cards.length === 0 ? {} : { lyteboat: lyteboatResultMetaSchema.parse({ cards }) }
-}
-
-/**
- * The cards an admission verdict recorded on a human message carries
- * (`source.lyteboatRequest.intake.cards`, the `@lyteboat/request-context`
- * contract), read from the log as data.
- * @throws when the carried request fails its schema.
- */
-export function cardsOfRequest(message: UserMessage): LyteboatResultCard[] {
-  if (message.source.kind !== 'user') return []
-  const carried = (message.source as { lyteboatRequest?: unknown }).lyteboatRequest
-  if (carried === undefined) return []
-  return lyteboatRequestSchema.parse(carried).intake?.cards ?? []
-}
-
-/**
- * The cards one log node prepared, each with what prepared it: an admission
- * reply's human message, or a tool result.
- * @throws naming the node when its lyteboat envelope fails its schema.
- */
-function preparedCardsOf(event: SessionEvent): LyteboatCard[] {
-  try {
-    if (event.type === 'user/message') return cardsOfRequest(event.data).map(card => ({ callId: event.data.id, ...card }))
-    if (event.type === 'tool/result') return cardsOfMeta(event.data.meta).map(card => ({ callId: event.data.message.toolCallId, ...card }))
-  } catch (error: unknown) {
-    throw new Error(`${event.type} at session seq ${String(event.seq)} carries an invalid lyteboat envelope`, { cause: error })
-  }
-  return []
-}
-
-function appendCard(state: LyteboatCard[], card: LyteboatCard): LyteboatCard[] {
-  const event = isRecord(card.payload) ? card.payload['event'] : undefined
-  if (event === 'surfaceUpdate') {
-    const index = state.findIndex(existing => existing.surfaceId === card.surfaceId)
-    if (index >= 0) return state.map((existing, position) => position === index ? card : existing)
-  }
-  return [...state, card]
-}
-
-export const lyteboatCardsProjectionDefinition = {
-  key: 'lyteboatCards',
-  stateSchema: lyteboatCardsSchema,
-  init: (): LyteboatCard[] => [],
-  apply(state: LyteboatCard[], event) {
-    // A surface replacement keeps the original meta; folding it would show the card twice.
-    if (event.surfaceOp !== 'append') return state
-    return preparedCardsOf(event).reduce(appendCard, state)
-  },
-  wire: { viewSchema: lyteboatCardsSchema, view: (state: LyteboatCard[]) => state },
-  stateVersion: 1,
-} satisfies ProjectionDefinition<'lyteboatCards', LyteboatCard[]>
-
-/** The reference `_collect_raw_data`: each state key namespaced and flattened. */
-export function collectRawData(state: LyteboatStateValue | undefined, stateKeys: readonly string[]): RawData {
-  const raw: RawData = {}
-  for (const key of stateKeys) {
-    let data: unknown = state?.[key]
-    if (data === undefined || data === null) continue
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data)
-      } catch {
-        continue
-      }
-    }
-    if (isRecord(data)) {
-      raw[key] = data
-      Object.assign(raw, data)
-    }
-  }
-  return raw
-}
-
-/** The reference `_parse_object_args`: an object, a JSON object string, or nothing. */
-export function parseObjectArgs(value: unknown): Record<string, unknown> | undefined {
-  if (value === undefined || value === null || value === '') return undefined
-  if (isRecord(value)) return value
-  if (typeof value === 'string') {
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(value)
-    } catch {
-      throw new Error('template_args 必须是 JSON 对象')
-    }
-    if (isRecord(parsed)) return parsed
-  }
-  throw new Error('template_args 必须是 JSON 对象')
-}
-
 interface RenderToolCatalog {
   cards: string[]
   variants: string[]
@@ -206,7 +84,7 @@ export class A2uiService extends Service {
   }
 
   /** The engine for one templates root (shared per root). */
-  engine(templates: string): TemplateEngine {
+  private engine(templates: string): TemplateEngine {
     let engine = this.engines.get(templates)
     if (engine === undefined) {
       engine = new TemplateEngine(templates, this.log)

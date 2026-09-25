@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { LyteboatCard, LyteboatCardEmission } from '@lyteboat/contracts'
-import { composeTurnParts, type LyteboatTurnPart } from '@lyteboat/a2ui'
+import { composeTurnParts, type LyteboatTurnPart } from '../src/turn-parts.ts'
 
 function card(area: string, emission: LyteboatCardEmission, n = 1): LyteboatCard {
   return { callId: `call-${area}`, surfaceId: `${area}-${String(n)}`, area, emission, payload: {} }

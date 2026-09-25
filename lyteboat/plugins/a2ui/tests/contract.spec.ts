@@ -3,7 +3,7 @@
  * catalog is the caller's to supply.
  */
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload, validatePayload } from '@lyteboat/a2ui'
+import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload, validatePayload } from '../src/contract.ts'
 import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 
 const payload = {

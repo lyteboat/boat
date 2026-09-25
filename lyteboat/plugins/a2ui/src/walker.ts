@@ -48,7 +48,7 @@ function typeProps(node: ComponentNode): [string, Record<string, unknown>] {
   return [type, isRecord(props) ? props : {}]
 }
 
-export function isBindingLeaf(value: unknown): value is { path: string; literalString?: unknown } {
+function isBindingLeaf(value: unknown): value is { path: string; literalString?: unknown } {
   return isRecord(value) && 'path' in value && Object.keys(value).every(key => key === 'path' || key === 'literalString')
 }
 

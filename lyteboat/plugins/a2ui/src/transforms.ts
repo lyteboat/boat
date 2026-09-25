@@ -5,8 +5,6 @@
  * @module @lyteboat/a2ui/transforms
  */
 
-import type { JsonValue } from '@lyteboat/contracts'
-
 /** A transform failure, with the operator and field for diagnostics. */
 export class TransformError extends Error {
   readonly operator: string
@@ -28,15 +26,14 @@ export interface A2uiLog {
 export const SILENT_LOG: A2uiLog = { warn: () => {} }
 
 export type RawData = Record<string, unknown>
-export type TransformSpec = Record<string, unknown> | string
 
 /** Python's `repr` of a list of strings, as the reference messages print available keys. */
-export function reprList(values: readonly string[]): string {
+function reprList(values: readonly string[]): string {
   return `[${values.map(value => `'${value}'`).join(', ')}]`
 }
 
 /** Python's `f"{value:,.2f}"`. */
-export function formatFixed2(value: number): string {
+function formatFixed2(value: number): string {
   return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
@@ -315,7 +312,7 @@ export function execOne(spec: unknown, data: RawData, log: A2uiLog = SILENT_LOG)
 }
 
 /** Python's `str()` for the values a manifest routes through `concat` / `switch`: booleans capitalize, ints stay ints. */
-export function pyStr(value: unknown): string {
+function pyStr(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'True' : 'False'
   if (value === null || value === undefined) return 'None'
   if (typeof value === 'string') return value
@@ -341,5 +338,3 @@ export function executeTransforms(transforms: Record<string, unknown>, data: Raw
   }
   return { computed, warnings }
 }
-
-export type { JsonValue }

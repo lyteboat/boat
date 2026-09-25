@@ -79,11 +79,6 @@ export class TemplateEngine {
     return (await loadBundle(this.root, card, this.bundles)).argSpecs
   }
 
-  /** `manifest.emission_mode`, or undefined when the card declares none. */
-  async emissionMode(card: string): Promise<LyteboatCardEmission | undefined> {
-    return (await loadBundle(this.root, card, this.bundles)).emissionMode
-  }
-
   /**
    * Render one card.
    * @param card - the card name.
@@ -129,9 +124,4 @@ export class TemplateEngine {
 /** The reference surface identity: `<card>-<sessionId[:8]>-<6 hex>`. */
 export function mintSurfaceId(card: string, sessionId: string): string {
   return `${card}-${sessionId.slice(0, 8)}-${randomBytes(3).toString('hex')}`
-}
-
-/** One-shot render. */
-export async function renderTemplate(root: string, card: string, raw: RawData, options: TemplateRenderOptions = {}, log: A2uiLog = SILENT_LOG): Promise<TemplateRenderResult> {
-  return new TemplateEngine(root, log).render(card, raw, options)
 }

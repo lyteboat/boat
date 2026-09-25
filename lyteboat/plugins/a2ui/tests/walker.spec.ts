@@ -1,7 +1,7 @@
 /** The reference synthetic walker tests (tests/unit/core/test_template_engine.py), ported. */
 import { describe, expect, it } from 'vitest'
-import { BoundPathTracker, walk, rowTemplateIds, validateFullPayload } from '@lyteboat/a2ui'
-import type { TemplateDocument } from '@lyteboat/a2ui'
+import { rowTemplateIds, validateFullPayload } from '../src/contract.ts'
+import { BoundPathTracker, walk, type TemplateDocument } from '../src/walker.ts'
 
 const component = (id: string, type: string, props: Record<string, unknown>) => ({ id, component: { [type]: props } })
 type Props = Record<string, unknown>

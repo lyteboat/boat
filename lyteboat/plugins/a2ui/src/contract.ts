@@ -9,7 +9,7 @@
 import type { A2uiLog } from './transforms.ts'
 import { SILENT_LOG } from './transforms.ts'
 
-export const SUPPORTED_EVENTS = new Set(['beginRendering', 'surfaceUpdate', 'dataModelUpdate', 'deleteSurface'])
+const SUPPORTED_EVENTS = new Set(['beginRendering', 'surfaceUpdate', 'dataModelUpdate', 'deleteSurface'])
 
 const ALLOWED_BY_EVENT: Record<string, Set<string>> = {
   beginRendering: new Set(['event', 'version', 'surfaceId', 'rootComponentId', 'components', 'catalogId', 'style', 'data', 'showType', 'hideVoteRecorder', 'hideServiceMessage', 'exposureData', 'businessPayload']),
@@ -88,7 +88,7 @@ export function validateEventPayload(payload: unknown): void {
   }
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   ok: boolean
   /** Messages in detection order; `entries` pairs each with its code. */
   errors: string[]
@@ -220,7 +220,7 @@ export function rowTemplateIds(payload: Record<string, unknown>): Set<string> {
 }
 
 /** Warnings for `path` bindings that name keys absent from `payload.data`. */
-export function validateDataCoverage(payload: Record<string, unknown>): string[] {
+function validateDataCoverage(payload: Record<string, unknown>): string[] {
   const data = payload['data']
   if (!isRecord(data)) return []
   const keys = new Set(Object.keys(data))

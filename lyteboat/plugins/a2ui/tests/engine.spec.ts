@@ -7,7 +7,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { TemplateEngine, TemplateModeError, mintSurfaceId, validateFullPayload } from '@lyteboat/a2ui'
+import { validateFullPayload } from '../src/contract.ts'
+import { TemplateEngine, TemplateModeError, mintSurfaceId } from '../src/engine.ts'
 import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 
 const ROOT = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
@@ -62,7 +63,6 @@ describe('TemplateEngine against reference baselines', () => {
     expect(engine.cards()).toEqual(['asset_overview', 'unauthorized'])
     expect(await engine.hierarchies('asset_overview')).toEqual(['asset_overview'])
     expect(await engine.argSpecs('unauthorized')).toEqual({})
-    expect(await engine.emissionMode('unauthorized')).toBeUndefined()
   })
 
   it('rejects an unknown hierarchy and an unknown card', async () => {
