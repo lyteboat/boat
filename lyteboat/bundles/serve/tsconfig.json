@@ -6,7 +6,7 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../../bundles/headless" },
-    { "path": "../../bundles/serve" }
+    { "path": "../../plugins/agent-catalog" },
+    { "path": "../../plugins/chat-api" }
   ]
 }

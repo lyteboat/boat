@@ -82,6 +82,7 @@ Side calls (skill routing, intake classification) use their route's default reas
 ```sh
 lyteboat headless "summarize this workspace"                       # one-shot task: answer and exit
 lyteboat headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
+lyteboat serve --agents ./examples/agents                     # HTTP service: POST /chat, answered at once or as an enterprise stream
 lyteboat web --no-open                                        # browser UI
 ```
 
@@ -92,10 +93,11 @@ lyteboat web --no-open                                        # browser UI
 | Command | What it does |
 |---|---|
 | `lyteboat headless [options] "task"` | Answers one task, prints the result, and exits (profile `headless`) |
+| `lyteboat serve [options]` | Serves every agent of the `--agents` directories over HTTP (profile `serve`): `POST /chat`, `GET /agents`, `GET /health` |
 | `lyteboat web [options]` | Serves the browser UI (profile `web`); `lyteboat web --help` lists its own flags |
 | `lyteboat config dump [options]` | Prints the composed plugin tree and exits; `--default` shows the bundle layers only |
 
-All three accept:
+All four accept:
 
 | Option | What it does |
 |---|---|
@@ -114,6 +116,27 @@ All three accept:
 | `--context <json>` | The request context: a JSON object, inline or in a file; logged with the request, read by tools, not shown to the model |
 
 `lyteboat headless -h` lists every flag of the one-shot mode.
+
+`lyteboat serve` also takes:
+
+| Option | What it does |
+|---|---|
+| `--agents <dir>` | A directory of agents (repeatable, at least one); `/chat` answers for every agent in it |
+| `--host <host>` | `127.0.0.1` (the default) or `0.0.0.0` |
+| `--port <port>` | 8080 by default; 0 lets the OS pick a free port |
+| `--auth <mode>` | `none` (the default, `127.0.0.1` only) or `shared-secret` (`Authorization: Bearer <secret>`) |
+| `--secret-env <name>` | The environment variable that holds the shared secret; `LYTEBOAT_CHAT_SECRET` by default |
+| `--workspace <dir>` | The working directory of new sessions; the current directory by default |
+
+A `/chat` request:
+
+```json
+{ "agent_id": "finance", "user_id": "u-1", "message": "看看我的资产",
+  "session_id": "optional: continue a session", "message_id": "optional: idempotency key", "trace_id": "optional",
+  "stream": false, "context": { "customer": "young-idle-cash" } }
+```
+
+Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outcome` (`completed`, `tool_stopped`, `rejected`, `stopped_by_limit`, `aborted`, `errored`), `response`, `cards` (`area`, `surface_id`, `a2ui`), and `tool_calls`. With `"stream": true` it is the enterprise event stream (SSE, AGUI envelopes): `run_started`, at most one `reasoning_*` pair (reasoning deltas and tool calls), at most one `text_message_*` pair (text deltas, with each card as a `ui_protocol: "A2UI"` frame where the answer marks it), and exactly one `run_finished` or `run_error`; an idle stream sends `: keep-alive` every 15 seconds. A session belongs to the `user_id` that created it, and another caller's session answers as one that does not exist (404); a repeated `message_id` in a session is refused with 409; a session's messages queue and are answered in turn; a stream whose caller disconnects cancels that message's running turn.
 
 ### Writing a business agent
 
@@ -150,12 +173,11 @@ The guides are written in Chinese.
 
 ```
 dsh/                  the kernel: the 14 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
-lyteboat/             lyteboat's 14 packages, one directory per layer
+lyteboat/             lyteboat's 16 packages, one directory per layer
   apps/               processes: the lyteboat launcher
-  bundles/            compositions: host (in every profile), run (behind lyteboat headless)
+  bundles/            compositions: host (in every profile), headless (behind lyteboat headless), serve (behind lyteboat serve)
   plugins/            capability plugins
   core/               declarations
-  agents/             business agents
   tooling/            test infrastructure
 examples/agents/      example business agents, built on the distribution
 dsh-compat/           the compatibility promise and its proof: contract snapshot, extension registry, G2/G4/G5/G6 tests
@@ -171,6 +193,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/apps/cli` | `@lyteboat/cli` | The `lyteboat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `lyteboat/bundles/host` | `@lyteboat/host` | The host bundle every profile lists: the distribution marker and the capability plugins' service rows |
 | `lyteboat/bundles/headless` | `@lyteboat/headless` | The one-shot bundle behind `lyteboat headless`: task, `--agent`, `--agents`, `--history`, `--session-id`, `--context`; a request is admitted before the loop, and the output composes the turn's cards |
+| `lyteboat/bundles/serve` | `@lyteboat/serve` | The service bundle behind `lyteboat serve`: declares every agent of the `--agents` directories, mounts dsh's session controller (without the web UI) and `/chat`, and keeps the local package inventory and the workspace's AGENTS.md out of model requests |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file, and its `undeclared: always \| auto` sets whether the inherited tools it does not name are visible |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record; an answer cut off at `maxTokens` is a failure; `reasoningEffort` sets the effort side calls request |
@@ -180,9 +203,10 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; a result may carry several cards, laid into the turn by emission mode (immediate, deferred, deferred-discard) and the answer's `[[card:<area>]]` markers (`turnParts`); `./agent` mounts the tool from a composition file, and an agent's own tools render cards with `renderCard`, `cardsPresentationMeta`, and `cardMarker`; the default component catalog carries no business vocabulary |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat headless --history` |
 | `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | The agent catalog: scans agent roots, declares each agent as a dsh preset, and reports the agents that fail to mount |
+| `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`, a business caller's entry: each message enters its session through dsh's session controller with its request (owner, trace id, context) on the human message; the answer is one JSON body or the enterprise event stream with its cards where the answer marks them; shared-secret auth, session ownership, duplicate `message_id` refusal, and cancellation when the caller leaves; an agent row may register a frame decorator that adds fields to its frames |
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, projection keys, prompt orders, `LyteboatDistro`, and the zod schemas of the JSON types it declares |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
-| `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, in-process composition boots, per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted model, launcher processes |
+| `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, in-process composition boots (a one-shot run until it exits, a service while the test talks to it), per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted model, a `/chat` test client, launcher processes |
 
 ## Development
 

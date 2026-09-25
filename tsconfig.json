@@ -75,7 +75,13 @@
       "path": "./lyteboat/plugins/agent-catalog"
     },
     {
+      "path": "./lyteboat/plugins/chat-api"
+    },
+    {
       "path": "./lyteboat/bundles/headless"
+    },
+    {
+      "path": "./lyteboat/bundles/serve"
     },
     {
       "path": "./lyteboat/apps/cli"

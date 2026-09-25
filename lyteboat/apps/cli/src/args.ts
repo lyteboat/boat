@@ -16,7 +16,7 @@
 
 import { Command, CommanderError } from 'commander'
 import { pluginFilesProblem } from './plugins.ts'
-import { DEFAULT_HEADLESS_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
+import { DEFAULT_HEADLESS_PROFILE, DEFAULT_SERVE_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
 interface ProfileInvocation {
@@ -66,6 +66,7 @@ Examples:
   lyteboat headless -h                                 the one-shot app's own flags and help
   lyteboat web                                         serve the browser UI (lyteboat web --help for its flags)
   lyteboat web --no-open --port 8080                   serve without opening a browser, on another port
+  lyteboat serve --agents ./agents                     serve the agents over HTTP: POST /chat (lyteboat serve --help)
   lyteboat config dump --profile headless              print the composed plugin tree and exit
 `
 
@@ -125,6 +126,17 @@ export function parseLyteboatArgs(argv: readonly string[], versions: LyteboatVer
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((args: string[], options: BootOptions) => {
       const { profile, patches, plugins } = validateBoot(web, options)
+      resolved = { mode: 'profile', profile, patches, plugins, args }
+    })
+
+  const serve = passThrough(program.command('serve'))
+    .description(`serve agents over HTTP (profile: ${DEFAULT_SERVE_PROFILE}); the service's own flags follow`)
+    .argument('[args...]', 'arguments for the service (see: lyteboat serve --help)')
+    .option('--profile <name>', 'the profile under $LYTEBOAT_HOME/profiles to boot', DEFAULT_SERVE_PROFILE)
+    .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
+    .action((args: string[], options: BootOptions) => {
+      const { profile, patches, plugins } = validateBoot(serve, options)
       resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 
