@@ -40,6 +40,12 @@
     },
     {
       "path": "./dsh/test-support/agent-loop-testkit"
+    },
+    {
+      "path": "./lyteboat/core/contracts"
+    },
+    {
+      "path": "./lyteboat/tooling/testing"
     }
   ]
 }
