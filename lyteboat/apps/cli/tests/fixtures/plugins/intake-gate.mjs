@@ -1,7 +1,9 @@
 // An intake gate: answers out-of-scope requests with a fixed reply and no model
-// call. Only lyteboat's kernel agent loop dispatches `lyteboat/intake`; tests insert it the way
-// `lyteboat run --plugin <this file>` would.
+// call. `lyteboat/intake` is the kernel extension agent-loop-intake, so the gate
+// injects `lyteboatDistro` and loads only on lyteboat's kernel; tests insert it
+// the way `lyteboat run --plugin <this file>` would.
 export const name = 'example-intake-gate'
+export const inject = ['lyteboatDistro']
 
 const OUT_OF_SCOPE = /炒股|股票|买卖|涨停/u
 
