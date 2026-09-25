@@ -11,7 +11,7 @@
 
 ### 0.1 agent 就是一个目录
 
-一个业务 agent 是 `examples/agents/<id>/`，目录名就是 id（`CLAUDE.md`「Agent design」）。其中唯一必需的文件是 `agent.cordis.yml`。agent 不属于发行版：它在 `lyteboat/` 旁边，建在 `lyteboat/` 的插件之上，`lyteboat/` 里没有任何东西提到它（`CLAUDE.md`「Repository layout」）。`lyteboat headless --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后为这次运行的会话创建一个 `Agent` 实例并挂到这个 preset 上（`lyteboat/bundles/headless/src/index.ts:171-176`、`:242-272`）。「preset」这个词在 lyteboat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（同一节）。
+一个业务 agent 是 `examples/agents/<id>/`，目录名就是 id（`CLAUDE.md`「Agent design」）。其中唯一必需的文件是 `agent.cordis.yml`。agent 不属于发行版：它在 `lyteboat/` 旁边，建在 `lyteboat/` 的插件之上，`lyteboat/` 里没有任何东西提到它（`CLAUDE.md`「Repository layout」）。`lyteboat headless --agents <根目录> --agent <id>` 读这个目录，把它登记给 dsh 的 `dsh-agent-preset-registry`（dsh 把它叫 preset），然后为这次运行的会话创建一个 `Agent` 实例并挂到这个 preset 上（`lyteboat/plugins/agent-catalog/src/index.ts:116-141`、`lyteboat/bundles/headless/src/index.ts:222-251`）。「preset」这个词在 lyteboat 里只指这套登记机制；一个 agent 定义可以有很多个运行时实例（同一节）。
 
 ### 0.2 和参考实现的对应
 
@@ -32,8 +32,8 @@
 
 和「一次请求」有关的三件事也由框架做：
 
-- **请求上下文。** `lyteboat headless --context <json|文件>` 把一个 JSON 对象（谁在问、从哪个渠道来……）随请求记在人类消息的 `source.lyteboatRequest.context` 上（`lyteboat/bundles/headless/src/startup.ts:61-74`）。`lyteboatRequest` 投影保存会话的上下文：后面的请求不带上下文，就沿用上一次的。上下文只落日志、不发给模型，工具用 `ctx.requestContext.contextOf(exec.agent)` 读；凭据不要放进去（`lyteboat/plugins/request-context/src/index.ts:11-13`、`:63-65`）。
-- **准入。** agent 用 `ctx.intakeGuard.register({ name, admit })` 登记一个准入函数。调用方用 `ctx.intakeGuard.submit(agent, { text, context?, requestId? }, signal)` 提交每个请求：`submit` 先调用这个 agent 的准入函数，再把请求连同判定（`decision: 'pass' | 'reply'`、`verdict`、`text`、`cards`）作为一条人类消息交给 agent，判定记在 `source.lyteboatRequest.intake` 上（`lyteboat/plugins/intake-guard/src/index.ts:110-131`）。`lyteboat headless` 就是这样提交任务的（`lyteboat/bundles/headless/src/index.ts:278`）。判定是 `reply` 时，循环里直接用 `text` 作答，不请求模型（§2.11）。
+- **请求上下文。** `lyteboat headless --context <json|文件>` 把一个 JSON 对象（谁在问、从哪个渠道来……）随请求记在人类消息的 `source.lyteboatRequest.context` 上（`lyteboat/bundles/headless/src/startup.ts:61-74`）。`lyteboatRequest` 投影保存会话的上下文：后面的请求不带上下文，就沿用上一次的。上下文只落日志、不发给模型，工具用 `ctx.requestContext.contextOf(exec.agent)` 读；凭据不要放进去（`lyteboat/plugins/request-context/src/index.ts:12-14`、`:76-78`）。
+- **准入。** agent 用 `ctx.intakeGuard.register({ name, admit })` 登记一个准入函数。调用方用 `ctx.intakeGuard.submit(agent, { text, context?, requestId? }, signal)` 提交每个请求：`submit` 先调用这个 agent 的准入函数，再把请求连同判定（`decision: 'pass' | 'reply'`、`verdict`、`text`、`cards`）作为一条人类消息交给 agent，判定记在 `source.lyteboatRequest.intake` 上（`lyteboat/plugins/intake-guard/src/index.ts:110-131`）。`lyteboat headless` 就是这样提交任务的（`lyteboat/bundles/headless/src/index.ts:257`）。判定是 `reply` 时，循环里直接用 `text` 作答，不请求模型（§2.11）。
 - **旁路调用。** agent 自己要问模型一个小问题（例如给请求分类）时，用 `ctx.auxLlm.generate({ agent, purpose, system, prompt, maxTokens, timeoutMs, signal })`：它默认用 agent 的模型，带自己的超时，并在会话日志里追加一条标为可忽略的 `lyteboat/aux-llm-call` 记录（`lyteboat/plugins/aux-llm/src/index.ts:110-135`）。失败是返回值，不是异常，由调用方决定怎么退路。skill-router 的路由请求也走它；金融智能体的准入分类是现成的例子（`examples/agents/finance/src/intake/finance-admission.ts:104-120`）。
 
 agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPolicy`、`a2ui`、`skills`、`requestContext`、`intakeGuard`、`auxLlm`……），在 `src` 里写一行 `import type {} from '<包名>'` 把服务的类型并进 `Context`，在 `package.json` 的 `peerDependencies` 和 `devDependencies` 里各写一次 `"<包名>": "workspace:*"`，在 `tsconfig.json` 的 `references` 里加上它的目录。金融智能体几个服务都用，照它写即可：`examples/agents/finance/src/agent.ts:16-20`、`:27`，以及同目录的 `package.json`、`tsconfig.json`。服务名、包名和目录的对应见 §7.8。
@@ -52,11 +52,11 @@ agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPo
 
 ### 0.4 agent 能在哪里跑
 
-只有两处会加载 agent 目录：`lyteboat headless`，以及 composite 测试里的 `bootComposition`（§2.15）。`lyteboat headless` 是一次性的：一个任务、一轮；这一轮打到 stdout（回答原文，每张卡片各占一行 `[card <区域>]`），会话 id 打到 stderr（`lyteboat: session <id>`），然后退出（`lyteboat/bundles/headless/src/index.ts:283-290`）。
+只有两处会加载 agent 目录：`lyteboat headless`，以及 composite 测试里的 `bootComposition`（§2.15）。`lyteboat headless` 是一次性的：一个任务、一轮；这一轮打到 stdout（回答原文，每张卡片各占一行 `[card <区域>]`），会话 id 打到 stderr（`lyteboat: session <id>`），然后退出（`lyteboat/bundles/headless/src/index.ts:262-269`）。
 
 - **没有参考实现那种 FastAPI 式的服务模式。** 能通过 HTTP 访问的只有 `lyteboat web`（dsh-web-app），它的 profile 里没有 `@lyteboat/headless`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`）。
 - **多轮靠续会话。** 下一次运行加上 `--session-id <上次打出的 id>`，就在同一个会话上接着聊：dsh 的持久化层重开日志，新的一轮能看到前面的轮次，路由过的技能、它的工具、会话状态和请求上下文都还在（§4.10）。要在 agent 自己的组合下续聊，用的就是这个办法。
-- **也可以导入外部历史。** 用 `--history <file>` 把外部系统的几轮对话导入成一个新会话的已结束轮次，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/headless/tests/fixtures/history/rounds.json "继续刚才的话题"`（`CLAUDE.md`「Commands」，`lyteboat/bundles/headless/src/index.ts:256-261`）。`--history` 只能开新会话，不能和 `--session-id` 一起用（`lyteboat/bundles/headless/src/startup.ts:124`）。
+- **也可以导入外部历史。** 用 `--history <file>` 把外部系统的几轮对话导入成一个新会话的已结束轮次，再跑一轮，例如 `node lyteboat/apps/cli/lib/bin.js headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' --history lyteboat/bundles/headless/tests/fixtures/history/rounds.json "继续刚才的话题"`（`CLAUDE.md`「Commands」，`lyteboat/bundles/headless/src/index.ts:235-240`）。`--history` 只能开新会话，不能和 `--session-id` 一起用（`lyteboat/bundles/headless/src/startup.ts:123`）。
 
 ### 0.5 五步走
 
@@ -73,7 +73,7 @@ agent 行要用哪个宿主服务，就在 `inject` 里写它的名字（`toolPo
 | 术语 | 意思 | 例子 |
 |---|---|---|
 | 行（row） | Cordis 插件树里的一项：`{ id, name, config }` | `agent.cordis.yml` 的每一项 |
-| `!!js` | 行配置里的 YAML 标签，值是加载时求值的 JS 表达式 | `task: !!js ctx.lyteboatHeadlessStartup.task`（`lyteboat/bundles/headless/cordis.patch.yml:35`） |
+| `!!js` | 行配置里的 YAML 标签，值是加载时求值的 JS 表达式 | `task: !!js ctx.lyteboatHeadlessStartup.task`（`lyteboat/bundles/headless/cordis.patch.yml:43`） |
 | patch / bundle | patch 是对行列表的增删改；bundle 是带一层 patch 的包 | `@lyteboat/host` 的 `cordis.patch.yml` 插入八个宿主行，并关掉 dsh-base 的 `session-telemetry-otel` 行 |
 | profile | 按顺序列出的 bundle 层 | `headless` = dsh-base + `@lyteboat/host` + `@lyteboat/headless`（`lyteboat/apps/cli/src/templates.ts:18-20`） |
 | 服务 / seam | 发布在 Context 上、按名字注入的对象；dsh 的扩展点都是服务 | `ctx.tools`、`ctx.skills`、`ctx.llm`、`ctx.systemPrompt`（`CLAUDE.md`「Architecture boundaries」） |
@@ -139,8 +139,8 @@ flowchart LR
     CARD["assets/a2ui/policy_card/"]
     BOOK["assets/sample-data/policies.json"]
   end
-  subgraph RUN["headless bundle：@lyteboat/headless 行 + agent-preset-registry 行"]
-    RD["declareAgent（readAgentDefinition）<br/>目录即 baseUrl"]
+  subgraph RUN["headless bundle：agent-catalog 行 + agent-preset-registry 行 + @lyteboat/headless 行"]
+    RD["agent-catalog（readAgentDefinition）<br/>目录即 baseUrl"]
     REG["dsh-agent-preset-registry<br/>preset policy-desk"]
     ADM["任务进入循环之前<br/>intakeGuard.submit"]
   end
@@ -188,14 +188,14 @@ flowchart LR
 
 为什么是这个形状：
 
-- **目录就是 `baseUrl`。** `@lyteboat/headless` 的 `declareAgent` 先用 `readAgentDefinition` 读出行和显示字段，再以目录的 `file:` URL 作为 `baseUrl` 登记（`lyteboat/bundles/headless/src/index.ts:171-176`）。所以 `./lib/tools.js` 这样的相对行名、行配置里的相对路径，都相对 agent 目录解析。preset 注册表本身是 run patch 插入的另一个 dsh 行，不属于 `@lyteboat/headless`（`lyteboat/bundles/headless/cordis.patch.yml:25-29`）。
+- **目录就是 `baseUrl`。** `@lyteboat/agent-catalog` 先用 `readAgentDefinition` 读出行和显示字段，再以目录的 `file:` URL 作为 `baseUrl` 登记（`lyteboat/plugins/agent-catalog/src/index.ts:116-141`）。所以 `./lib/tools.js` 这样的相对行名、行配置里的相对路径，都相对 agent 目录解析。preset 注册表本身是 headless patch 插入的另一个 dsh 行，不属于 `@lyteboat/headless`（`lyteboat/bundles/headless/cordis.patch.yml:33-37`）。
 - **所有行跑在 preset 的常驻作用域里。** registry 的 `mount()` 把每个 Agent 实例挂成这个常驻 mount 的子作用域，同一 preset 修订版的所有实例共用一次 mount（上游 `packages/preset/agent-preset-registry/src/mount.ts:258`、`src/index.ts:257`）。所以你的行只影响本 agent 的会话，也所以按实例的状态必须按 `Agent` 分键（`CLAUDE.md`「Architecture boundaries」的 Registrations are effects 一条）。
 - **宿主服务在根 realm，agent 行只向它们「声明」。** 宿主行发布服务；agent 行只做声明（`@lyteboat/*/agent`）或注册工具、监听器、准入函数，绝不向根 realm 发布服务（`CLAUDE.md`「Architecture boundaries」的 Composition is data 一条）。mount 时发现泄漏的服务会直接失败：`Preset services require isolate realms: …`（上游 `mount.ts:267`）。
-- **准入在循环之外。** `@lyteboat/headless` 把任务交给 Agent 时用的是 `ctx.intakeGuard.submit`：它问这个 agent 登记的准入函数（作用域链上最近的那个），把判定和任务写进同一条人类消息，再 `followup` 给 Agent（`lyteboat/bundles/headless/src/index.ts:278`，`lyteboat/plugins/intake-guard/src/index.ts:110-131`）。循环里 intake-guard 只按记录作答；一条没有经过 `submit` 就进来的消息（调用方直接 `agent.followup`），它在循环里补做一次准入，回复相同，只是判定和判定里的卡片不记在消息上（同文件 :1-13、:134-141）。
+- **准入在循环之外。** `@lyteboat/headless` 把任务交给 Agent 时用的是 `ctx.intakeGuard.submit`：它问这个 agent 登记的准入函数（作用域链上最近的那个），把判定和任务写进同一条人类消息，再 `followup` 给 Agent（`lyteboat/bundles/headless/src/index.ts:257`，`lyteboat/plugins/intake-guard/src/index.ts:110-131`）。循环里 intake-guard 只按记录作答；一条没有经过 `submit` 就进来的消息（调用方直接 `agent.followup`），它在循环里补做一次准入，回复相同，只是判定和判定里的卡片不记在消息上（同文件 :1-13、:134-141）。
 
 ### 1.3 每个文件、每个字段
 
-**`agent.cordis.yml`（必需）。** 一个 Cordis 行列表，每行是 `id`、`name`、`config`，允许 `!!js` 标签。`@lyteboat/headless` 用 `entryListSchema` 读它，只检查「是不是列表」，原样交给 registry 作为 preset 的 `plugins`，每一行由 registry 校验（`lyteboat/bundles/headless/src/agent-directory.ts:94-100`）。目录里有这个文件才算 agent（`agent-directory.ts:23`、`:28-30`）。
+**`agent.cordis.yml`（必需）。** 一个 Cordis 行列表，每行是 `id`、`name`、`config`，允许 `!!js` 标签。`@lyteboat/agent-catalog` 用 `entryListSchema` 读它，只检查「是不是列表」，原样交给 registry 作为 preset 的 `plugins`，每一行由 registry 校验（`lyteboat/plugins/agent-catalog/src/agent-directory.ts:110-116`）。目录里有这个文件才算 agent（`agent-directory.ts:23`、`:28-30`）。
 
 可用的行：
 
@@ -207,7 +207,7 @@ flowchart LR
 | `@lyteboat/a2ui/agent` | 注册通用的 `render_a2ui` 工具 | `templates`（必填，相对组合文件目录）、`stateKeys`、`terminalCards`、`cardDescriptions`、`name`、`visibility`、`validation`、`components`，未知键直接抛错（`lyteboat/plugins/a2ui/src/agent.ts:35-86`） |
 | `./lib/<x>.js` | 你自己的代码行：注册工具、监听事件、登记准入函数 | 导出 `name`、可选的 `inject`、`Config`，以及 `apply(ctx, config)` |
 
-**`preset.yml`（可选）。** 只用于显示：`name`（字符串）、`description`（字符串）、`order`（有限数）。文件不是映射、或字段类型不对，直接抛错（`agent-directory.ts:69-83`）。
+**`preset.yml`（可选）。** 只用于显示：`name`（字符串）、`description`（字符串）、`order`（有限数）。文件不是映射、或字段类型不对，直接抛错（`agent-directory.ts:85-99`）。
 
 **`package.json`。** 逐字段说明见 §2.2。要点：`exports` 只放测试要 import 的子路径，第一个键是 `@lyteboat/source` 条件（`CLAUDE.md`「Repository layout」）；loader 按路径加载 `lib/` 里的行，不经过 `exports`；依赖的写法照金融智能体，§2.2 讲它和 `CLAUDE.md` 字面规则的差别。
 
@@ -229,9 +229,9 @@ flowchart LR
 
 1. `headless` profile 依次加载 `@deepseek-ai/dsh-base`、`@lyteboat/host`、`@lyteboat/headless` 三层（`lyteboat/apps/cli/src/templates.ts:18-20`）。profile 跳过了模板列出的任何一个 bundle，启动就失败（`lyteboat/apps/cli/src/profile-boot.ts:145-154`）。
 2. `@lyteboat/host` 把 dsh-base 的 `session-log-deepseek` 行配成 `enabled: false`、关掉 `session-telemetry-otel` 行，在宿主平面依次插入 `@lyteboat/distro`、`@lyteboat/tool-policy`、`@lyteboat/aux-llm`、`@lyteboat/request-context`、`@lyteboat/intake-guard`、`@lyteboat/skill-router`、`@lyteboat/a2ui`、`@lyteboat/history-import`（`lyteboat/bundles/host/cordis.patch.yml:10-48`）。同一 waterfall 上的监听顺序由注册先后决定，先注册的在外层（上游 `vendor/cordis/src/events.ts:224-243`）。skill-router 注入了 `toolPolicy`，所以晚于 tool-policy 激活、在它里面；agent 行要等 Agent 创建时才挂载，注册得更晚，在最里层。所以一个 agent 行自己的 `lyteboat/intake` 监听在 intake-guard 里面，先于它作出判定（§2.11）。
-3. `@lyteboat/headless/startup` 解析参数。没有任务、`--agents` 目录不存在、`--agent` 和 `--agents` 只给了一个、id 找不到、`--session-id` 为空或和 `--history` 同给、`--context` 不是 JSON 对象，都按用法错误退出，找不到 id 时列出可用 id（`lyteboat/bundles/headless/src/startup.ts:103-132`）。
-4. runner 读目录、登记 preset（`lyteboat/bundles/headless/src/index.ts:244-248`），按 `agentDefaultModel` 的当前选择创建 Agent，给了 `--session-id` 时改为从日志恢复那个会话（`:242`、`:263-272`），在 `setup` 里 `presets.mount(agentCtx, id)`（`:249-253`）。上游 `mountPreset` 加载各行、审计、拒绝失败的行和泄漏到根 realm 的服务（`mount.ts:258-272`）。
-5. runner 用 `intakeGuard.submit` 提交任务（准入，再把任务连同请求上下文和判定写成一条用户消息交给 Agent），等到空闲，`sessions.flush`；然后用 `a2ui.turnParts` 把这一轮排成回答加卡片打到 stdout，把 `lyteboat: session <id>` 打到 stderr；只有本轮以 `completed` 结束才退出 0（`index.ts:273-290`）。
+3. `@lyteboat/headless/startup` 解析参数。没有任务、`--agents` 目录不存在、`--agent` 和 `--agents` 只给了一个、id 找不到、`--session-id` 为空或和 `--history` 同给、`--context` 不是 JSON 对象，都按用法错误退出，找不到 id 时列出可用 id（`lyteboat/bundles/headless/src/startup.ts:103-131`）。
+4. `agent-catalog` 读目录、登记 preset，runner 等它就绪（`lyteboat/bundles/headless/src/index.ts:224-227`），按 `agentDefaultModel` 的当前选择创建 Agent，给了 `--session-id` 时改为从日志恢复那个会话（`:222`、`:242-251`），在 `setup` 里 `presets.mount(agentCtx, id)`（`:228-232`）。上游 `mountPreset` 加载各行、审计、拒绝失败的行和泄漏到根 realm 的服务（`mount.ts:258-272`）。
+5. runner 用 `intakeGuard.submit` 提交任务（准入，再把任务连同请求上下文和判定写成一条用户消息交给 Agent），等到空闲，`sessions.flush`；然后用 `a2ui.turnParts` 把这一轮排成回答加卡片打到 stdout，把 `lyteboat: session <id>` 打到 stderr；只有本轮以 `completed` 结束才退出 0（`index.ts:252-269`）。
 
 ---
 
@@ -365,7 +365,7 @@ mkdir -p examples/agents/policy-desk/{src,tests,assets/sample-data,assets/skills
 
 agent 目录在仓库根下三层（`examples/agents/policy-desk`），所以 `extends` 和每条 `references` 都以 `../../../` 回到仓库根，和金融智能体的 `tsconfig.json` 一样。`references` 对应 `src` 里 import 的每个工作区包：内核的 `dsh/core/tools`、`lyteboat/core/contracts`、`lyteboat/plugins/tool-policy`、`lyteboat/plugins/a2ui`、`lyteboat/plugins/intake-guard`。`references` 决定 `tsc -b` 的构建顺序：被引用的包先构建。`CLAUDE.md`「Repository layout」要求每个被 import 的工作区包都列上，内核包也一样。测试文件不在这里编译，由根 `tsconfig.tests.json` 做类型检查。
 
-根 `tsconfig.json` 在 finance 那一项后面加一项（finance 那一项在 `tsconfig.json:77-79`）：
+根 `tsconfig.json` 在 finance 那一项后面加一项（finance 那一项在 `tsconfig.json:83-85`）：
 
 ```diff
      {
@@ -433,7 +433,7 @@ CI 用 `--frozen-lockfile` 安装（`CLAUDE.md`「Commands」），所以 `pnpm-
 
 - **`persona`**：只放身份、红线、语气（设计原则的 L1）。prefix 写成一行：YAML 的折叠写法 `>-` 会在换行处插入一个空格，两行中文之间就多出一个空格。
   - `POLICY-DESK-PERSONA` 是给测试断言系统 prompt 用的标记。它会进入真实的系统 prompt，模型看得到。上线用的 persona 要去掉它，测试改为断言 persona 里的一句原文。
-  - 省略了 `suffix`，所以部署级 persona 后缀（headless bundle 的 `Your working directory is {{cwd}}.`，`lyteboat/bundles/headless/cordis.patch.yml:11-15`）被清空；想保留就在这一行写上 `suffix`。
+  - 省略了 `suffix`，所以部署级 persona 后缀（headless bundle 的 `Your working directory is {{cwd}}.`，`lyteboat/bundles/headless/cordis.patch.yml:12-16`）被清空；想保留就在这一行写上 `suffix`。
 - **`lyteboat-skill-router`**：宿主默认 `mode: off`，agent 要用参考实现的动态路由必须在这里打开（`lyteboat/plugins/skill-router/src/agent.ts:1-6`）。
 - **没有收窄继承来的工具面。** run 组合给模型的 24 个 dsh 工具（`bash`、`write`……）本例都原样留着，好让 §2.13 的输出展示 run 组合原样给出的工具面。上线前应该收窄，写法是再加一行 `@lyteboat/tool-policy/agent`，配 `undeclared: auto`（§4.11）；金融智能体就这样写（`examples/agents/finance/agent.cordis.yml:31-36`）。
 - **监听顺序。** agent 行都比宿主服务晚注册，所以如果你的行也监听 `lyteboat/pre-assemble`，它会位于 tool-policy 和 skill-router 之内；监听 `lyteboat/intake` 的话，它位于 intake-guard 之内（§1.4 第 2 步、§4.4）。同一 agent 的几行之间谁先谁后取决于激活的先后，不要依赖它。
@@ -620,7 +620,7 @@ export function policySummary(policy: PolicyRecord): PolicySummary {
 
 - 绑定写成 `{"path": "<key>"}`。`Text.text` 这类契约字段解析成 `{"literalString": …}`，`hide` 为真时整棵子树被丢掉（`lyteboat/plugins/a2ui/src/walker.ts:83`、`:125-127`）。
 - 组件类型要在客户端的组件目录里。不另给目录时，契约校验用 a2ui 的默认目录，它只收领域中立的组件：`Row`、`Column`、`Card`、`List`、`CollapseList`、`Table`、`Popup`、`Text`、`RichText`、`Image`、`Icon`、`Tag`、`Circle`、`Divider`、`Line`、`Button`（`lyteboat/plugins/a2ui/src/contract.ts:38-44`）。客户端能渲染更多组件（图表、业务控件）时，由部署经 `RenderToolOptions.components` 或 `validateFullPayload(payload, { catalog })` 给出自己的目录（`lyteboat/plugins/a2ui/src/index.ts:65-66`、`src/contract.ts:265`）。
-- 顶层的 `surfaceId` 只是占位。渲染时换成 `<card>-<sessionId 前 8 个字符>-<6 位 hex>`（`lyteboat/plugins/a2ui/src/engine.ts:98`、`:125-127`）。lyteboat 的会话 id 总是 `session-<uuid>`（`lyteboat/bundles/headless/src/index.ts:267`），前 8 个字符恰好是 `session-`，所以实际的 surfaceId 形如 `policy_card-session--747561`，中间是两个连字符。
+- 顶层的 `surfaceId` 只是占位。渲染时换成 `<card>-<sessionId 前 8 个字符>-<6 位 hex>`（`lyteboat/plugins/a2ui/src/engine.ts:98`、`:125-127`）。lyteboat 的会话 id 总是 `session-<uuid>`（`lyteboat/bundles/headless/src/index.ts:246`），前 8 个字符恰好是 `session-`，所以实际的 surfaceId 形如 `policy_card-session--747561`，中间是两个连字符。
 
 `manifest.yaml`：
 
@@ -821,7 +821,7 @@ export async function apply(ctx: Context): Promise<void> {
 - **`defineTool`**（`dsh/core/tools/src/schema.ts:483-554`）：
   - `parameters` 是逐属性的规格。`required` 只能写 `true`（`schema.ts:292-295`），对象类型必须显式写 `additionalProperties`（`schema.ts:367-368`）。包装后的 `execute` 先校验参数，不合格就抛 `ToolArgsError`（`schema.ts:599`）；但 `execute` 仍然要把参数当作不可信输入（`CLAUDE.md`「Coding conventions」的 Validate at real boundaries only）。
   - `output.render(args, value)` 产出**模型看得到**的内容，这里就是 digest。
-  - `output.presentationMeta(args, value)` 产出**持久化但模型看不到**的 meta。它只对模型直接发起的调用计算（`dsh/core/tools/src/index.ts:1845-1853`）。带 `exec.parent` 的调用不计算：那是 `run_code`（PTC 模式）的 SDK 发出的子调度（`index.ts:340-349`）。所以在 `DSH_TOOLS_MODE=ptc` 下（`lyteboat/bundles/headless/cordis.patch.yml:17-19`），经 `run_code` 调到的 `query_policy` 既不出卡也不写状态。子 agent 里的工具调用对子 agent 来说是模型直接调用，会计算 meta，但写进子会话自己的日志，不会折进父会话的 `lyteboatState`。
+  - `output.presentationMeta(args, value)` 产出**持久化但模型看不到**的 meta。它只对模型直接发起的调用计算（`dsh/core/tools/src/index.ts:1845-1853`）。带 `exec.parent` 的调用不计算：那是 `run_code`（PTC 模式）的 SDK 发出的子调度（`index.ts:340-349`）。所以在 `DSH_TOOLS_MODE=ptc` 下（`lyteboat/bundles/headless/cordis.patch.yml:18-20`），经 `run_code` 调到的 `query_policy` 既不出卡也不写状态。子 agent 里的工具调用对子 agent 来说是模型直接调用，会计算 meta，但写进子会话自己的日志，不会折进父会话的 `lyteboatState`。
   - 输出 schema 里给字符串写 `enum` 时，`execute` 返回的字面量 `'ok'` 会被推断成 `string`，`tsc -b` 在 `execute` 属性上报 TS2322，错误链的最后一行是 `Type 'string' is not assignable to type '"ok" | "not-found"'`（实测）。所以这里没有写 `enum`；给返回的字面量加 `as const` 也能通过。
 - **出卡的三个函数都来自 `@lyteboat/a2ui`：**
   - `ctx.a2ui.renderCard(templates, area, raw, { agent })` 渲染一张卡，返回结果要带的 `LyteboatResultCard`：`{ surfaceId, area, emission, payload }`。`area` 就是卡片目录名，也是回答放卡用的区域名；`emission` 取 manifest 的 `emission_mode`；`surfaceId` 由调用方 agent 的会话 id 生成。manifest 取值的警告打成 a2ui 的 warn。卡片不存在、文件坏了、payload 不是无损 JSON，都抛错（`lyteboat/plugins/a2ui/src/index.ts:120-134`、`:74-78`）。所以工具先确认有调用方 agent。
@@ -867,7 +867,7 @@ export function apply(ctx: Context): void {
 }
 ```
 
-- **准入函数在请求进入循环之前运行。** `lyteboat headless` 用 `ctx.intakeGuard.submit(agent, { text, context }, signal)` 提交任务：`submit` 找到这个 agent 作用域链上最近登记的准入函数，调用 `admit({ agent, text, context, signal })`，给判定补上 `by`（准入函数的 `name`），再用 `requestContext.message(...)` 把任务、请求上下文和判定写成一条人类消息 `followup` 给 Agent（`lyteboat/plugins/intake-guard/src/index.ts:92-98`、`:110-131`，`lyteboat/plugins/request-context/src/index.ts:46-52`）。放行的请求也带判定，日志里是 `"lyteboatRequest":{"intake":{"decision":"pass","by":"policy-desk-intake"}}`（§3.2 的 seq 9）。`submit` 返回记下的判定；没有登记准入函数时返回 `undefined`，消息上也不带判定。
+- **准入函数在请求进入循环之前运行。** `lyteboat headless` 用 `ctx.intakeGuard.submit(agent, { text, context }, signal)` 提交任务：`submit` 找到这个 agent 作用域链上最近登记的准入函数，调用 `admit({ agent, text, context, signal })`，给判定补上 `by`（准入函数的 `name`），再用 `requestContext.message(...)` 把任务、请求上下文和判定写成一条人类消息 `followup` 给 Agent（`lyteboat/plugins/intake-guard/src/index.ts:92-98`、`:110-131`，`lyteboat/plugins/request-context/src/index.ts:48-53`）。放行的请求也带判定，日志里是 `"lyteboatRequest":{"intake":{"decision":"pass","by":"policy-desk-intake"}}`（§3.2 的 seq 9）。`submit` 返回记下的判定；没有登记准入函数时返回 `undefined`，消息上也不带判定。
 - **判定的字段**（`lyteboat/core/contracts/src/index.ts:212-221`）：`decision` 为 `'pass'`（交给模型）或 `'reply'`（直接作答）；`verdict` 是 agent 自己的标签，例如 `out_of_scope`，只用于审计；`text` 是回复正文；`cards` 是随回复出的卡，每张同样是 `{ surfaceId, area, emission, payload }`，用 `ctx.a2ui.renderCard` 渲染（金融智能体的未授权卡就是这样出的，`examples/agents/finance/src/intake/finance-admission.ts:119`）。`by` 由 intake-guard 填，函数不用返回。
 - **`reply` 怎么变成回答。** 循环第一步派发 `lyteboat/intake` 时，intake-guard 的监听先 `await next()`，让排在它里面的 `lyteboat/intake` 监听（例如某个 agent 行自己的拒识门）先判定；它们都放行，它才读人类消息上记录的判定，把 `reply` 变成 `{ kind: 'reply', plugin: by, content: [{ type: 'text', text }] }`（`lyteboat/plugins/intake-guard/src/index.ts:69-75`）。内核把这一步写成一条不请求模型的助手消息，`source` 为 `{ kind: 'model', provider: 'lyteboat', model: 'policy-desk-intake' }`（`dsh/core/agent-loop/src/lyteboat/intake-reply.ts:32-58`，`src/lyteboat/step-hooks.ts:16`）。判定里的卡片不进助手消息：`lyteboatCards` 投影和 `turnParts` 从人类消息上的判定读它们（`lyteboat/plugins/a2ui/src/cards-projection.ts:45-50`、`:57-65`），`lyteboat headless` 把它们和回复一起打出来。
 - **只有第一步做准入**，工具之后的续步不做判定（`lyteboat/plugins/intake-guard/src/index.ts:71`）。
@@ -1029,7 +1029,7 @@ model requests: (none)
 
 怎么读：
 
-- **stdout 是排好的一轮。** 脚本模型的回答是 `SCRIPTED-ANSWER`、`[[card:policy_card]]`、`SCRIPTED-CLOSING` 三行，`lyteboat headless` 把标记换成了 `[card policy_card]` 这一行（`lyteboat/bundles/headless/src/index.ts:103-110`、`:285`）。回答不写标记时，这张 `deferred` 卡跟在回答后面（§3.3 的运行就是这样）；回答写了标记、这一轮却没出卡时，标记被删掉（§6）。
+- **stdout 是排好的一轮。** 脚本模型的回答是 `SCRIPTED-ANSWER`、`[[card:policy_card]]`、`SCRIPTED-CLOSING` 三行，`lyteboat headless` 把标记换成了 `[card policy_card]` 这一行（`lyteboat/bundles/headless/src/index.ts:98-105`、`:264`）。回答不写标记时，这张 `deferred` 卡跟在回答后面（§3.3 的运行就是这样）；回答写了标记、这一轮却没出卡时，标记被删掉（§6）。
 - **stderr 只有会话 id。** 用它续聊（§4.10）。logger 的 warn 默认不打印（§6）。
 - **seq 6 是路由请求的审计记录。** 它是可忽略的 `lyteboat/aux-llm-call`，`purpose` 为 `skill-router`，记着路由 prompt 和模型的回答（§3.2）。
 - **seq 9 是任务本身。** 它的 `source` 除了 `kind: 'user'`，还带着准入判定 `lyteboatRequest.intake`。第三次运行的判定是 `reply`（那里任务是 seq 8），紧接着的 seq 9 就是助手的回复：没有路由、没有 `request/header`、没有模型请求。
@@ -1592,7 +1592,7 @@ sequenceDiagram
 - 技能正文不是在路由时写进去的：路由只把它记下（`skill-router/src/index.ts:385-403`），到 dsh 的 `agent/pre-step` 时，skill-router 在 `next()` 之后把它作为技能调用消息追加到这一步的消息里，被拒绝的步骤不追加（`:232-239`）。只有切换技能、或者正文已经不在模型视野里（例如被压缩掉）时才追加（`:168-172`、`:398-402`），所以续聊的下一轮不会再塞一遍（§4.10）。
 - runtime context 不在 system prompt 里，而是作为 `source.kind: 'runtime-context'` 的 user 消息追加，且只在文本变化时追加（`dsh/core/agent-loop/src/runtime-context.ts:152-163`）。这一步的 user 消息依次是：任务、runtime context（`agent/pre-step` 的默认结果，`dsh/core/agent-loop/src/agent.ts:294-300`）、技能调用消息、dsh-tool-skill 在更外层的 `agent/pre-step` 监听里追加的技能目录（上游 `packages/skill/tool-skill/src/index.ts:213-220`、`:272`）。
 - 会话表面推导 `tool/result` 时只取 `data.message`（`dsh/core/session/src/surface.ts:150-152`），所以卡片 payload 和 stateDelta 不会出现在 `tool/result` 消息里。stateDelta 折成 `lyteboatState` 之后，以 `lyteboat:state` runtime context 的形式发给模型（seq 23，§4.8）；卡片 payload 模型永远看不到，模型只写卡片标记。
-- stdout 由 `a2ui.turnParts` 从这一轮的日志区间排出来：它收集区间里人类消息上的判定卡片和 `tool/result` 的 `meta.lyteboat.cards`，取最后一条助手文本，按出卡模式和标记排好（`lyteboat/plugins/a2ui/src/index.ts:148-164`），`lyteboat headless` 再把卡片打成 `[card <区域>]` 行（`lyteboat/bundles/headless/src/index.ts:103-110`）。它只读日志，不写任何东西。
+- stdout 由 `a2ui.turnParts` 从这一轮的日志区间排出来：它收集区间里人类消息上的判定卡片和 `tool/result` 的 `meta.lyteboat.cards`，取最后一条助手文本，按出卡模式和标记排好（`lyteboat/plugins/a2ui/src/index.ts:148-164`），`lyteboat headless` 再把卡片打成 `[card <区域>]` 行（`lyteboat/bundles/headless/src/index.ts:98-105`）。它只读日志，不写任何东西。
 
 ### 3.2 对应的会话日志片段
 
@@ -1628,7 +1628,7 @@ delta 的键 `policy_desk.current` 是点路径：它被展开成嵌套对象，
 | 3–5 | `agent/inbox/spliced`、`turn/start`、`agent/inbox/spliced` | 内核：`followup` 入收件箱、开轮次、认领 |
 | 6 | `lyteboat/aux-llm-call` | aux-llm，为 skill-router 的路由调用记账（`lyteboat/plugins/aux-llm/src/index.ts:133`；调用方 `skill-router/src/index.ts:363-373`） |
 | 8 | `system/message` | persona 段 + dsh 段，本步第一次请求前写入 |
-| 9 | `user/message`（任务） | `intakeGuard.submit` 用 `requestContext.message(...)` 写成，`source.lyteboatRequest.intake` 是准入判定（`lyteboat/plugins/intake-guard/src/index.ts:117-121`，`lyteboat/plugins/request-context/src/index.ts:46-52`） |
+| 9 | `user/message`（任务） | `intakeGuard.submit` 用 `requestContext.message(...)` 写成，`source.lyteboatRequest.intake` 是准入判定（`lyteboat/plugins/intake-guard/src/index.ts:117-121`，`lyteboat/plugins/request-context/src/index.ts:48-53`） |
 | 10 | `user/message`（runtime-context） | 内核的 runtime context，这时只有 dsh 的两节 |
 | 11 | `user/message`（skill-invocation） | skill-router 在 `agent/pre-step` 里追加（`skill-router/src/index.ts:175-182`、`:232-239`） |
 | 12 | `user/message`（skill-catalog） | dsh-tool-skill 的技能目录（上游 `packages/skill/tool-skill/src/index.ts:272`） |
@@ -1807,7 +1807,7 @@ agent 行只能声明、注册（工具、准入函数）、监听。实测一�
 
 整个 `lyteboatState` 每一步都会作为 `lyteboat:state` 发给模型（`lyteboat/plugins/tool-policy/src/index.ts:112-120`），而每条状态增量又原样留在日志的 `tool/result.meta.lyteboat.stateDelta` 里。所以 delta 要小、不带个人信息，这也是 `policySummary` 只保留六个字段的原因。卡片要用的完整数据直接传给 `renderCard`，不必进状态。
 
-请求上下文正相反：它原样记在人类消息的 `source` 上，`lyteboatRequest` 投影保存它，但它不发给模型（`lyteboat/plugins/request-context/src/index.ts:11-13`）。工具需要时用 `ctx.requestContext.contextOf(exec.agent)` 读，只把回答需要的那部分写进结果。
+请求上下文正相反：它原样记在人类消息的 `source` 上，`lyteboatRequest` 投影保存它，但它不发给模型（`lyteboat/plugins/request-context/src/index.ts:12-14`）。工具需要时用 `ctx.requestContext.contextOf(exec.agent)` 读，只把回答需要的那部分写进结果。
 
 ### 4.9 失败要响亮，降级要记录
 
@@ -1832,7 +1832,7 @@ node lyteboat/apps/cli/lib/bin.js headless --agents ./examples/agents --agent po
 
 **为什么路由过的会话能重开。** dsh 的持久化层拒绝重开带着它不认识的事件类型的日志，除非那条事件标了 `ignorable`（`CLAUDE.md`「Architecture boundaries」的 A new session event type is proven reopenable 一条）。policy-desk 的日志里，lyteboat 的每个事实都骑在 dsh 已有的记录上：路由到的技能是 dsh 的技能调用消息，请求上下文和准入判定在人类消息的 `source` 上，卡片和状态增量在 `tool/result.meta` 上，准入回复是一条普通的助手消息。lyteboat 自己的类型只有 `lyteboat/aux-llm-call`，它由内核扩展 `session-append-ignorable` 写成可忽略的（`dsh/core/session/src/lyteboat/append-ignorable.ts`，登记在 `dsh-compat/contract/extensions.yml:49`）。组合测试的续聊用例用 `reopenRefusal` 验证了这一点（§2.15）。
 
-**续上以后发生什么。** runner 不新建会话，而是先核对日志，再用 `agents.resume` 从日志恢复它（`lyteboat/bundles/headless/src/index.ts:206-223`）；dsh 在日志末尾写一条续接标记 `session/end-seed`（`dsh/core/session/src/index.ts:624-625`），新一轮第一次请求的 `request/header` 的 `reason` 是 `resume`。新一轮开始时，各个投影从日志重新折叠：
+**续上以后发生什么。** runner 不新建会话，而是先核对日志，再用 `agents.resume` 从日志恢复它（`lyteboat/bundles/headless/src/index.ts:186-203`）；dsh 在日志末尾写一条续接标记 `session/end-seed`（`dsh/core/session/src/index.ts:624-625`），新一轮第一次请求的 `request/header` 的 `reason` 是 `resume`。新一轮开始时，各个投影从日志重新折叠：
 
 - `lyteboatActiveSkill` 折出上一轮的技能，路由器把它当作 `<current_active_skill>`；这一轮的输入是没有主语的追问时保持它，`requiredTools` 在第一步就重新激活（§3.3）。
 - 技能正文还在上一轮的消息里，所以不重复追加（`lyteboat/plugins/skill-router/src/index.ts:398-402`）。
@@ -1866,19 +1866,19 @@ model requests: router, loop
 
 同一个会话 id，同一份日志接着往下写。路由器回了 `null`，技能保持 `policy-lookup`，所以 seq 34 的请求带着 26 个工具；这一轮没有新的技能调用消息；状态没变，也没有新的 runtime-context 消息；模型请求里也没有标题请求。组合测试的第五个用例断言了其中的路由、工具、状态和正文不重复（§2.15）。
 
-**续聊的前提**（`lyteboat/bundles/headless/src/index.ts:188-223`，`lyteboat/bundles/headless/src/startup.ts:122-124`），每一条都实测过：
+**续聊的前提**（`lyteboat/bundles/headless/src/index.ts:168-203`，`lyteboat/bundles/headless/src/startup.ts:121-123`），每一条都实测过：
 
 - 同一个 `$LYTEBOAT_HOME`，会话就存在它下面。id 不存在时退出 1：`lyteboat: session "session-nope" does not exist; omit --session-id to start a new session`。
 - 同一个 agent。换了 `--agent` 时退出 1：`lyteboat: session "<id>" runs under agent "policy-desk"; continue it with --agent policy-desk`。
 - 同一个工作目录。会话头记着录制时的 `cwd`，换了目录时退出 1：`lyteboat: session "<id>" was recorded in "<录制时的目录>", not "<这次运行的目录>"`。
 - 不和 `--history` 同给，否则按用法错误退出：`error: --history seeds a new session; it cannot be combined with --session-id`。
-- 子 agent 或 fork 出来的会话不能直接续（`index.ts:195`）。
+- 子 agent 或 fork 出来的会话不能直接续（`index.ts:175`）。
 
 `lyteboat web` 的 profile 里没有 `@lyteboat/headless`，不读 agent 目录（`lyteboat/apps/cli/src/templates.ts:21-23`），所以要在 policy-desk 自己的组合下续聊，用 `lyteboat headless --session-id`。
 
 ### 4.11 收窄继承来的编码工具面
 
-业务 agent 挂在 run 组合上，会连带继承 dsh 的编码工具面。实测「保单 P-1001 还有效吗」的 loop 请求带着 run 组合的 24 个基础工具：`bash create_goal edit exit_plan_mode get_goal glob grep interrupt_agent job_kill job_list job_output list_agents read read_image send_message skill subagent subagent_fork todo_write update_goal web_fetch web_search workflow write`，外加本 agent 的两个工具。系统 prompt 2556 个字符，里面除了 persona，还有 dsh 的 harness 身份段和这些工具的使用说明。headless bundle 的部署级 persona 前缀是 `You are a coding agent …`（`lyteboat/bundles/headless/cordis.patch.yml:14-15`），persona 行会遮住它。保单助手用不上 `bash`、`write` 这些工具，可模型看得到就可能去调，所以上线前应该收窄。有两种做法，可以叠加；金融智能体两种都用了（`examples/agents/finance/agent.cordis.yml`）。下面的数字都是在一份拷贝上改组合文件、用 §2.13 的脚本模型跑出来的。
+业务 agent 挂在 run 组合上，会连带继承 dsh 的编码工具面。实测「保单 P-1001 还有效吗」的 loop 请求带着 run 组合的 24 个基础工具：`bash create_goal edit exit_plan_mode get_goal glob grep interrupt_agent job_kill job_list job_output list_agents read read_image send_message skill subagent subagent_fork todo_write update_goal web_fetch web_search workflow write`，外加本 agent 的两个工具。系统 prompt 2556 个字符，里面除了 persona，还有 dsh 的 harness 身份段和这些工具的使用说明。headless bundle 的部署级 persona 前缀是 `You are a coding agent …`（`lyteboat/bundles/headless/cordis.patch.yml:15-16`），persona 行会遮住它。保单助手用不上 `bash`、`write` 这些工具，可模型看得到就可能去调，所以上线前应该收窄。有两种做法，可以叠加；金融智能体两种都用了（`examples/agents/finance/agent.cordis.yml`）。下面的数字都是在一份拷贝上改组合文件、用 §2.13 的脚本模型跑出来的。
 
 **做法 A：没声明的继承工具一律 `auto`。** 在 `agent.cordis.yml` 末尾加一行（行的写法见 `lyteboat/plugins/tool-policy/src/agent.ts:9-17`）：
 
@@ -1920,7 +1920,7 @@ model requests: router, loop
 
 ### 4.12 loop 模型从哪来
 
-- **loop 模型不由 agent 决定。** `@lyteboat/headless` 创建或恢复 Agent 时读一次 `agentDefaultModel.currentSelection()`，作为 `agentOptions` 的 provider 和 model 传进去（`lyteboat/bundles/headless/src/index.ts:242`、`:263-272`）。preset 定义里没有模型字段（上游 `packages/preset/agent-preset-registry/src/types.ts`、`definition.ts` 里没有 `model`），所以一个 run 进程里所有 agent 用同一个 loop 模型。
+- **loop 模型不由 agent 决定。** `@lyteboat/headless` 创建或恢复 Agent 时读一次 `agentDefaultModel.currentSelection()`，作为 `agentOptions` 的 provider 和 model 传进去（`lyteboat/bundles/headless/src/index.ts:222`、`:242-251`）。preset 定义里没有模型字段（上游 `packages/preset/agent-preset-registry/src/types.ts`、`definition.ts` 里没有 `model`），所以一个 run 进程里所有 agent 用同一个 loop 模型。
 - **默认选择来自 dsh-base 的 `agent-default-model` 行。** 它的配置是 provider `deepseek-official` 加模型 id `deepseek-flash`；这些值是 volatile 配置，dsh settings（在 `$LYTEBOAT_HOME` 下）里保存了选择，就用保存的（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:82-86`，上游 `packages/core/agent-default-model/src/index.ts:23-31`）。要换模型，就在 settings 或 profile patch 层改这一行，不是在 agent 目录里改。
 - **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README「配置模型」）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（`scriptedModelEnv`，§2.13）。
 - **旁路调用默认用 agent 的模型。** `ctx.auxLlm.generate` 没给 `route` 时用 agent 的 provider 和 model（`lyteboat/plugins/aux-llm/src/index.ts:74-77`、`:111`）。`@lyteboat/skill-router/agent` 的 `provider` + `model`（必须成对）只影响路由的旁路调用，给了才作为 `route` 传过去（`lyteboat/plugins/skill-router/src/index.ts:346-348`）。§3.2 的 `lyteboat/aux-llm-call` 记录了这次调用实际用的 `route`。
@@ -2020,7 +2020,7 @@ lyteboat: session session-…
 | 把 `lyteboat/` 下各包的 `lib/` 都删了再 `pnpm run build`，构建照常退出 0，却没有重新产出 `lib/`；接着运行 CLI 报 `Error: Cannot find module '…/lyteboat/apps/cli/lib/bin.js'`（实测） | 陈旧的 `*.tsbuildinfo`（被 gitignore，lyteboat 的包把它放在包目录里，不在 `lib/` 里）让 `tsc -b` 以为这些项目都是最新的，什么也不产出 | `find lyteboat examples -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete`，再 `pnpm run build`（实测恢复） |
 | 构建报 `Error: @deepseek-ai/dsh-llm: lib/typert.host.js, lib/typert.host.d.ts, lib/typert.remote-client.js, lib/typert.remote-client.d.ts missing; they come with the import (scripts/dist/import-upstream.ts)`（实测） | 删 `lib/` 时连 `dsh/llm/llm/lib/` 下的 Typert 文件一起删了。它们随内核导入提交进仓库，受 git 跟踪，不是构建产物（`scripts/dist/bundle-kernel.ts:80`） | `git checkout -- dsh/llm/llm/lib`，再 `pnpm run build`；清 `lib/` 时绕开 `dsh/` |
 | `pnpm run lint` 的 knip 报出几十条与本 agent 无关的 `Unused exports` / `Unused exported types`，指向 finance 和各插件（实测） | 仓库克隆在某个名为 `tmp` 的目录之下（系统临时目录常常就是）。`.gitignore` 忽略 `tmp/`（`.gitignore:6`），knip 用绝对路径匹配包的 `exports` 入口，匹配上这条就把所有入口都丢了 | 把仓库克隆到路径里没有 `tmp` 这一段的目录 |
-| `error: agent "policy_desk" not found in the --agents directories (available: finance, policy-desk)`，退出 1（实测） | id 写错了（id 就是目录名），或者目录里没有 `agent.cordis.yml` | 用列出来的 id；确认文件存在（`lyteboat/bundles/headless/src/startup.ts:116-119`） |
+| `error: agent "policy_desk" not found in the --agents directories (available: finance, policy-desk)`，退出 1（实测） | id 写错了（id 就是目录名），或者目录里没有 `agent.cordis.yml` | 用列出来的 id；确认文件存在（`lyteboat/bundles/headless/src/startup.ts:116-118`） |
 | `lyteboat: policy-desk-tools (./lib/tools.js): never started`，下一行 `policy-desk-intake (./lib/intake.js): never started`，退出 1（实测） | 没有构建，`lib/` 不存在（打开 warn 能看到 `ERR_MODULE_NOT_FOUND`）；或者行的 `inject` 里有服务不可用 | `pnpm run build`；检查 `inject` |
 | `lyteboat: persona (@deepseek-ai/dsh-persona): never started`，后面还有 `lyteboat-skill-router (@lyteboat/skill-router/agent)`、`policy-desk-tools (./lib/tools.js)` 两行，退出 1（实测） | agent 目录不在仓库里，行名和工具行 import 的包从目录向上找不到 `node_modules` | agent 放在 `examples/agents/` 下；包按名字解析依赖根目录提升的 `@deepseek-ai/*`、`@lyteboat/*`（README「pnpm 设置为什么和常见项目不同」） |
 | 路由器从不调用，`auto` 工具从不出现，退出 0（实测） | 技能名不合法（下划线、大写），文件被静默忽略 | 改成连字符小写；打开 warn 确认（§4.3） |
@@ -2139,19 +2139,19 @@ export interface LyteboatStepPayload {
 
 两者都注册为内核扩展 `agent-loop-intake` / `agent-loop-pre-assemble`（`dsh-compat/contract/extensions.yml:16`、`:36`），都按 agent 作用域过滤：挂在 agent 作用域里的监听器只收到自己 agent 的事件（`step-hooks.ts:44-64`）。之后 dsh 自己还派发一个 waterfall `agent/pre-step`，默认结果是本步认领的消息加上 runtime context；skill-router 在它的 `next()` 之后追加技能调用消息（`dsh/core/agent-loop/src/agent.ts:294-300`，§3.1）。
 
-### 7.6 投影（`lyteboat/core/contracts/src/index.ts:304-325`）
+### 7.6 投影（`lyteboat/core/contracts/src/index.ts:313-334`）
 
 | key | 值 | 读法 |
 |---|---|---|
 | `lyteboatState` | 累积的工具状态 | `ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')`（`render_a2ui` 就这样取数，`lyteboat/plugins/a2ui/src/index.ts:226`） |
 | `lyteboatCards` | `LyteboatCard[]`（`callId`、`surfaceId`、`area`、`emission`、`payload`），工具结果的卡和准入回复的卡都在内 | `ctx.a2ui.cardsOf(agent)`；一轮怎么显示用 `ctx.a2ui.turnParts` |
 | `lyteboatActiveSkill` | 折叠状态 `{ active, loading }`，对外的视图是 `string \| null` | `ctx.skillRouter.activeOf(agent)` |
-| `lyteboatRequest` | `{ requests, context, intake }`：带请求的人类消息数、会话当前的请求上下文、最近一次的准入判定（没有时为 `null`） | `ctx.requestContext.contextOf(agent)` 读 `context` |
+| `lyteboatRequest` | `{ requests, context, intake, owner }`：带请求的人类消息数、会话当前的请求上下文、最近一次的准入判定（没有时为 `null`）、第一个请求记下的 owner（没有时为 `null`） | `ctx.requestContext.contextOf(agent)` 读 `context` |
 
-四个投影的 `stateVersion` 都是 1。在 agent 行里直接用 `ctx.sessionProjections` 要补齐四处。宿主插件 `@lyteboat/request-context` 用的是同一套写法，下面引它的行号。四处都在一份 policy-desk 的拷贝上实测过：
+四个投影的 `stateVersion` 是 1，`lyteboatRequest` 是 2。在 agent 行里直接用 `ctx.sessionProjections` 要补齐四处。宿主插件 `@lyteboat/request-context` 用的是同一套写法，下面引它的行号。四处都在一份 policy-desk 的拷贝上实测过：
 
-1. 行的 `inject` 加 `'sessionProjections'`（`lyteboat/plugins/request-context/src/index.ts:32`）。
-2. `src` 里加 `import type {} from '@deepseek-ai/dsh-session-projection'`，把服务的类型声明合并进 `Context`（`:20`）。少了这一处，`tsc -b` 报 `error TS2339: Property 'sessionProjections' does not exist on type 'Context'.`。
+1. 行的 `inject` 加 `'sessionProjections'`（`lyteboat/plugins/request-context/src/index.ts:34`）。
+2. `src` 里加 `import type {} from '@deepseek-ai/dsh-session-projection'`，把服务的类型声明合并进 `Context`（`:21`）。少了这一处，`tsc -b` 报 `error TS2339: Property 'sessionProjections' does not exist on type 'Context'.`。
 3. `package.json` 的 `peerDependencies` 和 `devDependencies` 都加 `"@deepseek-ai/dsh-session-projection": "workspace:*"`（内核包，`lyteboat/plugins/request-context/package.json:23`、`:31`）。少了这一处，类型检查照样通过（包已经提升到根 `node_modules`），但 `pnpm run lint` 里的 knip 报 `Unlisted dependencies`，指向那行 import。
 4. `tsconfig.json` 的 `references` 加 `{ "path": "../../../dsh/session/session-projection" }`（`lyteboat/plugins/request-context/tsconfig.json:11`），`tsc -b` 才按依赖顺序构建（`CLAUDE.md`「Repository layout」）。
 
@@ -2173,14 +2173,14 @@ export interface LyteboatStepPayload {
 
 | 服务（`inject` 里的名字） | 包，目录 | 成员 |
 |---|---|---|
-| `requestContext` | `@lyteboat/request-context`，`lyteboat/plugins/request-context` | `message(text, request)`：把一条人类消息连同请求（`requestId?`、`context?`、`intake?`）写成 user 消息，什么都不带时 `source` 就是 `{ kind: 'user' }`（:46-52）；`requestOf(message)`：读回消息带的请求，信封不合 schema 时抛错（:58-60）；`contextOf(agent)`：会话当前的请求上下文，没有时为 `{}`（:63-65） |
+| `requestContext` | `@lyteboat/request-context`，`lyteboat/plugins/request-context` | `message(text, request)`：把一条人类消息连同请求（`requestId?`、`context?`、`intake?`）写成 user 消息，什么都不带时 `source` 就是 `{ kind: 'user' }`（:48-53）；`requestOf(message)`：读回消息带的请求，信封不合 schema 时抛错（:71-73）；`contextOf(agent)`：会话当前的请求上下文，没有时为 `{}`（:76-78） |
 | `intakeGuard` | `@lyteboat/intake-guard`，`lyteboat/plugins/intake-guard` | `register({ name, admit })`：在调用方作用域登记准入函数，近的作用域优先，返回 disposer（:83-89）；`admissionFor(agent)`：这个 agent 用哪个准入函数（:92-98）；`submit(agent, { text, context?, requestId? }, signal)`：准入，再把请求写成人类消息 `followup` 给 agent，返回记下的判定，没有准入函数时为 `undefined`；空的 `context` 和不带一样，沿用会话的上下文；准入期间 `signal` 中止时什么也不交给 agent（:110-131） |
 | `auxLlm` | `@lyteboat/aux-llm`，`lyteboat/plugins/aux-llm` | `generate({ agent, purpose, route?, system, prompt, maxTokens, temperature?, timeoutMs, signal })`：发一次旁路调用，返回 `{ kind: 'answer', text, route, durationMs }` 或 `{ kind: 'failed', reason, message, durationMs }`，并追加一条可忽略的 `lyteboat/aux-llm-call`（:52-72、:110-135） |
 
 类型：
 
 - 准入函数 `LyteboatAdmission` 是 `{ name, admit(input) }`，`input` 为 `LyteboatAdmissionInput`：`{ agent, text, context, signal }`，`admit` 返回不带 `by` 的判定（`lyteboat/plugins/intake-guard/src/index.ts:30-44`）。
-- 判定 `LyteboatIntakeVerdict` 是 `{ by, decision: 'pass' | 'reply', verdict?, text?, cards? }`；请求 `LyteboatRequest` 是 `{ requestId?, context?, intake? }`；`lyteboatRequest` 投影的状态 `LyteboatRequestState` 是 `{ requests, context, intake }`（`lyteboat/core/contracts/src/index.ts:212-267`）。contracts 同时导出它们的 zod schema（`lyteboatIntakeVerdictSchema`、`lyteboatRequestSchema`……），lyteboat 的读者按它们解析日志里的信封。
+- 判定 `LyteboatIntakeVerdict` 是 `{ by, decision: 'pass' | 'reply', verdict?, text?, cards? }`；请求 `LyteboatRequest` 是 `{ requestId?, context?, intake? }`；`lyteboatRequest` 投影的状态 `LyteboatRequestState` 是 `{ requests, context, intake }`（`lyteboat/core/contracts/src/index.ts:212-276`）。contracts 同时导出它们的 zod schema（`lyteboatIntakeVerdictSchema`、`lyteboatRequestSchema`……），lyteboat 的读者按它们解析日志里的信封。
 - 旁路调用的记录 `LyteboatAuxLlmCallRecord`：`purpose`、`route`、`system`、`prompt`、`maxTokens`、`temperature`、`reasoningEffort?`、`output?`（成功时）、`failure?`（失败时，`reason` 为 `timeout`、`max-tokens` 或错误名）、`durationMs`（`lyteboat/core/contracts/src/index.ts:190-206`）。`temperature` 默认 0。没有可用的模型时返回 `reason: 'no-route'`，什么都不发，也不记；调用方自己的 `signal` 中止时直接抛出，也不记（`lyteboat/plugins/aux-llm/src/index.ts:110-135`）。
 
 在 agent 里声明它们，照金融智能体写（`examples/agents/finance/src/agent.ts:16-20`、`:27`，以及同目录的 `package.json`、`tsconfig.json`）：

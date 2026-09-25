@@ -514,7 +514,7 @@ G1 stale registration: <extension> lists <key>, which does not differ from upstr
 ### 4.4 `lyteboatDistro`：把登记表带到运行时
 
 - **为什么需要它。** 装好的构建里没有 `extensions.yml` 和 `dsh.upstream.json`。插件想知道自己是否跑在 lyteboat 上、某个扩展在不在，需要运行时的事实。
-- **怎么生成。** `scripts/dist/gen-distro-manifest.ts` 把两个文件编译成 `lyteboat/plugins/distro/src/distro-manifest.ts`：`DSH_BASE = '0.1.7-rc.2'`、`DISTRO_EXTENSIONS` 三条（id、package、kind）。
+- **怎么生成。** `scripts/dist/gen-distro-manifest.ts` 把两个文件编译成 `lyteboat/plugins/distro/src/distro-manifest.ts`：`DSH_BASE = '0.1.7-rc.2'`、`DISTRO_EXTENSIONS` 四条（id、package、kind）。
 - **服务。** `@lyteboat/distro` 发布 `ctx.lyteboatDistro`，提供 `dsh`、`extensions`、`has(id)`（`lyteboat/plugins/distro/src/index.ts:16-27`）。
 - **挂载位置。** host bundle 把 `lyteboat-distro` 行放在 lyteboat 所有服务行的第一个（`lyteboat/bundles/host/cordis.patch.yml:21-24`）。
 - **防过期。** `pnpm run lint` 带 `--check` 跑一次生成器，产物过期就失败（`package.json:14`）。
@@ -918,7 +918,7 @@ node lyteboat/apps/cli/lib/bin.js config dump --profile headless > $SCRATCH/dump
 
 **前置条件**（不满足时工具会在中途失败）：
 
-- 能访问 npm registry：`dist:snapshot` 和 `dist:import` 都会在 `$LYTEBOAT_DIST_CACHE` 下装一棵原版树（`scripts/dist/snapshot.ts:43`、`scripts/dist/import-upstream.ts:143`）。
+- 能访问 npm registry：`dist:snapshot` 和 `dist:import` 都会在 `$LYTEBOAT_DIST_CACHE` 下装一棵原版树（`scripts/dist/snapshot.ts:43`、`scripts/dist/import-upstream.ts:176`）。
 - checkout 的 `HEAD` 正好停在新 tag 上：`dist:import` 用 `git describe --tags --exact-match HEAD` 取 tag，不在 tag 上就失败。
 - overlay 闸门要求 checkout 的 `HEAD` 等于 `dsh.upstream.json` 的 `commit`，而且在 checkout 里 `pnpm install` 过；所以它们排在改完版本钉之后。
 

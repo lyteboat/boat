@@ -254,7 +254,7 @@
 | 单轮最多 5 个调用、每个 30s 超时 | `ref:core/tools/executor.py` | agent-loop 的 `maxParallelToolCalls`；`dsh:packages/guard/timeout-policy` | **用 dsh**：并发按 dsh 默认；没有配超时默认值 | 截断不移植；超时默认值写进业务组合（6.2） |
 | RunOutcome 作为唯一的结束原因来源 | `ref:core/types.py` | `TurnEndReason` | **无**：`lyteboat headless` 只按 `turn/end` 的 reason 定退出码；准入回复的轮也以 `completed` 结束 | 从日志折叠的纯函数，出口层用（6.2） |
 | on_model_error：友好话术写进会话 | `ref:core/runtime/base_agent.py` | `agent/request-error` 加 llm-retry | **不移植**写日志的部分 | 话术放出口层（6.2） |
-| AgentsLifecycle、Registry、invoker | `ref:core/runtime/agents_lifecycle.py`、`ref:core/runtime/invoker.py` | agent-preset-registry：多个 preset，按会话选择 | **部分**：`@lyteboat/headless` 把一个 agent 目录声明成 preset（`declareAgent`，`lyteboat/bundles/headless/src/index.ts:171`），`--session-id` 按日志里记下的 preset 续写；`intakeGuard.submit` 是提交请求的共同入口。缺：一个进程服务多个 agent、按请求选 agent 的入口 | serve（6.2） |
+| AgentsLifecycle、Registry、invoker | `ref:core/runtime/agents_lifecycle.py`、`ref:core/runtime/invoker.py` | agent-preset-registry：多个 preset，按会话选择 | **部分**：`@lyteboat/agent-catalog` 把 agent 目录声明成 preset（`lyteboat/plugins/agent-catalog/src/index.ts:116-141`），`lyteboat headless` 只让它声明所选的那一个，`--session-id` 按日志里记下的 preset 续写；`intakeGuard.submit` 是提交请求的共同入口。缺：一个进程服务多个 agent、按请求选 agent 的入口 | serve（6.2） |
 | SpawnSubtasksTool 并行子任务 | `ref:core/subtask/tool.py` | tool-subagent 声明可并发（`dsh:packages/subagent/tool-subagent/src/index.ts:470`），子 agent 经 `applyChildComposition` 继承父 preset 的组合 | **无** | 按需（6.4） |
 | consult_sub_agent | 路由 agent 的 consult 工具 | SubagentProvider seam | **无** | `@lyteboat/consult`，按需（6.4） |
 | 编排 agent 使用 `tool_choice=required` | 编排 agent 的定义文件 | `LlmCallConfig` 没有这个字段（`dsh/llm/llm/src/call-config.ts:23-30`） | **无** | 路由预设加 turn-stopping 纠偏，按需（6.4）；内核候选见 7.2 |
@@ -269,10 +269,10 @@
 | seq 原子分配、预计算计数 | `ref:core/storage/database/sql/session.py` | append 要求 seq 连续 | **无** | SQL provider 加会话目录读模型（6.5） |
 | 存储 Protocol：文件和 SQL 两种后端，按 agent 隔离 | `ref:core/storage/protocols/session.py` | `SessionPersistence` 抽象类（`dsh/session/session-persistence/src/index.ts:135`） | **部分**：只有 dsh-base 的 JSONL，按工作目录分目录 | 第二个 provider（6.5） |
 | Datasource、方言、alembic、DDL 导出、托管密码 | `ref:core/storage/datasource.py`、`ref:core/storage/dialect.py`、`ref:core/storage/database/migrate.py` | credentials seam | **无** | `@lyteboat/datasource-sql`（6.5） |
-| (agent_id, session_id) 复合唯一，session_id 由调用方指定 | `ref:core/storage/database/models.py`、`ref:core/runtime/base_agent.py` | SessionId 全局唯一 | **部分**：`lyteboat headless --session-id` 只续写已存在的会话，并核对它记下的 agent 和工作目录（`assertContinuable`，`lyteboat/bundles/headless/src/index.ts:188`）；新会话的 id 由 lyteboat 生成 | 会话目录（6.2） |
+| (agent_id, session_id) 复合唯一，session_id 由调用方指定 | `ref:core/storage/database/models.py`、`ref:core/runtime/base_agent.py` | SessionId 全局唯一 | **部分**：`lyteboat headless --session-id` 只续写已存在的会话，并核对它记下的 agent 和工作目录（`assertContinuable`，`lyteboat/bundles/headless/src/index.ts:168`）；新会话的 id 由 lyteboat 生成 | 会话目录（6.2） |
 | 会话列表、搜索、摘要 | `ref:core/storage/protocols/session.py` | session-query 不做调用方授权（`dsh:packages/session-query/session-query/README.md:150`） | **无** | 会话目录的读模型；单会话精读用 dsh（6.2） |
 | state 命名空间 `user:`、`temp:`、`meta:` | `ref:plugins/api/chat.py`、`ref:core/types.py` | user/message 的 source 可以扩展 | **部分**：请求上下文单独记在 `source.lyteboatRequest`，不进提示；`lyteboatState` 只折叠工具的增量，按点路径深合并，整份渲染进 `lyteboat:state`（`lyteboat/plugins/tool-policy/src/index.ts:112-120`）；没有命名空间和按键的可见性 | 状态按真实需求再设计（6.1） |
-| 外部对话历史合并，按 trace_id 去重 | `ref:core/session/history_strategy.py`；理财 agent 的外部历史合并器 | 日志只追加 | **部分**：`@lyteboat/history-import` 按参考实现的轮次规则解析（`round-history.ts`），给新会话做种子（`seed.ts`）；种子不记 trace id；`--history` 不能和 `--session-id` 一起用（`lyteboat/bundles/headless/src/startup.ts:124`） | 增量并入已有会话（6.3） |
+| 外部对话历史合并，按 trace_id 去重 | `ref:core/session/history_strategy.py`；理财 agent 的外部历史合并器 | 日志只追加 | **部分**：`@lyteboat/history-import` 按参考实现的轮次规则解析（`round-history.ts`），给新会话做种子（`seed.ts`）；种子不记 trace id；`--history` 不能和 `--session-id` 一起用（`lyteboat/bundles/headless/src/startup.ts:123`） | 增量并入已有会话（6.3） |
 | tool_exchange | `ref:core/session/tool_exchange.py` | 无 | **无** | `@lyteboat/tool-exchange`，按需（6.4） |
 | 会话删除与保留期（含子任务的临时会话） | `ref:core/subtask/tool.py`、`ref:plugins/evals/replay_runner.py` | 没有删除 API | **无** | 会话目录的 purge（6.5） |
 | 异常时整轮丢弃、原始会话整体回写 | `ref:plugins/studio/api/sessions.py` | 只追加 | **不移植** | — |
@@ -371,7 +371,7 @@
 |---|---|---|---|---|
 | Lifecycle、Bootstrap、AppContext、`ENABLE_*` | `ref:core/protocol/bootstrap.py` | Cordis 的 Service、inject、effect、bundle patch | **不移植**：宿主 bundle 与 profile 模板 | — |
 | 启动必备能力 | `ref:app.py` 组合根 | app-boot 的必需行是全局常量 | **部分**：四项有；缺了模板所列 bundle 的 profile 启动失败；没有记忆，也没有五项服务的核对 | 6.3 |
-| BaseAgent 的声明式配置 | `ref:core/runtime/base_agent.py` | preset 声明行 | **有**（形态不同）：agent 目录的 `agent.cordis.yml` 加 `preset.yml`，由 `@lyteboat/headless` 读（`lyteboat/bundles/headless/src/agent-directory.ts`）并声明成 preset | agent 包形态（6.4） |
+| BaseAgent 的声明式配置 | `ref:core/runtime/base_agent.py` | preset 声明行 | **有**（形态不同）：agent 目录的 `agent.cordis.yml` 加 `preset.yml`，由 `@lyteboat/agent-catalog` 读（`lyteboat/plugins/agent-catalog/src/agent-directory.ts`）并声明成 preset | agent 包形态（6.4） |
 | 工具与回调共享的数据层单例 | 资产诊断 agent、理财 agent 的定义文件 | preset 行在每个修订里只挂载一次 | **有**：金融智能体的 `./lib/agent.js` 在 `apply()` 里建一个客户数据源，工具和准入函数共用（`examples/agents/finance/src/agent.ts:33-49`） | — |
 | 常驻子进程（数据接入用的加密 JVM，按探针判断就绪，崩溃后重启） | `ref:core/utils/resident_process.py`、`ref:core/utils/executable_runner.py` | `ctx.subprocess` 负责拉起和终止，服务被 dispose 时终止所有受管进程；就绪判断和重启归消费方（`dsh:packages/subprocess/subprocess/README.md`） | **无**：公开仓库里没有客户数据接入 | agent 层 provider，建在 `ctx.subprocess` 上，按需（6.4） |
 | 每个 agent 自己的模型与采样 | 资产诊断 agent 的定义文件 | `agent/request` | **部分**：金融智能体在 `agent/request` 上固定 temperature 0；模型用宿主默认 | agent 行在 `agent/request` 上选路由（6.3） |
@@ -423,7 +423,7 @@
 
 **lyteboat 的准入。**
 - **登记。** agent 行在自己的常驻作用域里调用 `ctx.intakeGuard.register(admission)`，拿回 disposer；取用时沿 agent 的作用域链找最近的一个（`admissionFor`，`lyteboat/plugins/intake-guard/src/index.ts:92`），不以 preset id 为键。准入函数拿到 `{ agent, text, context, signal }`，返回 `decision`（`pass` 或 `reply`）、`verdict` 标签、回复文字和卡片；判定的 `by` 由服务填成准入函数的名字。
-- **提交。** 调用方（`lyteboat headless`，`lyteboat/bundles/headless/src/index.ts:278`）用 `ctx.intakeGuard.submit` 提交请求：准入先跑，再 `agent.followup` 一条人类消息，source 上记着请求 id、上下文和判定。空的上下文和没给一样，会话沿用之前的上下文，准入看到的也是它。调用方的 signal 在准入期间中止，就什么也不提交。
+- **提交。** 调用方（`lyteboat headless`，`lyteboat/bundles/headless/src/index.ts:257`）用 `ctx.intakeGuard.submit` 提交请求：准入先跑，再 `agent.followup` 一条人类消息，source 上记着请求 id、上下文和判定。空的上下文和没给一样，会话沿用之前的上下文，准入看到的也是它。调用方的 signal 在准入期间中止，就什么也不提交。
 - **循环内。** intake-guard 在 `lyteboat/intake` 上、`next()` 之后判断，只管第 1 步：本步最后一条 kind 为 `'user'` 的消息记着 reply，就用它的文字作答，不发模型请求；记着 pass 就放行；没有判定（不经 `submit` 的客户端，例如 lyteboat web 经 session-controller 进来的消息），就当场补做准入，回复一样，但判定和卡片不落日志（同文件 69-75 行）。
 - **卡片。** reply 带的卡片由 a2ui 从人类消息的 source 读出来，和工具结果的卡片一起进 `lyteboatCards` 投影与 `turnParts`。
 
@@ -449,7 +449,7 @@
 
 **dsh。** 会话是只追加的事件日志，写句柄由 agent-loop 独占；`SessionPersistence` 只定义契约，JSONL 后端靠文件锁互斥，在 NFS 上不可靠；SessionHeader 里没有用户字段；session-query 不做调用方授权（`dsh:packages/session-query/session-query/README.md:150`）。
 
-**lyteboat。** 用 dsh-base 的 JSONL，会话按工作目录分目录存在 `$LYTEBOAT_HOME/sessions/` 下。`lyteboat headless --session-id` 续写已存的会话，核对它记下的 agent preset、工作目录，并拒绝子代理或 fork 出来的会话（`assertContinuable`，`lyteboat/bundles/headless/src/index.ts:188-197`）；id 不存在时报错，不当成新会话。请求 id 和上下文记在 `source.lyteboatRequest` 上，没有 traceId、messageId 字段。
+**lyteboat。** 用 dsh-base 的 JSONL，会话按工作目录分目录存在 `$LYTEBOAT_HOME/sessions/` 下。`lyteboat headless --session-id` 续写已存的会话，核对它记下的 agent preset、工作目录，并拒绝子代理或 fork 出来的会话（`assertContinuable`，`lyteboat/bundles/headless/src/index.ts:168-177`）；id 不存在时报错，不当成新会话。请求 id、owner、traceId 和上下文记在 `source.lyteboatRequest` 上，没有 messageId 字段。
 
 **缺口。** 没有多 POD 存储，没有用户维度，没有「外部 session_id 映射到 dsh SessionId」这一层：中控用同一个 session_id 分别调用两个 agent，在 dsh 里会冲突；session-query 直接暴露出去，任何调用方都能列出所有会话。做法见 6.2（会话目录）和 6.5（SQL provider）。
 
@@ -867,7 +867,7 @@ sequenceDiagram
 **外部历史增量并入已有会话。**
 - 日志只追加，agent loop 按自己的阶段数 turn，导入的轮次不能插到历史中间，也不能作为已关闭的 turn 追加到活着的会话里（`lyteboat/plugins/history-import/src/index.ts` 的模块注释）。所以增量模式按 trace id 找出会话里缺的轮次，在下一个请求前以一条 recall 消息追加到末尾。
 - trace id 要有能重开的去处：种子只返回它们、不记日志（`lyteboat/plugins/history-import/src/seed.ts` 的模块注释），增量模式要把已导入的 trace id 记在导入消息的 source 上，由一个投影折叠出来。
-- `lyteboat headless` 放开 `--history` 与 `--session-id` 同用（`lyteboat/bundles/headless/src/startup.ts:124`）。
+- `lyteboat headless` 放开 `--history` 与 `--session-id` 同用（`lyteboat/bundles/headless/src/startup.ts:123`）。
 - 验收：同一份历史导入两次，第二次什么也不追加；重开后已导入的 trace id 不变。
 
 **OpenAI 兼容的模型适配器。**
