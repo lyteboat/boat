@@ -19,7 +19,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type {} from './index.ts'
+import type { RenderToolOptions } from './index.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-a2ui-agent'
@@ -27,15 +27,12 @@ export const name = 'lyteboat-a2ui-agent'
 /** The host service the tool is composed through. */
 export const inject = ['a2ui']
 
-export interface Config {
-  templates: string
-  stateKeys?: string[]
-  terminalCards?: string[]
-  cardDescriptions?: Record<string, string>
-  name?: string
-  visibility?: 'always' | 'auto'
-  validation?: 'warn' | 'enforce'
-  /** The client's component catalog (types, and binding fields per type); the reference client when absent. */
+/**
+ * Plugin config: the render tool's options, with a relative `templates` path.
+ * `components` is restated only because schemastery validates into mutable
+ * arrays, where the catalog type is read-only.
+ */
+export type Config = Omit<RenderToolOptions, 'components'> & {
   components?: { types: string[]; bindingFields: Record<string, string[]> }
 }
 
@@ -66,14 +63,5 @@ function compositionDir(ctx: Context): string | undefined {
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
   const templates = resolve(compositionDir(ctx) ?? process.cwd(), config.templates)
-  await ctx.a2ui.registerRenderTool({
-    templates,
-    ...config.stateKeys === undefined ? {} : { stateKeys: config.stateKeys },
-    ...config.terminalCards === undefined ? {} : { terminalCards: config.terminalCards },
-    ...config.cardDescriptions === undefined ? {} : { cardDescriptions: config.cardDescriptions },
-    ...config.name === undefined ? {} : { name: config.name },
-    ...config.visibility === undefined ? {} : { visibility: config.visibility },
-    ...config.validation === undefined ? {} : { validation: config.validation },
-    ...config.components === undefined ? {} : { components: config.components },
-  })
+  await ctx.a2ui.registerRenderTool({ ...config, templates })
 }

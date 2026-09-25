@@ -18,8 +18,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { LyteboatToolMeta } from '@lyteboat/contracts'
-import type {} from './index.ts'
+import type { LyteboatToolPolicy } from './index.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-tool-policy-agent'
@@ -27,15 +26,9 @@ export const name = 'lyteboat-tool-policy-agent'
 /** The host service the declarations go to. */
 export const inject = ['toolPolicy']
 
-/** One tool's declared policy, as a composition file states it. */
-export interface DeclaredToolPolicy {
-  visibility?: 'always' | 'auto'
-  requiresConfirmation?: boolean
-}
-
 /** Plugin config: tool name → policy. */
 export interface Config {
-  tools: Record<string, DeclaredToolPolicy>
+  tools: Record<string, LyteboatToolPolicy>
 }
 
 export const Config: z<Config> = z.object({
@@ -59,10 +52,6 @@ export function apply(ctx: Context, config: Config): void {
     if (unknown.length > 0) {
       throw new Error(`lyteboat tool policy agent row: tool "${toolName}" has unknown key${unknown.length > 1 ? 's' : ''} ${unknown.map(key => JSON.stringify(key)).join(', ')}; allowed: ${[...POLICY_KEYS].join(', ')}`)
     }
-    const meta: LyteboatToolMeta = {
-      ...policy.visibility === undefined ? {} : { visibility: policy.visibility },
-      ...policy.requiresConfirmation === undefined ? {} : { requiresConfirmation: policy.requiresConfirmation },
-    }
-    ctx.toolPolicy.declare(toolName, meta)
+    ctx.toolPolicy.declare(toolName, policy)
   }
 }
