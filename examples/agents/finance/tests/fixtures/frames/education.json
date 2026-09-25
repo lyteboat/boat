@@ -1,0 +1,273 @@
+[
+  {
+    "protocol": "AGUI",
+    "id": 1,
+    "event": "run_started",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 2,
+    "event": "reasoning_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "lookup_knowledge",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 3,
+    "event": "reasoning_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "lookup_knowledge",
+        "content": [
+          {
+            "topic": "再平衡"
+          }
+        ]
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 4,
+    "event": "text_message_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 5,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "F",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 6,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "I",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 7,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 8,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "A",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 9,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 10,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "C",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 11,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "E",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 12,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "-",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 13,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "O",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 14,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "K",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 15,
+    "event": "text_message_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 16,
+    "event": "reasoning_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 17,
+    "event": "run_finished",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-education",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK",
+      "turn": 1,
+      "agent_name": "finance",
+      "extra": {
+        "run_outcome": "completed"
+      }
+    }
+  }
+]

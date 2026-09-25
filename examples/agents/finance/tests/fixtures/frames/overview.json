@@ -1,0 +1,376 @@
+[
+  {
+    "protocol": "AGUI",
+    "id": 1,
+    "event": "run_started",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 2,
+    "event": "reasoning_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "asset_overview",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 3,
+    "event": "reasoning_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "asset_overview",
+        "content": [
+          {}
+        ]
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 4,
+    "event": "text_message_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 5,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "F",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 6,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "I",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 7,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 8,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "A",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 9,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 10,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "C",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 11,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "E",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 12,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "-",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 13,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "O",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 14,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "K",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 15,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "\n",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 16,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "A2UI",
+      "ui_data": {
+        "event": "beginRendering",
+        "version": "1.0.0",
+        "surfaceId": "asset_overview-<surface>",
+        "rootComponentId": "root-container",
+        "showType": "card",
+        "components": [
+          {
+            "id": "title-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "资产总览"
+                },
+                "fontSize": "18px",
+                "fontWeight": 600,
+                "color": "#1A1A1A"
+              }
+            }
+          },
+          {
+            "id": "total-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "80,000.00 元"
+                },
+                "fontSize": "24px",
+                "fontWeight": 600
+              }
+            }
+          },
+          {
+            "id": "steady-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "稳健资产 54,400.00 元 · 68.0%"
+                }
+              }
+            }
+          },
+          {
+            "id": "risky-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "风险资产 25,600.00 元 · 32.0%"
+                }
+              }
+            }
+          },
+          {
+            "id": "root-container",
+            "component": {
+              "Column": {
+                "width": 100,
+                "gap": 12,
+                "children": {
+                  "explicitList": [
+                    "title-text",
+                    "total-text",
+                    "steady-text",
+                    "risky-text"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "businessPayload": {
+          "risky_line": "风险资产 25,600.00 元 · 32.0%",
+          "steady_line": "稳健资产 54,400.00 元 · 68.0%",
+          "total_line": "80,000.00 元"
+        }
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 17,
+    "event": "text_message_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK\n",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 18,
+    "event": "reasoning_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 19,
+    "event": "run_finished",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-overview",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK\n",
+      "turn": 1,
+      "agent_name": "finance",
+      "extra": {
+        "run_outcome": "completed"
+      }
+    }
+  }
+]
