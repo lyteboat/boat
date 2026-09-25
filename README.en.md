@@ -182,7 +182,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ag
 | `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, `LyteboatDistro` |
 | `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | Runtime values for const enums the published cordis build erases |
 | `lyteboat/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
-| `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, the session-log reader, the scripted model, launcher processes |
+| `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, in-process composition boots, per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted model, launcher processes |
 
 ## Development
 

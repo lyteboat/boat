@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { LYTEBOAT_RUN_BUNDLES } from '@lyteboat/testing/composition'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
@@ -32,7 +33,7 @@ describe('lyteboat config dump (built bin)', () => {
     expect(result.stdout).toContain('@lyteboat/run')
     expect(result.stdout).toContain('id: agent-loop')
     const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'run', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
-    expect(manifest.dsh.profile).toEqual({ bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run'] })
+    expect(manifest.dsh.profile).toEqual({ bundles: LYTEBOAT_RUN_BUNDLES })
   })
 
   it('keeps dsh-base\'s feedback telemetry export off in both profiles, without DSH_TELEMETRY_DISABLED', async () => {

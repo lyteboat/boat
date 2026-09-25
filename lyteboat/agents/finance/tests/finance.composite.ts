@@ -8,20 +8,18 @@
  * them. A routed session reopens under dsh's persistence, and `--session-id`
  * continues it in a new process with the context it began with.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
-import { SessionFormatUnsupportedError, validateStoredEvents } from '@deepseek-ai/dsh-session-persistence'
-import { bootComposition } from '@lyteboat/testing/composition'
+import { LYTEBOAT_RUN_BUNDLES, bootComposition, printedSessionId } from '@lyteboat/testing/composition'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
-import { startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { reopenRefusal } from '@lyteboat/testing/session-reopen'
+import { scriptedModelEnv, startScriptedModel, withTitle, type ChatBlock, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 /** The agents/ root this package lives in, as `--agents ./agents` names it. */
 const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
-const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
 
 /** The skill and tool call each task routes to. */
 const PLANS: Record<string, { skill: string; tool: string; args?: Record<string, unknown> }> = {
@@ -32,7 +30,7 @@ const PLANS: Record<string, { skill: string; tool: string; args?: Record<string,
 
 const FINANCE_TOOLS = ['asset_overview', 'allocation_diagnosis', 'lookup_knowledge']
 
-interface LogRecord { type: string; seq?: number; id?: string; createdAt?: number; isSeeded?: boolean; ignorable?: true; data?: Record<string, unknown> }
+type LogRecord = { type: string; ignorable?: true; data?: Record<string, unknown> }
 
 function blockText(block: ChatBlock): string {
   return block.text ?? (Array.isArray(block.content) ? (block.content as ChatBlock[]).map(blockText).join('') : '')
@@ -42,22 +40,6 @@ function blockText(block: ChatBlock): string {
 function lastToolResult(request: RecordedRequest): string {
   const results = request.body.messages.flatMap(message => message.content.filter(block => block.type === 'tool_result'))
   return results.map(blockText).at(-1) ?? ''
-}
-
-/** Why dsh's persistence would refuse to reopen the stored log; undefined when it reopens. */
-function reopenRefusal(records: LogRecord[]): string | undefined {
-  const header = records.find(record => record.type === 'session')
-  try {
-    validateStoredEvents(
-      { id: SessionId(header?.id ?? 'reopen'), version: SESSION_FORMAT_VERSION, createdAt: header?.createdAt ?? 0, isSeeded: header?.isSeeded ?? false },
-      structuredClone(records.filter(record => typeof record.seq === 'number')) as never,
-      undefined,
-    )
-    return undefined
-  } catch (error: unknown) {
-    if (!(error instanceof SessionFormatUnsupportedError)) throw error
-    return error.message
-  }
 }
 
 /** The finance admission's classifier call: the scripted model sees it as a loop request with its own system text. */
@@ -82,31 +64,27 @@ function script(request: RecordedRequest) {
 }
 
 describe('finance agent in the run composition (in process, scripted model)', () => {
-  let root: string
+  const scratch = createLyteboatScratch('finance')
   let model: ScriptedModel
 
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-finance-'))
     model = await startScriptedModel(withTitle(script), { apiKey: 'mock-key' })
   })
 
   afterAll(async () => {
     await model.close()
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
 
   async function run(label: string, customer: string | undefined, task: string, extra: string[] = []): Promise<{ requests: RecordedRequest[]; records: LogRecord[]; stdout: string; home: string }> {
-    const home = join(root, `home-${label}`)
-    const workspace = join(root, `workspace-${label}`)
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# finance\n')
+    const { home, workspace } = scratch.run(label)
     const before = model.requests.length
     const result = await bootComposition({
-      bundles: RUN_BUNDLES,
+      bundles: LYTEBOAT_RUN_BUNDLES,
       args: ['--agents', AGENTS, '--agent', 'finance', ...customer === undefined ? [] : ['--context', JSON.stringify({ customer })], ...extra, task],
       cwd: workspace,
       home,
-      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
+      env: scriptedModelEnv(model),
     })
     expect(result.code, result.stderr).toBe(0)
     const [log] = findSessionLogs(home)
@@ -182,7 +160,7 @@ describe('finance agent in the run composition (in process, scripted model)', ()
   })
 
   it('imported history: the admission classifier sees the imported questions beside their answers', async () => {
-    const history = join(root, 'history.json')
+    const history = join(scratch.root, 'history.json')
     writeFileSync(history, JSON.stringify({ context: { history: [
       { channel: 'app', createTime: '2026-09-20 10:00:00', role: 'user', traceId: 'trace-0001', parts: [{ type: 'text', text: '帮我看看我的资产' }] },
       { channel: 'app', createTime: '2026-09-20 10:00:06', role: 'assistant', traceId: 'trace-0001', parts: [{ type: 'text', text: '您的资产合计 8 万元。' }] },
@@ -199,21 +177,18 @@ describe('finance agent in the run composition (in process, scripted model)', ()
   })
 
   it('--session-id continues in a new process: the diagnosis turn keeps the customer and sees the overview it already gave', async () => {
-    const home = join(root, 'home-continue')
-    const workspace = join(root, 'workspace-continue')
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# finance\n')
+    const { home, workspace } = scratch.run('continue')
     const boot = (args: string[]) => bootComposition({
-      bundles: RUN_BUNDLES,
+      bundles: LYTEBOAT_RUN_BUNDLES,
       args: ['--agents', AGENTS, '--agent', 'finance', ...args],
       cwd: workspace,
       home,
-      env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
+      env: scriptedModelEnv(model),
     })
     // Only the first request names the customer: the continued session keeps its context.
     const first = await boot(['--context', '{"customer":"young-idle-cash"}', '看看我的资产'])
     expect(first.code, first.stderr).toBe(0)
-    const id = /^lyteboat: session (\S+)$/mu.exec(first.stderr)?.[1] ?? ''
+    const id = printedSessionId(first.stderr)
     const before = model.requests.length
 
     const second = await boot(['--session-id', id, '我的配置合理吗'])

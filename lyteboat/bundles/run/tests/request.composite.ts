@@ -4,14 +4,14 @@
  * decides before the loop, its verdict and card recorded on the request and its
  * reply printed without a model request.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { pluginFileRow } from '@lyteboat/testing/composition'
+import { pluginFileRow, printedSessionId } from '@lyteboat/testing/composition'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { FIXTURES, runComposition, type RunTarget } from './support/run-composition.ts'
-import { startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { scriptedModelEnv, startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const ADMISSION = pluginFileRow(join(FIXTURES, 'plugins', 'admission.mjs'))
 
@@ -24,25 +24,21 @@ function humanSources(home: string): unknown[] {
 }
 
 describe('lyteboat run --context and admission (in process, scripted model)', () => {
-  let root: string
+  const scratch = createLyteboatScratch('request')
   let model: ScriptedModel
 
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-request-'))
     model = await startScriptedModel(withTitle(() => ({ text: 'REQUEST-OK' })), { apiKey: 'mock-key' })
   })
 
   afterAll(async () => {
     await model.close()
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
 
   function fresh(label: string): RunTarget {
-    const home = join(root, `home-${label}`)
-    const workspace = join(root, `workspace-${label}`)
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# request\n')
-    return { cwd: workspace, home, env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' } }
+    const { home, workspace } = scratch.run(label)
+    return { cwd: workspace, home, env: scriptedModelEnv(model) }
   }
 
   it('records the context on the human message, and a continued session without one keeps it', async () => {
@@ -52,7 +48,7 @@ describe('lyteboat run --context and admission (in process, scripted model)', ()
 
     const first = await runComposition(['--context', '{"customer":"c-1","channel":"app"}', 'hello'], target)
     expect(first.code, first.stderr).toBe(0)
-    const id = /^lyteboat: session (\S+)$/mu.exec(first.stderr)?.[1] ?? ''
+    const id = printedSessionId(first.stderr)
     const second = await runComposition(['--session-id', id, 'again'], target)
     expect(second.code, second.stderr).toBe(0)
     const third = await runComposition(['--session-id', id, '--context', file, 'and again'], target)

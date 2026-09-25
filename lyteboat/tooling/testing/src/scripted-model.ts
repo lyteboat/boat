@@ -158,6 +158,17 @@ export async function startScriptedModel(script: Script, options: { apiKey?: str
   }
 }
 
+/**
+ * The environment that points dsh's DeepSeek provider at a local model server
+ * (a scripted model, or dsh's own mock server) with telemetry off. The key is
+ * `mock-key`, the one the repository's tests start their servers with.
+ * @param server - the listening server; `/v1` is appended to its base URL.
+ * @returns `DEEPSEEK_BASE_URL`, `DEEPSEEK_API_KEY`, and `DSH_TELEMETRY_DISABLED`.
+ */
+export function scriptedModelEnv(server: { readonly baseURL: string }): Record<string, string> {
+  return { DEEPSEEK_BASE_URL: `${server.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
+}
+
 /** A script that answers the title request with a fixed title and everything else through `loop`. */
 export function withTitle(loop: Script, title = 'scripted title'): Script {
   return (request) => (request.purpose === 'title' ? { text: title } : loop(request))

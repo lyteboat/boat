@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { initProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { LYTEBOAT_RUN_BUNDLES } from '@lyteboat/testing/composition'
 import { afterEach, describe, expect, test } from 'vitest'
 import { ensureProfileInitialized } from '../src/profile-boot.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from '../src/templates.ts'
@@ -21,7 +22,8 @@ describe('lyteboat profile templates', () => {
     const dir = home()
     ensureProfileInitialized('run', dir)
     const manifest = JSON.parse(readFileSync(join(resolveProfileDir('run', dir), 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
-    expect(manifest.dsh.profile.bundles).toEqual(['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run'])
+    // The layers the composition tests boot as the run profile.
+    expect(manifest.dsh.profile.bundles).toEqual(LYTEBOAT_RUN_BUNDLES)
   })
 
   test('a web profile carries the host bundle too', () => {

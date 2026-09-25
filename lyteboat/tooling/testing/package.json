@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "license": "MIT",
-  "description": "lyteboat's test harness: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, the session-log reader, the scripted DeepSeek Messages model, and launcher spawning for e2e tests",
+  "description": "lyteboat's test harness: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and the in-process MockAdapter for unit tests, in-process composition boots for bundle and agent tests, per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted DeepSeek Messages model, and launcher spawning for e2e tests",
   "type": "module",
   "exports": {
     ".": {
@@ -15,6 +15,11 @@
       "@lyteboat/source": "./src/session-log.ts",
       "types": "./lib/session-log.d.ts",
       "default": "./lib/session-log.js"
+    },
+    "./session-reopen": {
+      "@lyteboat/source": "./src/session-reopen.ts",
+      "types": "./lib/session-reopen.d.ts",
+      "default": "./lib/session-reopen.js"
     },
     "./scripted-model": {
       "@lyteboat/source": "./src/scripted-model.ts",
@@ -30,6 +35,11 @@
       "@lyteboat/source": "./src/composition.ts",
       "types": "./lib/composition.d.ts",
       "default": "./lib/composition.js"
+    },
+    "./scratch": {
+      "@lyteboat/source": "./src/scratch.ts",
+      "types": "./lib/scratch.d.ts",
+      "default": "./lib/scratch.js"
     }
   },
   "files": ["lib"],
@@ -45,6 +55,7 @@
     "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.2",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
     "@deepseek-ai/dsh-session-projection": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*"
@@ -61,6 +72,7 @@
     "@deepseek-ai/dsh-launch-environment": "catalog:dsh",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence": "workspace:*",
     "@deepseek-ai/dsh-session-projection": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*"

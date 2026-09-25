@@ -1,7 +1,7 @@
 /**
  * Read dsh session logs (`session.v4.jsonl`, plain or Zstandard) outside the
- * running harness: smoke tests, the M1 driver-equivalence diff, and later the
- * evaluation replay all decode logs through this one module.
+ * running harness: every lyteboat test that inspects a stored log, and the
+ * compatibility gates' log comparisons, decode logs through this one module.
  *
  * `scanZstdFrames` is adapted from deepseek-ai/deepseek-harness
  * packages/session/session-persistence-jsonl/src/zstd.ts @ dsh-v0.1.5-alpha.2

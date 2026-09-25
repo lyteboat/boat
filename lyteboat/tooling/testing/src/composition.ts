@@ -38,9 +38,12 @@ const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', impor
 /** The launcher disables telemetry export when `DSH_TELEMETRY_DISABLED` is set, as tests do. */
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]
 
+/** The `run` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_RUN_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
+
 /** What to boot and how. */
 export interface CompositionOptions {
-  /** Bundle packages in layer order, e.g. `['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']`. */
+  /** Bundle packages in layer order, e.g. {@link LYTEBOAT_RUN_BUNDLES}. */
   bundles: readonly string[]
   /** Layers above the bundles: row overrides and inserted rows (see {@link pluginFileRow}). */
   patches?: readonly PatchOptions[]
@@ -76,6 +79,18 @@ export type { PatchOptions }
 export function pluginFileRow(file: string): PatchOptions {
   const absolute = resolve(file)
   return { insert: [{ id: `plugin:${absolute}`, name: pathToFileURL(absolute).href }] }
+}
+
+/**
+ * The session id a `lyteboat run` composition prints to stderr (`lyteboat: session <id>`).
+ * @param stderr - the run's captured stderr.
+ * @returns the id.
+ * @throws when the run printed no id; the message carries the stderr.
+ */
+export function printedSessionId(stderr: string): string {
+  const id = /^lyteboat: session (\S+)$/mu.exec(stderr)?.[1]
+  if (id === undefined) throw new Error(`no "lyteboat: session <id>" line in stderr:\n${stderr}`)
+  return id
 }
 
 interface Capture {

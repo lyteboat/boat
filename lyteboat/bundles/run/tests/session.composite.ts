@@ -4,13 +4,13 @@
  * skill stays in force without its body being injected again. An id that does
  * not exist, a different agent, and `--history` are refused.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { printedSessionId } from '@lyteboat/testing/composition'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { FIXTURES, runComposition, type RunTarget } from './support/run-composition.ts'
-import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const AGENTS = join(FIXTURES, 'agents')
 const ASSET_SKILL = `---
@@ -23,19 +23,11 @@ metadata:
 ASSET-OVERVIEW-BODY
 `
 
-/** The id every run prints to stderr. */
-function sessionIdOf(stderr: string): string {
-  const id = /^lyteboat: session (\S+)$/mu.exec(stderr)?.[1]
-  expect(id, stderr).toBeDefined()
-  return id ?? ''
-}
-
 describe('lyteboat run --session-id (in process, scripted model)', () => {
-  let root: string
+  const scratch = createLyteboatScratch('session')
   let model: ScriptedModel
 
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-session-'))
     model = await startScriptedModel(withTitle((request: RecordedRequest) => request.purpose === 'router'
       ? { text: JSON.stringify({ skill_id: 'asset-overview', reason: '看资产' }) }
       : { text: 'SESSION-OK' }), { apiKey: 'mock-key' })
@@ -43,30 +35,25 @@ describe('lyteboat run --session-id (in process, scripted model)', () => {
 
   afterAll(async () => {
     await model.close()
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
 
   function fresh(label: string): RunTarget {
-    const home = join(root, `home-${label}`)
-    const workspace = join(root, `workspace-${label}`)
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# session\n')
-    mkdirSync(join(workspace, '.dsh/skills/asset-overview'), { recursive: true })
-    writeFileSync(join(workspace, '.dsh/skills/asset-overview/SKILL.md'), ASSET_SKILL)
-    return { cwd: workspace, home, env: { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' } }
+    const { home, workspace } = scratch.run(label, { '.dsh/skills/asset-overview/SKILL.md': ASSET_SKILL })
+    return { cwd: workspace, home, env: scriptedModelEnv(model) }
   }
 
   it('continues a routed session in place: the next turn derives the first and keeps the skill without injecting it again', async () => {
     const target = fresh('continue')
     const first = await runComposition(['--agents', AGENTS, '--agent', 'routed', '看看我的资产'], target)
     expect(first.code, first.stderr).toBe(0)
-    const id = sessionIdOf(first.stderr)
+    const id = printedSessionId(first.stderr)
     const before = model.requests.length
 
     const second = await runComposition(['--agents', AGENTS, '--agent', 'routed', '--session-id', id, '那总额呢'], target)
     expect(second.code, second.stderr).toBe(0)
     expect(second.stdout).toContain('SESSION-OK')
-    expect(sessionIdOf(second.stderr)).toBe(id)
+    expect(printedSessionId(second.stderr)).toBe(id)
     const requests = model.requests.slice(before)
     expect(requests.filter(request => request.purpose === 'router')[0]?.lastUser).toContain('<current_active_skill>asset-overview</current_active_skill>')
     const loop = requests.filter(request => request.purpose === 'loop')
@@ -90,7 +77,7 @@ describe('lyteboat run --session-id (in process, scripted model)', () => {
 
     const first = await runComposition(['--agents', AGENTS, '--agent', 'routed', '看看我的资产'], target)
     expect(first.code, first.stderr).toBe(0)
-    const id = sessionIdOf(first.stderr)
+    const id = printedSessionId(first.stderr)
     const plain = await runComposition(['--session-id', id, 'hello'], target)
     expect(plain.code).not.toBe(0)
     expect(plain.stderr).toContain(`session "${id}" runs under agent "routed"; continue it with --agent routed`)
