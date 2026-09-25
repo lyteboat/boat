@@ -1,35 +1,19 @@
 /**
- * The request on a human message: written by the service, read back with
- * validation, and folded into the session's request state.
+ * The request on a human message: written by the service, read back against
+ * the contract's schema, and folded into the session's request state.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { MockAdapter, mountDshTestServices, textResponse } from '@lyteboat/testing'
-import RequestContextService, { lyteboatRequestOf } from '@lyteboat/request-context'
-
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
+import RequestContextService from '@lyteboat/request-context'
+import { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from '../src/request-projection.ts'
 
 async function harness(adapter: MockAdapter): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(RequestContextService)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
-}
-
-async function send(agent: Agent, message: ReturnType<typeof createUserMessage>): Promise<void> {
-  agent.followup(message)
-  await agent.whenIdle()
 }
 
 describe('the request on a human message', () => {
@@ -45,12 +29,20 @@ describe('the request on a human message', () => {
     expect(ctx.requestContext.requestOf(plain)).toBeUndefined()
   })
 
-  it('reads nothing from a malformed request or from another kind of source', () => {
+  it('rejects a malformed request and reads nothing from another kind of source', () => {
     const malformed = createUserMessage({ content: [], source: { kind: 'user', lyteboatRequest: { context: 'not an object' } } as never })
     const otherKind = createUserMessage({ content: [], source: { kind: 'runtime-context', lyteboatRequest: { context: {} } } as never })
 
-    expect(lyteboatRequestOf(malformed.source)).toBeUndefined()
+    expect(() => lyteboatRequestOf(malformed.source)).toThrow()
     expect(lyteboatRequestOf(otherKind.source)).toBeUndefined()
+  })
+
+  it('fails the fold on a human message whose request fails its schema, naming the node', () => {
+    const fold = lyteboatRequestProjectionDefinition
+    const message = createUserMessage({ content: [], source: { kind: 'user', lyteboatRequest: { intake: { by: 'gate', decision: 'maybe' } } } as never })
+    const event = { type: 'user/message', seq: 3, time: 0, surfaceOp: 'append', data: message } as never
+
+    expect(() => fold.apply(fold.init(), event)).toThrow('human message at session seq 3 carries an invalid source.lyteboatRequest')
   })
 
   it('folds the session context: the latest request that carried one wins, and one without keeps it', async () => {

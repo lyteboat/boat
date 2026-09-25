@@ -19,7 +19,6 @@ import { LYTEBOAT_HISTORY_IMPORT_SOURCE, type JsonValue } from '@lyteboat/contra
 import type { LyteboatAdmission } from '@lyteboat/intake-guard'
 import type { FinanceCustomerSource } from '../data/finance-customer.ts'
 import { summarizeHoldings } from '../capabilities/finance-holdings.ts'
-import { prepareCard } from '../tools/finance-tool-support.ts'
 
 /** The admission's name: the verdict's `by`, and the author of its replies. */
 export const FINANCE_ADMISSION = 'finance-admission'
@@ -117,7 +116,7 @@ export function financeAdmission(deps: FinanceAdmissionDeps): LyteboatAdmission 
       const customer = customerId === undefined ? undefined : deps.customers.findCustomer(customerId)
       if (customer === undefined) return { decision: 'reply', verdict: 'no_customer', text: REPLY_NO_CUSTOMER }
       if (summarizeHoldings(customer).authorized) return { decision: 'pass', verdict: 'asset' }
-      return { decision: 'reply', verdict: 'unauthorized', text: REPLY_UNAUTHORIZED, cards: [await prepareCard(deps, agent, 'unauthorized', { access: { authorize_link: customer.links.authorize } })] }
+      return { decision: 'reply', verdict: 'unauthorized', text: REPLY_UNAUTHORIZED, cards: [await deps.a2ui.renderCard(deps.templates, 'unauthorized', { access: { authorize_link: customer.links.authorize } }, { agent })] }
     },
   }
 }

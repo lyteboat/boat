@@ -1,8 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { bootComposition, type CompositionRun, type PatchOptions } from '@lyteboat/testing/composition'
-
-/** The run profile's bundle layers, in the order apps/cli's template lists them. */
-export const RUN_BUNDLES = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
+import { LYTEBOAT_RUN_BUNDLES, bootComposition, type CompositionRun, type PatchOptions } from '@lyteboat/testing/composition'
 
 /** This package's test fixtures: agent directories, plugin files, history files. */
 export const FIXTURES = fileURLToPath(new URL('../fixtures', import.meta.url))
@@ -23,5 +20,5 @@ export interface RunTarget {
  * @returns the exit code and captured output.
  */
 export function runComposition(args: readonly string[], target: RunTarget, patches: readonly PatchOptions[] = []): Promise<CompositionRun> {
-  return bootComposition({ bundles: RUN_BUNDLES, args, cwd: target.cwd, home: target.home, env: target.env, patches })
+  return bootComposition({ bundles: LYTEBOAT_RUN_BUNDLES, args, cwd: target.cwd, home: target.home, env: target.env, patches })
 }

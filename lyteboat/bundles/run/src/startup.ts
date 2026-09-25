@@ -1,12 +1,14 @@
 /**
  * The one-shot app's command-line provider: it parses the task positional and
- * the `--agent` (alias `--preset`), `--agents`, `--history`, `--session-id`,
+ * the `--agent`, `--agents`, `--history`, `--session-id`,
  * and `--context` flags, resolves the agent to its directory, then publishes
  * {@link LYTEBOAT_RUN_STARTUP_SERVICE}. The preset registry and runner rows
  * inject that service and read it from lazy config.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/startup.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
+ * the agent, agent-root, history, and context flags, resolved and checked
+ * here; no stdin task and no `--json`.
  * @module @lyteboat/run/startup
  */
 
@@ -32,7 +34,7 @@ export interface LyteboatRunStartupValues {
   /** The task text this invocation asked for. */
   task: string
   /** The agent to compose from (its agent preset id, `--agent`); absent runs the host composition alone. */
-  preset: string | undefined
+  agent: string | undefined
   /** Absolute directory of that agent: the first `--agents` root holding it; absent without `--agent`. */
   agentDir: string | undefined
   /** Absolute path of an external history file to seed the session from. */
@@ -78,7 +80,6 @@ function command(): Command {
     .helpOption('-h, --help', 'show this help')
     .argument('[task...]', 'the task text; multiple words are joined by spaces')
     .option('--agent <id>', 'run this agent from the --agents directories')
-    .option('--preset <id>', 'deprecated alias of --agent')
     .option('--agents <dir>', 'a directory of agents (repeatable)', collect)
     .option('--history <file>', 'seed the session from an external history file')
     .option('--session-id <id>', 'continue the stored session with this id (every run prints its id to stderr)')
@@ -86,9 +87,9 @@ function command(): Command {
     .addHelpText('after', `
 Examples:
   lyteboat run "run the tests"                              answer one task and exit
-  lyteboat run --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"
-                                                            run the finance agent from ./examples/agents with a request context
-  lyteboat run --agents ./examples/agents --agent finance --session-id session-… "诊断一下我的配置"
+  lyteboat run --agents ./agents --agent <id> --context '{"key":"value"}' "<task>"
+                                                            run an agent from ./agents with a request context
+  lyteboat run --agents ./agents --agent <id> --session-id session-… "<task>"
                                                             continue that session
 `)
 }
@@ -102,15 +103,14 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agent?: string; preset?: string; agents?: string[]; history?: string; sessionId?: string; context?: string }>()
+    const options = program.opts<{ agent?: string; agents?: string[]; history?: string; sessionId?: string; context?: string }>()
     const task = program.args.join(' ')
     if (task.trim() === '') program.error('error: a task is required, for example: lyteboat run "run the tests"')
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
     for (const dir of agentRoots) {
       if (!existsSync(dir) || !statSync(dir).isDirectory()) program.error(`error: --agents directory not found: ${dir}`)
     }
-    if (options.agent !== undefined && options.preset !== undefined) program.error('error: --preset is a deprecated alias of --agent; pass one of them')
-    const agent = options.agent ?? options.preset
+    const agent = options.agent
     if (agent !== undefined && agentRoots.length === 0) program.error('error: --agent needs at least one --agents directory')
     if (agentRoots.length > 0 && agent === undefined) program.error('error: --agents needs --agent to choose the agent')
     const agentDir = agent === undefined ? undefined : findAgentDirectory(agentRoots, agent)
@@ -125,7 +125,7 @@ export function apply(ctx: Context): void {
     const read = options.context === undefined ? undefined : readContext(options.context)
     if (read?.kind === 'problem') program.error(`error: ${read.problem}`)
     ctx.provide(LYTEBOAT_RUN_STARTUP_SERVICE, {
-      task, preset: agent, agentDir, history, sessionId, context: read?.kind === 'context' ? read.context : undefined,
+      task, agent, agentDir, history, sessionId, context: read?.kind === 'context' ? read.context : undefined,
     } satisfies LyteboatRunStartupValues)
   })
   parseCmdline(ctx, program)

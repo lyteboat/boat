@@ -1,12 +1,13 @@
 // Two lyteboat tools over `ctx.toolPolicy`. `lookup_assets` is always visible and
 // folds its result into the session state; `rebalance` stays hidden until the
 // user talks about rebalancing, and then still needs confirmation (denied under
-// `lyteboat run`, which composes no approval answerer). The tool-policy and reopen
-// composition tests insert it the way `lyteboat run --plugin <this file>` would.
+// `lyteboat run`, which composes no approval answerer). The tool-policy
+// composition test inserts it the way `lyteboat run --plugin <this file>` would.
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 export const name = 'example-tools'
-export const inject = ['toolPolicy']
+// lyteboatDistro: the activation listens to the kernel extension agent-loop-pre-assemble.
+export const inject = ['toolPolicy', 'lyteboatDistro']
 
 const WANTS_REBALANCE = /调仓|rebalance/iu
 
@@ -35,7 +36,6 @@ export function apply(ctx) {
     execute: async () => ({ total: 1234, currency: 'CNY' }),
   }), {
     visibility: 'always',
-    group: 'assets',
     stateDelta: (_args, value) => ({ 'assets.total': value.total, 'assets.currency': value.currency }),
   })
 
@@ -48,7 +48,7 @@ export function apply(ctx) {
       render: (args, _value) => [{ type: 'text', text: `已按“${args.target}”调仓` }],
     },
     execute: async () => ({ ok: true }),
-  }), { visibility: 'auto', group: 'assets', requiresConfirmation: true })
+  }), { visibility: 'auto', requiresConfirmation: true })
 
   ctx.on('lyteboat/pre-assemble', async (payload, next) => {
     if (WANTS_REBALANCE.test(textOf(payload.messages))) ctx.toolPolicy.activate(payload.agent, ['rebalance'])

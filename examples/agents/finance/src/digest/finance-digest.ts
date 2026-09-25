@@ -9,9 +9,9 @@
  */
 
 /** The boundary every finance digest restates, so no turn forgets it. */
-export const FINANCE_BOUNDARY = '收益预测、具体产品推荐、个股能不能买、买卖时点：说明不在服务范围内，建议咨询持牌理财顾问。'
+const FINANCE_BOUNDARY = '收益预测、具体产品推荐、个股能不能买、买卖时点：说明不在服务范围内，建议咨询持牌理财顾问。'
 
-export interface FinanceDigest {
+interface FinanceDigest {
   tool: string
   status: string
   /** Extra header fields in order (`verdict=cautious`). */
@@ -21,11 +21,6 @@ export interface FinanceDigest {
   facts: readonly string[]
   guidance: readonly string[]
   leads: readonly string[]
-}
-
-/** The line the answer carries where a card should appear: `[[card:asset_overview]]`. */
-export function cardMarker(area: string): string {
-  return `[[card:${area}]]`
 }
 
 function section(title: string, lines: readonly string[]): string[] {

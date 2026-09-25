@@ -8,7 +8,7 @@ tmp/
 .idea/
 .vscode/
 
-# stray tsc emit beside sources (a project built without its references once emitted here)
+# stray tsc emit beside sources (what a project built without its references emits)
 **/src/*.js
 **/src/*.js.map
 **/src/*.d.ts

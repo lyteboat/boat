@@ -45,6 +45,7 @@ export function seedFromRounds(rounds: readonly HistoryRound[], options: SeedOpt
   const events: SessionEvent[] = []
   const push = <T extends SessionEventType>(type: T, data: SessionEventMap[T], surface?: 'append'): void => {
     const envelope: Envelope<T> = { type, seq: SessionSeq(seq), time, data, ...surface === undefined ? {} : { surfaceOp: surface } }
+    // A session envelope built by hand: a generic Envelope<T> is not assignable to the mapped SessionEvent union.
     events.push(envelope as unknown as SessionEvent)
     seq += 1
   }

@@ -33,7 +33,6 @@
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/history-import": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
-    "@lyteboat/request-context": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-brand": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",
@@ -48,7 +47,7 @@
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent": "workspace:*",
-    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-agent-default-model": "0.1.7-rc.2",
     "@deepseek-ai/dsh-session": "workspace:*"
   },
   "devDependencies": {
@@ -62,7 +61,6 @@
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session": "workspace:*",
-    "@deepseek-ai/dsh-session-persistence": "workspace:*",
     "@deepseek-ai/dsh-tools": "workspace:*",
     "@types/js-yaml": "catalog:"
   }

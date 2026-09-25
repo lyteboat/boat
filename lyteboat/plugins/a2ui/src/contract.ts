@@ -9,7 +9,7 @@
 import type { A2uiLog } from './transforms.ts'
 import { SILENT_LOG } from './transforms.ts'
 
-export const SUPPORTED_EVENTS = new Set(['beginRendering', 'surfaceUpdate', 'dataModelUpdate', 'deleteSurface'])
+const SUPPORTED_EVENTS = new Set(['beginRendering', 'surfaceUpdate', 'dataModelUpdate', 'deleteSurface'])
 
 const ALLOWED_BY_EVENT: Record<string, Set<string>> = {
   beginRendering: new Set(['event', 'version', 'surfaceId', 'rootComponentId', 'components', 'catalogId', 'style', 'data', 'showType', 'hideVoteRecorder', 'hideServiceMessage', 'exposureData', 'businessPayload']),
@@ -29,23 +29,17 @@ export interface A2uiComponentCatalog {
 }
 
 /**
- * The catalog of the reference client (validator.py), the default when a
- * composition names none. A deployment with another client passes its own
- * through `RenderToolOptions.components`.
+ * The default when a composition names no catalog: the domain-neutral
+ * components of the reference client's catalog (validator.py) — layout,
+ * text, buttons, images and plain shapes — with their binding fields. A
+ * deployment whose client renders more (charts, business widgets) passes its
+ * own catalog through `RenderToolOptions.components`.
  */
 export const DEFAULT_A2UI_COMPONENT_CATALOG: A2uiComponentCatalog = {
-  types: [
-    'Row', 'Column', 'Card', 'List', 'Table', 'Popup', 'Text', 'RichText', 'Image', 'Icon', 'Tag', 'Circle', 'Divider', 'Line', 'Button',
-    'LineChart', 'CandlestickChart', 'Pie', 'IdealRange', 'CollapseList', 'AssetProportionProgress', 'AssetListCard', 'FundFavIcon',
-    'EtfFavIcon', 'StockChangeColorText', 'StockKlineCard', 'ProductSelectionList', 'RadarChart', 'ProductCompareChart',
-  ],
+  types: ['Row', 'Column', 'Card', 'List', 'CollapseList', 'Table', 'Popup', 'Text', 'RichText', 'Image', 'Icon', 'Tag', 'Circle', 'Divider', 'Line', 'Button'],
   bindingFields: {
     Text: ['text'], RichText: ['text'], Image: ['url'], Icon: ['name'], Tag: ['text'], Button: ['text'], List: ['dataSource'],
-    CollapseList: ['dataSource', 'expandText', 'foldText'], Pie: ['text'], IdealRange: ['actualValue', 'idealRange'],
-    LineChart: ['title', 'dataSource', 'emptyText'], CandlestickChart: ['title', 'dataSource', 'emptyText'], FundFavIcon: ['fundCode'],
-    EtfFavIcon: ['productCode'], StockChangeColorText: ['text'], StockKlineCard: ['stockCode', 'stockName', 'market', 'isCommon'],
-    ProductSelectionList: ['productList', 'filterConfig', 'headerConfig', 'sortOrder', 'type'], RadarChart: ['series', 'scoreMax', 'legend'],
-    ProductCompareChart: ['productCodeList'],
+    CollapseList: ['dataSource', 'expandText', 'foldText'],
   },
 }
 const COMMON_BINDING_FIELDS = ['hide']
@@ -94,7 +88,7 @@ export function validateEventPayload(payload: unknown): void {
   }
 }
 
-export interface ValidationResult {
+interface ValidationResult {
   ok: boolean
   /** Messages in detection order; `entries` pairs each with its code. */
   errors: string[]
@@ -124,7 +118,7 @@ function componentReferences(props: Record<string, unknown>): string[] {
  * reported to the log, as in the reference implementation, not counted as an error.
  * @param payload - the rendered payload.
  * @param log - where unsupported types are reported.
- * @param catalog - the client's component catalog; the reference client by default.
+ * @param catalog - the client's component catalog; {@link DEFAULT_A2UI_COMPONENT_CATALOG} by default.
  */
 export function validatePayload(payload: unknown, log: A2uiLog = SILENT_LOG, catalog: A2uiComponentCatalog = DEFAULT_A2UI_COMPONENT_CATALOG): ValidationResult {
   const entries: { code: string; message: string }[] = []
@@ -226,7 +220,7 @@ export function rowTemplateIds(payload: Record<string, unknown>): Set<string> {
 }
 
 /** Warnings for `path` bindings that name keys absent from `payload.data`. */
-export function validateDataCoverage(payload: Record<string, unknown>): string[] {
+function validateDataCoverage(payload: Record<string, unknown>): string[] {
   const data = payload['data']
   if (!isRecord(data)) return []
   const keys = new Set(Object.keys(data))

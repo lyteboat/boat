@@ -34,7 +34,6 @@ export interface ContractExtension {
   kind: string
   surface: string
   contract: string[]
-  since: string
   exit: string
   tests: string[]
 }
@@ -44,7 +43,7 @@ export function readExtensions(): ContractExtension[] {
   const extensions = parsed.extensions ?? []
   const ids = new Set<string>()
   for (const extension of extensions) {
-    for (const field of ['id', 'package', 'kind', 'surface', 'since', 'exit'] as const) {
+    for (const field of ['id', 'package', 'kind', 'surface', 'exit'] as const) {
       if (typeof extension[field] !== 'string' || extension[field] === '') throw new Error(`dsh-compat/contract/extensions.yml: an entry lacks "${field}"`)
     }
     if (!Array.isArray(extension.contract) || !Array.isArray(extension.tests)) throw new Error(`dsh-compat/contract/extensions.yml: ${extension.id} needs "contract" and "tests" lists`)

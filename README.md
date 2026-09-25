@@ -1,6 +1,6 @@
 # 轻舟 lyteboat
 
-[![CI](https://github.com/lyteboat/boat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lyteboat/boat/actions/workflows/ci.yml)
+[![CI](https://github.com/lyteboat/lyteboat/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/lyteboat/lyteboat/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **中文** | [English](README.en.md)
@@ -32,10 +32,10 @@
 
 - **业务能力开箱即用。** 都以 Cordis 插件的形式挂在 dsh 的接缝上，框架包不含任何业务词汇：
   - 技能路由：`full` 把全部技能正文放进提示；`dynamic` 每轮用一次旁路模型调用选出技能，并在同一步生效；路由结果是 dsh 自己的技能调用消息，会话能重开、能续聊（`@lyteboat/skill-router`）。
-  - 工具可见性、调用前确认、工具结果里的状态增量（`@lyteboat/tool-policy`）。
-  - A2UI 模板卡片：一个工具结果可以带多张卡，按发射模式立即出，或由回答里的 `[[card:区域]]` 标记放到位（`@lyteboat/a2ui`）。
+  - 工具可见性、调用前确认、工具结果里的状态增量；agent 可以把它没有声明的继承工具一并隐藏（`@lyteboat/tool-policy`）。
+  - A2UI 模板卡片：一个工具结果可以带多张卡，按发射模式立即出，或由回答里的 `[[card:区域]]` 标记放到位；卡片可以由 `render_a2ui` 工具出，也可以由 agent 自己的工具出（`@lyteboat/a2ui`）。
   - 请求上下文：一条请求带着自己的上下文和准入判定进日志，会话内沿用（`@lyteboat/request-context`）。
-  - 准入前移：agent 登记准入函数，请求进循环前就放行或直接回复，回复可以带卡（`@lyteboat/intake-guard`）；底层的拒识钩子 `lyteboat/intake` 仍可直接用。
+  - 准入前移：agent 登记准入函数，请求进循环前就放行或直接回复，回复可以带卡（`@lyteboat/intake-guard`）；底层的拒识钩子 `lyteboat/intake` 也可以直接用。
   - 旁路模型调用留痕：路由、分类这类旁路调用在会话里留下完整的 prompt 和回答（`@lyteboat/aux-llm`）。
   - 外部对话历史导入（`@lyteboat/history-import`）。
 - **一个业务 agent 就是一个目录。** 在 `examples/agents/<id>/` 下写组合文件、技能、工具和卡片模板即可。
@@ -52,7 +52,7 @@
 ### 安装与构建
 
 ```sh
-git clone https://github.com/lyteboat/boat.git
+git clone https://github.com/lyteboat/lyteboat.git
 cd lyteboat
 corepack enable
 pnpm install
@@ -108,7 +108,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | 选项 | 作用 |
 |---|---|
 | `--agents <目录>` | 存放 agent 的目录（可重复） |
-| `--agent <id>` | 运行其中的某个 agent（`--preset` 是已废弃的别名） |
+| `--agent <id>` | 运行其中的某个 agent |
 | `--history <文件>` | 先导入一份外部对话历史，任务成为它的下一轮 |
 | `--session-id <id>` | 在已存的会话上续聊；每次运行都把会话 id 打到 stderr |
 | `--context <json>` | 请求上下文：一个 JSON 对象，内联或放在文件里；随请求落日志，工具读取，模型看不到 |
@@ -136,27 +136,28 @@ lyteboat web --no-open                                         # 浏览器界面
 
 | 文档 | 内容 |
 |---|---|
-| [架构](docs/01-architecture.md) | C4 分层、启动时序、生命周期与依赖注入、一次请求的流程、会话日志的顺序 |
-| [发行版约定](docs/02-distribution.md) | 内核与上游线、同步步骤、改动分类、晋升、各道闸门怎么跑、分支与通道、版本与钉法 |
-| [开发业务 agent](docs/03-agent-development.md) | 从零写一个业务 agent（例子 `policy-desk`）：目录、组合、技能、工具、策略、测试、运行 |
-| [参考实现对齐分析](docs/04-reference-alignment.md) | 参考实现的哪些能力要引入，core 怎样在保留 dsh 能力的前提下重新设计 |
+| [架构](docs/01-architecture.md) | 轻舟的架构：C4 分层、启动时序、生命周期与依赖注入、一次请求的流程、会话日志 |
+| [发行版](docs/02-distribution.md) | 发行版机制：内核与上游线、同步步骤、改动分类、晋升、各道闸门怎么跑、分支与通道、版本与钉法 |
+| [开发业务 agent](docs/03-agent-development.md) | 业务 agent 开发指南：从零写一个 agent 的目录、组合、技能、工具、策略、卡片、准入、测试与运行 |
+| [参考实现对齐分析](docs/04-reference-alignment.md) | 与参考实现的对齐分析和后续计划：参考实现的哪些能力要引入，怎样在保留 dsh 能力的前提下落到轻舟上 |
 | [兼容性承诺](dsh-compat/COMPAT.md)、[闸门总表](dsh-compat/README.md) | 轻舟对 dsh 插件的承诺，以及证明它的 G1–G6 |
 | [CLAUDE.md](CLAUDE.md) | 在本仓库工作的约定：分层、提交、测试、同步规则 |
-| [CHANGELOG](CHANGELOG.md) | 各里程碑交付了什么 |
+| [CHANGELOG](CHANGELOG.md) | 轻舟提供的全部能力；轻舟没有发过版 |
 
 ## 项目结构
 
 ```
 dsh/                  内核：dsh/kernel.json 列出的 13 个 dsh 包，沿用 @deepseek-ai/* 包名
-lyteboat/                 轻舟自己的包，每层一个目录
+lyteboat/             轻舟自己的 14 个包，每层一个目录
   apps/               进程：lyteboat 启动器
   bundles/            组合：每个 profile 都带的 host，lyteboat run 用的 run
   plugins/            能力插件
-  core/               声明与垫片
+  core/               声明
+  agents/             业务 agent
   tooling/            测试支撑
 examples/agents/      业务 agent 示例，建在发行版之上
 dsh-compat/           兼容性承诺与证明：契约快照、扩展登记、G2/G4/G5/G6 测试
-scripts/              分层检查、版本钉检查；dist/ 是发行版工具
+scripts/              分层检查、版本钉检查、敏感词检查；dist/ 是发行版工具
 docs/                 文档
 dsh.upstream.json     所跟踪的 dsh 版本
 ```
@@ -169,17 +170,16 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/bundles/host` | `@lyteboat/host` | 每个 profile 都带的宿主 bundle：发行版标记与各能力插件的服务行 |
 | `lyteboat/bundles/run` | `@lyteboat/run` | `lyteboat run` 背后的一次性 bundle：任务、`--agent`、`--agents`、`--history`、`--session-id`、`--context`；请求进循环前先准入，输出按轮组合卡片 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
-| `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略 |
+| `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、确认、状态增量；`./agent` 在 agent 的组合文件里声明策略，`undeclared: always \| auto` 决定它没有点名的继承工具是否可见 |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | 旁路模型调用（技能路由、准入分类）：各自带超时，每次调用在会话里留一条可忽略的审计记录；在 `maxTokens` 处截断的回答算失败；`reasoningEffort` 配置旁路调用请求的推理强度 |
 | `lyteboat/plugins/request-context` | `@lyteboat/request-context` | 请求上下文：一条人类消息所回应的请求（请求 id、上下文、准入判定）记在它自己的 source 上；`lyteboatRequest` 投影保存会话的上下文 |
-| `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | 准入前移：agent 登记准入函数，调用方在请求进入循环前取得判定并记到请求上；循环里按记录的回复判定直接作答，没有经过准入的消息在循环内补做 |
-| `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由；`./agent` 在 agent 的组合文件里声明模式 |
-| `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具 |
+| `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | 准入前移：agent 登记准入函数，调用方用 `submit` 提交每个请求，先准入，再把请求连同判定记进会话；循环里按记录的回复判定直接作答，没有经过准入的消息在循环内补做 |
+| `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由（`historyWindow`、`timeoutMs`、`maxTokens` 可配）；`./agent` 在 agent 的组合文件里声明模式 |
+| `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具，agent 自己的工具用 `renderCard`、`cardsPresentationMeta`、`cardMarker` 出卡；默认组件目录不含业务词汇 |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat run --history` 用的会话种子 |
-| `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、`LyteboatDistro` |
-| `lyteboat/core/cordis-compat` | `@lyteboat/cordis-compat` | cordis 发布物里被擦除的 const enum 的运行时取值 |
+| `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
-| `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：dsh 服务挂载与 `MockAdapter`、会话日志读取、脚本化模型、启动器进程 |
+| `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：单元宿主（dsh 不变量、dsh 服务、内核的 agent loop）与 `MockAdapter`、进程内组合启动、每个测试文件的临时 home 与工作区、会话日志读取与重开检查、脚本化模型、启动器进程 |
 
 ## 开发
 
@@ -187,7 +187,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 |---|---|
 | `pnpm run build` | 编译全部包，并按上游方式打包内核 |
 | `pnpm run test` | 构建、G1 契约检查、单元/组合/e2e 测试、上游内核测试（G2）；CI 跑的就是它 |
-| `pnpm run lint` | oxlint、knip、分层检查、发行版清单检查 |
+| `pnpm run lint` | oxlint、knip（依赖声明与无用导出）、分层检查、发行版清单检查、敏感词检查 |
 | `pnpm run typecheck` | 源码与测试的类型检查 |
 | `pnpm run dsh-compat` | G4–G6：在仓库外装官方版与轻舟两棵安装树做对比（需要联网） |
 | `pnpm run check` | lint + test + dsh-compat |
@@ -207,12 +207,12 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 ## 状态与路线图
 
-- 跟踪 dsh **0.1.7-rc.1**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的三个扩展（`lyteboat/intake`、`lyteboat/pre-assemble`、`session-append-ignorable`），上面所有闸门都对它通过。
-- 已交付：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。里程碑明细见 [CHANGELOG](CHANGELOG.md)。
+- 跟踪 dsh **0.1.7-rc.2**（`dsh.upstream.json`）。内核是它的导入，加上轻舟登记的三个扩展（`agent-loop-intake`、`agent-loop-pre-assemble`、`session-append-ignorable`），上面所有闸门都对它通过。
+- 提供：启动器与 profile；业务能力插件 tool-policy、skill-router、a2ui、aux-llm、request-context、intake-guard、history-import；金融智能体；续聊（`--session-id`）与请求上下文（`--context`）；发行版工具与 13 包内核；兼容性闸门 G1–G6。完整清单见 [CHANGELOG](CHANGELOG.md)。
 - 已知限制：
-  - 还没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
-  - 还没有记忆、推荐问，也不能按 agent 分别配置业务模型和旁路模型。
-- 下一步见[对齐分析的路线图](docs/04-reference-alignment.md#6-路线图从-d3-开始)。
+  - 没有对外服务模式（`/chat`、多用户）；`lyteboat web` 不读 agent 目录，经它进来的消息在循环内补做准入，不记录判定。
+  - 没有记忆和推荐问。旁路调用默认用 agent 自己的模型；技能路由可以在 `@lyteboat/skill-router/agent` 行里另指 provider 和 model，准入分类还不能单独指定。
+- 后续计划见[参考实现对齐分析](docs/04-reference-alignment.md)。
 
 ## 参与贡献
 

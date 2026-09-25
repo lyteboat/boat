@@ -10,7 +10,7 @@
  * profile with `--port 0`, and `lyteboat run -h` prints the one-shot app's help.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/args.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md.
  * @module @lyteboat/cli/args
  */
 
@@ -19,7 +19,7 @@ import { pluginFilesProblem } from './plugins.ts'
 import { DEFAULT_RUN_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
-export interface ProfileInvocation {
+interface ProfileInvocation {
   mode: 'profile'
   profile: string
   /** Extra patch-list overlays applied after the profile's own layer, in argv order. */
@@ -31,7 +31,7 @@ export interface ProfileInvocation {
 }
 
 /** Print a composed profile tree and exit without booting. */
-export interface DumpConfigInvocation {
+interface DumpConfigInvocation {
   mode: 'dump-config'
   profile: string
   /** Omit the profile's user layer and --patch overlays; print bundle layers only. */
@@ -41,7 +41,7 @@ export interface DumpConfigInvocation {
 }
 
 /** The resolved `lyteboat` invocation. Help, version, and errors exit inside {@link parseLyteboatArgs}. */
-export type LyteboatInvocation = ProfileInvocation | DumpConfigInvocation
+type LyteboatInvocation = ProfileInvocation | DumpConfigInvocation
 
 /** Versions printed by `lyteboat --version`. */
 export interface LyteboatVersions {

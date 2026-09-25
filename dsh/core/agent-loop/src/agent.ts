@@ -20,20 +20,20 @@ import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@
 import {
   LlmError,
   createAssistantMessage,
-  createSystemMessage,
+  createDeveloperMessage,
   errorChain,
   markAgentLoopRequest,
 } from '@deepseek-ai/dsh-llm'
 import { assertNever, deepFreeze } from '@deepseek-ai/dsh-util-values'
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { createScope } from '@deepseek-ai/dsh-scope'
-import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
+import type { EpochHeader, RequestContext, Session, SessionId, SessionSeq, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
 import { canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
 import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { Context } from '@deepseek-ai/cordis'
-import { LYTEBOAT_ASSISTANT_PROVIDER } from './lyteboat/step-hooks.ts'
+import { appendLyteboatIntakeReply } from './lyteboat/intake-reply.ts'
 import type { LyteboatIntakeDecision, LyteboatIntakeReply } from './lyteboat/step-hooks.ts'
 import { ReactLoopInbox } from './inbox.ts'
 import { RuntimeContextProjection } from './runtime-context.ts'
@@ -344,7 +344,7 @@ export class ReactLoopAgent implements Agent {
           this.session.append('step/start', { turn, step })
           phase.step = step
           try {
-            this.replyStep(turn, step, decision)
+            appendLyteboatIntakeReply(this.session, { turn, step }, decision.messages, decision.reply)
           } finally {
             this.session.append('step/end', { turn, step })
           }
@@ -420,44 +420,6 @@ export class ReactLoopAgent implements Agent {
     return true
   }
 
-  /** Whether the surface already holds a system node (surface node 0 is reserved for the prompt). */
-  private hasSystemNode(): boolean {
-    for (const seq of this.session.surface.nodes) {
-      if (this.session.eventAt(seq)?.type === 'system/message') return true
-    }
-    return false
-  }
-
-  /**
-   * lyteboat: commit an intake reply inside the open step. An empty system head is
-   * appended first when none exists, so the next real step's prompt replaces
-   * node 0 instead of trailing the history; the claimed messages are admitted
-   * as they would be on a model step; the reply is an assistant message whose
-   * provider is lyteboat and whose model names the deciding plugin.
-   */
-  private replyStep(turn: number, step: number, decision: Extract<PreparedStep, { kind: 'reply' }>): void {
-    if (!this.hasSystemNode()) {
-      this.session.append(
-        'system/message',
-        { turn, step, message: createSystemMessage('') },
-        { surfaceOp: 'append' },
-      )
-    }
-    for (const message of decision.messages) {
-      this.session.append('user/message', message, { surfaceOp: 'append' })
-    }
-    const { reply } = decision
-    this.session.append('assistant/message', {
-      turn,
-      step,
-      message: createAssistantMessage({
-        content: reply.content,
-        source: { provider: LYTEBOAT_ASSISTANT_PROVIDER, model: reply.plugin },
-      }),
-      stream: [],
-    }, { surfaceOp: 'append' })
-  }
-
   private async step(decision: Extract<PreparedStep, { kind: 'enter' }>): Promise<StepEndReason | null> {
     /* v8 ignore next -- private callers establish the running phase before executing a step */
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": step outside running phase`)
@@ -478,7 +440,7 @@ export class ReactLoopAgent implements Agent {
         startsSeries: startsRequestSeries
           || this.session.requestHeader() === undefined
           || this.requestSurfaceGeneration !== this.session.surface.contentGeneration
-          || this.toolsChanged(assembly.tools),
+          || (preparedCall?.toolUpdate === undefined && this.toolsChanged(assembly.tools)),
       })
       for (const { message, intent } of commits) {
         this.session.append('system/message', { turn, step, message }, intent)
@@ -489,7 +451,7 @@ export class ReactLoopAgent implements Agent {
         }
       }
       firstAttempt = false
-      const request = this.buildRequest(config, preparedCall, assembly.tools, startsRequestSeries, signal)
+      const request = this.buildRequest(config, preparedCall, assembly.tools, { turn, step }, startsRequestSeries, signal)
       const live = new AssistantStreamAttempt(
         this.session.id,
         ++this.assistantAttemptCounter,
@@ -667,6 +629,7 @@ export class ReactLoopAgent implements Agent {
     config: LlmCallConfig,
     preparedCall: PreparedLlmCall | undefined,
     tools: GenerateOptions['tools'] & object,
+    position: { turn: number; step: number },
     startsRequestSeries: boolean,
     signal: AbortSignal,
   ): GenerateOptions {
@@ -680,17 +643,38 @@ export class ReactLoopAgent implements Agent {
     const baseline = this.session.requestHeader()
     const startsSeries = startsRequestSeries
       || this.requestSurfaceGeneration !== surfaceGeneration
+    let headerSeq: SessionSeq | undefined
     if (!this.requestHeaderLogged) {
-      this.session.append('request/header', { header, reason: baseline === undefined ? 'initial' : 'resume' })
+      // Compaction during the first resumed pre-step must still mark a new series.
+      headerSeq = this.session.append('request/header', {
+        header,
+        reason: baseline === undefined ? 'initial' : 'resume',
+        ...startsSeries ? { startsSeries: true } : {},
+      }).seq
       this.requestHeaderLogged = true
     } else if (baseline === undefined || !headerEquals(baseline, header)) {
-      this.session.append('request/header', {
+      headerSeq = this.session.append('request/header', {
         header,
         reason: 'change',
         ...startsSeries ? { startsSeries: true } : {},
-      })
+      }).seq
     } else if (startsSeries) {
       this.session.append('request/header', { header, reason: 'series' })
+    }
+    if (baseline !== undefined && headerSeq !== undefined) {
+      const previousNames = new Set(baseline.tools?.map(tool => tool.name))
+      const currentNames = new Set(tools.map(tool => tool.name))
+      const additions = tools.filter(tool => !previousNames.has(tool.name))
+        .map(tool => ({ type: 'tool-addition' as const, toolName: tool.name }))
+      const removals = (baseline.tools ?? []).filter(tool => !currentNames.has(tool.name))
+        .map(tool => ({ type: 'tool-removal' as const, toolName: tool.name }))
+      if (additions.length > 0 || removals.length > 0) {
+        session.append('developer/message', {
+          ...position,
+          message: createDeveloperMessage({ source: { kind: 'tool-registry' }, content: [...additions, ...removals] }),
+          ...additions.length > 0 ? { headerSeq } : {},
+        }, { surfaceOp: 'append' })
+      }
     }
     this.requestSurfaceGeneration = surfaceGeneration
 
@@ -723,6 +707,7 @@ export class ReactLoopAgent implements Agent {
     const request = markAgentLoopRequest(Object.freeze({
       ...header.config,
       messages: boundaryMessages,
+      toolHistory: session.toolHistory(),
       ...header.tools !== undefined ? { tools: header.tools } : {},
       sessionId: this.session.id,
       signal,

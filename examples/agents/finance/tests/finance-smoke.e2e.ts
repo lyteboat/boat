@@ -5,15 +5,13 @@
  * the built artifact: the request context names the customer, the admission lets
  * the request in, and the routed tool's card is placed after the answer.
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { lyteboatLauncher } from '@lyteboat/testing/process'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
-import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 /** The examples/agents root this package lives in, as `--agents ./examples/agents` names it. */
 const AGENTS = fileURLToPath(new URL('../..', import.meta.url))
@@ -28,26 +26,23 @@ function script(request: RecordedRequest) {
 }
 
 describe('lyteboat run --agents ./examples/agents --agent finance (built bin, scripted model)', () => {
-  let root: string
+  const scratch = createLyteboatScratch('finance-smoke')
   let model: ScriptedModel
 
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-finance-smoke-'))
     model = await startScriptedModel(withTitle(script), { apiKey: 'mock-key' })
   })
 
   afterAll(async () => {
     await model.close()
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
 
   it('routes, calls the overview tool, renders its card, and answers', async () => {
-    const home = join(root, 'home')
-    const workspace = mkdtempSync(join(root, 'workspace-'))
-    writeFileSync(join(workspace, 'README.md'), '# finance smoke\n')
+    const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(['run', '--agents', AGENTS, '--agent', 'finance', '--context', '{"customer":"young-idle-cash"}', '看看我的资产'], {
       cwd: workspace,
-      env: { LYTEBOAT_HOME: home, DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' },
+      env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(model) },
     })
     expect(result.code, result.stderr).toBe(0)
     // The answer wrote no marker, so the deferred card follows it.

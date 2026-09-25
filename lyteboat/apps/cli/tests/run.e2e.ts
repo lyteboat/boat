@@ -1,12 +1,15 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
+import { scriptedModelEnv } from '@lyteboat/testing/scripted-model'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
-const SUCCESS_TEXT = 'LYTEBOAT-M0-SMOKE-OK'
+const SUCCESS_TEXT = 'LYTEBOAT-RUN-SMOKE-OK'
+const ANNOUNCE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/announce.mjs', import.meta.url))
 
 /**
  * The session-title provider issues its own model request whose events land at
@@ -16,9 +19,8 @@ const SUCCESS_TEXT = 'LYTEBOAT-M0-SMOKE-OK'
 const TITLE_LLM_OVERLAY = '- id: session-title-llm\n  disabled: true\n'
 
 describe('lyteboat run (built bin, mock model)', () => {
+  const scratch = createLyteboatScratch('run-smoke')
   let mock: MockLlmServer
-  let home: string
-  let workspace: string
 
   beforeAll(async () => {
     mock = await startMockLlmServer({
@@ -30,33 +32,25 @@ describe('lyteboat run (built bin, mock model)', () => {
       toolArguments: JSON.stringify({ file_path: 'README.md' }),
       successText: SUCCESS_TEXT,
     })
-    home = mkdtempSync(join(tmpdir(), 'lyteboat-home-'))
-    workspace = mkdtempSync(join(tmpdir(), 'lyteboat-workspace-'))
-    writeFileSync(join(workspace, 'README.md'), '# smoke workspace\n')
-    writeFileSync(join(home, 'disable-title-llm.patch.yml'), TITLE_LLM_OVERLAY)
+    writeFileSync(join(scratch.root, 'disable-title-llm.patch.yml'), TITLE_LLM_OVERLAY)
   })
 
   afterAll(async () => {
     await mock.close()
-    rmSync(home, { recursive: true, force: true })
-    rmSync(workspace, { recursive: true, force: true })
+    scratch.remove()
   })
 
-  it('answers one task through the real tool path and persists the turn', async () => {
+  it('answers one task through the real tool path and persists the turn when a --plugin file joins the tree', async () => {
+    const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(
-      ['run', '--patch', join(home, 'disable-title-llm.patch.yml'), 'read the readme and report'],
-      {
-        cwd: workspace,
-        env: {
-          LYTEBOAT_HOME: home,
-          DEEPSEEK_BASE_URL: `${mock.baseURL}/v1`,
-          DEEPSEEK_API_KEY: 'mock-key',
-          DSH_TELEMETRY_DISABLED: '1',
-        },
-      },
+      ['run', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
+      { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(mock) } },
     )
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(SUCCESS_TEXT)
+    // The plugin file's row was applied once, and no row failed to import or apply.
+    expect(result.stderr.split('\n').filter(line => line === 'fixture-announce: applied')).toHaveLength(1)
+    expect(result.stderr).not.toContain('did not activate')
 
     // The world, not the self-report: the persisted log carries the tool round trip.
     const logs = findSessionLogs(home)
@@ -75,7 +69,7 @@ describe('lyteboat run (built bin, mock model)', () => {
     expect(toolCall?.data).toMatchObject({ name: 'read', arguments: JSON.stringify({ file_path: 'README.md' }) })
     const toolResult = records.find(record => record['type'] === 'tool/result') as { data: { message: { role: string; isError: boolean } } } | undefined
     expect(toolResult?.data.message).toMatchObject({ role: 'tool', isError: false })
-    expect(JSON.stringify(toolResult)).toContain('smoke workspace')
+    expect(JSON.stringify(toolResult)).toContain('# run-smoke workspace')
     const turnEnd = records.at(-1) as { data: { reason: { kind: string } } }
     expect(turnEnd.data.reason.kind).toBe('completed')
 

@@ -26,7 +26,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Timeout reason code of one side call. */
-export const AUX_LLM_TIMEOUT_CODE = 'LYTEBOAT_AUX_LLM_TIMEOUT'
+const AUX_LLM_TIMEOUT_CODE = 'LYTEBOAT_AUX_LLM_TIMEOUT'
 
 /** Plugin config (the host row). */
 export interface Config {
@@ -67,7 +67,7 @@ export interface AuxLlmCall {
 }
 
 /** What a side call came back with. A failure is an outcome, not an exception: the caller decides the fallback. */
-export type AuxLlmOutcome =
+type AuxLlmOutcome =
   | { kind: 'answer'; text: string; route: AuxLlmRoute; durationMs: number }
   | { kind: 'failed'; reason: string; message: string; durationMs: number }
 
@@ -94,6 +94,8 @@ function recordOf(call: AuxLlmCall, route: AuxLlmRoute, controls: { temperature:
 export class AuxLlmService extends Service {
   // lyteboatDistro: the record rides the kernel extension session-append-ignorable.
   static inject = ['llm', 'lyteboatDistro']
+  // The loader applies a class plugin's static Config, not the module's.
+  static Config = Config
 
   constructor(ctx: Context, private readonly config: Config = {}) {
     super(ctx, 'auxLlm')

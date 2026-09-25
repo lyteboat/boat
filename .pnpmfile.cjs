@@ -1,7 +1,7 @@
 // Pin every DeepSeek Harness package (direct and transitive) to the versions in
 // dsh.upstream.json. Published dsh packages depend on each other with caret
 // ranges, so without this hook a fresh install drifts to a newer prerelease
-// than the tag lyteboat was developed against. The kernel packages (dsh/kernel.json)
+// than the tracked tag. The kernel packages (dsh/kernel.json)
 // are left alone: pnpm-workspace.yaml overrides route them to the workspace, and
 // this hook runs after the overrides, so pinning them would undo the route.
 const upstream = require('./dsh.upstream.json')

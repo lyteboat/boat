@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { FIBER_STATE } from '@lyteboat/cordis-compat'
+import { FIBER_STATE } from '../src/fiber-state.ts'
 
 /** Parse `export declare const enum FiberState { A = 0, ... }` from the installed declaration file. */
 function declaredFiberState(): Record<string, number> {

@@ -1,49 +1,31 @@
 /**
- * The skill router at the driver's seams: dynamic routing per user input,
+ * The skill router at the agent loop's seams: dynamic routing per user input,
  * same-step body and tool visibility, sticky decisions, model-initiated
- * activation, a session continued by a fresh agent, full mode, and off.
+ * activation, a session continued by a fresh agent, full mode, off, the
+ * router's budget, and skill metadata that fails loud.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import { createUserMessage, type GenerateOptions, type UserMessage } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, SessionSeq, buildForkSeed, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry, { renderSkillContent } from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import type { LyteboatActiveSkillState } from '@lyteboat/contracts'
 import SkillRouterService, { lyteboatActiveSkillProjectionDefinition, type Config } from '@lyteboat/skill-router'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter, config: Config): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-  await mountDshTestServices(ctx)
+  const ctx = await createLyteboatUnitHost(adapter)
   await ctx.plugin(SkillRegistry)
-  await ctx.plugin(AgentLoop, { agents: [] })
-  await ctx.plugin(ToolPolicyService)
   await ctx.plugin(LyteboatDistroService)
+  await ctx.plugin(ToolPolicyService)
   await ctx.plugin(AuxLlmService)
   await ctx.plugin(SkillRouterService, config)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
-  ctx.skills.register({ name: 'asset-overview', description: '资产总览与配置诊断', content: 'BODY-ASSET', source: 'custom', metadata: { lyteboat: { requiredTools: ['lookup_assets', 'not_a_tool'] } } })
+  ctx.skills.register({ name: 'asset-overview', description: '资产总览与配置诊断', content: 'BODY-ASSET', source: 'custom', metadata: { lyteboat: { requiredTools: ['lookup_assets'] } } })
   ctx.skills.register({ name: 'market-news', description: '市场行情与新闻', content: 'BODY-NEWS', source: 'custom', metadata: { lyteboat: { requiredTools: ['fetch_news'] } } })
   ctx.toolPolicy.register(echo('lookup_assets'), { visibility: 'auto' })
   ctx.toolPolicy.register(echo('fetch_news'), { visibility: 'auto' })
@@ -53,11 +35,6 @@ async function harness(adapter: MockAdapter, config: Config): Promise<Context> {
 
 function echo(name: string): ToolDefinition {
   return defineContentToolFixture({ name, description: name, parameters: {}, execute: async () => [{ type: 'text', text: `${name} ran` }] })
-}
-
-async function send(agent: Agent, text: string): Promise<void> {
-  agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
-  await agent.whenIdle()
 }
 
 const isRouter = (request: GenerateOptions): boolean => (request.system ?? '').includes('skill 路由器')
@@ -75,6 +52,11 @@ const invocations = (agent: Agent): [string, string][] =>
 const routerCalls = (agent: Agent): SessionEvent<'lyteboat/aux-llm-call'>[] =>
   agent.session.snapshotEvents().filter((event): event is SessionEvent<'lyteboat/aux-llm-call'> => event.type === 'lyteboat/aux-llm-call')
 const countOf = (text: string, part: string): number => text.split(part).length - 1
+const stepError = (agent: Agent): string => {
+  const turnEnd = agent.session.snapshotEvents().findLast(event => event.type === 'turn/end') as SessionEvent<'turn/end'> | undefined
+  const reason = turnEnd?.data.reason
+  return reason?.kind === 'error' ? reason.error.message : ''
+}
 
 describe('dynamic mode', () => {
   it('routes each user input, brings the body in as a skill-invocation message with the required tools in the same step, and stays sticky', async () => {
@@ -261,11 +243,48 @@ describe('off mode and preset settings', () => {
 
     const routedAgent = await ctx.agentLoop.create(SessionId('scoped'), { provider: 'mock', model: 'mock' })
     routedAgent.ctx.get('skillRouter')!.declare({ mode: 'dynamic', historyWindow: 0 })
-    expect(ctx.skillRouter.settingsFor(routedAgent)).toEqual({ mode: 'dynamic', historyWindow: 0, timeoutMs: 10_000 })
+    expect(ctx.skillRouter.settingsFor(routedAgent)).toEqual({ mode: 'dynamic', historyWindow: 0, timeoutMs: 10_000, maxTokens: 200 })
     expect(ctx.skillRouter.settingsFor(quiet).mode).toBe('off')
     await send(routedAgent, '行情')
     expect(routerRequests(adapter)).toHaveLength(1)
     expect(messagesText(routerRequests(adapter)[0]!)).toContain('(empty)')
     expect(ctx.skillRouter.activeOf(routedAgent)).toBe('market-news')
+  })
+})
+
+describe('the router budget', () => {
+  it('sends the configured maxTokens with every router call, and rejects a budget below 1', async () => {
+    const adapter = new MockAdapter([textResponse('{"skill_id": null, "reason": "闲聊"}'), textResponse('one')])
+    const ctx = await harness(adapter, { mode: 'dynamic', maxTokens: 64 })
+    const agent = await ctx.agentLoop.create(SessionId('budget'), { provider: 'mock', model: 'mock' })
+
+    await send(agent, '你好')
+    expect(routerRequests(adapter).map(request => request.maxTokens)).toEqual([64])
+    expect(routerCalls(agent).map(call => call.data.maxTokens)).toEqual([64])
+    await expect(ctx.plugin(SkillRouterService, { maxTokens: 0 })).rejects.toThrow(/maxTokens expected number >= 1/u)
+  })
+})
+
+describe('skill metadata that fails loud', () => {
+  it('fails the step when the routed skill requires a tool the tool policy does not declare, instead of skipping it', async () => {
+    const adapter = new MockAdapter([textResponse('{"skill_id": "broken-tools", "reason": "r"}'), textResponse('never')])
+    const ctx = await harness(adapter, { mode: 'dynamic' })
+    ctx.skills.register({ name: 'broken-tools', description: '需要一个没有声明的工具', content: 'BODY-BROKEN', source: 'custom', metadata: { lyteboat: { requiredTools: ['lookup_assets', 'not_a_tool'] } } })
+    const agent = await ctx.agentLoop.create(SessionId('unknown-tool'), { provider: 'mock', model: 'mock' })
+
+    await send(agent, '看看')
+    expect(loopRequests(adapter)).toHaveLength(0)
+    expect(stepError(agent)).toContain('skill "broken-tools" requires tool "not_a_tool", which the tool policy does not declare')
+  })
+
+  it('fails the step when a skill\'s metadata.lyteboat fails its schema, instead of dropping it', async () => {
+    const adapter = new MockAdapter([textResponse('never')])
+    const ctx = await harness(adapter, { mode: 'full' })
+    ctx.skills.register({ name: 'misspelt', description: '拼错了字段', content: 'BODY-MISSPELT', source: 'custom', metadata: { lyteboat: { requiredTool: ['fetch_news'] } } })
+    const agent = await ctx.agentLoop.create(SessionId('malformed'), { provider: 'mock', model: 'mock' })
+
+    await send(agent, '看看')
+    expect(adapter.requests).toHaveLength(0)
+    expect(stepError(agent)).toContain('skill "misspelt" has an invalid metadata.lyteboat')
   })
 })

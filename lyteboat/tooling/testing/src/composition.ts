@@ -5,6 +5,10 @@
  * agent's composition test runs its real rows (loaded from `lib/`, so build
  * first) without spawning the launcher and without depending on an app.
  *
+ * A bundle the test asks for that the profile skips (unresolvable, or refused
+ * by its dsh peers) fails the boot with the profile's reason; other skipped
+ * bundles are reported as the launcher reports them.
+ *
  * One composition runs at a time per process: it sets `DSH_HOME`, the given
  * environment, and the working directory, captures stdout and stderr, and
  * restores all of them when the run settles. vitest's default `forks` pool
@@ -18,7 +22,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
-import { boot, initProfile, loadLayeredEnv, loadProfile, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
+import { boot, initProfile, loadLayeredEnv, loadProfile, reportSkippedBundles, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { DSH_LAUNCH_ENVIRONMENT_KEY } from '@deepseek-ai/dsh-launch-environment'
 
@@ -38,9 +42,12 @@ const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', impor
 /** The launcher disables telemetry export when `DSH_TELEMETRY_DISABLED` is set, as tests do. */
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]
 
+/** The `run` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_RUN_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']
+
 /** What to boot and how. */
 export interface CompositionOptions {
-  /** Bundle packages in layer order, e.g. `['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/run']`. */
+  /** Bundle packages in layer order, e.g. {@link LYTEBOAT_RUN_BUNDLES}. */
   bundles: readonly string[]
   /** Layers above the bundles: row overrides and inserted rows (see {@link pluginFileRow}). */
   patches?: readonly PatchOptions[]
@@ -76,6 +83,18 @@ export type { PatchOptions }
 export function pluginFileRow(file: string): PatchOptions {
   const absolute = resolve(file)
   return { insert: [{ id: `plugin:${absolute}`, name: pathToFileURL(absolute).href }] }
+}
+
+/**
+ * The session id a `lyteboat run` composition prints to stderr (`lyteboat: session <id>`).
+ * @param stderr - the run's captured stderr.
+ * @returns the id.
+ * @throws when the run printed no id; the message carries the stderr.
+ */
+export function printedSessionId(stderr: string): string {
+  const id = /^lyteboat: session (\S+)$/mu.exec(stderr)?.[1]
+  if (id === undefined) throw new Error(`no "lyteboat: session <id>" line in stderr:\n${stderr}`)
+  return id
 }
 
 interface Capture {
@@ -137,6 +156,12 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
   const dir = resolveProfileDir(PROFILE, home)
   initProfile(dir, options.bundles)
   const profile = loadProfile(BIN_NAME, PROFILE, WORKSPACE_ANCHOR, home)
+  // A skipped bundle the test asked for would let the test pass without the composition under test.
+  const requested = profile.skippedBundles.filter(skipped => options.bundles.includes(skipped.packageName))
+  reportSkippedBundles(BIN_NAME, { skippedBundles: profile.skippedBundles.filter(skipped => !requested.includes(skipped)) })
+  if (requested.length > 0) {
+    throw new Error(`bootComposition: the profile skipped requested bundles: ${requested.map(({ packageName, reason }) => `${packageName} (${reason})`).join('; ')}`)
+  }
   const root = join(dir, 'cordis.yml')
   writeFileSync(root, '[]\n')
   const patches = [...profile.layers.flatMap(layer => layer.patches), ...QUIET, ...options.patches ?? []]
@@ -147,6 +172,7 @@ function composedPatches(home: string, options: CompositionOptions): { root: str
  * Boot one composition, wait for the tree to request exit, and dispose it.
  * @param options - bundles, extra layers, arguments, working directory, and environment.
  * @returns the exit code, the harness home, and the captured output.
+ * @throws when the profile skipped a bundle in `options.bundles`.
  */
 export async function bootComposition(options: CompositionOptions): Promise<CompositionRun> {
   const home = options.home ?? mkdtempSync(join(tmpdir(), 'lyteboat-composition-'))

@@ -1,46 +1,33 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
+import { reopenRefusal } from '@lyteboat/testing/session-reopen'
 import { FIXTURES, runComposition } from './support/run-composition.ts'
-import { startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { scriptedModelEnv, startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const HISTORY = join(FIXTURES, 'history', 'rounds.json')
 const ANSWER = 'HISTORY-OK'
 
-interface LogRecord { type: string; data?: Record<string, unknown>; isSeeded?: boolean }
+type LogRecord = { type: string; data?: Record<string, unknown>; isSeeded?: boolean }
 
 describe('lyteboat run --history (in process, scripted model)', () => {
-  let root: string
+  const scratch = createLyteboatScratch('history')
   let model: ScriptedModel
 
   beforeAll(async () => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-history-'))
     model = await startScriptedModel(withTitle(() => ({ text: ANSWER })), { apiKey: 'mock-key' })
   })
 
   afterAll(async () => {
     await model.close()
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
 
-  function fresh(label: string): { home: string; workspace: string } {
-    const home = join(root, `home-${label}`)
-    const workspace = join(root, `workspace-${label}`)
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# history\n')
-    return { home, workspace }
-  }
-
-  function env(): Record<string, string> {
-    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
-  }
-
   it('seeds the session from the file: two complete rounds, the task as turn 3, the rounds in the first request', async () => {
-    const { home, workspace } = fresh('seed')
+    const { home, workspace } = scratch.run('seed')
     const before = model.requests.length
-    const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: env() })
+    const result = await runComposition(['--history', HISTORY, '继续刚才的话题'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain(ANSWER)
     expect(result.stderr).toContain('imported 2 history round(s) from rounds.json')
@@ -63,11 +50,16 @@ describe('lyteboat run --history (in process, scripted model)', () => {
     expect(types.indexOf('session/end-seed')).toBeGreaterThan(types.indexOf('turn/end'))
     expect(types.indexOf('session/end-seed')).toBeLessThan(types.lastIndexOf('turn/start'))
     expect(records.filter(record => record.type === 'turn/end').at(-1)?.data).toEqual({ turn: 3, reason: { kind: 'completed' } })
+    // The first request replaces the seed's empty system head, so its header opens a new series.
+    const headers = records.filter(record => record.type === 'request/header').map(record => [record.data?.['reason'], record.data?.['startsSeries']])
+    expect(headers).toEqual([['initial', true]])
+    // The seed is closed turns of dsh nodes, so dsh's persistence reopens the log.
+    expect(reopenRefusal(records)).toBeUndefined()
   })
 
   it('rejects a missing history file as a usage error', async () => {
-    const { home, workspace } = fresh('missing')
-    const result = await runComposition(['--history', join(workspace, 'nope.json'), 'hi'], { cwd: workspace, home, env: env() })
+    const { home, workspace } = scratch.run('missing')
+    const result = await runComposition(['--history', join(workspace, 'nope.json'), 'hi'], { cwd: workspace, home, env: scriptedModelEnv(model) })
     expect(result.code).not.toBe(0)
     expect(result.stderr).toContain('--history file not found')
   })

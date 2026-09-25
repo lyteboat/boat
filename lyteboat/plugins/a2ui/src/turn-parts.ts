@@ -19,6 +19,19 @@ export type LyteboatTurnPart = { kind: 'text'; text: string } | { kind: 'card'; 
 const CARD_MARKER = /\[\[card:([A-Za-z0-9_\-\u4e00-\u9fff]{1,64})\]\]/gu
 
 /**
+ * The marker an answer writes where the cards of `area` should appear, for a
+ * digest that tells the model where to put them.
+ * @param area - the cards' area (a card's template name).
+ * @returns `[[card:<area>]]`.
+ * @throws when {@link CARD_MARKER} cannot read the area back, so its cards could never be placed.
+ */
+export function cardMarker(area: string): string {
+  const marker = `[[card:${area}]]`
+  if (marker.match(CARD_MARKER)?.[0] !== marker) throw new Error(`a2ui: card area ${JSON.stringify(area)} cannot be written as a marker: 1 to 64 ASCII letters, digits, _, - or CJK characters`)
+  return marker
+}
+
+/**
  * Whitespace and closing punctuation a card leaves stranded when the answer put
  * its marker before the end of a sentence; the card is a block, so they would
  * start the next line. No markdown line starters and no straight quotes, which

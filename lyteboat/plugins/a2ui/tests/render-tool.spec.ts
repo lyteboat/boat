@@ -1,24 +1,24 @@
 /**
- * The render tool at the driver's seams: raw data from lyteboatState, the card on
+ * The render tool at the agent loop's seams: raw data from lyteboatState, the card on
  * tool/result.meta, the lyteboatCards projection (tool results, surfaceUpdate
  * replacement), the digest as model text, terminal cards.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import { createUserMessage, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
+import LyteboatDistroService from '@lyteboat/distro'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
-import A2uiService, { lyteboatCardsProjectionDefinition, collectRawData, parseObjectArgs } from '@lyteboat/a2ui'
+import A2uiService from '@lyteboat/a2ui'
+import * as A2uiAgent from '@lyteboat/a2ui/agent'
+import { lyteboatCardsProjectionDefinition } from '../src/cards-projection.ts'
+import { collectRawData, parseObjectArgs } from '../src/render-tool-input.ts'
+import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 import type { LyteboatCard, LyteboatResultCard, JsonValue } from '@lyteboat/contracts'
 
 const TEMPLATES = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
@@ -27,37 +27,21 @@ const FULL = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/baseline/
   raw: Record<string, unknown>; payload: Record<string, unknown>; digest: string
 }
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
+  await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(ToolPolicyService)
   await ctx.plugin(A2uiService)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   // The data tool: its result becomes session state through the tool policy's delta.
   ctx.toolPolicy.register(defineTool({
     name: 'query_assets', description: 'query', parameters: {},
     output: { schema: { type: 'json' }, render: () => [{ type: 'text', text: 'assets loaded' }] },
     execute: async () => FULL.raw as JsonValue,
   }), { stateDelta: (_args, value) => value as JsonValue })
-  await ctx.a2ui.registerRenderTool({ templates: TEMPLATES, stateKeys: ['assets_view', 'assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' } })
+  await ctx.a2ui.registerRenderTool({
+    templates: TEMPLATES, stateKeys: ['assets_view', 'assets_raw'], terminalCards: ['unauthorized'], cardDescriptions: { asset_overview: '资产总览卡' }, components: REFERENCE_A2UI_COMPONENT_CATALOG,
+  })
   return ctx
-}
-
-async function send(agent: Agent, text: string): Promise<void> {
-  agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
-  await agent.whenIdle()
 }
 
 const results = (agent: Agent): SessionEvent<'tool/result'>[] =>
@@ -201,6 +185,29 @@ describe('render_a2ui over cards with arguments and hierarchies', () => {
   })
 })
 
+describe('the agent row', () => {
+  it('registers the render tool its config names', async () => {
+    const adapter = new MockAdapter([toolCallResponse('c1', 'render_card', { template: 'unauthorized' }), textResponse('done')])
+    const ctx = await createLyteboatUnitHost(adapter)
+    await ctx.plugin(LyteboatDistroService)
+    await ctx.plugin(ToolPolicyService)
+    await ctx.plugin(A2uiService)
+    await ctx.plugin(A2uiAgent, { templates: TEMPLATES, name: 'render_card' })
+    const agent = await ctx.agentLoop.create(SessionId('row'), { provider: 'mock', model: 'mock' })
+    await send(agent, '授权')
+    expect(ctx.a2ui.cardsOf(agent).map(card => card.area)).toEqual(['unauthorized'])
+  })
+
+  it('rejects a key its config does not declare, at the top level and under components', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+    await ctx.plugin(LyteboatDistroService)
+    await ctx.plugin(ToolPolicyService)
+    await ctx.plugin(A2uiService)
+    await expect(ctx.plugin(A2uiAgent, { templates: TEMPLATES, stateKey: ['assets_view'] } as never)).rejects.toThrow(/unknown key "stateKey"; allowed: templates, stateKeys, /u)
+    await expect(ctx.plugin(A2uiAgent, { templates: TEMPLATES, components: { types: ['Text'], bindings: {} } } as never)).rejects.toThrow(/unknown key "components\.bindings"/u)
+  })
+})
+
 describe('helpers', () => {
   it('collectRawData namespaces and flattens each state key, parsing JSON strings', () => {
     expect(collectRawData({ a: { x: 1 }, b: '{"y":2}', c: 'nope', d: 3 }, ['a', 'b', 'c', 'd', 'missing'])).toEqual({ a: { x: 1 }, x: 1, b: { y: 2 }, y: 2 })
@@ -228,5 +235,14 @@ describe('helpers', () => {
     const once = fold.apply([], result('append'))
     expect(fold.apply(once, result({ op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(once)
     expect(once.map(card => card.surfaceId)).toEqual(['s1'])
+  })
+
+  it('lyteboatCards projection fails on a tool result whose meta.lyteboat fails its schema, naming the node', () => {
+    const fold = lyteboatCardsProjectionDefinition
+    const result = {
+      type: 'tool/result', seq: 2, time: 0, surfaceOp: 'append',
+      data: { turn: 1, step: 1, message: { toolCallId: 'c1' }, meta: { lyteboat: { cards: [{ surfaceId: 's1', area: 'summary', emission: 'later', payload: {} }] } } },
+    } as never
+    expect(() => fold.apply([], result)).toThrow('tool/result at session seq 2 carries an invalid lyteboat envelope')
   })
 })

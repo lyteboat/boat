@@ -39,12 +39,10 @@ import type {} from '@deepseek-ai/dsh-system-prompt'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { AuxLlmRoute } from '@lyteboat/aux-llm'
 import type {} from '@lyteboat/tool-policy'
+import { LYTEBOAT_SKILLS_SECTION_ORDER, lyteboatActiveSkillStateSchema, lyteboatSkillMetaSchema } from '@lyteboat/contracts'
 import type { LyteboatActiveSkillState, LyteboatSkillMeta, LyteboatStepPayload } from '@lyteboat/contracts'
 import { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
 import type { RouteCandidate, RouteDecision } from './router.ts'
-
-export { SKILL_ROUTER_SYSTEM_PROMPT, buildRoutePrompt, renderHistory, resolveRouteDecision } from './router.ts'
-export type { RouteCandidate, RouteDecision, RoutePromptInput } from './router.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -52,12 +50,8 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Where the full-mode skill bodies sit among the system prompt sections (before PLAN_POLICY at 500). */
-export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
 /** The router call's `purpose` in its `lyteboat/aux-llm-call` record. */
-export const SKILL_ROUTER_PURPOSE = 'skill-router'
-/** Output budget of one router call: strict JSON with a ≤30-character reason. */
-const ROUTE_MAX_TOKENS = 200
+const SKILL_ROUTER_PURPOSE = 'skill-router'
 /** The dsh tool through which the model loads a skill itself. */
 const SKILL_TOOL = 'skill'
 
@@ -69,6 +63,8 @@ export interface SkillRouterSettings {
   /** Conversation lines shown to the router; 0 shows none. */
   historyWindow: number
   timeoutMs: number
+  /** Output budget of one router call: strict JSON with a ≤30-character reason fits the default, 200. */
+  maxTokens: number
   /** Router route; absent uses the agent's own model. Declared together (`declare` rejects one without the other). */
   provider?: string
   model?: string
@@ -81,11 +77,12 @@ export const Config: z<Config> = z.object({
   mode: z.union(['off', 'full', 'dynamic'] as const).default('off'),
   historyWindow: z.natural().default(6),
   timeoutMs: z.natural().default(10_000),
+  maxTokens: z.natural().min(1).default(200),
   provider: z.string(),
   model: z.string(),
 })
 
-const DEFAULT_SETTINGS: SkillRouterSettings = { mode: 'off', historyWindow: 6, timeoutMs: 10_000 }
+const DEFAULT_SETTINGS: SkillRouterSettings = { mode: 'off', historyWindow: 6, timeoutMs: 10_000, maxTokens: 200 }
 
 /** Drop undefined fields so a partial declaration never erases an inherited one; a route is declared whole or not at all. */
 function compact(settings: Partial<SkillRouterSettings>): Partial<SkillRouterSettings> {
@@ -103,18 +100,18 @@ class SettingsLayer implements ScopeLayer {
   }
 }
 
-/** The `lyteboat` object of a skill's frontmatter metadata, when it is one. */
-export function lyteboatSkillMeta(metadata: Readonly<Record<string, unknown>> | undefined): LyteboatSkillMeta | undefined {
-  const lyteboat = metadata?.['lyteboat']
-  if (typeof lyteboat !== 'object' || lyteboat === null || Array.isArray(lyteboat)) return undefined
-  const record = lyteboat as Record<string, unknown>
-  const requiredTools = record['requiredTools']
-  return {
-    ...typeof record['group'] === 'string' ? { group: record['group'] } : {},
-    ...Array.isArray(requiredTools) ? { requiredTools: requiredTools.filter((tool): tool is string => typeof tool === 'string') } : {},
-    ...typeof record['version'] === 'string' ? { version: record['version'] } : {},
-    ...Array.isArray(record['tags']) ? { tags: (record['tags'] as unknown[]).filter((tag): tag is string => typeof tag === 'string') } : {},
-  }
+/**
+ * The `lyteboat` object of a skill's frontmatter metadata.
+ * @param skill - the skill whose metadata to read.
+ * @returns the metadata, or undefined when the frontmatter has no `lyteboat` object.
+ * @throws when `metadata.lyteboat` fails its schema: a misspelt key must not silently drop the skill's tools.
+ */
+function lyteboatSkillMeta(skill: Pick<SkillDefinition, 'name' | 'metadata'>): LyteboatSkillMeta | undefined {
+  const lyteboat = skill.metadata?.['lyteboat']
+  if (lyteboat === undefined) return undefined
+  const parsed = lyteboatSkillMetaSchema.safeParse(lyteboat)
+  if (!parsed.success) throw new Error(`lyteboat skill router: skill "${skill.name}" has an invalid metadata.lyteboat: ${zod.prettifyError(parsed.error)}`)
+  return parsed.data
 }
 
 /** The skill a `skill` tool call loads, from the call's JSON arguments. */
@@ -131,16 +128,11 @@ function loadedSkillOf(argumentsJson: string): string | undefined {
   return typeof name === 'string' ? name : undefined
 }
 
-const activeSkillStateSchema: zod.ZodType<LyteboatActiveSkillState> = zod.object({
-  active: zod.string().nullable(),
-  loading: zod.record(zod.string(), zod.string()),
-})
-
 const activeSkillViewSchema = zod.string().nullable()
 
 export const lyteboatActiveSkillProjectionDefinition = {
   key: 'lyteboatActiveSkill',
-  stateSchema: activeSkillStateSchema,
+  stateSchema: lyteboatActiveSkillStateSchema,
   init: (): LyteboatActiveSkillState => ({ active: null, loading: {} }),
   apply(state: LyteboatActiveSkillState, event) {
     switch (event.type) {
@@ -166,7 +158,7 @@ export const lyteboatActiveSkillProjectionDefinition = {
     }
   },
   wire: { viewSchema: activeSkillViewSchema, view: (state: LyteboatActiveSkillState) => state.active },
-  stateVersion: 2,
+  stateVersion: 1,
 } satisfies ProjectionDefinition<'lyteboatActiveSkill', LyteboatActiveSkillState>
 
 /**
@@ -208,7 +200,10 @@ function userText(messages: LyteboatStepPayload['messages']): string {
 
 /** Host service: skill load modes, LLM routing, and the active skill's presence in the conversation. */
 export class SkillRouterService extends Service {
-  static inject = ['skills', 'auxLlm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy']
+  // lyteboatDistro: routing and activation run in the kernel extension agent-loop-pre-assemble.
+  static inject = ['skills', 'auxLlm', 'sessionProjections', 'systemPrompt', 'tools', 'toolPolicy', 'lyteboatDistro']
+  // The loader applies a class plugin's static Config, not the module's.
+  static Config = Config
 
   private readonly layers = new ScopedLayers(() => new SettingsLayer(), () => {})
   private readonly agents = new WeakMap<Agent, AgentSkillState>()
@@ -323,8 +318,9 @@ export class SkillRouterService extends Service {
     const text = definitions.length === 0
       ? ''
       : ['The following skills apply to this session. Follow their instructions.', ...definitions.map(renderSkillContent)].join('\n\n')
+    // Before the digest is recorded, so a skill that fails to activate fails every step, not only the first.
+    this.activateTools(agent, definitions)
     state.full = { digest, text }
-    this.activateTools(agent, definitions.flatMap(definition => lyteboatSkillMeta(definition.metadata)?.requiredTools ?? []))
   }
 
   /** Dynamic mode: one router call per user input; sticky on everything but a valid new id. */
@@ -350,7 +346,7 @@ export class SkillRouterService extends Service {
     const route: AuxLlmRoute | undefined = settings.provider !== undefined && settings.model !== undefined
       ? { provider: settings.provider, model: settings.model }
       : undefined
-    const decision = await this.decide(agent, route, prompt, candidates.map(candidate => candidate.name), current, settings.timeoutMs, signal)
+    const decision = await this.decide(agent, route, prompt, candidates.map(candidate => candidate.name), current, settings, signal)
     return decision.skill
   }
 
@@ -361,7 +357,7 @@ export class SkillRouterService extends Service {
     prompt: string,
     candidates: readonly string[],
     current: string | null,
-    timeoutMs: number,
+    settings: SkillRouterSettings,
     signal: AbortSignal,
   ): Promise<RouteDecision> {
     const outcome = await this.ctx.auxLlm.generate({
@@ -370,9 +366,9 @@ export class SkillRouterService extends Service {
       ...route === undefined ? {} : { route },
       system: SKILL_ROUTER_SYSTEM_PROMPT,
       prompt,
-      maxTokens: ROUTE_MAX_TOKENS,
+      maxTokens: settings.maxTokens,
       temperature: 0,
-      timeoutMs,
+      timeoutMs: settings.timeoutMs,
       signal,
     })
     if (outcome.kind === 'answer') return resolveRouteDecision(outcome.text, candidates, current)
@@ -396,7 +392,7 @@ export class SkillRouterService extends Service {
     }
     const state = this.stateOf(agent)
     if (state.toolsFor !== name) {
-      this.activateTools(agent, lyteboatSkillMeta(definition.metadata)?.requiredTools ?? [])
+      this.activateTools(agent, [definition])
       state.toolsFor = name
     }
     const rendered = renderSkillContent(definition)
@@ -406,16 +402,23 @@ export class SkillRouterService extends Service {
     }
   }
 
-  /** The reference rule: visible = always + the active skills' required tools, so earlier activations are replaced. */
-  private activateTools(agent: Agent, required: readonly string[]): void {
+  /**
+   * The reference rule: visible = always + the active skills' required tools, so earlier activations are replaced.
+   * @throws when a skill's metadata is malformed or requires a tool the tool policy does not declare for the agent;
+   * the activation is left as it was.
+   */
+  private activateTools(agent: Agent, skills: readonly SkillDefinition[]): void {
     const policy = this.ctx.toolPolicy
+    const required = skills.flatMap(skill => {
+      const tools = lyteboatSkillMeta(skill)?.requiredTools ?? []
+      const unknown = tools.filter(name => policy.metaOf(name, agent) === undefined)
+      if (unknown.length > 0) {
+        throw new Error(`lyteboat skill router: skill "${skill.name}" requires tool${unknown.length > 1 ? 's' : ''} ${unknown.map(name => JSON.stringify(name)).join(', ')}, which the tool policy does not declare for agent "${agent.id}"`)
+      }
+      return tools
+    })
     policy.clear(agent)
-    const known = required.filter(name => policy.metaOf(name, agent) !== undefined)
-    const unknown = required.filter(name => !known.includes(name))
-    if (unknown.length > 0) {
-      this.ctx.logger.warn(`lyteboat skill router: required tool${unknown.length > 1 ? 's' : ''} ${unknown.map(name => JSON.stringify(name)).join(', ')} not declared to the tool policy; skipped`)
-    }
-    if (known.length > 0) policy.activate(agent, known)
+    if (required.length > 0) policy.activate(agent, required)
   }
 }
 

@@ -9,7 +9,7 @@
  */
 
 /** One lyteboat profile template: the ordered bundle layers. */
-export interface LyteboatProfileTemplate {
+interface LyteboatProfileTemplate {
   bundles: readonly string[]
 }
 

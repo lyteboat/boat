@@ -1,45 +1,22 @@
 /**
- * The tool policy at the driver's seams: visibility through restriction,
+ * The tool policy at the agent loop's seams: visibility through restriction,
  * confirmation through `ask`, and state deltas folded from `tool/result.meta`.
  */
-import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { describe, expect, it } from 'vitest'
+import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineContentToolFixture, defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
-import { MockAdapter, mountDshTestServices, textResponse, toolCallResponse } from '@lyteboat/testing'
+import LyteboatDistroService from '@lyteboat/distro'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 import * as ToolPolicyAgent from '@lyteboat/tool-policy/agent'
 
-const cleanups: (() => Promise<void>)[] = []
-afterEach(async () => {
-  for (const cleanup of cleanups.reverse()) await cleanup()
-  cleanups.length = 0
-})
-
 async function harness(adapter: MockAdapter): Promise<Context> {
-  const ctx = new Context()
-  cleanups.push(() => ctx.fiber.dispose())
-  await ctx.plugin(InvariantRegistry)
-  await ctx.plugin(SessionInvariant)
-  await ctx.plugin(AgentInvariant)
-  await ctx.plugin(AgentLoopInvariant)
-  await mountDshTestServices(ctx)
-  await ctx.plugin(AgentLoop, { agents: [] })
+  const ctx = await createLyteboatUnitHost(adapter)
+  await ctx.plugin(LyteboatDistroService)
   await ctx.plugin(ToolPolicyService)
-  ctx.effect(() => ctx.llm.registerAdapter(['mock'], adapter))
   return ctx
-}
-
-async function send(agent: Agent, text: string): Promise<void> {
-  agent.followup(createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user' } }))
-  await agent.whenIdle()
 }
 
 function echo(name: string): ToolDefinition {
@@ -116,6 +93,33 @@ describe('visibility', () => {
     expect(errorMessage(turnEnd)).toContain('registered in agent "own-layer"\'s own layer')
   })
 
+  it('hides every inherited tool the policy does not declare under undeclared: auto, keeps a declared always tool visible, and activates declared tools only', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two'), textResponse('three')])
+    const ctx = await harness(adapter)
+    ctx.tools.register(echo('official_tool'))
+    ctx.tools.register(echo('kept_tool'))
+    ctx.toolPolicy.register(echo('auto_tool'), { visibility: 'auto' })
+    const agent = await ctx.agentLoop.create(SessionId('undeclared-auto'), { provider: 'mock', model: 'mock' })
+    const plain = await ctx.agentLoop.create(SessionId('undeclared-default'), { provider: 'mock', model: 'mock' })
+    await agent.ctx.plugin(ToolPolicyAgent, { undeclared: 'auto', tools: { kept_tool: { visibility: 'always' } } })
+
+    await send(agent, 'hello')
+    expect(toolNames(adapter, 0)).toEqual(['kept_tool'])
+    expect(() => ctx.toolPolicy.activate(agent, ['official_tool'])).toThrow(/undeclared tool "official_tool"/u)
+    ctx.toolPolicy.activate(agent, ['auto_tool'])
+    await send(agent, 'again')
+    expect(toolNames(adapter, 1).sort()).toEqual(['auto_tool', 'kept_tool'])
+
+    await send(plain, 'hello')
+    expect(toolNames(adapter, 2).sort()).toEqual(['kept_tool', 'official_tool'])
+  })
+
+  it('refuses a second declaration of the undeclared visibility in one scope', async () => {
+    const ctx = await harness(new MockAdapter([]))
+    ctx.toolPolicy.declareUndeclared('auto')
+    expect(() => ctx.toolPolicy.declareUndeclared('always')).toThrow(/already declared in this scope/u)
+  })
+
   it('activate() rejects undeclared names and takes effect at once; clear() hides again', async () => {
     const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
     const ctx = await harness(adapter)
@@ -131,6 +135,51 @@ describe('visibility', () => {
     await send(agent, 'again')
     expect(toolNames(adapter, 1)).toEqual([])
     expect(ctx.toolPolicy.activated(agent)).toEqual([])
+  })
+})
+
+describe('tool updates (dsh 0.1.7-rc.2)', () => {
+  async function activateOnSecondTurn(adapter: MockAdapter, id: string): Promise<Agent> {
+    const ctx = await harness(adapter)
+    ctx.toolPolicy.register(echo('always_tool'), { visibility: 'always' })
+    ctx.toolPolicy.register(echo('auto_tool'), { visibility: 'auto' })
+    let activate: string[] = []
+    ctx.on('lyteboat/pre-assemble', async (payload, next) => {
+      if (activate.length > 0) ctx.toolPolicy.activate(payload.agent, activate)
+      return next()
+    })
+    const agent = await ctx.agentLoop.create(SessionId(id), { provider: 'mock', model: 'mock' })
+    await send(agent, 'hello')
+    activate = ['auto_tool']
+    await send(agent, 'now')
+    return agent
+  }
+
+  it('logs an activation after the first request as a tool-registry developer message that names the changed header', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    const agent = await activateOnSecondTurn(adapter, 'tool-registry-log')
+    const events = agent.session.snapshotEvents()
+    const headers = events.filter(event => event.type === 'request/header') as SessionEvent<'request/header'>[]
+    expect(headers.map(event => event.data.reason)).toEqual(['initial', 'change'])
+    const updates = events.filter(event => event.type === 'developer/message') as SessionEvent<'developer/message'>[]
+    expect(updates.map(event => ({ content: event.data.message.content, source: event.data.message.source, headerSeq: event.data.headerSeq, surfaceOp: event.surfaceOp })))
+      .toEqual([{ content: [{ type: 'tool-addition', toolName: 'auto_tool' }], source: { kind: 'tool-registry' }, headerSeq: headers[1]!.seq, surfaceOp: 'append' }])
+  })
+
+  it('sends a route without tool updates the complete list and no developer message', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    await activateOnSecondTurn(adapter, 'tool-registry-plain')
+    expect(adapter.requests[1]?.tools?.map(tool => [tool.name, tool.deferLoading])).toEqual([['always_tool', undefined], ['auto_tool', undefined]])
+    expect(adapter.requests[1]?.messages.filter(message => message.role === 'developer')).toEqual([])
+  })
+
+  it('sends an addition-only route the activated tool deferred, activated by the logged developer message', async () => {
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    adapter.toolUpdate = 'addition-only'
+    await activateOnSecondTurn(adapter, 'tool-registry-deferred')
+    expect(adapter.requests[1]?.tools?.map(tool => [tool.name, tool.deferLoading])).toEqual([['always_tool', undefined], ['auto_tool', true]])
+    expect(adapter.requests[1]?.messages.filter(message => message.role === 'developer').map(message => message.content))
+      .toEqual([[{ type: 'tool-addition', toolName: 'auto_tool' }]])
   })
 })
 
@@ -179,6 +228,42 @@ describe('state', () => {
     expect(JSON.stringify(adapter.requests[0]!.messages)).not.toContain('Session state')
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('Session state, accumulated from tool results')
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('portfolio')
+  })
+
+  it('records the tool\'s own meta unchanged when the delta hook derives nothing', async () => {
+    const adapter = new MockAdapter([toolCallResponse('c1', 'with_meta', {}), toolCallResponse('c2', 'without_meta', {}), textResponse('done')])
+    const ctx = await harness(adapter)
+    const tool = (name: string, meta: boolean): ToolDefinition => defineTool({
+      name, description: name, parameters: {},
+      output: {
+        schema: { type: 'object', additionalProperties: false, properties: { total: { type: 'number', required: true } } },
+        render: (_args, value) => [{ type: 'text', text: `sum ${value.total}` }],
+        ...meta ? { presentationMeta: () => ({ card: 'own' }) } : {},
+      },
+      execute: async () => ({ total: 5 }),
+    })
+    ctx.toolPolicy.register(tool('with_meta', true), { stateDelta: () => undefined })
+    ctx.toolPolicy.register(tool('without_meta', false), { stateDelta: () => undefined })
+    const agent = await ctx.agentLoop.create(SessionId('no-delta'), { provider: 'mock', model: 'mock' })
+
+    await send(agent, 'go')
+    const metas = agent.session.snapshotEvents()
+      .filter((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')
+      .map(event => event.data.meta)
+    expect(metas).toEqual([{ card: 'own' }, {}])
+    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatState')).toEqual({})
+  })
+})
+
+describe('distribution', () => {
+  it('loads only where lyteboatDistro marks the kernel extension it listens to', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+    void ctx.plugin(ToolPolicyService)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(ctx.get('toolPolicy')).toBeUndefined()
+    await ctx.plugin(LyteboatDistroService)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(ctx.get('toolPolicy')).toBeDefined()
   })
 })
 

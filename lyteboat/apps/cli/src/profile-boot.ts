@@ -14,11 +14,15 @@
  * are provided to the tree through `ctx.cmdlineArgs`.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/profile-boot.ts
- * @ dsh-v0.1.7-rc.1 (46a7f68b), MIT — see THIRD_PARTY_NOTICES.md. Changes:
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Changes:
  * lyteboat's own template table replaces dsh's shipped-profile initialization,
  * `--from-default-profile` and the application-owned profile runtime are
- * dropped, the launcher's own overlays (`--plugin`) sit above the
- * `--patch` overlays, and `FiberState` reads go through `@lyteboat/cordis-compat`.
+ * dropped, a skipped bundle the profile's lyteboat template lists fails the
+ * boot instead of being reported, the launcher's own overlays (`--plugin`)
+ * sit above the `--patch` overlays, a startup failure is left to the process
+ * exit instead of disposing the tree and the proxy first (the launcher is the
+ * only caller, and its process ends on the error), and `FiberState` reads go
+ * through `FIBER_STATE` (`fiber-state.ts`).
  * @module @lyteboat/cli/profile-boot
  */
 
@@ -34,6 +38,7 @@ import {
   installFailLoud,
   loadOverlayPatches,
   loadProfile,
+  reportSkippedBundles,
   PluginPackages,
   PROFILE_PATCH_FILENAME,
   readProfileManifest,
@@ -47,7 +52,7 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
-import { FIBER_STATE } from '@lyteboat/cordis-compat'
+import { FIBER_STATE } from './fiber-state.ts'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from './templates.ts'
 
@@ -88,7 +93,7 @@ export function homePatchPath(): string {
 }
 
 /** Absolute path of this lyteboat installation's package.json (src/ and lib/ both sit one level under apps/cli). */
-export const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
+const INSTALL_ANCHOR = fileURLToPath(new URL('../package.json', import.meta.url))
 
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# lyteboat profile root — an empty entry list. The tree is composed as patches:
@@ -128,16 +133,39 @@ export function ensureProfileInitialized(name: string, home: string = resolveDsh
 }
 
 /**
+ * Refuse a profile that dsh loaded without a bundle its lyteboat template
+ * lists, and report every other skipped bundle the way dsh's launcher does.
+ * dsh skips a bundle it cannot resolve, or whose dsh peers the running
+ * release does not satisfy, and boots the rest; without `@lyteboat/host` or
+ * `@lyteboat/run` that is a different application than the profile names.
+ * @param name - the profile name.
+ * @param profile - the bundles dsh skipped while loading it.
+ * @throws when a skipped bundle is one the profile's lyteboat template lists.
+ */
+export function checkSkippedProfileBundles(name: string, profile: Pick<Profile, 'skippedBundles'>): void {
+  const templateBundles = LYTEBOAT_PROFILE_TEMPLATES[name]?.bundles ?? []
+  const required = profile.skippedBundles.filter(skipped => templateBundles.includes(skipped.packageName))
+  reportSkippedBundles(NAME, { skippedBundles: profile.skippedBundles.filter(skipped => !required.includes(skipped)) })
+  if (required.length === 0) return
+  throw new Error(
+    `${NAME}: profile "${name}" cannot boot without the bundles its template lists; skipped: `
+    + required.map(({ packageName, reason }) => `${packageName} (${reason})`).join('; '),
+  )
+}
+
+/**
  * Load a resolved profile for `name` and (re)write the empty root config. The
  * root is always rewritten: the whole composition is patch layers, and the
  * Loader's tree write-back can bake composed rows into this file.
  * @param name - the profile name.
  * @param userLayer - `false` skips parsing `cordis.patch.yml` (the default dump).
  * @returns the loaded profile.
+ * @throws when dsh skipped a bundle the profile's lyteboat template lists.
  */
 export function prepareProfile(name: string, userLayer = true): Profile {
   ensureProfileInitialized(name)
   const profile = loadProfile(NAME, name, INSTALL_ANCHOR, undefined, { userLayer })
+  checkSkippedProfileBundles(name, profile)
   writeFileSync(join(profile.dir, PROFILE_ROOT_FILENAME), PROFILE_ROOT_CONFIG)
   return profile
 }
@@ -172,7 +200,7 @@ async function composeProfile(
 }
 
 /** Options for {@link runProfile}. */
-export interface RunProfileOptions {
+interface RunProfileOptions {
   /** This run's frozen environment snapshot, provided before any entry mounts. */
   environment: LaunchEnvironmentSnapshot
   /** The profile name to boot. */

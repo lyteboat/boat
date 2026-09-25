@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { execOne, executeTransforms, resolvePath, TransformError, validateEventPayload, validatePayload } from '@lyteboat/a2ui'
+import { validateEventPayload, validatePayload } from '../src/contract.ts'
+import { execOne, executeTransforms, resolvePath, TransformError } from '../src/transforms.ts'
 
 const data = {
   total: 1234.5,

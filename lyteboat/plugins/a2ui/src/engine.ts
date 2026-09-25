@@ -1,16 +1,16 @@
 /**
  * Template-mode rendering: load → resolve the manifest → walk → business
- * payload → surface identity → compute hooks. A port of the reference implementation's
+ * payload → surface identity → the digest hook. A port of the reference implementation's
  * template_engine/engine.py. The payload is literal-only and frontend-ready.
  * @module @lyteboat/a2ui/engine
  */
 
 import { randomBytes } from 'node:crypto'
 import { readdirSync, statSync } from 'node:fs'
-import type { JsonValue } from '@lyteboat/contracts'
+import type { LyteboatCardEmission } from '@lyteboat/contracts'
 import { BUSINESS_PAYLOAD_KEY, templateBusinessPayload } from './business-payload.ts'
 import { isCardDir, loadBundle } from './loader.ts'
-import type { EmissionMode, TemplateBundle } from './loader.ts'
+import type { TemplateBundle } from './loader.ts'
 import { resolveManifest } from './resolver.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
 import { SILENT_LOG } from './transforms.ts'
@@ -29,9 +29,8 @@ export interface TemplateRenderResult {
   payload: Record<string, unknown>
   warnings: string[]
   digest: string
-  stateDelta: Record<string, JsonValue> | undefined
   /** When the card is shown: its manifest's `emission_mode`, `immediate` when it declares none. */
-  emission: EmissionMode
+  emission: LyteboatCardEmission
 }
 
 export interface TemplateRenderOptions {
@@ -50,12 +49,10 @@ function asSurfaceUpdate(payload: Record<string, unknown>, surfaceId: string): R
   return out
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/** Render cards from one templates root. */
+/** Render cards from one templates root; the bundles it loads live as long as the engine. */
 export class TemplateEngine {
+  private readonly bundles = new Map<string, TemplateBundle>()
+
   constructor(readonly root: string, private readonly log: A2uiLog = SILENT_LOG) {}
 
   /** Card names: every directory under the root that holds a template.json, sorted. */
@@ -72,19 +69,14 @@ export class TemplateEngine {
 
   /** The hierarchy variants the model may select for a card. */
   async hierarchies(card: string): Promise<string[]> {
-    const bundle = await loadBundle(this.root, card, this.log)
+    const bundle = await loadBundle(this.root, card, this.bundles)
     const names = Object.keys(bundle.hierarchies).sort()
     return names.length > 0 ? names : [bundle.defaultHierarchy]
   }
 
   /** The model-facing input schema of a card (`manifest.args`). */
   async argSpecs(card: string): Promise<Record<string, Record<string, unknown>>> {
-    return (await loadBundle(this.root, card, this.log)).argSpecs
-  }
-
-  /** `manifest.emission_mode`, or undefined when the card declares none. */
-  async emissionMode(card: string): Promise<EmissionMode | undefined> {
-    return (await loadBundle(this.root, card, this.log)).emissionMode
+    return (await loadBundle(this.root, card, this.bundles)).argSpecs
   }
 
   /**
@@ -94,7 +86,7 @@ export class TemplateEngine {
    * @param options - hierarchy, session and surface identity.
    */
   async render(card: string, raw: RawData, options: TemplateRenderOptions = {}): Promise<TemplateRenderResult> {
-    const bundle = await loadBundle(this.root, card, this.log)
+    const bundle = await loadBundle(this.root, card, this.bundles)
     const hierarchy = this.resolveHierarchy(bundle, options.hierarchy)
     const { flat, warnings } = resolveManifest(bundle.manifest, raw, bundle.compute, this.log)
     const tracked = new BoundPathTracker(flat)
@@ -104,8 +96,7 @@ export class TemplateEngine {
     const surfaceId = (options.surfaceId ?? '').trim()
     if (surfaceId !== '') payload = asSurfaceUpdate(payload, surfaceId)
     else payload['surfaceId'] = mintSurfaceId(card, options.sessionId ?? '')
-    const { digest, stateDelta } = this.enrichment(bundle, raw, flat)
-    return { payload, warnings, digest, stateDelta, emission: bundle.emissionMode ?? 'immediate' }
+    return { payload, warnings, digest: this.digest(bundle, raw, flat), emission: bundle.emissionMode ?? 'immediate' }
   }
 
   private resolveHierarchy(bundle: TemplateBundle, name: string | undefined): HierarchyShape {
@@ -118,35 +109,19 @@ export class TemplateEngine {
     return { root: hierarchy.root ?? bundle.template.rootComponentId, ui_ids: hierarchy.ui_ids }
   }
 
-  private enrichment(bundle: TemplateBundle, raw: RawData, flat: Record<string, unknown>): { digest: string; stateDelta: Record<string, JsonValue> | undefined } {
-    let digest = ''
-    let stateDelta: Record<string, JsonValue> | undefined
-    if (bundle.digest !== undefined) {
-      try {
-        const value = bundle.digest(raw, flat)
-        digest = value === null || value === undefined || value === '' ? '' : String(value)
-      } catch (error: unknown) {
-        this.log.warn(`compute.digest failed for card ${bundle.name}: ${error instanceof Error ? error.message : String(error)}`)
-      }
+  private digest(bundle: TemplateBundle, raw: RawData, flat: Record<string, unknown>): string {
+    if (bundle.digest === undefined) return ''
+    try {
+      const value = bundle.digest(raw, flat)
+      return value === null || value === undefined || value === '' ? '' : String(value)
+    } catch (error: unknown) {
+      this.log.warn(`compute.digest failed for card ${bundle.name}: ${error instanceof Error ? error.message : String(error)}`)
+      return ''
     }
-    if (bundle.stateDelta !== undefined) {
-      try {
-        const value = bundle.stateDelta(raw, flat)
-        if (isRecord(value)) stateDelta = value as Record<string, JsonValue>
-      } catch (error: unknown) {
-        this.log.warn(`compute.stateDelta failed for card ${bundle.name}: ${error instanceof Error ? error.message : String(error)}`)
-      }
-    }
-    return { digest, stateDelta }
   }
 }
 
 /** The reference surface identity: `<card>-<sessionId[:8]>-<6 hex>`. */
 export function mintSurfaceId(card: string, sessionId: string): string {
   return `${card}-${sessionId.slice(0, 8)}-${randomBytes(3).toString('hex')}`
-}
-
-/** One-shot render. */
-export async function renderTemplate(root: string, card: string, raw: RawData, options: TemplateRenderOptions = {}, log: A2uiLog = SILENT_LOG): Promise<TemplateRenderResult> {
-  return new TemplateEngine(root, log).render(card, raw, options)
 }

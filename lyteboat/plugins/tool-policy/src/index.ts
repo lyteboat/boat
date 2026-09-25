@@ -5,9 +5,11 @@
  * seams:
  *
  * - visibility: an `auto` tool stays out of the model's schemas until a
- *   plugin activates it for the agent (`activate`); the agent's restriction
- *   is recomputed after every `lyteboat/pre-assemble` and reissued only when the
- *   denied set changed;
+ *   plugin activates it for the agent (`activate`); a scope can make every
+ *   inherited tool its policy does not declare `auto` as well
+ *   (`declareUndeclared`), and such a tool stays hidden: only declared tools
+ *   are activated. The agent's restriction is recomputed after every
+ *   `lyteboat/pre-assemble` and reissued only when the denied set changed;
  * - confirmation: a `requiresConfirmation` tool answers `tools/pre-execute`
  *   with `ask`, so the approval seam decides (and denies when no answerer is
  *   composed);
@@ -28,13 +30,13 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { NamedEntries, ScopedLayers, scopeOf, scopeParentOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
+import { RUN_CODE_NAME } from '@deepseek-ai/dsh-tools'
 import type { PreToolDecision, ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-system-prompt'
-import type { LyteboatToolMeta, JsonValue } from '@lyteboat/contracts'
+import { LYTEBOAT_STATE_CONTEXT_ORDER } from '@lyteboat/contracts'
+import type { LyteboatToolMeta, LyteboatToolVisibility, JsonValue } from '@lyteboat/contracts'
 import { lyteboatStateProjectionDefinition, isJsonObject, renderLyteboatState } from './state.ts'
-
-export { lyteboatStateProjectionDefinition, lyteboatStateSchema, mergeStateDelta, renderLyteboatState, stateDeltaOfMeta } from './state.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -42,15 +44,14 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-/** Where the `lyteboat:state` runtime context sits among dsh's (sandbox 110, approval 115, delegation 120). */
-export const LYTEBOAT_STATE_CONTEXT_ORDER = 130
-
 /** Metadata a composition file can declare for a tool registered elsewhere: everything but the code-only delta. */
 export type LyteboatToolPolicy = Omit<LyteboatToolMeta, 'stateDelta'>
 
 /** One scope's policy contribution. */
 class PolicyLayer implements ScopeLayer {
   readonly metas: NamedEntries<LyteboatToolMeta>
+  /** The visibility of the inherited tools no declaration on the chain names; one cell, since two answers contradict. */
+  undeclared: LyteboatToolVisibility | undefined
 
   constructor(scope: ScopeKey | undefined) {
     this.metas = new NamedEntries(name => new Error(scope === undefined
@@ -59,7 +60,7 @@ class PolicyLayer implements ScopeLayer {
   }
 
   isEmpty(): boolean {
-    return this.metas.isEmpty()
+    return this.metas.isEmpty() && this.undeclared === undefined
   }
 }
 
@@ -81,11 +82,13 @@ function withStateDelta(definition: ToolDefinition, stateDelta: NonNullable<Lyte
       presentationMeta(args: unknown, value: JsonValue): JsonValue {
         const base = inner?.(args, value)
         const delta = stateDelta(args, value)
-        const own = delta === undefined ? {} : { stateDelta: delta }
-        if (base === undefined) return { lyteboat: own }
+        // dsh refuses an undefined presentation meta, so a call with neither a delta
+        // nor a meta of the tool's own records an empty object.
+        if (delta === undefined) return base ?? {}
+        if (base === undefined) return { lyteboat: { stateDelta: delta } }
         // A tool's own `lyteboat` object (a rendered card) merges with the delta instead of losing it.
-        if (isJsonObject(base)) return { ...base, lyteboat: { ...isJsonObject(base['lyteboat']) ? base['lyteboat'] : {}, ...own } }
-        return { presentation: base, lyteboat: own }
+        if (isJsonObject(base)) return { ...base, lyteboat: { ...isJsonObject(base['lyteboat']) ? base['lyteboat'] : {}, stateDelta: delta } }
+        return { presentation: base, lyteboat: { stateDelta: delta } }
       },
     },
   }
@@ -97,7 +100,8 @@ function sameNames(left: readonly string[], right: readonly string[]): boolean {
 
 /** Host service: lyteboat tool metadata plus its enforcement at the dsh tool seams. */
 export class ToolPolicyService extends Service {
-  static inject = ['tools', 'sessionProjections', 'systemPrompt']
+  // lyteboatDistro: visibility is reconciled in the kernel extension agent-loop-pre-assemble.
+  static inject = ['tools', 'sessionProjections', 'systemPrompt', 'lyteboatDistro']
 
   private readonly layers = new ScopedLayers(scope => new PolicyLayer(scope), () => {})
   private readonly agents = new WeakMap<Agent, AgentPolicyState>()
@@ -170,6 +174,27 @@ export class ToolPolicyService extends Service {
   }
 
   /**
+   * Declare, in the calling scope's layer, the visibility of every tool its
+   * agents inherit that no declaration on their chain names. Nearest scope
+   * wins; without one such tools are `always`. An undeclared tool made `auto`
+   * this way stays hidden: `activate` names declared tools only.
+   * @param visibility - the visibility the undeclared tools get.
+   * @returns the exact disposer that withdraws the declaration.
+   * @throws when the scope already declared it.
+   */
+  declareUndeclared(visibility: LyteboatToolVisibility): () => void {
+    return this.layers.effect(
+      this.ctx,
+      (layer) => {
+        if (layer.undeclared !== undefined) throw new Error(`lyteboat tool policy: the visibility of undeclared tools is already declared in this scope (${layer.undeclared})`)
+        layer.undeclared = visibility
+        return () => { layer.undeclared = undefined }
+      },
+      { label: 'toolPolicy.declareUndeclared()', notify: false },
+    )
+  }
+
+  /**
    * The metadata one agent resolves for a tool: its own chain, nearest scope last.
    * @param name - the tool name.
    * @param agent - the viewing agent; omitted for the global view.
@@ -225,9 +250,17 @@ export class ToolPolicyService extends Service {
     return state
   }
 
+  /** The visibility of the undeclared tools one scope inherits: the nearest declaration on its chain, `always` without one. */
+  private undeclaredOf(key: ScopeKey): LyteboatToolVisibility {
+    let visibility: LyteboatToolVisibility = 'always'
+    for (const layer of [this.layers.global, ...this.layers.chainLayers(key)]) visibility = layer.undeclared ?? visibility
+    return visibility
+  }
+
   /**
    * Recompute one agent's restriction: every `auto` tool it inherits and has
-   * not activated is denied. Reissued only when the set changed.
+   * not activated is denied, and under `undeclared: auto` every inherited tool
+   * no declaration names. Reissued only when the set changed.
    * @throws when a declared name reaches the agent registered by no row, or
    * an `auto` tool sits in the agent's own layer, where `restrict` cannot hide
    * it: both are composition mistakes and never silently pass.
@@ -253,9 +286,16 @@ export class ToolPolicyService extends Service {
     if (unrestrictable.length > 0) {
       throw new Error(`lyteboat tool policy: auto tool${unrestrictable.length > 1 ? 's' : ''} ${unrestrictable.map(name => JSON.stringify(name)).join(', ')} registered in agent "${agent.id}"'s own layer, which restrict() cannot hide; register through the host or a preset row`)
     }
+    const declaredNames = new Set(declared.map(([name]) => name))
+    // The parent's view is what the agent inherits before its own restriction;
+    // the PTC transport sits outside every restriction and is never named.
+    const undeclared = this.undeclaredOf(key) === 'auto'
+      ? this.ctx.tools.schemas(inheritedView).map(schema => schema.name).filter(name => name !== RUN_CODE_NAME && !declaredNames.has(name))
+      : []
     const deny = declared
       .filter(([name, meta]) => meta.visibility === 'auto' && !state.activated.has(name))
       .map(([name]) => name)
+      .concat(undeclared)
       .sort()
     if (sameNames(deny, state.deny)) return
     state.dispose?.()

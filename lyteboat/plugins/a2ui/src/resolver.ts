@@ -43,6 +43,8 @@ function resolveState(key: string, entry: Record<string, unknown>, raw: RawData,
 function resolveComputed(key: string, entry: Record<string, unknown>, raw: RawData, compute: ComputeModule | undefined, warnings: string[], log: A2uiLog): unknown {
   const fnName = typeof entry['fn'] === 'string' ? entry['fn'] : ''
   const fn = compute?.[fnName]
+  // The reference implementation degrades a missing export to a warning and a blank value at render
+  // time, not at load; kept, with its message, for golden fidelity.
   if (typeof fn !== 'function') {
     warnings.push(`[MANIFEST] computed '${key}': compute.js 缺少导出 '${fnName}'`)
     return ''
@@ -69,6 +71,8 @@ export function resolveManifest(manifest: ManifestPaths, raw: RawData, compute: 
   const computed: Record<string, Record<string, unknown>> = {}
   for (const [key, entry] of Object.entries(manifest)) {
     const kind = entry['kind']
+    // An unknown kind degrades to a warning at render time, not a load failure: the reference
+    // implementation's behavior and message, kept for golden fidelity.
     if (kind === 'state') flat[key] = resolveState(key, entry, raw, warnings)
     else if (kind === 'transform') transforms[key] = entry['spec'] ?? {}
     else if (kind === 'computed') computed[key] = entry

@@ -3,23 +3,20 @@
  * dsh derives every model request from the log, so history a caller brings
  * (a list of entries grouped into rounds by trace id) has to become log nodes:
  * this service parses it with the reference round rules and builds the seed of
- * closed turns a new session starts from. Importing into a live session is not offered: the driver
- * counts turns from its own phase.
+ * closed turns a new session starts from. Importing into a live session is not offered: the agent
+ * loop counts turns from its own phase.
  * @module @lyteboat/history-import
  */
 
 import { readFileSync } from 'node:fs'
 import { basename } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
-import { parseHistoryRounds } from './round-history.ts'
-import type { HistoryParse, HistoryRound } from './round-history.ts'
+import { historyEntriesOf, parseHistoryRounds } from './round-history.ts'
+import type { HistoryRound } from './round-history.ts'
 import { seedFromRounds } from './seed.ts'
 import type { SeedOptions, SeedResult } from './seed.ts'
 
-export { parseHistoryRounds } from './round-history.ts'
-export type { HistoryEntry, HistoryMessage, HistoryParse, HistoryRound } from './round-history.ts'
-export { HISTORY_IMPORT_MODEL, seedFromRounds } from './seed.ts'
-export type { SeedOptions, SeedResult } from './seed.ts'
+export type { SeedResult } from './seed.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -27,33 +24,10 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/**
- * The entry list inside a history document: a bare array, or an object
- * carrying it under `history` (or `context.history`, a request envelope).
- */
-export function historyEntriesOf(document: unknown): unknown {
-  if (Array.isArray(document)) return document
-  if (isRecord(document)) {
-    if (Array.isArray(document['history'])) return document['history']
-    const context = document['context']
-    if (isRecord(context) && Array.isArray(context['history'])) return context['history']
-  }
-  return undefined
-}
-
-/** Host service: parse a history document and build the seed. */
+/** Host service: read a history document and build the seed. */
 export class HistoryImportService extends Service {
   constructor(ctx: Context) {
     super(ctx, 'historyImport')
-  }
-
-  /** The round rules over a raw entry list. */
-  parse(raw: unknown): HistoryParse {
-    return parseHistoryRounds(raw)
   }
 
   /**

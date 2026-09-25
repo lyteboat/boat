@@ -47,7 +47,7 @@ const QUIET_PATCH = '- id: session-title-llm\n  disabled: true\n'
 const PROXY_VARIABLES = ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy']
 
 /** The environment a tree's CLI runs with: its own DSH_HOME, the scripted model, no telemetry, no proxy. */
-export function cliEnvironment(home: string, baseURL?: string): NodeJS.ProcessEnv {
+function cliEnvironment(home: string, baseURL?: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env, DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' }
   for (const name of PROXY_VARIABLES) delete env[name]
   if (baseURL !== undefined) Object.assign(env, { DEEPSEEK_BASE_URL: `${baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key' })

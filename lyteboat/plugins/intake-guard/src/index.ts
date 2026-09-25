@@ -1,14 +1,14 @@
 /**
  * @lyteboat/intake-guard — admission ahead of the loop. An agent registers an
  * admission function in its own scope. The caller (`lyteboat run`, later a
- * server) asks `ctx.intakeGuard.admit` before it follows a request up and
- * records the verdict on the request's human message
- * (`@lyteboat/request-context`), where the log keeps it with the words it
- * judged, cards included. In the loop, the `lyteboat/intake` listener answers
- * a recorded `reply` verdict with its text and no model request. A message
- * that arrives unadmitted (a client that does not admit first) is admitted in
- * the loop instead: the reply is the same, but its verdict and cards are not
- * recorded.
+ * server) submits each request through `ctx.intakeGuard.submit`, which admits
+ * it and follows it up as the human message that records its request id,
+ * context, and verdict (`@lyteboat/request-context`), where the log keeps the
+ * verdict with the words it judged, cards included. In the loop, the
+ * `lyteboat/intake` listener answers a recorded `reply` verdict with its text
+ * and no model request. A message that arrives unadmitted (a client that
+ * follows up without submitting) is admitted in the loop instead: the reply
+ * is the same, but its verdict and cards are not recorded.
  * @module @lyteboat/intake-guard
  */
 
@@ -17,7 +17,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
-import type { IntakeDecision, JsonValue, LyteboatIntakeVerdict, LyteboatStepPayload } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatIntakeDecision, LyteboatIntakeVerdict, LyteboatStepPayload } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 
 declare module '@deepseek-ai/cordis' {
@@ -55,7 +55,7 @@ function textOf(message: UserMessage): string {
   return message.content.filter(block => block.type === 'text').map(block => block.text).join('')
 }
 
-/** Host service: the admission registry, the pre-loop admission call, and the in-loop reply. */
+/** Host service: the admission registry, request submission, and the in-loop reply. */
 export class IntakeGuardService extends Service {
   // lyteboatDistro: the in-loop reply rides the kernel extension agent-loop-intake.
   static inject = ['requestContext', 'lyteboatDistro']
@@ -66,7 +66,7 @@ export class IntakeGuardService extends Service {
     super(ctx, 'intakeGuard')
     // After `next()`: a gate registered after this one decides first, and a
     // reply it made stands; admission only runs on a step that would pass.
-    ctx.on('lyteboat/intake', async (payload, next): Promise<IntakeDecision> => {
+    ctx.on('lyteboat/intake', async (payload, next): Promise<LyteboatIntakeDecision> => {
       const decision = await next()
       if (decision.kind === 'reply' || payload.step !== 1) return decision
       const verdict = await this.verdictFor(payload)
@@ -98,13 +98,31 @@ export class IntakeGuardService extends Service {
   }
 
   /**
-   * Admit one request before it enters the loop.
+   * Submit one request: admit it, then follow it up as the human message that
+   * records its request id, context, and verdict. An empty context carries
+   * nothing, as an absent one: the session's earlier context stays in force
+   * and is the one admission sees.
    * @param agent - the agent the request goes to.
-   * @param request - what the person wrote, and the context in force.
-   * @param signal - the caller's signal.
-   * @returns the verdict to record on the request, or undefined when the agent admits everything.
+   * @param request - what the person wrote, the request context, and the caller's id for the request.
+   * @param signal - the caller's signal; an abort during admission follows nothing up.
+   * @returns the verdict recorded on the request, or undefined when the agent admits everything.
    */
-  async admit(agent: Agent, request: { text: string; context: { [key: string]: JsonValue } }, signal: AbortSignal): Promise<LyteboatIntakeVerdict | undefined> {
+  async submit(
+    agent: Agent,
+    request: { text: string; context?: { [key: string]: JsonValue } | undefined; requestId?: string | undefined },
+    signal: AbortSignal,
+  ): Promise<LyteboatIntakeVerdict | undefined> {
+    const context = request.context === undefined || Object.keys(request.context).length === 0 ? undefined : request.context
+    const intake = await this.admit(agent, { text: request.text, context: context ?? this.ctx.requestContext.contextOf(agent) }, signal)
+    agent.followup(this.ctx.requestContext.message(request.text, {
+      ...request.requestId === undefined ? {} : { requestId: request.requestId },
+      ...context === undefined ? {} : { context },
+      ...intake === undefined ? {} : { intake },
+    }))
+    return intake
+  }
+
+  private async admit(agent: Agent, request: { text: string; context: { [key: string]: JsonValue } }, signal: AbortSignal): Promise<LyteboatIntakeVerdict | undefined> {
     const admission = this.admissionFor(agent)
     if (admission === undefined) return undefined
     const verdict = await admission.admit({ agent, text: request.text, context: request.context, signal })

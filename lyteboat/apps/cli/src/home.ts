@@ -11,10 +11,10 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 /** Environment variable that overrides the default lyteboat home. */
-export const LYTEBOAT_HOME_ENV = 'LYTEBOAT_HOME'
+const LYTEBOAT_HOME_ENV = 'LYTEBOAT_HOME'
 
 /** Directory name of the default lyteboat home under the OS home. */
-export const LYTEBOAT_HOME_DIR_NAME = '.lyteboat'
+const LYTEBOAT_HOME_DIR_NAME = '.lyteboat'
 
 /** The dsh environment variable lyteboat's home is exported as. */
 const DSH_HOME_ENV = 'DSH_HOME'
@@ -31,7 +31,7 @@ function expandHomePath(path: string): string {
  * @param env - environment mapping to read `LYTEBOAT_HOME` from.
  * @returns the absolute lyteboat home path.
  */
-export function resolveLyteboatHome(env: Record<string, string | undefined> = process.env): string {
+function resolveLyteboatHome(env: Record<string, string | undefined>): string {
   const configured = env[LYTEBOAT_HOME_ENV]
   const selected = configured !== undefined && configured.trim().length > 0
     ? configured

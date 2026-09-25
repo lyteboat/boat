@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@lyteboat/contracts'
-import { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState } from '@lyteboat/tool-policy'
+import { lyteboatStateProjectionDefinition, mergeStateDelta, renderLyteboatState } from '../src/state.ts'
 
 describe('mergeStateDelta', () => {
   it('assigns dot paths, creating intermediate objects', () => {
@@ -52,5 +52,10 @@ describe('lyteboatStateProjectionDefinition', () => {
     const newer = fold.apply(fold.apply(fold.init(), result(1, { stage: 'overview' }, 'append')), result(2, { stage: 'diagnosis' }, 'append'))
     expect(fold.apply(newer, result(3, { stage: 'overview' }, { op: 'replace', startSeq: 1, endSeq: 1 }))).toBe(newer)
     expect(newer).toEqual({ stage: 'diagnosis' })
+  })
+
+  it('fails the fold on a tool result whose meta.lyteboat fails its schema, naming the node', () => {
+    const fold = lyteboatStateProjectionDefinition
+    expect(() => fold.apply(fold.init(), result(4, ['not', 'an', 'object'], 'append'))).toThrow('tool result at session seq 4 carries an invalid meta.lyteboat')
   })
 })

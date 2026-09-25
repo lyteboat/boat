@@ -7,7 +7,9 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { TemplateEngine, TemplateModeError, mintSurfaceId, validateFullPayload } from '@lyteboat/a2ui'
+import { validateFullPayload } from '../src/contract.ts'
+import { TemplateEngine, TemplateModeError, mintSurfaceId } from '../src/engine.ts'
+import { REFERENCE_A2UI_COMPONENT_CATALOG } from './fixtures/reference-component-catalog.ts'
 
 const ROOT = fileURLToPath(new URL('./fixtures/templates', import.meta.url))
 const BASELINE = fileURLToPath(new URL('./fixtures/baseline', import.meta.url))
@@ -46,9 +48,11 @@ describe('TemplateEngine against reference baselines', () => {
     }
     expect(actual).toEqual(expected)
     expect(result.digest).toBe(baseline.digest)
-    expect(result.stateDelta).toEqual(baseline.stateDelta ?? undefined)
+    // The reference produced no state delta for these cards; the port has no stateDelta hook.
+    expect(baseline.stateDelta).toBeNull()
+    expect(result).not.toHaveProperty('stateDelta')
     expect(result.warnings).toEqual(baseline.warnings)
-    const guard = validateFullPayload(result.payload, { strict: true })
+    const guard = validateFullPayload(result.payload, { strict: true, catalog: REFERENCE_A2UI_COMPONENT_CATALOG })
     expect(guard.ok).toBe(baseline.guard.ok)
     expect(guard.errors).toEqual(baseline.guard.errors)
     expect(guard.warnings).toEqual(baseline.guard.warnings)
@@ -59,7 +63,6 @@ describe('TemplateEngine against reference baselines', () => {
     expect(engine.cards()).toEqual(['asset_overview', 'unauthorized'])
     expect(await engine.hierarchies('asset_overview')).toEqual(['asset_overview'])
     expect(await engine.argSpecs('unauthorized')).toEqual({})
-    expect(await engine.emissionMode('unauthorized')).toBeUndefined()
   })
 
   it('rejects an unknown hierarchy and an unknown card', async () => {

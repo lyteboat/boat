@@ -160,28 +160,38 @@ function joinOverload(previous: string | undefined, text: string): string {
   return previous === undefined ? text : [previous, text].sort().join('\n')
 }
 
+/**
+ * Record one member of an interface a package augments: cordis `Events` as an
+ * event, cordis `Context` as a service, any other interface as an API augmentation.
+ */
+function recordAugmentation(contract: Contract, pkg: string, moduleName: string, target: ts.InterfaceDeclaration, member: ts.TypeElement): void {
+  const file = member.getSourceFile()
+  const name = memberKey(member)
+  const text = normalize(printer.printNode(ts.EmitHint.Unspecified, member, file), file.fileName)
+  if (moduleName === '@deepseek-ai/cordis' && target.name.text === 'Events') {
+    const events = contract.events[pkg] ??= {}
+    const previous = Object.hasOwn(events, name) ? events[name] : undefined
+    events[name] = { mode: previous?.mode ?? modeOf(member), signature: joinOverload(previous?.signature, text) }
+    return
+  }
+  if (moduleName === '@deepseek-ai/cordis' && target.name.text === 'Context') {
+    const services = contract.services[pkg] ??= {}
+    services[name] = joinOverload(Object.hasOwn(services, name) ? services[name] : undefined, text)
+    return
+  }
+  const api = contract.api[pkg]
+  if (api === undefined) return
+  const members = api.augmentations[`${moduleName}#${target.name.text}`] ??= {}
+  members[name] = joinOverload(Object.hasOwn(members, name) ? members[name] : undefined, text)
+}
+
 function collectAugmentations(file: ts.SourceFile, pkg: string, contract: Contract): void {
   for (const statement of file.statements) {
     if (!ts.isModuleDeclaration(statement) || statement.body === undefined || !ts.isModuleBlock(statement.body)) continue
     const moduleName = ts.isStringLiteral(statement.name) ? statement.name.text : statement.name.text
     for (const inner of statement.body.statements) {
       if (!ts.isInterfaceDeclaration(inner)) continue
-      for (const member of inner.members) {
-        const name = memberKey(member)
-        const text = normalize(printer.printNode(ts.EmitHint.Unspecified, member, file), file.fileName)
-        if (moduleName === '@deepseek-ai/cordis' && inner.name.text === 'Events') {
-          const events = contract.events[pkg] ??= {}
-          const previous = Object.hasOwn(events, name) ? events[name] : undefined
-          events[name] = { mode: previous?.mode ?? modeOf(member), signature: joinOverload(previous?.signature, text) }
-        } else if (moduleName === '@deepseek-ai/cordis' && inner.name.text === 'Context') {
-          const services = contract.services[pkg] ??= {}
-          services[name] = joinOverload(Object.hasOwn(services, name) ? services[name] : undefined, text)
-        } else {
-          const api = contract.api[pkg]
-          const members = api === undefined ? undefined : api.augmentations[`${moduleName}#${inner.name.text}`] ??= {}
-          if (members !== undefined) members[name] = joinOverload(Object.hasOwn(members, name) ? members[name] : undefined, text)
-        }
-      }
+      for (const member of inner.members) recordAugmentation(contract, pkg, moduleName, inner, member)
     }
   }
 }
@@ -266,20 +276,26 @@ function pluginContract(value: Record<string, unknown>, withName: boolean): Plug
   return contract.inject === undefined && contract.Config === undefined && contract.name === undefined ? undefined : contract
 }
 
+/** The plugin contracts of one loaded module: the module itself as `$module`, then each exported class or function. */
+function moduleRuntimeContracts(module: Record<string, unknown>): Record<string, PluginRuntimeContract> {
+  const found: Record<string, PluginRuntimeContract> = {}
+  const own = pluginContract(module, true)
+  if (own !== undefined && (typeof module['apply'] === 'function' || module['Config'] !== undefined || module['inject'] !== undefined)) found['$module'] = own
+  for (const [exportName, value] of Object.entries(module)) {
+    if (typeof value !== 'function') continue
+    const plugin = pluginContract(value as unknown as Record<string, unknown>, false)
+    if (plugin !== undefined) found[exportName] = plugin
+  }
+  return found
+}
+
 async function generateRuntime(packages: readonly ResolvedPackage[], contract: Contract): Promise<void> {
   for (const pkg of packages) {
     const bySubpath: Record<string, Record<string, PluginRuntimeContract>> = {}
     for (const [subpath, target] of Object.entries(pkg.exports)) {
       if (target.default === undefined) continue
       const module = await import(pathToFileURL(resolve(pkg.dir, target.default)).href) as Record<string, unknown>
-      const found: Record<string, PluginRuntimeContract> = {}
-      const own = pluginContract(module, true)
-      if (own !== undefined && (typeof module['apply'] === 'function' || module['Config'] !== undefined || module['inject'] !== undefined)) found['$module'] = own
-      for (const [exportName, value] of Object.entries(module)) {
-        if (typeof value !== 'function') continue
-        const plugin = pluginContract(value as unknown as Record<string, unknown>, false)
-        if (plugin !== undefined) found[exportName] = plugin
-      }
+      const found = moduleRuntimeContracts(module)
       if (Object.keys(found).length > 0) bySubpath[subpath] = found
     }
     contract.config[pkg.name] = bySubpath

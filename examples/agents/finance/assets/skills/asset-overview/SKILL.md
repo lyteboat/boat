@@ -3,8 +3,6 @@ name: asset-overview
 description: 查看用户已授权账户里的资产总览：总额、稳健资产和风险资产各有多少、各占多少。用户问「看看我的资产 / 我一共有多少钱 / 钱都放在哪」这类只想看、不问好坏的问题归此；问配置合不合理、该怎么调归 allocation-diagnosis；问理财概念归 investor-education。
 metadata:
   lyteboat:
-    group: finance
-    version: "2.0"
     requiredTools: [asset_overview]
 ---
 

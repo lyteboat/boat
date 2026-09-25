@@ -1,5 +1,5 @@
 /**
- * @lyteboat/run — lyteboat's one-shot direct Agent driver. The bundle patch rides over
+ * @lyteboat/run — lyteboat's one-shot mode. The bundle patch rides over
  * dsh-base; this runner creates one Agent through the core registry — composed
  * from an agent preset when the invocation named one — or resumes a stored
  * session, drives the task to quiescence, streams provider reasoning to stderr,
@@ -8,11 +8,15 @@
  * exits.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Differences:
- * preset composition (the selected agent directory declared to the preset
- * registry, then joined through `agentPresets.mount` in the setup window), a
- * resumed session keeping the agent it runs under, and the `lyteboat:`
- * diagnostic prefix.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
+ * the agent composition (the selected agent directory declared to the preset
+ * registry, then joined through `agentPresets.mount` in the setup window;
+ * headless composes no preset and refuses a session that ran under one), a
+ * resumed session continuing under the agent it ran under, an imported
+ * history seeded into a new session, the task submitted through
+ * `intakeGuard.submit` with its request context, the turn printed with its
+ * cards placed, no stdin task and no `--json` event stream, and the
+ * `lyteboat:` diagnostic prefix.
  * @module @lyteboat/run
  */
 
@@ -30,7 +34,6 @@ import type { LyteboatTurnPart } from '@lyteboat/a2ui'
 import type { JsonValue } from '@lyteboat/contracts'
 import type {} from '@lyteboat/history-import'
 import type {} from '@lyteboat/intake-guard'
-import type {} from '@lyteboat/request-context'
 import { assertNever } from '@deepseek-ai/dsh-util-values'
 import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
@@ -44,19 +47,19 @@ import { readAgentDefinition } from './agent-directory.ts'
 export const name = 'lyteboat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui', 'requestContext', 'intakeGuard']
+export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
 
-/** Plugin config: the task and preset resolved from the startup provider service. */
+/** Plugin config: the task and agent resolved from the startup provider service. */
 export interface Config {
   /** The prompt text for the single run. */
   task: string
-  /** The preset to compose the agent from; absent runs the host composition alone. */
-  preset?: string
-  /** The agent directory the preset is declared from; absent resolves `preset` among the declared presets. */
+  /** The agent to compose from (its agent preset id); absent runs the host composition alone. */
+  agent?: string
+  /** The directory `agent` is declared from; required with `agent`. */
   agentDir?: string
   /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
-  /** A stored session to continue; it must run under `preset` (or under none, without one) and belong to this directory. */
+  /** A stored session to continue; it must run under `agent` (or under none, without one) and belong to this directory. */
   sessionId?: string
   /** The request context the task carries; absent keeps a continued session's earlier context. */
   context?: { [key: string]: JsonValue }
@@ -64,17 +67,12 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   task: z.string().required(),
-  preset: z.string(),
+  agent: z.string(),
   agentDir: z.string(),
   history: z.string(),
   sessionId: z.string(),
   context: z.dict(z.any()),
 })
-
-interface RunOutcome {
-  text: string
-  reason: SessionEvent<'turn/end'>['data']['reason'] | undefined
-}
 
 interface RunIo {
   stdout: { write(chunk: string): unknown }
@@ -82,16 +80,9 @@ interface RunIo {
   exit(code: number): void
 }
 
-/** The process streams the runner writes to; tests substitute captures. */
-export const internals: { stdout: RunIo['stdout']; stderr: RunIo['stderr'] } = {
-  stdout: process.stdout,
-  stderr: process.stderr,
-}
-
-/** Aggregate the last assistant text and turn outcome in one owned interval. */
-function summarize(session: Session, firstSeq: SessionLogOffset): RunOutcome {
+/** The turn outcome of one owned interval. */
+function summarize(session: Session, firstSeq: SessionLogOffset): SessionEvent<'turn/end'>['data']['reason'] | undefined {
   let started = false
-  let text = ''
   let reason: SessionEvent<'turn/end'>['data']['reason'] | undefined
   const length = session.seq
   for (let seq = firstSeq; seq < length; seq++) {
@@ -103,17 +94,9 @@ function summarize(session: Session, firstSeq: SessionLogOffset): RunOutcome {
       started = true
       continue
     }
-    if (!started) continue
-    if (event.type === 'assistant/message') {
-      const joined = event.data.message.content
-        .filter(block => block.type === 'text')
-        .map(block => block.text)
-        .join('')
-      if (joined !== '') text = joined
-    }
-    if (event.type === 'turn/end') reason = event.data.reason
+    if (started && event.type === 'turn/end') reason = event.data.reason
   }
-  return { text, reason }
+  return reason
 }
 
 /** A turn as the terminal shows it: text as written, each card as its own `[card <area>]` line. */
@@ -188,8 +171,7 @@ function streamReasoning(ctx: Context, agent: Agent, stderr: RunIo['stderr']): (
 async function declareAgent(ctx: Context, id: string, dir: string): Promise<void> {
   const definition = readAgentDefinition(id, dir)
   // The registry takes the declaration's base URL from its caller's context.
-  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).get('agentPresets')
-  if (presets === undefined) throw new Error(`agent ${JSON.stringify(id)} requested but no preset registry is composed`)
+  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).agentPresets
   await ctx.effect(() => presets.register(definition), 'lyteboat-run.declareAgent()')
 }
 
@@ -227,10 +209,8 @@ async function resumeAgent(
   options: { sessionId: SessionId; agentPreset: string | undefined; agentOptions: { provider: string; model: string }; setup: AgentSetup },
 ): Promise<Agent> {
   const { sessionId, agentPreset, agentOptions, setup } = options
-  const query = ctx.get('sessionQuery')
-  if (query === undefined) throw new Error('--session-id needs the session query service; dsh-base provides it')
   try {
-    using observation = await query.observeSession(sessionId)
+    using observation = await ctx.sessionQuery.observeSession(sessionId)
     assertContinuable(observation.header, observation.events, sessionId, agentPreset)
   } catch (error: unknown) {
     if (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND') {
@@ -250,35 +230,28 @@ function fail(io: RunIo, error: unknown): void {
 /**
  * Run one task through a freshly created Agent and request process exit.
  * @param ctx - plugin context carrying the Agent, default model, Session, and launcher IO services.
- * @param config - the task and optional preset.
+ * @param config - the task and optional agent.
  * @param io - process-facing effects.
  */
 async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   await ctx.get('loader')?.await()
-  const agents = ctx.get('agents')
-  const defaultModel = ctx.get('agentDefaultModel')
-  const sessions = ctx.get('sessions')
-  const historyImport = ctx.get('historyImport')
-  const a2ui = ctx.get('a2ui')
-  const requestContext = ctx.get('requestContext')
-  const intakeGuard = ctx.get('intakeGuard')
-  if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined
-    || a2ui === undefined || requestContext === undefined || intakeGuard === undefined) return
+  // Injected, so present while this row is active; a tree disposed during the
+  // settlement above makes these reads throw, and the failure still exits.
+  const { agents, agentDefaultModel, agentPresets: presets, sessions, historyImport, a2ui, intakeGuard } = ctx
 
-  const selection = defaultModel.currentSelection()
-  const presets = ctx.get('agentPresets')
+  const selection = agentDefaultModel.currentSelection()
   let agentPreset: string | undefined
-  if (config.preset !== undefined) {
-    if (presets === undefined) throw new Error(`preset ${JSON.stringify(config.preset)} requested but no preset registry is composed`)
-    if (config.agentDir !== undefined) await declareAgent(ctx, config.preset, config.agentDir)
-    agentPreset = (await presets.resolve(config.preset)).id
+  if (config.agent !== undefined) {
+    if (config.agentDir === undefined) throw new Error(`lyteboat-run: agent ${JSON.stringify(config.agent)} needs agentDir, the directory it is declared from`)
+    await declareAgent(ctx, config.agent, config.agentDir)
+    agentPreset = (await presets.resolve(config.agent)).id
   }
   const setup: AgentSetup = async (agentCtx) => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
     installModelSelection(agentCtx, selected)
-    if (agentPreset !== undefined && presets !== undefined) await presets.mount(agentCtx, agentPreset)
+    if (agentPreset !== undefined) await presets.mount(agentCtx, agentPreset)
   }
-  // History arrives as a seed: closed turns the driver counts from, so the task
+  // History arrives as a seed: closed turns the agent loop counts from, so the task
   // becomes turn N+1 and the first request already derives the imported rounds.
   let seed: SeedResult | undefined
   if (config.history !== undefined) {
@@ -302,29 +275,23 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const stopReasoning = streamReasoning(ctx, agent, io.stderr)
   try {
     // Admission runs before the request enters the loop, so its verdict is recorded with the request.
-    // The config fills an absent dict with {}: an empty context carries nothing, as an absent one.
-    const context = config.context === undefined || Object.keys(config.context).length === 0 ? undefined : config.context
-    const intake = await intakeGuard.admit(agent, { text: config.task, context: context ?? requestContext.contextOf(agent) }, new AbortController().signal)
-    agent.followup(requestContext.message(config.task, {
-      ...context === undefined ? {} : { context },
-      ...intake === undefined ? {} : { intake },
-    }))
+    await intakeGuard.submit(agent, { text: config.task, context: config.context }, new AbortController().signal)
     await agent.whenIdle()
   } finally {
     stopReasoning()
   }
   await sessions.flush(agent.session)
-  const outcome = summarize(agent.session, firstSeq)
+  const reason = summarize(agent.session, firstSeq)
   io.stdout.write(renderTurn(a2ui.turnParts(agent.session, firstSeq)) + '\n')
   io.stderr.write(`lyteboat: session ${agent.session.id}\n`)
-  if (outcome.reason?.kind === 'error') {
-    io.stderr.write(`lyteboat: ${outcome.reason.error.code}: ${outcome.reason.error.message}\n`)
+  if (reason?.kind === 'error') {
+    io.stderr.write(`lyteboat: ${reason.error.code}: ${reason.error.message}\n`)
   }
-  io.exit(outcome.reason?.kind === 'completed' ? 0 : 1)
+  io.exit(reason?.kind === 'completed' ? 0 : 1)
 }
 
 /**
- * Mount the one-shot direct driver.
+ * Mount the one-shot runner.
  * @param ctx - plugin context carrying core services and the launcher-provided exit request.
  * @param config - validated task config.
  */
@@ -333,6 +300,6 @@ export function apply(ctx: Context, config: Config): void {
   if (exit === undefined) {
     throw new Error('lyteboat-run: the launcher must provide ctx.appExit before the tree mounts')
   }
-  const io: RunIo = { stdout: internals.stdout, stderr: internals.stderr, exit }
+  const io: RunIo = { stdout: process.stdout, stderr: process.stderr, exit }
   void run(ctx, config, io).catch((error: unknown) => { fail(io, error) })
 }

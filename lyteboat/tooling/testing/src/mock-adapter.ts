@@ -1,14 +1,14 @@
 /**
  * A scripted in-process LlmAdapter and chunk builders for unit tests that mount
- * the real driver. lyteboat's own copy: the kernel's upstream tests keep theirs in
+ * the kernel's agent loop. lyteboat's own copy: the kernel's upstream tests keep theirs in
  * dsh/core/agent-loop/tests, which every import overwrites.
  *
  * Adapted from deepseek-ai/deepseek-harness packages/core/agent-loop/tests/mock-adapter.ts
- * @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
+ * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md.
  * @module @lyteboat/testing/mock-adapter
  */
 
-import type { GenerateOptions, LlmModelReasoningInfo, LlmResolvedModelInfo, StreamChunk, SystemPromptUpdate } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, LlmModelReasoningInfo, LlmResolvedModelInfo, StreamChunk, SystemPromptUpdate, ToolUpdate } from '@deepseek-ai/dsh-llm'
 import { ToolCallId, LlmAdapter } from '@deepseek-ai/dsh-llm'
 
 /** Helpers to write scripted responses tersely. */
@@ -83,6 +83,8 @@ export class MockAdapter extends LlmAdapter {
   requests: GenerateOptions[] = []
   /** Declared system prompt update mode of every route this adapter serves. */
   systemPromptUpdate?: SystemPromptUpdate
+  /** Declared tool update mode of every route this adapter serves. */
+  toolUpdate?: ToolUpdate
 
   constructor(
     private script: (StreamChunk[] | ((options: GenerateOptions) => StreamChunk[]) | 'hang' | 'hang-slow' | HangAfter)[],
@@ -103,6 +105,7 @@ export class MockAdapter extends LlmAdapter {
       ...this.reasoning === undefined ? {} : { reasoning: this.reasoning },
       ...this.defaultMaxTokens === undefined ? {} : { defaultMaxTokens: this.defaultMaxTokens },
       ...this.systemPromptUpdate === undefined ? {} : { systemPromptUpdate: this.systemPromptUpdate },
+      ...this.toolUpdate === undefined ? {} : { toolUpdate: this.toolUpdate },
     })
   }
 

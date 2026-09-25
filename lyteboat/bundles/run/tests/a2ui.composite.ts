@@ -1,40 +1,24 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
 import { pluginFileRow } from '@lyteboat/testing/composition'
+import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
-import { startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { reopenRefusal } from '@lyteboat/testing/session-reopen'
+import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest } from '@lyteboat/testing/scripted-model'
 import { FIXTURES, runComposition } from './support/run-composition.ts'
 
 /** Card fidelity against the reference implementation is plugins/a2ui's job; this fixture only proves the rows are wired. */
 const PLUGIN = pluginFileRow(join(FIXTURES, 'plugins', 'a2ui', 'plugin.mjs'))
 const ANSWER = 'A2UI-OK'
 
-interface LogRecord { type: string; data?: Record<string, unknown> }
+type LogRecord = { type: string; data?: Record<string, unknown> }
 
 describe('@lyteboat/a2ui in the run composition (in process, scripted model)', () => {
-  let root: string
-
-  beforeAll(() => {
-    root = mkdtempSync(join(tmpdir(), 'lyteboat-a2ui-'))
-  })
+  const scratch = createLyteboatScratch('a2ui')
 
   afterAll(() => {
-    rmSync(root, { recursive: true, force: true })
+    scratch.remove()
   })
-
-  function fresh(label: string): { home: string; workspace: string } {
-    const home = join(root, `home-${label}`)
-    const workspace = join(root, `workspace-${label}`)
-    for (const dir of [home, workspace]) { rmSync(dir, { recursive: true, force: true }); mkdirSync(dir, { recursive: true }) }
-    writeFileSync(join(workspace, 'README.md'), '# a2ui\n')
-    return { home, workspace }
-  }
-
-  function env(model: ScriptedModel): Record<string, string> {
-    return { DEEPSEEK_BASE_URL: `${model.baseURL}/v1`, DEEPSEEK_API_KEY: 'mock-key', DSH_TELEMETRY_DISABLED: '1' }
-  }
 
   it('renders a card from the state a tool folded in, puts it on tool/result.meta, and shows only the digest to the model', async () => {
     const model = await startScriptedModel(withTitle((request: RecordedRequest) => {
@@ -44,8 +28,8 @@ describe('@lyteboat/a2ui in the run composition (in process, scripted model)', (
       return { text: ANSWER }
     }), { apiKey: 'mock-key' })
     try {
-      const { home, workspace } = fresh('card')
-      const result = await runComposition(['show my profile'], { cwd: workspace, home, env: env(model) }, [PLUGIN])
+      const { home, workspace } = scratch.run('card')
+      const result = await runComposition(['show my profile'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [PLUGIN])
       expect(result.code, result.stderr).toBe(0)
       expect(result.stdout).toContain(ANSWER)
       const loop = model.loopRequests()
@@ -63,6 +47,8 @@ describe('@lyteboat/a2ui in the run composition (in process, scripted model)', (
       expect(meta.lyteboat.cards[0]?.surfaceId).toMatch(/^summary-/u)
       expect(meta.lyteboat.cards[0]?.payload['rootComponentId']).toBe('root')
       expect(JSON.stringify(meta.lyteboat.cards[0]?.payload)).toContain('Composite Tester')
+      // The card and the state delta ride tool/result.meta, so dsh's persistence reopens the log.
+      expect(reopenRefusal(records)).toBeUndefined()
     } finally {
       await model.close()
     }
@@ -71,8 +57,8 @@ describe('@lyteboat/a2ui in the run composition (in process, scripted model)', (
   it('ends the turn on a terminal card', async () => {
     const model = await startScriptedModel(withTitle(() => ({ toolCall: { name: 'render_a2ui', arguments: { template: 'finish' }, id: 'call-finish' } })), { apiKey: 'mock-key' })
     try {
-      const { home, workspace } = fresh('terminal')
-      const result = await runComposition(['wrap up'], { cwd: workspace, home, env: env(model) }, [PLUGIN])
+      const { home, workspace } = scratch.run('terminal')
+      const result = await runComposition(['wrap up'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [PLUGIN])
       expect(result.code, result.stderr).toBe(0)
       expect(model.loopRequests()).toHaveLength(1)
       const records = readSessionLog(findSessionLogs(home)[0] ?? '') as unknown as LogRecord[]
