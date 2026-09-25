@@ -43,7 +43,7 @@ import { readAgentDefinition } from './agent-directory.ts'
 export const name = 'lyteboat-run'
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui', 'intakeGuard']
+export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
 
 /** Plugin config: the task and agent resolved from the startup provider service. */
 export interface Config {
@@ -51,7 +51,7 @@ export interface Config {
   task: string
   /** The agent to compose from (its agent preset id); absent runs the host composition alone. */
   agent?: string
-  /** The agent directory the agent is declared from; absent resolves `agent` among the declared presets. */
+  /** The directory `agent` is declared from; required with `agent`. */
   agentDir?: string
   /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
@@ -70,27 +70,15 @@ export const Config: z<Config> = z.object({
   context: z.dict(z.any()),
 })
 
-interface RunOutcome {
-  text: string
-  reason: SessionEvent<'turn/end'>['data']['reason'] | undefined
-}
-
 interface RunIo {
   stdout: { write(chunk: string): unknown }
   stderr: { write(chunk: string): unknown }
   exit(code: number): void
 }
 
-/** The process streams the runner writes to; tests substitute captures. */
-export const internals: { stdout: RunIo['stdout']; stderr: RunIo['stderr'] } = {
-  stdout: process.stdout,
-  stderr: process.stderr,
-}
-
-/** Aggregate the last assistant text and turn outcome in one owned interval. */
-function summarize(session: Session, firstSeq: SessionLogOffset): RunOutcome {
+/** The turn outcome of one owned interval. */
+function summarize(session: Session, firstSeq: SessionLogOffset): SessionEvent<'turn/end'>['data']['reason'] | undefined {
   let started = false
-  let text = ''
   let reason: SessionEvent<'turn/end'>['data']['reason'] | undefined
   const length = session.seq
   for (let seq = firstSeq; seq < length; seq++) {
@@ -102,17 +90,9 @@ function summarize(session: Session, firstSeq: SessionLogOffset): RunOutcome {
       started = true
       continue
     }
-    if (!started) continue
-    if (event.type === 'assistant/message') {
-      const joined = event.data.message.content
-        .filter(block => block.type === 'text')
-        .map(block => block.text)
-        .join('')
-      if (joined !== '') text = joined
-    }
-    if (event.type === 'turn/end') reason = event.data.reason
+    if (started && event.type === 'turn/end') reason = event.data.reason
   }
-  return { text, reason }
+  return reason
 }
 
 /** A turn as the terminal shows it: text as written, each card as its own `[card <area>]` line. */
@@ -187,8 +167,7 @@ function streamReasoning(ctx: Context, agent: Agent, stderr: RunIo['stderr']): (
 async function declareAgent(ctx: Context, id: string, dir: string): Promise<void> {
   const definition = readAgentDefinition(id, dir)
   // The registry takes the declaration's base URL from its caller's context.
-  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).get('agentPresets')
-  if (presets === undefined) throw new Error(`agent ${JSON.stringify(id)} requested but no preset registry is composed`)
+  const presets = ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).agentPresets
   await ctx.effect(() => presets.register(definition), 'lyteboat-run.declareAgent()')
 }
 
@@ -226,10 +205,8 @@ async function resumeAgent(
   options: { sessionId: SessionId; agentPreset: string | undefined; agentOptions: { provider: string; model: string }; setup: AgentSetup },
 ): Promise<Agent> {
   const { sessionId, agentPreset, agentOptions, setup } = options
-  const query = ctx.get('sessionQuery')
-  if (query === undefined) throw new Error('--session-id needs the session query service; dsh-base provides it')
   try {
-    using observation = await query.observeSession(sessionId)
+    using observation = await ctx.sessionQuery.observeSession(sessionId)
     assertContinuable(observation.header, observation.events, sessionId, agentPreset)
   } catch (error: unknown) {
     if (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND') {
@@ -254,27 +231,21 @@ function fail(io: RunIo, error: unknown): void {
  */
 async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   await ctx.get('loader')?.await()
-  const agents = ctx.get('agents')
-  const defaultModel = ctx.get('agentDefaultModel')
-  const sessions = ctx.get('sessions')
-  const historyImport = ctx.get('historyImport')
-  const a2ui = ctx.get('a2ui')
-  const intakeGuard = ctx.get('intakeGuard')
-  if (agents === undefined || defaultModel === undefined || sessions === undefined || historyImport === undefined
-    || a2ui === undefined || intakeGuard === undefined) return
+  // Injected, so present while this row is active; a tree disposed during the
+  // settlement above makes these reads throw, and the failure still exits.
+  const { agents, agentDefaultModel, agentPresets: presets, sessions, historyImport, a2ui, intakeGuard } = ctx
 
-  const selection = defaultModel.currentSelection()
-  const presets = ctx.get('agentPresets')
+  const selection = agentDefaultModel.currentSelection()
   let agentPreset: string | undefined
   if (config.agent !== undefined) {
-    if (presets === undefined) throw new Error(`agent ${JSON.stringify(config.agent)} requested but no preset registry is composed`)
-    if (config.agentDir !== undefined) await declareAgent(ctx, config.agent, config.agentDir)
+    if (config.agentDir === undefined) throw new Error(`lyteboat-run: agent ${JSON.stringify(config.agent)} needs agentDir, the directory it is declared from`)
+    await declareAgent(ctx, config.agent, config.agentDir)
     agentPreset = (await presets.resolve(config.agent)).id
   }
   const setup: AgentSetup = async (agentCtx) => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
     installModelSelection(agentCtx, selected)
-    if (agentPreset !== undefined && presets !== undefined) await presets.mount(agentCtx, agentPreset)
+    if (agentPreset !== undefined) await presets.mount(agentCtx, agentPreset)
   }
   // History arrives as a seed: closed turns the agent loop counts from, so the task
   // becomes turn N+1 and the first request already derives the imported rounds.
@@ -306,13 +277,13 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
     stopReasoning()
   }
   await sessions.flush(agent.session)
-  const outcome = summarize(agent.session, firstSeq)
+  const reason = summarize(agent.session, firstSeq)
   io.stdout.write(renderTurn(a2ui.turnParts(agent.session, firstSeq)) + '\n')
   io.stderr.write(`lyteboat: session ${agent.session.id}\n`)
-  if (outcome.reason?.kind === 'error') {
-    io.stderr.write(`lyteboat: ${outcome.reason.error.code}: ${outcome.reason.error.message}\n`)
+  if (reason?.kind === 'error') {
+    io.stderr.write(`lyteboat: ${reason.error.code}: ${reason.error.message}\n`)
   }
-  io.exit(outcome.reason?.kind === 'completed' ? 0 : 1)
+  io.exit(reason?.kind === 'completed' ? 0 : 1)
 }
 
 /**
@@ -325,6 +296,6 @@ export function apply(ctx: Context, config: Config): void {
   if (exit === undefined) {
     throw new Error('lyteboat-run: the launcher must provide ctx.appExit before the tree mounts')
   }
-  const io: RunIo = { stdout: internals.stdout, stderr: internals.stderr, exit }
+  const io: RunIo = { stdout: process.stdout, stderr: process.stderr, exit }
   void run(ctx, config, io).catch((error: unknown) => { fail(io, error) })
 }
