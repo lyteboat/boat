@@ -45,17 +45,17 @@ export const name = 'lyteboat-run'
 /** Core services required before the one-shot turn can start. */
 export const inject = ['agentDefaultModel', 'agents', 'sessions', 'historyImport', 'a2ui', 'intakeGuard']
 
-/** Plugin config: the task and preset resolved from the startup provider service. */
+/** Plugin config: the task and agent resolved from the startup provider service. */
 export interface Config {
   /** The prompt text for the single run. */
   task: string
-  /** The preset to compose the agent from; absent runs the host composition alone. */
-  preset?: string
-  /** The agent directory the preset is declared from; absent resolves `preset` among the declared presets. */
+  /** The agent to compose from (its agent preset id); absent runs the host composition alone. */
+  agent?: string
+  /** The agent directory the agent is declared from; absent resolves `agent` among the declared presets. */
   agentDir?: string
   /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
-  /** A stored session to continue; it must run under `preset` (or under none, without one) and belong to this directory. */
+  /** A stored session to continue; it must run under `agent` (or under none, without one) and belong to this directory. */
   sessionId?: string
   /** The request context the task carries; absent keeps a continued session's earlier context. */
   context?: { [key: string]: JsonValue }
@@ -63,7 +63,7 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   task: z.string().required(),
-  preset: z.string(),
+  agent: z.string(),
   agentDir: z.string(),
   history: z.string(),
   sessionId: z.string(),
@@ -249,7 +249,7 @@ function fail(io: RunIo, error: unknown): void {
 /**
  * Run one task through a freshly created Agent and request process exit.
  * @param ctx - plugin context carrying the Agent, default model, Session, and launcher IO services.
- * @param config - the task and optional preset.
+ * @param config - the task and optional agent.
  * @param io - process-facing effects.
  */
 async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
@@ -266,10 +266,10 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const selection = defaultModel.currentSelection()
   const presets = ctx.get('agentPresets')
   let agentPreset: string | undefined
-  if (config.preset !== undefined) {
-    if (presets === undefined) throw new Error(`preset ${JSON.stringify(config.preset)} requested but no preset registry is composed`)
-    if (config.agentDir !== undefined) await declareAgent(ctx, config.preset, config.agentDir)
-    agentPreset = (await presets.resolve(config.preset)).id
+  if (config.agent !== undefined) {
+    if (presets === undefined) throw new Error(`agent ${JSON.stringify(config.agent)} requested but no preset registry is composed`)
+    if (config.agentDir !== undefined) await declareAgent(ctx, config.agent, config.agentDir)
+    agentPreset = (await presets.resolve(config.agent)).id
   }
   const setup: AgentSetup = async (agentCtx) => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }

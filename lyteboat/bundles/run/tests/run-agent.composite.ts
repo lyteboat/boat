@@ -55,17 +55,6 @@ describe('lyteboat run --agents --agent (in process, scripted model)', () => {
     expect(eventTypes(records)).not.toContain('agent-preset/selected')
   })
 
-  it('still accepts --preset as a deprecated alias of --agent, but not both at once', async () => {
-    const { home, workspace } = scratch.run('alias')
-    const before = model.requests.length
-    const result = await runComposition(['--agents', AGENTS, '--preset', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
-    expect(result.code, result.stderr).toBe(0)
-    expect(model.requests.slice(before).find(request => request.purpose === 'loop')?.systemText).toContain('MINIMAL-PRESET-PERSONA')
-    const both = await runComposition(['--agents', AGENTS, '--agent', 'minimal', '--preset', 'minimal', 'hello'], { cwd: workspace, home: join(scratch.root, 'home-alias-both'), env: scriptedModelEnv(model) })
-    expect(both.code).not.toBe(0)
-    expect(both.stderr).toContain('deprecated alias of --agent')
-  })
-
   it('rejects an unknown agent and an agent without roots as usage errors', async () => {
     const { home, workspace } = scratch.run('errors')
     const unknown = await runComposition(['--agents', AGENTS, '--agent', 'nope', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })

@@ -108,7 +108,7 @@ lyteboat web --no-open                                         # 浏览器界面
 | 选项 | 作用 |
 |---|---|
 | `--agents <目录>` | 存放 agent 的目录（可重复） |
-| `--agent <id>` | 运行其中的某个 agent（`--preset` 是已废弃的别名） |
+| `--agent <id>` | 运行其中的某个 agent |
 | `--history <文件>` | 先导入一份外部对话历史，任务成为它的下一轮 |
 | `--session-id <id>` | 在已存的会话上续聊；每次运行都把会话 id 打到 stderr |
 | `--context <json>` | 请求上下文：一个 JSON 对象，内联或放在文件里；随请求落日志，工具读取，模型看不到 |

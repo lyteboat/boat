@@ -108,7 +108,7 @@ All three accept:
 | Option | What it does |
 |---|---|
 | `--agents <dir>` | A directory of agents (repeatable) |
-| `--agent <id>` | Runs one agent from those directories (`--preset` is a deprecated alias) |
+| `--agent <id>` | Runs one agent from those directories |
 | `--history <file>` | Imports external conversation history first; the task becomes its next turn |
 | `--session-id <id>` | Continues a stored session; every run prints its session id to stderr |
 | `--context <json>` | The request context: a JSON object, inline or in a file; logged with the request, read by tools, not shown to the model |

@@ -26,14 +26,14 @@
       name: '@deepseek-ai/dsh-agent-preset-registry'
       inject: [lyteboatRunStartup]
       config:
-        default: !!js ctx.lyteboatRunStartup.preset ?? 'none'
+        default: !!js ctx.lyteboatRunStartup.agent ?? 'none'
 
     - id: lyteboat-run
       name: '@lyteboat/run'
       inject: [lyteboatRunStartup]
       config:
         task: !!js ctx.lyteboatRunStartup.task
-        preset: !!js ctx.lyteboatRunStartup.preset
+        agent: !!js ctx.lyteboatRunStartup.agent
         agentDir: !!js ctx.lyteboatRunStartup.agentDir
         history: !!js ctx.lyteboatRunStartup.history
         sessionId: !!js ctx.lyteboatRunStartup.sessionId
