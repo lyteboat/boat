@@ -1873,7 +1873,7 @@ model requests: router, loop
 - 不和 `--history` 同给，否则按用法错误退出：`error: --history seeds a new session; it cannot be combined with --session-id`。
 - 子 agent 或 fork 出来的会话不能直接续（`index.ts:179`）。
 
-`/chat` 和评测的会话也记在 agent 的工作目录下，所以同一个 home 里，`lyteboat headless --agent <id> --session-id` 能续这个 agent 的任何会话，包括别人经 `/chat` 建的：命令行是操作者的入口，不核对发起者。反过来不行：`/chat` 只续同一个 `user_id` 发起的会话（§4.13）。`lyteboat studio` 在 dsh web 里建的会话，就在 dsh web 里接着发（§4.15）。
+`/chat` 和评测的会话也记在 agent 的工作目录下，所以同一个 home 里，`lyteboat headless --agent <id> --session-id` 能续这个 agent 的任何会话，包括别人经 `/chat` 建的：命令行是操作者的入口，不核对发起者。只是这个会话正被运行中的 serve 占着时续不了（`session "…" is already owned by an active write handle`，退出 1），要等 serve 停了再续；续上的消息记的发起者是 `operator:cli`，会话的主人仍是第一条消息的。反过来不行：`/chat` 只续同一个 `user_id` 发起的会话（§4.13）。`lyteboat studio` 在 dsh web 里建的会话，就在 dsh web 里接着发（§4.15）。
 
 ### 4.11 业务模式：要什么就声明什么
 
@@ -1929,7 +1929,7 @@ model requests: router, loop
 ### 4.12 loop 模型从哪来
 
 - **loop 模型不由 agent 决定。** `@lyteboat/headless` 创建或恢复 Agent 时读一次 `agentDefaultModel.currentSelection()`，作为 `agentOptions` 的 provider 和 model 传进去（`lyteboat/bundles/headless/src/index.ts:226`、`:254-263`）。preset 定义里没有模型字段（上游 `packages/preset/agent-preset-registry/src/types.ts`、`definition.ts` 里没有 `model`），所以一个进程里所有 agent 用同一个 loop 模型。
-- **默认选择来自 dsh-base 的 `agent-default-model` 行。** 它的配置是 provider `deepseek-official` 加模型 id `deepseek-flash`；这些值是 volatile 配置，dsh settings（在 `$LYTEBOAT_HOME` 下）里保存了选择，就用保存的（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:82-86`，上游 `packages/core/agent-default-model/src/index.ts:23-31`）。要换模型，就在 settings 或 profile patch 层改这一行，不是在 agent 目录里改。
+- **默认选择来自 dsh-base 的 `agent-default-model` 行。** 它的配置是 provider `deepseek-official` 加模型 id `deepseek-flash`；这些值是 volatile 配置（`node_modules/@deepseek-ai/dsh-base/cordis.patch.yml:82-86`，上游 `packages/core/agent-default-model/src/index.ts:23-31`）。业务模式（headless、serve、eval）关掉了 settings 和 config-editor，所以要换模型，就在 profile patch 层或用 `--patch` 改这一行，不是在 agent 目录里改；Studio 里 dsh settings 保存的选择优先。
 - **访问凭据**是 `DEEPSEEK_API_KEY`，可选 `DEEPSEEK_BASE_URL`（README「配置模型」）。脚本模型就是把 `DEEPSEEK_BASE_URL` 指到本地服务（`scriptedModelEnv`，§2.13）。
 - **旁路调用默认用 agent 的模型。** `ctx.auxLlm.generate` 没给 `route` 时用 agent 的 provider 和 model（`lyteboat/plugins/aux-llm/src/index.ts:74-77`、`:111`）。`@lyteboat/skill-router/agent` 的 `provider` + `model`（必须成对）只影响路由的旁路调用，给了才作为 `route` 传过去（`lyteboat/plugins/skill-router/src/index.ts:346-348`）。§3.2 的 `lyteboat/aux-llm-call` 记录了这次调用实际用的 `route`。
 - **旁路调用的输出预算和推理强度。** 路由调用的 `maxTokens` 由 skill-router 的 `maxTokens` 设置决定，默认 200，宿主行和 agent 行都能改（§1.3）。宿主的 `lyteboat-aux-llm` 行有一个 `reasoningEffort` 配置，所有旁路调用都按它请求推理强度，取值由路由的模型适配器定义；没配时用路由自己的默认强度。DeepSeek 默认先思考再作答，思考同样计入这次调用的 `maxTokens`，而答案在 `maxTokens` 处被截断算失败（`failure.reason` 为 `max-tokens`）。要改就用一层 patch 给这一行配上（`lyteboat/plugins/aux-llm/src/index.ts:32-43`、`:115`、`:123-125`，README「配置模型」）。
