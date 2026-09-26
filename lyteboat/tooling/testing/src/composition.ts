@@ -24,7 +24,8 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, FiberState } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { boot, initProfile, loadLayeredEnv, loadProfile, reportSkippedBundles, resolveProfileDir } from '@deepseek-ai/dsh-app-boot'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
@@ -42,6 +43,21 @@ const PROFILE = 'composition'
  * directory instead finds nothing under vitest, whose entry script lives in the store.
  */
 const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', import.meta.url))
+
+/** lyteboat's mode runner rows; the launcher fails a startup that leaves one inactive (@lyteboat/cli mode-runners.ts). */
+const LYTEBOAT_MODE_RUNNER_IDS = new Set(['lyteboat-try', 'lyteboat-serve', 'lyteboat-eval'])
+
+/** Cordis's active fiber state, spelled out: the const enum does not survive vitest's transform (@lyteboat/cli fiber-state.ts). */
+const FIBER_ACTIVE = 2 as FiberState.ACTIVE
+
+/** The launcher's mode runner check, mirrored: the harness cannot import the launcher. */
+function inactiveModeRunner(ctx: Context): string | undefined {
+  for (const entry of ctx.loader.entries()) {
+    if (!LYTEBOAT_MODE_RUNNER_IDS.has(entry.options.id) || entry.disabled) continue
+    if (entry.fiber?.state !== FIBER_ACTIVE) return entry.options.id
+  }
+  return undefined
+}
 
 /** The launcher disables telemetry export when `DSH_TELEMETRY_DISABLED` is set, as tests do. */
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]
@@ -232,7 +248,7 @@ export function startComposition(options: CompositionOptions): RunningCompositio
     process.chdir(cwd)
     restoreEnv()
   }
-  let booted: Promise<unknown>
+  let booted: Promise<Context>
   try {
     const { root, patches } = composedPatches(home, options)
     const ready = readiness()
@@ -241,7 +257,16 @@ export function startComposition(options: CompositionOptions): RunningCompositio
       hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, loadLayeredEnv(BIN_NAME, options.cwd))
       provideCmdline(hostCtx, { args: options.args, exit, ready: ready.service })
     }, pathToFileURL(WORKSPACE_ANCHOR).href)
-    booted.then(() => { if (requested === undefined) ready.commit() }, (error: unknown) => {
+    booted.then((ctx) => {
+      if (requested !== undefined) return
+      const inactiveRunner = inactiveModeRunner(ctx)
+      if (inactiveRunner === undefined) {
+        ready.commit()
+        return
+      }
+      output.stderr += `${BIN_NAME}: startup failed: ${inactiveRunner} did not activate (the entries above say why)\n`
+      exit(1)
+    }, (error: unknown) => {
       if (requested !== undefined) return
       output.stderr += `${error instanceof Error ? error.message : String(error)}\n`
       exit(1)

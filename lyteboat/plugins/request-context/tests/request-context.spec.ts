@@ -83,5 +83,13 @@ describe('the request as session-controller source fields', () => {
     const ctx = await harness(new MockAdapter([]))
 
     expect(() => ctx.requestContext.sourceFields({ owner: 'u-1' } as never)).toThrow()
+    expect(() => ctx.requestContext.sourceFields({ agent: { id: 'finance', digest: 'md5:abc' } })).toThrow('must be sha256: and 64 lowercase hex digits')
+  })
+
+  it('carries the agent a request went to', async () => {
+    const ctx = await harness(new MockAdapter([]))
+    const agent = { id: 'finance', version: '1.0.0', digest: `sha256:${'0'.repeat(64)}` }
+
+    expect(ctx.requestContext.sourceFields({ requestId: 'm-1', agent })).toEqual({ lyteboatRequest: { requestId: 'm-1', agent } })
   })
 })

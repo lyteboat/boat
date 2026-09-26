@@ -22,10 +22,12 @@ import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
+import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
 import z from '@deepseek-ai/schemastery'
-import type { LyteboatAgentModel } from '@lyteboat/contracts'
+import type { LyteboatAgentIdentity, LyteboatAgentModel } from '@lyteboat/contracts'
+import { agentDigest, type AgentDigest } from './agent-digest.ts'
 import { locateAgents, readAgentDefinition } from './agent-directory.ts'
 import type { AgentCatalogLocation, AgentDirectoryDefinition } from './agent-directory.ts'
 
@@ -51,8 +53,10 @@ export interface AgentCatalogEntry {
   readonly name?: string
   readonly description?: string
   readonly order?: number
-  /** The version the agent's `agent.yml` declares. */
-  readonly version?: string
+  /** Which agent this is: its id, its manifest's version, and its directory's digest; what a request records. */
+  readonly identity: LyteboatAgentIdentity
+  /** The per-file content hashes the digest is made of (POSIX relative path → sha256). */
+  readonly files: Readonly<Record<string, string>>
   /** The model the agent's `agent.yml` declares. */
   readonly model?: LyteboatAgentModel
 }
@@ -77,6 +81,8 @@ export interface Config {
   watchDelayMs?: number
   /** Where each agent's working directory is (`<workdirsDir>/<id>`); default `$LYTEBOAT_HOME/agent-workdirs`. */
   workdirsDir?: string
+  /** An agent whose `agent.yml` declares a model other than this process's default model fails, before its code runs. */
+  enforceDeclaredModel?: boolean
 }
 
 export const Config: z<Config> = z.object({
@@ -86,11 +92,12 @@ export const Config: z<Config> = z.object({
   watch: z.boolean().default(false),
   watchDelayMs: z.natural().default(300),
   workdirsDir: z.string(),
+  enforceDeclaredModel: z.boolean().default(false),
 })
 
 /** Host service: the agent roster and its failures. */
 export class AgentCatalogService extends Service {
-  static inject = ['agentPresets']
+  static inject = ['agentPresets', 'agentDefaultModel']
   // The loader applies a class plugin's static Config, not the module's.
   static Config = Config
 
@@ -179,15 +186,33 @@ export class AgentCatalogService extends Service {
     }
   }
 
+  /** Why this process may not serve an agent's declared model; undefined when it may, or nothing is enforced. */
+  private modelProblem(declared: LyteboatAgentModel | undefined): string | undefined {
+    if (this.config.enforceDeclaredModel !== true || declared === undefined) return undefined
+    const current = this.ctx.agentDefaultModel.currentSelection()
+    const running: LyteboatAgentModel = {
+      provider: current.provider,
+      model: current.model,
+      ...current.reasoningEffort === undefined ? {} : { reasoningEffort: String(current.reasoningEffort) },
+    }
+    if (running.provider === declared.provider && running.model === declared.model && running.reasoningEffort === declared.reasoningEffort) return undefined
+    return `agent.yml declares model ${modelName(declared)}, but this process runs ${modelName(running)}; run it with that default model (the agent-default-model row) or change agent.yml`
+  }
+
+  // Everything that can refuse an agent runs before presets.register, which imports and runs its code.
   private async declare({ id, dir }: AgentCatalogLocation): Promise<void> {
     const fail = (reason: string): void => { this.problems.set(id, { id, dir, reason }) }
     if (!isSkillName(id)) return fail(`"${id}" is not a kebab-case id; rename the directory`)
     let definition: AgentDirectoryDefinition
+    let digest: AgentDigest
     try {
       definition = readAgentDefinition(id, dir)
+      digest = agentDigest(dir)
     } catch (error: unknown) {
       return fail(error instanceof Error ? error.message : String(error))
     }
+    const modelProblem = this.modelProblem(definition.model)
+    if (modelProblem !== undefined) return fail(modelProblem)
     // The registry takes the declaration's base URL from its caller's context.
     const presets = this.ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).agentPresets
     try {
@@ -201,13 +226,18 @@ export class AgentCatalogService extends Service {
     this.entries.set(id, {
       id, dir,
       workdir: join(this.config.workdirsDir ?? dshHomePath('agent-workdirs'), id),
+      identity: { id, ...version === undefined ? {} : { version }, digest: digest.digest },
+      files: digest.files,
       ...name === undefined ? {} : { name },
       ...description === undefined ? {} : { description },
       ...order === undefined ? {} : { order },
-      ...version === undefined ? {} : { version },
       ...model === undefined ? {} : { model },
     })
   }
+}
+
+function modelName(model: LyteboatAgentModel): string {
+  return `${model.provider}/${model.model}${model.reasoningEffort === undefined ? '' : ` (reasoningEffort ${model.reasoningEffort})`}`
 }
 
 export default AgentCatalogService

@@ -12,7 +12,6 @@
     { "path": "../../../dsh/core/session" },
     { "path": "../../core/contracts" },
     { "path": "../agent-catalog" },
-    { "path": "../eval-runner" },
     { "path": "../request-context" }
   ]
 }

@@ -23,6 +23,9 @@ function goldenFrames(frames: readonly ChatWireFrame[]): string {
   return `${JSON.stringify(masked, null, 2).replaceAll(/-session--[0-9a-f]{6}\b/gu, '-<surface>')}\n`
 }
 
+/** The finance agent as its catalog stamps a request: its manifest's version and its directory's digest. */
+const FINANCE = { id: 'finance', version: '1.0.0', digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u) as string }
+
 describe('finance agent behind /chat (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('finance-chat')
   let model: ScriptedModel
@@ -76,8 +79,8 @@ describe('finance agent behind /chat (in process, scripted model)', () => {
     const records = await storedLog(sessionId, 2)
     const humans = records.filter(record => record.type === 'user/message').map(record => record.data?.['source'] as { kind: string }).filter(source => source.kind === 'user')
     expect(humans).toEqual([
-      { kind: 'user', rpcId: 'm-1', lyteboatRequest: { requestId: 'm-1', owner: { kind: 'user', id: 'u-1' }, traceId: 't-1', context: { customer: 'young-idle-cash' } } },
-      { kind: 'user', rpcId: 'm-2', lyteboatRequest: { requestId: 'm-2', owner: { kind: 'user', id: 'u-1' } } },
+      { kind: 'user', rpcId: 'm-1', lyteboatRequest: { requestId: 'm-1', owner: { kind: 'user', id: 'u-1' }, agent: FINANCE, traceId: 't-1', context: { customer: 'young-idle-cash' } } },
+      { kind: 'user', rpcId: 'm-2', lyteboatRequest: { requestId: 'm-2', owner: { kind: 'user', id: 'u-1' }, agent: FINANCE } },
     ])
     expect(reopenRefusal(records)).toBeUndefined()
   })

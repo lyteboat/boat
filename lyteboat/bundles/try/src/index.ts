@@ -30,7 +30,7 @@ import type { Agent, AgentRegistry, AgentSetup, ModelSelectionRef } from '@deeps
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
-import type { JsonValue, LyteboatRequestOwner } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatAgentIdentity, LyteboatRequestOwner } from '@lyteboat/contracts'
 import type {} from '@lyteboat/history-import'
 import type {} from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/intake-guard'
@@ -228,12 +228,14 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   // An agent's sessions live in its working directory, so a later run continues
   // one from any directory; a run without an agent stays where it was started.
   let cwd = process.cwd()
+  let identity: LyteboatAgentIdentity | undefined
   if (config.agent !== undefined) {
     await agentCatalog.whenReady()
     agentPreset = (await presets.resolve(config.agent)).id
     const entry = agentCatalog.get(agentPreset)
     if (entry === undefined) throw new Error(`lyteboat try: agent "${agentPreset}" is not in the agent catalog`)
     cwd = entry.workdir
+    identity = entry.identity
     // Unlike the session controller, dsh's agent registry does not create a session's directory.
     mkdirSync(cwd, { recursive: true })
   }
@@ -266,7 +268,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const stopReasoning = streamReasoning(ctx, agent, io.stderr)
   try {
     // Admission runs before the request enters the loop, so its verdict is recorded with the request.
-    await intakeGuard.submit(agent, { text: config.task, context: config.context, owner: CLI_OWNER }, new AbortController().signal)
+    await intakeGuard.submit(agent, { text: config.task, context: config.context, owner: CLI_OWNER, agent: identity }, new AbortController().signal)
     await agent.whenIdle()
   } finally {
     stopReasoning()

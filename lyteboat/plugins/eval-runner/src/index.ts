@@ -18,9 +18,11 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-llm'
 import type { AgentCatalogEntry } from '@lyteboat/agent-catalog'
+import type { LyteboatAgentModel } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 import { loadEvalCases, type EvalCase } from './eval-case.ts'
 import { checkTurn } from './eval-check.ts'
+import { recordedModelsOf } from './eval-recording.ts'
 import { EvalReplay } from './eval-replay.ts'
 import { compareEvalResults, readEvalResults, recordedSessionFile, writeEvalRun, writeRecordedSession, type EvalChange, type EvalRunRecord, type EvalTurnResult } from './eval-report.ts'
 import { runEvalTurn } from './eval-turn.ts'
@@ -91,17 +93,21 @@ export class EvalRunnerService extends Service {
     // A replay answers every call itself: nothing behind it may reach a provider.
     const stopReplay = replay === undefined ? () => {} : this.ctx.on('llm/stream', (generate, _next) => replay.stream(generate))
     const results: EvalTurnResult[] = []
+    const models = new Map<string, LyteboatAgentModel>()
     try {
       for (const evalCase of cases) {
-        const caseResults = await this.runCase(evalCase, agent, options, replay)
+        const caseResults = await this.runCase(evalCase, agent, options, replay, models)
         results.push(...caseResults)
         options.onCase?.(evalCase, caseResults)
       }
     } finally {
       stopReplay()
     }
+    if (models.size > 1) throw new Error(`eval-runner: the run's requests used more than one model: ${[...models.keys()].join(', ')}`)
+    const [model] = models.values()
     const record: EvalRunRecord = {
-      agent: options.agentId,
+      agent: agent.identity,
+      ...model === undefined ? {} : { model },
       mode: options.mode,
       ...options.from === undefined ? {} : { from: options.from },
       cases: cases.map(evalCase => ({ id: evalCase.id, pass: results.filter(result => result.case === evalCase.id).every(result => result.pass) })),
@@ -123,7 +129,10 @@ export class EvalRunnerService extends Service {
     return compareEvalResults(readEvalResults(before), readEvalResults(after))
   }
 
-  private async runCase(evalCase: EvalCase, agent: AgentCatalogEntry, options: EvalRunOptions, replay: EvalReplay | undefined): Promise<EvalTurnResult[]> {
+  /**
+   * One case in a new session of the agent. A real run records the session and adds the models its requests used to `models`.
+   */
+  private async runCase(evalCase: EvalCase, agent: AgentCatalogEntry, options: EvalRunOptions, replay: EvalReplay | undefined, models: Map<string, LyteboatAgentModel>): Promise<EvalTurnResult[]> {
     const { sessionId } = await this.ctx.sessionController.create({ cwd: agent.workdir, agentPreset: agent.id })
     if (replay !== undefined) replay.bind(sessionId, recordedSessionFile(replaySourceOf(options), evalCase.id))
     const resolved = await this.ctx.sessionController.resolveAgent(sessionId)
@@ -137,7 +146,7 @@ export class EvalRunnerService extends Service {
         sessionId,
         requestId,
         text: turn.message,
-        sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: { kind: 'system', id: 'eval' }, ...context === undefined ? {} : { context } }),
+        sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: { kind: 'system', id: 'eval' }, agent: agent.identity, ...context === undefined ? {} : { context } }),
         timeoutMs: this.config.turnTimeoutMs ?? 300_000,
       })
       const checks = checkTurn(turn.expect, observed)
@@ -146,6 +155,7 @@ export class EvalRunnerService extends Service {
     if (options.mode === 'real') {
       const inspection = await this.ctx.sessionController.inspect(sessionId)
       writeRecordedSession(recordedSessionFile(options.out, evalCase.id), inspection)
+      for (const model of recordedModelsOf(inspection.events)) models.set(JSON.stringify(model), model)
     }
     return results
   }

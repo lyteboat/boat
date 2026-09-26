@@ -120,7 +120,7 @@ describe('eval runs on disk', () => {
     const dir = mkdtempSync(join(tmpdir(), 'eval-run-'))
     dirs.push(dir)
     const failing = { ...result('a', 1, [['outcome', true]]), checks: [{ check: 'cards.count', expected: 2, actual: 1, pass: false }], pass: false }
-    const run: EvalRunRecord = { agent: 'demo', mode: 'replay', from: '/runs/base', cases: [{ id: 'a', pass: false }], turns: { total: 1, passed: 0 }, checks: { total: 1, passed: 0 }, startedAt: '2026-09-25T00:00:00.000Z', durationMs: 1200 }
+    const run: EvalRunRecord = { agent: { id: 'demo', version: '1.0.0', digest: `sha256:${'0'.repeat(64)}` }, mode: 'replay', from: '/runs/base', cases: [{ id: 'a', pass: false }], turns: { total: 1, passed: 0 }, checks: { total: 1, passed: 0 }, startedAt: '2026-09-25T00:00:00.000Z', durationMs: 1200 }
 
     writeEvalRun(dir, run, [failing])
 

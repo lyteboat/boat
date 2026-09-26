@@ -60,7 +60,11 @@ describe('lyteboat eval (in process, scripted model)', () => {
     expect(run.code, run.stderr).toBe(0)
     expect(run.stdout).toMatch(/^✓ hello \(2 turns\)\n✓ short \(1 turn\)\nlyteboat eval: 2\/2 cases passed \(turns 3\/3, checks 10\/10\); report: /u)
     realRun = runDirOf(run)
-    expect(JSON.parse(readFileSync(join(realRun, 'run.json'), 'utf8'))).toMatchObject({ agent: 'greeter', mode: 'real', cases: [{ id: 'hello', pass: true }, { id: 'short', pass: true }] })
+    const greeter = { id: 'greeter', digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u) as string }
+    expect(JSON.parse(readFileSync(join(realRun, 'run.json'), 'utf8'))).toMatchObject({ agent: greeter, model: { provider: 'deepseek-official', model: 'deepseek-flash' }, mode: 'real', cases: [{ id: 'hello', pass: true }, { id: 'short', pass: true }] })
+    // Every recorded human message names the agent it went to.
+    const recorded = readFileSync(join(realRun, 'sessions', 'hello', 'session.v4.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line) as { type?: string; data?: { source?: { lyteboatRequest?: { agent?: unknown } } } })
+    expect(recorded.filter(line => line.type === 'user/message').map(line => line.data?.source?.lyteboatRequest?.agent)).toEqual([greeter, greeter])
     const results = readFileSync(join(realRun, 'results.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line) as { case: string; turn: number; observed: unknown })
     expect(results.map(result => [result.case, result.turn, result.observed])).toEqual([
       ['hello', 1, { skill: null, tools: [], cards: [], outcome: 'completed', text: 'OK:hello', modelRequests: 1 }],
@@ -79,7 +83,10 @@ describe('lyteboat eval (in process, scripted model)', () => {
     expect(run.code, run.stderr).toBe(0)
     expect(model.requests.length).toBe(before)
     expect(readFileSync(join(runDirOf(run), 'results.jsonl'), 'utf8')).toBe(readFileSync(join(realRun, 'results.jsonl'), 'utf8'))
-    expect(JSON.parse(readFileSync(join(runDirOf(run), 'run.json'), 'utf8'))).toMatchObject({ mode: 'replay', from: realRun })
+    const replayed = JSON.parse(readFileSync(join(runDirOf(run), 'run.json'), 'utf8')) as Record<string, unknown>
+    expect(replayed).toMatchObject({ mode: 'replay', from: realRun })
+    // A replay's answers are recordings: it names no model.
+    expect(replayed).not.toHaveProperty('model')
   })
 
   it('exits 1 when a check fails, and the report says what was expected and what the turn showed', async () => {

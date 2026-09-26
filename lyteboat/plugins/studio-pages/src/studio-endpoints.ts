@@ -8,7 +8,7 @@
  */
 
 import type { JsonValue } from '@lyteboat/contracts'
-import type { EvalRunRecord } from '@lyteboat/eval-runner'
+import type { LyteboatEvalRunRecord } from '@lyteboat/contracts'
 
 /** The first segment of every endpoint's method on dsh's `/api` channel. */
 export const STUDIO_PAGES_METHOD_PREFIX = 'lyteboat'
@@ -42,7 +42,7 @@ export interface StudioEvalRun {
   /** The run's directory name, its id. */
   id: string
   agent: string
-  mode: EvalRunRecord['mode']
+  mode: LyteboatEvalRunRecord['mode']
   cases: number
   passedCases: number
   startedAt: string

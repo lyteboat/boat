@@ -36,7 +36,6 @@
   "dependencies": {
     "@lyteboat/agent-catalog": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
-    "@lyteboat/eval-runner": "workspace:*",
     "@lyteboat/request-context": "workspace:*",
     "@deepseek-ai/dsh-brand": "catalog:dsh",
     "@deepseek-ai/dsh-home-paths": "catalog:dsh",
@@ -52,6 +51,7 @@
   "devDependencies": {
     "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",
     "@deepseek-ai/dsh-client-connection": "catalog:dsh",

@@ -6,6 +6,8 @@
  * cancels the turn of a caller that left, and refuses what it cannot answer
  * with the status the protocol names.
  */
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -99,7 +101,7 @@ describe('lyteboat serve (in process, scripted model)', () => {
     expect(human?.data?.['source']).toEqual({
       kind: 'user',
       rpcId: body.message_id,
-      lyteboatRequest: { requestId: body.message_id, owner: { kind: 'user', id: 'u-1' }, traceId: 't-1', context: { channel: 'app' } },
+      lyteboatRequest: { requestId: body.message_id, owner: { kind: 'user', id: 'u-1' }, agent: { id: 'alpha', digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u) as string }, traceId: 't-1', context: { channel: 'app' } },
     })
     // The session works in the agent's own directory under the lyteboat home, and starts without permission events.
     expect(records[0]).toMatchObject({ type: 'session', cwd: join(home, 'agent-workdirs', 'alpha'), agentPreset: 'alpha' })
@@ -279,13 +281,28 @@ describe('lyteboat serve startup (in process)', () => {
     expect(none.stderr).toContain('error: at least one --agents directory is required')
   })
 
+  it('refuses to serve an agent that declares a model other than the one this process runs', async () => {
+    const run = scratch.run('model')
+    const roots = mkdtempSync(join(tmpdir(), 'serve-model-'))
+    cpSync(join(AGENTS, 'beta'), join(roots, 'beta'), { recursive: true })
+    writeFileSync(join(roots, 'beta', 'agent.yml'), 'model: { provider: deepseek-official, model: deepseek-pro }\n')
+    const target = { cwd: run.workspace, home: run.home, env: { DSH_TELEMETRY_DISABLED: '1' } }
+
+    const result = await bootComposition({ bundles: LYTEBOAT_SERVE_BUNDLES, args: ['--agents', roots, '--port', '0'], ...target })
+    rmSync(roots, { recursive: true, force: true })
+
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain('beta: agent.yml declares model deepseek-official/deepseek-pro, but this process runs deepseek-official/deepseek-flash')
+  })
+
   it('refuses a chat-api config key it does not have, such as the retired workspace', async () => {
     const run = scratch.run('retired')
     const target = { cwd: run.workspace, home: run.home, env: { DSH_TELEMETRY_DISABLED: '1' } }
 
-    const result = await bootComposition({ bundles: LYTEBOAT_SERVE_BUNDLES, args: ['--agents', AGENTS], patches: [{ id: 'chat-api', config: { auth: 'none', workspace: run.workspace } }], ...target })
+    const result = await bootComposition({ bundles: LYTEBOAT_SERVE_BUNDLES, args: ['--agents', AGENTS, '--port', '0'], patches: [{ id: 'chat-api', config: { auth: 'none', workspace: run.workspace } }], ...target })
 
     expect(result.code).not.toBe(0)
     expect(result.stderr).toContain('chat-api: unknown config key "workspace"; allowed: auth, credentialRef, maxBodyBytes, keepAliveMs')
+    expect(result.stderr).toContain('lyteboat: startup failed: lyteboat-serve did not activate (the entries above say why)')
   })
 })

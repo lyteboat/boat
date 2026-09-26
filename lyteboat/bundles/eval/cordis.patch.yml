@@ -18,6 +18,7 @@
       config:
         roots: !!js ctx.lyteboatEvalStartup.agentRoots
         include: !!js ctx.lyteboatEvalStartup.include
+        enforceDeclaredModel: true
 
     # Every case's session names its agent; a session without one runs none.
     - id: agent-preset-registry

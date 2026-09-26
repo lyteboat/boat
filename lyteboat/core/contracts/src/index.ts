@@ -291,6 +291,58 @@ export const lyteboatAgentManifestSchema: z.ZodType<LyteboatAgentManifest> = z.s
 })
 
 /**
+ * Which agent answered: its id, the version its manifest declares, and the
+ * digest of its directory (`sha256:` and 64 lowercase hex digits, computed by
+ * `@lyteboat/agent-catalog`). A request, an eval run, and a release lock carry
+ * the same shape.
+ */
+export type LyteboatAgentIdentity = {
+  id: string
+  version?: string
+  digest: string
+}
+
+/** The schema of {@link LyteboatAgentIdentity}. */
+export const lyteboatAgentIdentitySchema: z.ZodType<LyteboatAgentIdentity> = z.strictObject({
+  id: z.string().min(1),
+  version: z.string().min(1).exactOptional(),
+  digest: z.string().regex(/^sha256:[0-9a-f]{64}$/u, 'must be sha256: and 64 lowercase hex digits'),
+})
+
+/**
+ * What an eval run was and how it went, as its `run.json`: the agent it ran
+ * (identity), the model its recorded requests used (a real run whose loop sent
+ * requests; a replay records none), the mode, the run a replay played back,
+ * and the case, turn, and check totals.
+ */
+export type LyteboatEvalRunRecord = {
+  agent: LyteboatAgentIdentity
+  model?: LyteboatAgentModel
+  mode: 'real' | 'replay'
+  from?: string
+  cases: { id: string; pass: boolean }[]
+  turns: { total: number; passed: number }
+  checks: { total: number; passed: number }
+  startedAt: string
+  durationMs: number
+}
+
+const lyteboatEvalTotalsSchema = z.object({ total: z.number(), passed: z.number() })
+
+/** The schema of {@link LyteboatEvalRunRecord}: a `run.json` is a file, read at a boundary. */
+export const lyteboatEvalRunRecordSchema: z.ZodType<LyteboatEvalRunRecord> = z.object({
+  agent: lyteboatAgentIdentitySchema,
+  model: lyteboatAgentModelSchema.exactOptional(),
+  mode: z.enum(['real', 'replay']),
+  from: z.string().exactOptional(),
+  cases: z.array(z.object({ id: z.string(), pass: z.boolean() })),
+  turns: lyteboatEvalTotalsSchema,
+  checks: lyteboatEvalTotalsSchema,
+  startedAt: z.string(),
+  durationMs: z.number(),
+})
+
+/**
  * The request a human message answers to, carried on its `source` beside
  * `kind: 'user'`, so every dsh consumer still reads the message as human
  * input. `@lyteboat/request-context` reads it back.
@@ -302,6 +354,8 @@ export type LyteboatRequest = {
   owner?: LyteboatRequestOwner
   /** The caller's trace id for the request, so its logs and the session's can be joined. */
   traceId?: string
+  /** The agent the request went to, as the caller's agent catalog knew it when the request was sent. */
+  agent?: LyteboatAgentIdentity
   /** The request context as the caller passed it; absent keeps the session's earlier context. */
   context?: { [key: string]: JsonValue }
   intake?: LyteboatIntakeVerdict
@@ -312,6 +366,7 @@ export const lyteboatRequestSchema: z.ZodType<LyteboatRequest> = z.object({
   requestId: z.string().exactOptional(),
   owner: lyteboatRequestOwnerSchema.exactOptional(),
   traceId: z.string().exactOptional(),
+  agent: lyteboatAgentIdentitySchema.exactOptional(),
   context: lyteboatJsonObjectSchema.exactOptional(),
   intake: lyteboatIntakeVerdictSchema.exactOptional(),
 })

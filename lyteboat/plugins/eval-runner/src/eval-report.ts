@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SESSION_FORMAT_VERSION, SessionLogOffset, type SessionHeader } from '@deepseek-ai/dsh-session'
 import { sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog'
+import type { LyteboatEvalRunRecord } from '@lyteboat/contracts'
 import type { EvalCheck, EvalObservation } from './eval-check.ts'
 
 /** One turn's result, as a `results.jsonl` line. */
@@ -24,18 +25,8 @@ export interface EvalTurnResult {
   pass: boolean
 }
 
-/** What ran and how it went, as `run.json`. */
-export interface EvalRunRecord {
-  agent: string
-  mode: 'real' | 'replay'
-  /** The run the replay played back. */
-  from?: string
-  cases: { id: string; pass: boolean }[]
-  turns: { total: number; passed: number }
-  checks: { total: number; passed: number }
-  startedAt: string
-  durationMs: number
-}
+/** What ran and how it went, as `run.json` (the contract's shape, read back through its schema). */
+export type EvalRunRecord = LyteboatEvalRunRecord
 
 /** A check whose result differs between two runs. */
 export interface EvalChange {
@@ -69,7 +60,7 @@ const verdict = (pass: boolean): string => (pass ? '✓' : '✗')
 export function renderEvalReport(run: EvalRunRecord, results: readonly EvalTurnResult[]): string {
   const passedCases = run.cases.filter(evalCase => evalCase.pass).length
   const lines = [
-    `# Eval ${run.agent}: ${String(passedCases)}/${String(run.cases.length)} cases passed`,
+    `# Eval ${run.agent.id}: ${String(passedCases)}/${String(run.cases.length)} cases passed`,
     '',
     `- mode: ${run.mode}${run.from === undefined ? '' : ` (from ${run.from})`}`,
     `- turns: ${String(run.turns.passed)}/${String(run.turns.total)} passed; checks: ${String(run.checks.passed)}/${String(run.checks.total)} passed`,

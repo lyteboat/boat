@@ -53,6 +53,7 @@ import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { FIBER_STATE } from './fiber-state.ts'
+import { inactiveModeRunner } from './mode-runners.ts'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from './templates.ts'
 
@@ -272,6 +273,13 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     })
   })
   app.current = ctx
+  const inactiveRunner = inactiveModeRunner(ctx)
+  if (inactiveRunner !== undefined) {
+    // The launcher reports its own startup failures on stderr, as dsh's audit does.
+    process.stderr.write(`${NAME}: startup failed: ${inactiveRunner} did not activate (the entries above say why)\n`)
+    void shutdown.shutdown(1)
+    return { ctx, shutdown }
+  }
   if (!signalShutdown.signal.aborted
     && ctx.fiber.state === FIBER_STATE.ACTIVE
     && ctx.get('loader') !== undefined) {

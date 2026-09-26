@@ -114,7 +114,7 @@ export class StudioPagesService extends Service {
         await this.ctx.agentCatalog.reload().catch(() => {})
         return this.agents()
       case 'session/send': return this.send(parse(sendPayload, payload), signal)
-      case 'evals': return { runs: listEvalRuns(this.evalsDir()) }
+      case 'evals': return { runs: listEvalRuns(this.evalsDir(), message => { this.ctx.logger.warn(message) }) }
       case 'evals/report': {
         const { run } = parse(reportPayload, payload)
         try {

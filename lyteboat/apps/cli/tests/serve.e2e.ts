@@ -1,9 +1,11 @@
 /**
  * `lyteboat serve` on the built launcher: it boots the serve profile, prints
  * where `/chat` listens, answers one message in a JSON body and one as the
- * enterprise stream, stops cleanly on SIGTERM, and refuses to start without an
- * agent directory.
+ * enterprise stream, stops cleanly on SIGTERM, refuses to start without an
+ * agent directory, and exits when a row it needs fails instead of waiting.
  */
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { postChat, streamChat } from '@lyteboat/testing/chat-client'
@@ -42,6 +44,18 @@ describe('lyteboat serve (built bin, scripted model)', () => {
       const code = await lyteboat.stop('SIGTERM')
       expect(code, lyteboat.output()).toBe(0)
     }
+  })
+
+  it('exits 1 when a row the service needs fails, instead of waiting with nothing to serve', async () => {
+    const { home, workspace } = scratch.run('broken-row')
+    const patch = join(workspace, 'retired.patch.yml')
+    writeFileSync(patch, '- id: chat-api\n  config:\n    auth: none\n    workspace: /tmp\n')
+
+    const result = await runLyteboat(['serve', '--patch', patch, '--agents', AGENTS, '--port', '0'], { cwd: workspace, env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: '1' } })
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('chat-api: unknown config key "workspace"')
+    expect(result.stderr).toContain('lyteboat: startup failed: lyteboat-serve did not activate (the entries above say why)')
   })
 
   it('refuses to start without an agent directory', async () => {

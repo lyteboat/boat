@@ -9,10 +9,12 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
+import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { MockAdapter, createLyteboatUnitHost } from '@lyteboat/testing'
 import AgentCatalogService from '@lyteboat/agent-catalog'
+import { agentDigest } from '../src/agent-digest.ts'
 import type { Config } from '@lyteboat/agent-catalog'
 
 const fixture = (name: string): string => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
@@ -22,6 +24,7 @@ async function catalogHost(config: Config): Promise<Context> {
   // The unit host has no loader tree; the registry only waits on it to settle, and here it has.
   ctx.provide('loader', { await: () => Promise.resolve() } as never)
   await ctx.plugin(AgentPresetRegistry, { default: 'none' })
+  await ctx.plugin(AgentDefaultModelConfig, { provider: 'deepseek-official', model: 'deepseek-flash' })
   await ctx.plugin(AgentCatalogService, config)
   return ctx
 }
@@ -33,8 +36,13 @@ describe('the agent catalog', () => {
     await ctx.agentCatalog.whenReady()
 
     expect(ctx.agentCatalog.list()).toEqual([
-      { id: 'alpha', dir: fixture('good/alpha'), workdir: '/srv/lyteboat/workdirs/alpha', name: 'Alpha', description: 'the first fixture agent', order: 1, version: '0.3.1', model: { provider: 'deepseek-official', model: 'deepseek-flash' } },
-      { id: 'beta', dir: fixture('good/beta'), workdir: '/srv/lyteboat/workdirs/beta' },
+      {
+        id: 'alpha', dir: fixture('good/alpha'), workdir: '/srv/lyteboat/workdirs/alpha', name: 'Alpha', description: 'the first fixture agent', order: 1,
+        identity: { id: 'alpha', version: '0.3.1', digest: agentDigest(fixture('good/alpha')).digest },
+        files: agentDigest(fixture('good/alpha')).files,
+        model: { provider: 'deepseek-official', model: 'deepseek-flash' },
+      },
+      { id: 'beta', dir: fixture('good/beta'), workdir: '/srv/lyteboat/workdirs/beta', identity: { id: 'beta', digest: agentDigest(fixture('good/beta')).digest }, files: agentDigest(fixture('good/beta')).files },
     ])
     expect(await ctx.agentPresets.resolve('alpha')).toEqual({ id: 'alpha' })
     expect(ctx.agentCatalog.failures()).toEqual([])
@@ -111,6 +119,32 @@ describe('the agent catalog', () => {
       expect(await failureOf({ 'agent.yml': 'name: Beta\nundeclared: hidden\n' })).toMatch(/agent\.yml: .*"undeclared"/u)
       expect(await failureOf({ 'agent.yml': 'version: latest\n' })).toContain('agent.yml: version: must look like 1.2.3 or 1.2.3-rc.1')
       expect(await failureOf({ 'agent.yml': 'model: { provider: deepseek-official }\n' })).toContain('agent.yml: model.model:')
+    })
+
+    it('fails an agent whose declared model is not this process\'s when enforced, before registering it', async () => {
+      const root = rootWithBeta({ 'agent.yml': 'model: { provider: deepseek-official, model: deepseek-pro }\n' })
+      const enforced = await catalogHost({ roots: [root], strict: false, enforceDeclaredModel: true })
+      const lax = await catalogHost({ roots: [root], strict: false })
+      await enforced.agentCatalog.whenReady()
+      await lax.agentCatalog.whenReady()
+
+      expect(enforced.agentCatalog.failures().map(problem => problem.reason)).toEqual([
+        'agent.yml declares model deepseek-official/deepseek-pro, but this process runs deepseek-official/deepseek-flash; run it with that default model (the agent-default-model row) or change agent.yml',
+      ])
+      expect((await enforced.agentPresets.list()).map(preset => preset.id)).not.toContain('beta')
+      expect(lax.agentCatalog.get('beta')?.model).toEqual({ provider: 'deepseek-official', model: 'deepseek-pro' })
+    })
+
+    it('serves an agent whose declared model is this process\'s, reasoning effort included', async () => {
+      const root = rootWithBeta({ 'agent.yml': 'model: { provider: deepseek-official, model: deepseek-flash }\n' })
+      const effortful = rootWithBeta({ 'agent.yml': 'model: { provider: deepseek-official, model: deepseek-flash, reasoningEffort: high }\n' })
+      const plain = await catalogHost({ roots: [root], enforceDeclaredModel: true })
+      const withEffort = await catalogHost({ roots: [effortful], strict: false, enforceDeclaredModel: true })
+      await plain.agentCatalog.whenReady()
+      await withEffort.agentCatalog.whenReady()
+
+      expect(plain.agentCatalog.get('beta')?.identity.id).toBe('beta')
+      expect(withEffort.agentCatalog.failures()[0]?.reason).toContain('declares model deepseek-official/deepseek-flash (reasoningEffort high), but this process runs deepseek-official/deepseek-flash;')
     })
 
     it('fails an agent that still has preset.yml, naming the rename', async () => {

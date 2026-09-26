@@ -19,6 +19,7 @@
       inject: [lyteboatServeStartup]
       config:
         roots: !!js ctx.lyteboatServeStartup.agentRoots
+        enforceDeclaredModel: true
 
     # Every /chat session names its agent; a session without one runs none.
     - id: agent-preset-registry

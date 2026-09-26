@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
+import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import type { SessionPromptRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { ConnectionFetchRoute, ConnectionRpcResult } from '@deepseek-ai/dsh-client-connection'
@@ -17,6 +18,7 @@ import { MockAdapter, createLyteboatUnitHost } from '@lyteboat/testing'
 import AgentCatalogService from '@lyteboat/agent-catalog'
 import RequestContextService from '@lyteboat/request-context'
 import StudioPagesService from '@lyteboat/studio-pages'
+import { listEvalRuns } from '../src/eval-runs.ts'
 
 const fixture = (name: string): string => fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
 
@@ -40,6 +42,7 @@ async function studioPagesHost(roots: string[]): Promise<StudioPagesHost> {
   // dsh's session controller: the prompts queued on a session.
   ctx.provide('sessionController', { prompt: (request: SessionPromptRequest) => { prompts.push(request); return Promise.resolve() } } as never)
   await ctx.plugin(AgentPresetRegistry, { default: 'none' })
+  await ctx.plugin(AgentDefaultModelConfig, { provider: 'deepseek-official', model: 'deepseek-flash' })
   await ctx.plugin(AgentCatalogService, { roots, strict: false })
   await ctx.plugin(RequestContextService)
   await ctx.plugin(StudioPagesService, { owner: 'studio', evalsDir: fixture('evals') })
@@ -114,7 +117,7 @@ describe('the Studio pages\' endpoints', () => {
     expect(host.prompts).toEqual([])
   })
 
-  it('lists the eval runs newest first, skipping a directory that is not a run, and answers one run\'s report', async () => {
+  it('lists the eval runs newest first, skipping a directory that is not a run and a run.json of an earlier format, and answers one run\'s report', async () => {
     const host = await studioPagesHost([fixture('agents')])
 
     const runs = await host.call('evals')
@@ -130,6 +133,15 @@ describe('the Studio pages\' endpoints', () => {
       },
     })
     expect(report).toEqual({ ok: true, value: { run: '20260925T010000Z-aaaa', report: '# Eval support: 1/2 cases passed\n' } })
+  })
+
+  it('warns about a run.json of an earlier format instead of listing it', () => {
+    const warnings: string[] = []
+
+    const runs = listEvalRuns(fixture('evals'), (message) => { warnings.push(message) })
+
+    expect(runs.map(run => run.id)).toEqual(['20260925T020000Z-bbbb', '20260925T010000Z-aaaa'])
+    expect(warnings).toEqual([expect.stringMatching(/^studio-pages: eval run 20260924T230000Z-cccc left out: .*run\.json is not a run\.json this lyteboat reads/u) as string])
   })
 
   it('refuses a report named by a path', async () => {

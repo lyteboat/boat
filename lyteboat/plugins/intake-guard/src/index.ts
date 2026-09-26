@@ -17,7 +17,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { UserMessage } from '@deepseek-ai/dsh-llm'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
-import type { JsonValue, LyteboatIntakeDecision, LyteboatIntakeVerdict, LyteboatRequestOwner, LyteboatStepPayload } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatAgentIdentity, LyteboatIntakeDecision, LyteboatIntakeVerdict, LyteboatRequestOwner, LyteboatStepPayload } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 
 declare module '@deepseek-ai/cordis' {
@@ -103,13 +103,13 @@ export class IntakeGuardService extends Service {
    * nothing, as an absent one: the session's earlier context stays in force
    * and is the one admission sees.
    * @param agent - the agent the request goes to.
-   * @param request - what the person wrote, the request context, the caller's id for the request, and who sent it.
+   * @param request - what the person wrote, the request context, the caller's id for the request, who sent it, and the agent it goes to.
    * @param signal - the caller's signal; an abort during admission follows nothing up.
    * @returns the verdict recorded on the request, or undefined when the agent admits everything.
    */
   async submit(
     agent: Agent,
-    request: { text: string; context?: { [key: string]: JsonValue } | undefined; requestId?: string | undefined; owner?: LyteboatRequestOwner | undefined },
+    request: { text: string; context?: { [key: string]: JsonValue } | undefined; requestId?: string | undefined; owner?: LyteboatRequestOwner | undefined; agent?: LyteboatAgentIdentity | undefined },
     signal: AbortSignal,
   ): Promise<LyteboatIntakeVerdict | undefined> {
     const context = request.context === undefined || Object.keys(request.context).length === 0 ? undefined : request.context
@@ -117,6 +117,7 @@ export class IntakeGuardService extends Service {
     agent.followup(this.ctx.requestContext.message(request.text, {
       ...request.requestId === undefined ? {} : { requestId: request.requestId },
       ...request.owner === undefined ? {} : { owner: request.owner },
+      ...request.agent === undefined ? {} : { agent: request.agent },
       ...context === undefined ? {} : { context },
       ...intake === undefined ? {} : { intake },
     }))

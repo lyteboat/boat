@@ -21,7 +21,7 @@ describe('lyteboat try --agents --agent (in process, scripted model)', () => {
     scratch.remove()
   })
 
-  it('composes the named agent and records it in the session header', async () => {
+  it('composes the named agent, records it in the session header, and stamps the task with its identity', async () => {
     const { home, workspace } = scratch.run('preset')
     const before = model.requests.length
     const result = await tryComposition(['--agents', AGENTS, '--agent', 'minimal', 'hello'], { cwd: workspace, home, env: scriptedModelEnv(model) })
@@ -33,6 +33,8 @@ describe('lyteboat try --agents --agent (in process, scripted model)', () => {
     const [log] = findSessionLogs(home)
     const records = readSessionLog(log!)
     expect(records[0]).toMatchObject({ type: 'session', agentPreset: 'minimal' })
+    const human = records.find(record => record['type'] === 'user/message') as { data: { source: unknown } } | undefined
+    expect(human?.data.source).toEqual({ kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' }, agent: { id: 'minimal', digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/u) as string } } })
     // A preset chosen at creation is recorded in the header; `agent-preset/selected`
     // is only logged for a switch made while the session was still blank.
     const types = eventTypes(records).filter(type => !type.startsWith('session/title'))

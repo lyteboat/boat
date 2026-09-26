@@ -30,7 +30,7 @@ import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
 import type { AgentCatalogEntry } from '@lyteboat/agent-catalog'
-import type { JsonValue, LyteboatRequestState } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatAgentIdentity, LyteboatRequestState } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 import { ChatApiError, parseChatRequest, readChatBody, type ChatRequest } from './chat-request.ts'
 import { isChatSessionOwner } from './chat-session-owner.ts'
@@ -169,7 +169,7 @@ export class ChatApiService extends Service {
       await this.authorize(request)
       await this.catalogSettled()
       sendJson(response, 200, {
-        agents: this.ctx.agentCatalog.list().map(agent => ({ id: agent.id, name: agent.name ?? agent.id, ...agent.description === undefined ? {} : { description: agent.description } })),
+        agents: this.ctx.agentCatalog.list().map(agent => ({ id: agent.id, name: agent.name ?? agent.id, ...agent.description === undefined ? {} : { description: agent.description }, ...agent.identity.version === undefined ? {} : { version: agent.identity.version } })),
         failures: this.ctx.agentCatalog.failures().map(failure => ({ id: failure.id, reason: failure.reason })),
       })
     } catch (error: unknown) {
@@ -228,7 +228,7 @@ export class ChatApiService extends Service {
       this.inFlight.add(key)
       const resolved = await this.ctx.sessionController.resolveAgent(sessionId)
       if ('error' in resolved) throw new ChatApiError('internal', resolved.error.message)
-      await this.answer(chat, sessionId, messageId, resolved.agent, response)
+      await this.answer(chat, sessionId, messageId, resolved.agent, agent.identity, response)
     } catch (error: unknown) {
       if (!response.headersSent) this.refuse(response, error)
       else if (!response.writableEnded) response.end()
@@ -237,7 +237,7 @@ export class ChatApiService extends Service {
     }
   }
 
-  private async answer(chat: ChatRequest, sessionId: SessionId, messageId: string, agent: Agent, response: ServerResponse): Promise<void> {
+  private async answer(chat: ChatRequest, sessionId: SessionId, messageId: string, agent: Agent, identity: LyteboatAgentIdentity, response: ServerResponse): Promise<void> {
     const context: ChatFrameContext = { agentId: chat.agentId, sessionId, messageId, userId: chat.userId }
     const stream = chat.stream ? this.frameStream(response, context, agent) : undefined
     const writer = stream?.writer
@@ -270,7 +270,7 @@ export class ChatApiService extends Service {
         sessionId,
         mode: 'queue',
         content: [{ type: 'text', text: chat.message }],
-        sourceFields: this.ctx.requestContext.sourceFields({ requestId: messageId, owner: { kind: 'user', id: chat.userId }, ...chat.traceId === undefined ? {} : { traceId: chat.traceId }, ...chat.context === undefined ? {} : { context: chat.context } }),
+        sourceFields: this.ctx.requestContext.sourceFields({ requestId: messageId, owner: { kind: 'user', id: chat.userId }, agent: identity, ...chat.traceId === undefined ? {} : { traceId: chat.traceId }, ...chat.context === undefined ? {} : { context: chat.context } }),
       }, aborted.signal)
       if (stream !== undefined) {
         stream.open()
