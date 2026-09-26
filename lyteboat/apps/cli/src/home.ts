@@ -5,7 +5,7 @@
  * module first and dynamic-imports the rest). It exports `<home>/.agents` as
  * `DSH_AGENTS_HOME` too, the shared agent configuration root dsh's skill
  * filesystem otherwise reads from `~/.agents` (only where the host's default
- * skill roots are on: Studio); not the home itself, whose `skills/` would then
+ * skill roots are on: lyteboat web); not the home itself, whose `skills/` would then
  * be both roots. Both overrides are unconditional: a user's own homes never
  * receive lyteboat data or lend it their skills.
  * @module @lyteboat/cli/home

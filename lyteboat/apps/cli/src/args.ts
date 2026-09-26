@@ -6,8 +6,8 @@
  * its own flags to the booted tree verbatim, where the app plugins parse their
  * own flag families and print their own `--help` (see `@deepseek-ai/dsh-cmdline`).
  * Launcher flags therefore come first: the first token a subcommand does not
- * recognize starts the inner arguments, so `lyteboat studio --port 0` boots the
- * studio profile with `--port 0`, and `lyteboat try -h` prints the one-shot app's help.
+ * recognize starts the inner arguments, so `lyteboat web --port 0` boots the
+ * web profile with `--port 0`, and `lyteboat try -h` prints the one-shot app's help.
  *
  * Adapted from deepseek-ai/deepseek-harness apps/cli/src/args.ts
  * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md.
@@ -16,7 +16,7 @@
 
 import { Command, CommanderError } from 'commander'
 import { pluginFilesProblem } from './plugins.ts'
-import { DEFAULT_EVAL_PROFILE, DEFAULT_TRY_PROFILE, DEFAULT_SERVE_PROFILE, DEFAULT_STUDIO_PROFILE } from './templates.ts'
+import { DEFAULT_EVAL_PROFILE, DEFAULT_TRY_PROFILE, DEFAULT_SERVE_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
 interface ProfileInvocation {
@@ -64,8 +64,8 @@ Examples:
   lyteboat try --patch ./extra.yml "task"              boot the try profile with one extra overlay
   lyteboat try --plugin ./my-plugin.mjs "task"         insert a local plugin file into the tree
   lyteboat try -h                                      the one-shot app's own flags and help
-  lyteboat studio --agents ./agents                    serve dsh web with lyteboat's pages (lyteboat studio --help)
-  lyteboat studio --agents ./agents --no-open --port 8080  without opening a browser, on another port
+  lyteboat web --agents ./agents                       serve dsh web with lyteboat's pages (lyteboat web --help)
+  lyteboat web --agents ./agents --no-open --port 8080     without opening a browser, on another port
   lyteboat serve --agents ./agents                     serve the agents over HTTP: POST /chat (lyteboat serve --help)
   lyteboat eval --agents ./agents --agent finance      run an agent's eval cases and check every turn (lyteboat eval --help)
   lyteboat release --agents ./agents --agent finance   check an agent against its baseline and write its release lock
@@ -121,14 +121,14 @@ export function parseLyteboatArgs(argv: readonly string[], versions: LyteboatVer
       resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 
-  const studio = passThrough(program.command('studio'))
-    .description(`serve dsh web with lyteboat's pages (profile: ${DEFAULT_STUDIO_PROFILE}); Studio's own flags follow`)
-    .argument('[args...]', 'arguments for Studio (see: lyteboat studio --help)')
-    .option('--profile <name>', 'the profile under $LYTEBOAT_HOME/profiles to boot', DEFAULT_STUDIO_PROFILE)
+  const web = passThrough(program.command('web'))
+    .description(`serve dsh web with lyteboat's pages (profile: ${DEFAULT_WEB_PROFILE}); dsh web's own flags follow`)
+    .argument('[args...]', 'arguments for dsh web (see: lyteboat web --help)')
+    .option('--profile <name>', 'the profile under $LYTEBOAT_HOME/profiles to boot', DEFAULT_WEB_PROFILE)
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((args: string[], options: BootOptions) => {
-      const { profile, patches, plugins } = validateBoot(studio, options)
+      const { profile, patches, plugins } = validateBoot(web, options)
       resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 

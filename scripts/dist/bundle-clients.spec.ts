@@ -12,5 +12,5 @@ test('the platform modules are the ones the tracked dsh web shell shares', () =>
 })
 
 test('lyteboatClientPackages finds the packages whose manifests declare dsh.client', () => {
-  expect(lyteboatClientPackages().map(pkg => pkg.name)).toEqual(['@lyteboat/studio-pages'])
+  expect(lyteboatClientPackages().map(pkg => pkg.name)).toEqual(['@lyteboat/web-pages'])
 })

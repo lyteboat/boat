@@ -232,7 +232,7 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 
 /**
  * Who a request comes from: `user`, an end user the caller names (`/chat`'s
- * `user_id`); `operator`, a person at a lyteboat surface (the Studio pages,
+ * `user_id`); `operator`, a person at a lyteboat surface (the web pages,
  * the command line); `system`, lyteboat itself (an eval run). Only a `user`
  * owner can continue a session over `/chat`. Not dsh's `source.kind: 'user'`,
  * which says a human message came from the conversation's human side, whoever

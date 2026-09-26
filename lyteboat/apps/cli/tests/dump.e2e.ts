@@ -37,7 +37,7 @@ describe('lyteboat config dump (built bin)', () => {
   })
 
   it('keeps dsh-base\'s feedback telemetry export off in both profiles, without DSH_TELEMETRY_DISABLED', async () => {
-    for (const profile of ['try', 'studio']) {
+    for (const profile of ['try', 'web']) {
       const result = await runLyteboat(['config', 'dump', '--profile', profile], { env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: undefined } })
       expect(result.code, result.stderr).toBe(0)
       expect(dumpedRow(result.stdout, 'session-telemetry-otel')).toMatch(/^ {2}disabled: true$/mu)
