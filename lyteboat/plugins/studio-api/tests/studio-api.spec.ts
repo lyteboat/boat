@@ -28,6 +28,7 @@ import AgentCatalogService from '@lyteboat/agent-catalog'
 import AgentInspectorService from '@lyteboat/agent-inspector'
 import AuxLlmService from '@lyteboat/aux-llm'
 import type { LyteboatRunMetric } from '@lyteboat/contracts'
+import type { StudioSkillDiagnosticsAnswer } from '@lyteboat/contracts/studio'
 import LyteboatDistroService from '@lyteboat/distro'
 import EvalRecordsService from '@lyteboat/eval-runner/records'
 import RunMetricsReaderService from '@lyteboat/run-metrics/reader'
@@ -334,10 +335,10 @@ describe('the agent workspace', () => {
     const clean = await studio.call('POST', 'agents/ledger/skills/balance-lookup/diagnostics', { token: viewer })
     const always = await studio.call('POST', 'agents/ledger/skills/ledger-help/diagnostics', { token: viewer })
 
-    const failed = (answer: { body: unknown }): string[] => (answer.body as { findings: { ruleId: string; passed: boolean }[] }).findings.filter(finding => !finding.passed).map(finding => finding.ruleId)
-    expect(clean.body).toMatchObject({ skill: 'balance-lookup', generatedAt: expect.any(Number) })
+    const failed = (answer: { body: unknown }): { rule: string; tools: string[] }[] => (answer.body as StudioSkillDiagnosticsAnswer).findings.filter(finding => !finding.passed).map(({ rule, tools }) => ({ rule, tools }))
+    expect(clean.body).toMatchObject({ skill: 'balance-lookup', generatedAt: expect.any(Number), routing: 'dynamic' })
     expect(failed(clean)).toEqual([])
-    expect(failed(always)).toEqual(['required-tools-auto'])
+    expect(failed(always)).toEqual([{ rule: 'required-tools-auto', tools: (always.body as StudioSkillDiagnosticsAnswer).requiredTools }])
   })
 
   it('hot-fixes a skill for an admin: replaces the file, audits it, reloads the agent, and answers the new skill and digest', async () => {

@@ -5,7 +5,8 @@
 # publishes them as the `lyteboatTryStartup` service; the agent catalog declares
 # that agent to the agent preset registry from its root, and the runner row
 # creates one agent composed from it (or resumes the stored session), drives the
-# task to quiescence, prints the final answer, and exits. lyteboat's service rows
+# task to quiescence, prints the final answer (or, with `--result json`, the turn
+# as one object), and exits. lyteboat's service rows
 # come from @lyteboat/host, the agent loop (lyteboat's kernel) from dsh-base,
 # and the business base from @lyteboat/business-base, all listed before this
 # bundle in the try profile.
@@ -36,6 +37,7 @@
         history: !!js ctx.lyteboatTryStartup.history
         sessionId: !!js ctx.lyteboatTryStartup.sessionId
         context: !!js ctx.lyteboatTryStartup.context
+        result: !!js ctx.lyteboatTryStartup.result
 
 # A one-shot run applies the user layers at startup only, as dsh-headless does.
 - id: hmr

@@ -77,6 +77,9 @@ export const LYTEBOAT_WEB_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base',
 /** The `studio` profile's bundle layers, in the order the launcher's profile template lists them. */
 export const LYTEBOAT_STUDIO_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/studio']
 
+/** The `inspect` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_INSPECT_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/inspect']
+
 /** What to boot and how. */
 export interface CompositionOptions {
   /** Bundle packages in layer order, e.g. {@link LYTEBOAT_TRY_BUNDLES}. */

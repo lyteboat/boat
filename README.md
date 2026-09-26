@@ -86,6 +86,7 @@ lyteboat try --agents ./examples/agents --agent finance --context '{"customer":"
 lyteboat serve --agents ./examples/agents                      # HTTP 服务：POST /chat，同步或 enterprise 流式
 lyteboat eval --agents ./examples/agents --agent finance       # 跑 agent 的评测用例，逐轮检查
 lyteboat release --agents ./examples/agents --agent finance    # 按基线检查 agent，写下发布锁 agent.release.json
+lyteboat inspect --agents ./examples/agents --agent finance    # 挂上 agent，打印它由什么组成：工具、技能与检查、用例文件
 lyteboat serve --release ./examples/agents/finance/agent.release.json   # 只服务发布过的那个 agent
 lyteboat web --agents ./examples/agents --no-open              # 浏览器界面：dsh web 加轻舟的页面
 lyteboat studio account add admin --role admin < pw.txt        # Studio 工作台的第一个账户，口令从标准输入读
@@ -211,7 +212,7 @@ lyteboat studio --agents ./examples/agents                     # Studio 工作�
 
 ```
 dsh/                  内核：dsh/kernel.json 列出的 14 个 dsh 包，沿用 @deepseek-ai/* 包名
-lyteboat/             轻舟自己的 28 个包，每层一个目录
+lyteboat/             轻舟自己的 29 个包，每层一个目录
   apps/               进程：lyteboat 启动器
   bundles/            组合：每个 profile 都带的 host，三种业务模式共用的 business-base，lyteboat try、serve、eval、web 各自的 bundle
   plugins/            能力插件
@@ -235,6 +236,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/bundles/eval` | `@lyteboat/eval` | `lyteboat eval` 背后的 bundle：只声明选中的 agent，挂上 session-controller（不带 Web 界面）和 eval-runner，跑完按结果退出 |
 | `lyteboat/bundles/web` | `@lyteboat/web` | `lyteboat web` 背后的 bundle：在 dsh web 之上声明 `--agents` 里的全部 agent（目录变了就重载，挂不上的在 Agents 页报原因），挂上轻舟的页面，关掉 dsh 自带的编码 preset；把 dsh web 挪进 preset 的 agent 层放回宿主。不带业务底座，保留 dsh 自己的能力，所以会话不按 `/chat` 的方式跑 |
 | `lyteboat/bundles/serve` | `@lyteboat/serve` | `lyteboat serve` 背后的服务 bundle：声明 `--agents` 里的全部 agent，挂上 dsh 的 session-controller（不带 Web 界面）、`/chat` 和运行指标记录器 |
+| `lyteboat/bundles/inspect` | `@lyteboat/inspect` | `lyteboat inspect` 背后的 bundle：带业务底座，按 try、serve、eval 的样子挂上一个 agent（挂不上就报原因，退出码 1），用 agent-inspector 与评测记录读出它的工具（怎样到达模型）、技能及每个技能的检查、用例文件，打印成文字或一个 JSON 对象（`--result json`）；不建 agent 实例，不调模型 |
 | `lyteboat/bundles/studio` | `@lyteboat/studio` | `lyteboat studio` 背后的 bundle：带业务底座，agent 的工具和技能按 serve 的样子挂上；声明 `--agents` 里的全部 agent（目录变了就重载，挂不上的在雷达上报原因），挂上 agent-inspector、session-index、运行指标读取器、评测记录（`@lyteboat/eval-runner/records`）、studio-auth 与 studio-api；评测运行由车间起 `lyteboat eval` 子进程；不挂 session-controller，Studio 不建也不续会话；`account` 子命令管账户 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、状态增量；`./agent` 在 agent 的组合文件里声明策略，`inherited: visible \| hidden` 决定没有声明点名的继承工具是否可见；`visible(scope)` 回答一个新 agent 在某个常驻作用域下、激活之前看得到的工具 |
@@ -244,7 +246,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | 技能加载模式与模型路由（`historyWindow`、`timeoutMs`、`maxTokens` 可配）；`./agent` 在 agent 的组合文件里声明模式 |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | A2UI 模板引擎、`render_a2ui` 工具、`lyteboatCards` 投影；一个结果可带多张卡，按出卡模式（立即、延迟、延迟丢弃）和正文里的 `[[card:<区域>]]` 标记排进一轮（`turnParts`）；`./agent` 在组合文件里挂上这个工具，agent 自己的工具用 `renderCard`、`cardsPresentationMeta`、`cardMarker` 出卡；默认组件目录不含业务词汇 |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | 外部对话历史的解析，以及 `lyteboat try --history` 用的会话种子 |
-| `lyteboat/plugins/agent-inspector` | `@lyteboat/agent-inspector` | 查看一个 agent 由什么组成，不建 agent 实例、不写盘：从它的常驻作用域读出工具（声明、怎样到达模型：一直可见、激活后可见、看不到；哪些技能要求它）、技能（要求的工具、元数据问题、SKILL.md 路径）和技能路由方式 |
+| `lyteboat/plugins/agent-inspector` | `@lyteboat/agent-inspector` | 查看一个 agent 由什么组成，不建 agent 实例、不写盘：从它的常驻作用域读出工具（声明、怎样到达模型：一直可见、激活后可见、看不到；哪些技能要求它）、技能（要求的工具、元数据问题、SKILL.md 路径）、技能路由方式，以及每个技能的确定性检查（规则 id 和不合格的工具名，文案在页面里） |
 | `lyteboat/plugins/session-index` | `@lyteboat/session-index` | 读一个 agent 存下的会话，只用读句柄、从不拿写所有权：按 agent 的工作目录列出（新的在前，按时间窗与发起者筛选，分页；评测会话和请求指明别的 agent 的会话不列），在时间窗内最新的 500 个里按会话 id、用户消息、trace id 查找，把一个会话折成时间线（请求与准入、激活的技能、工具调用与结果、卡片区域、状态增量、旁路调用、模型用时与 token、压缩与裁剪、导入的历史），或原样读出 |
 | `lyteboat/plugins/run-metrics` | `@lyteboat/run-metrics` | 运行指标：记录器（serve 挂）在每轮结束后往 `$LYTEBOAT_HOME/run-metrics/<日期>.jsonl` 追加一行（用时、首字时间、步数、工具与技能、结局、发起者），并按进程写一个正在运行的轮次的心跳文件；写盘走异步队列，写失败只记日志、不碍这一轮，不进模型请求也不进会话日志；启动时删掉超过保留天数的日文件。读取器（`./reader`，Studio 挂）按时间段读出轮次，读出 30 秒内心跳里的运行中轮次 |
 | `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | agent 目录：扫描 agent 根目录，把每个 agent 声明成 dsh preset，给出它的工作目录，报告挂载失败的 agent；`reload()` 按根目录现在的内容重新声明，`watch` 时目录一变就自动重载 |

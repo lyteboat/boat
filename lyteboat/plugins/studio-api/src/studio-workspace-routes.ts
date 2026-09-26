@@ -11,13 +11,13 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { relative } from 'node:path'
 import type { AgentCatalogEntry, AgentCatalogService } from '@lyteboat/agent-catalog'
-import type { AgentInspectorService, AgentInspectorSkill, AgentInspectorSkillDetail } from '@lyteboat/agent-inspector'
-import { studioSkillUpdateRequestSchema, type StudioSkillDetail, type StudioSkillSummary, type StudioSkillUpdateAnswer } from '@lyteboat/contracts/studio'
+import type { AgentInspectorService, AgentInspectorSkillDetail } from '@lyteboat/agent-inspector'
+import type { LyteboatInspectedSkill } from '@lyteboat/contracts/cli'
+import { studioSkillUpdateRequestSchema, type StudioSkillDetail, type StudioSkillDiagnosticsAnswer, type StudioSkillSummary, type StudioSkillUpdateAnswer } from '@lyteboat/contracts/studio'
 import { studioAgentsAnswer } from './studio-agents.ts'
 import type { StudioAudit } from './studio-audit.ts'
 import { studioCallerOf, studioRequestOf } from './studio-auth-routes.ts'
 import { StudioApiError, type StudioApiCall, type StudioApiRoute } from './studio-api-router.ts'
-import { diagnoseStudioSkill } from './studio-skill-diagnostics.ts'
 import { editableStudioSkillFile, replaceStudioFile, studioFileHash, studioSkillFileProblem } from './studio-skill-hotfix.ts'
 
 /** What the workspace endpoints read and change. */
@@ -42,7 +42,7 @@ export async function settledAgentOf(catalog: AgentCatalogService, agentId: stri
   return found(catalog.get(agentId), `agent ${agentId}`)
 }
 
-function studioSkillSummaryOf(skill: AgentInspectorSkill, agentDir: string): StudioSkillSummary {
+function studioSkillSummaryOf(skill: LyteboatInspectedSkill, agentDir: string): StudioSkillSummary {
   const file = editableStudioSkillFile(skill.file, agentDir)
   return {
     name: skill.name,
@@ -127,11 +127,11 @@ export function studioWorkspaceRoutes(services: StudioWorkspaceServices): Studio
     { method: 'PUT', path: 'agents/:id/skills/:name', access: 'admin', handle: call => hotFixStudioSkill(services, call, idOf(call), nameOf(call)) },
     {
       method: 'POST', path: 'agents/:id/skills/:name/diagnostics', access: 'viewer',
-      handle: async (call) => {
+      handle: async (call): Promise<StudioSkillDiagnosticsAnswer> => {
         const skill = found(await inspector.skill(idOf(call), nameOf(call)), `skill ${nameOf(call)} in agent ${idOf(call)}`)
-        const tools = found(await inspector.tools(idOf(call)), `agent ${idOf(call)}`)
         const { routing } = found(await inspector.skills(idOf(call)), `agent ${idOf(call)}`)
-        return { skill: skill.name, generatedAt: Date.now(), findings: diagnoseStudioSkill(skill, tools, routing) }
+        const findings = found((await inspector.findings(idOf(call)))?.find(entry => entry.skill === skill.name), `skill ${nameOf(call)} in agent ${idOf(call)}`)
+        return { skill: skill.name, generatedAt: Date.now(), requiredTools: skill.requiredTools, routing: routing.mode, findings: findings.findings }
       },
     },
     { method: 'GET', path: 'agents/:id/tools', access: 'viewer', handle: async call => ({ tools: found(await inspector.tools(idOf(call)), `agent ${idOf(call)}`) }) },

@@ -8,11 +8,12 @@
  */
 
 import { useState } from 'react'
-import type { StudioSkillDiagnosticsAnswer, StudioSkillFinding } from '@lyteboat/contracts/studio'
+import type { StudioSkillDiagnosticsAnswer } from '@lyteboat/contracts/studio'
 import { ChevronRightIcon } from './studio-icons.tsx'
 import { formatStudioRelativeTime } from './studio-relative-time.ts'
+import { studioWordedSkillFindings, type StudioWordedSkillFinding } from './studio-skill-finding-copy.ts'
 
-type StudioFindingLevel = StudioSkillFinding['level']
+type StudioFindingLevel = StudioWordedSkillFinding['level']
 
 const STUDIO_FINDING_LEVEL_TONE: Record<StudioFindingLevel, string> = { error: 'error', warn: 'warning' }
 const STUDIO_FINDING_LEVEL_ICON: Record<StudioFindingLevel, string> = { error: '!', warn: '△' }
@@ -24,7 +25,7 @@ interface StudioDiagnosticsRun {
   onDiagnose(): void
 }
 
-function StudioConflictRow({ finding, expanded, onToggle }: { finding: StudioSkillFinding; expanded: boolean; onToggle(): void }) {
+function StudioConflictRow({ finding, expanded, onToggle }: { finding: StudioWordedSkillFinding; expanded: boolean; onToggle(): void }) {
   const levelLabel = STUDIO_FINDING_LEVEL_LABEL[finding.level]
   return (
     <>
@@ -47,7 +48,7 @@ function StudioConflictRow({ finding, expanded, onToggle }: { finding: StudioSki
             {STUDIO_FINDING_LEVEL_ICON[finding.level]}
           </span>
         </td>
-        <td>{finding.ruleId}</td>
+        <td>{finding.rule}</td>
         <td>{finding.message}</td>
       </tr>
       {expanded && (
@@ -70,7 +71,7 @@ function StudioConflictRow({ finding, expanded, onToggle }: { finding: StudioSki
   )
 }
 
-function StudioConflictsSection({ failed }: { failed: StudioSkillFinding[] }) {
+function StudioConflictsSection({ failed }: { failed: StudioWordedSkillFinding[] }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const toggle = (ruleId: string): void => {
     setExpanded((previous) => {
@@ -112,7 +113,7 @@ function StudioConflictsSection({ failed }: { failed: StudioSkillFinding[] }) {
           </thead>
           <tbody>
             {failed.map(finding => (
-              <StudioConflictRow expanded={expanded.has(finding.ruleId)} finding={finding} key={finding.ruleId} onToggle={() => toggle(finding.ruleId)} />
+              <StudioConflictRow expanded={expanded.has(finding.rule)} finding={finding} key={finding.rule} onToggle={() => toggle(finding.rule)} />
             ))}
           </tbody>
         </table>
@@ -122,7 +123,8 @@ function StudioConflictsSection({ failed }: { failed: StudioSkillFinding[] }) {
 }
 
 function StudioDiagnosticsReport({ report, run }: { report: StudioSkillDiagnosticsAnswer; run: StudioDiagnosticsRun }) {
-  const failed = report.findings.filter(finding => !finding.passed)
+  const findings = studioWordedSkillFindings(report)
+  const failed = findings.filter(finding => !finding.passed)
   return (
     <div className="skill-diagnostics-panel">
       <div className="skill-diagnostics-head">
@@ -140,11 +142,11 @@ function StudioDiagnosticsReport({ report, run }: { report: StudioSkillDiagnosti
       <div className="skill-diagnostics-section">
         <div className="skill-diagnostics-section-head">
           <span className="skill-diagnostics-section-title">RULES</span>
-          <span className="skill-diagnostics-meta">{report.findings.length - failed.length} ok · {failed.length} break</span>
+          <span className="skill-diagnostics-meta">{findings.length - failed.length} ok · {failed.length} break</span>
         </div>
         <div className="skill-diagnostics-rule-list">
-          {report.findings.map(finding => (
-            <div className={`skill-diagnostics-rule ${finding.passed ? 'passed' : 'failed'}`} key={finding.ruleId}>
+          {findings.map(finding => (
+            <div className={`skill-diagnostics-rule ${finding.passed ? 'passed' : 'failed'}`} key={finding.rule}>
               <span aria-hidden="true" className={`skill-diagnostics-status ${finding.passed ? 'ok' : 'error'}`}>{finding.passed ? '✓' : '!'}</span>
               <div>
                 <strong>{finding.label}</strong>

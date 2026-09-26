@@ -1,0 +1,40 @@
+# The @lyteboat/inspect bundle patch: lyteboat's inspect mode over dsh-base and
+# @lyteboat/host. The startup row parses `lyteboat inspect` into the
+# `lyteboatInspectStartup` service; the agent catalog declares the one agent
+# from its root, reporting a failure instead of refusing the tree; the agent
+# inspector reads it from its standing scope and the eval records read its
+# case files; the last row prints what it found and exits. No agent instance
+# is created and no model is called. lyteboat's service rows come from
+# @lyteboat/host, the agent loop from dsh-base, and the business base from
+# @lyteboat/business-base, all listed before this bundle in the inspect
+# profile, so the agent is mounted exactly as try, serve, and eval mount it.
+
+- insert:
+    - id: lyteboat-inspect-startup
+      name: '@lyteboat/inspect/startup'
+
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatInspectStartup]
+      config:
+        roots: !!js ctx.lyteboatInspectStartup.agentRoots
+        include: !!js "[ctx.lyteboatInspectStartup.agent]"
+        strict: false
+
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: none
+
+    - id: agent-inspector
+      name: '@lyteboat/agent-inspector'
+
+    - id: eval-records
+      name: '@lyteboat/eval-runner/records'
+
+    - id: lyteboat-inspect
+      name: '@lyteboat/inspect'
+
+# An inspection applies the user layers at startup only, as the try mode does.
+- id: hmr
+  disabled: true

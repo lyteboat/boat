@@ -4,7 +4,7 @@
  * dsh's `loadProfile` only knows dsh's own shipped names, so lyteboat initializes
  * these itself before handing the directory over. Whether the user layers
  * reload live is the composition's call: dsh-base's `hmr` row reloads them,
- * and `@lyteboat/try`, `@lyteboat/serve`, `@lyteboat/eval`, and `@lyteboat/studio` disable it.
+ * and `@lyteboat/try`, `@lyteboat/serve`, `@lyteboat/eval`, `@lyteboat/studio`, and `@lyteboat/inspect` disable it.
  * @module @lyteboat/cli/templates
  */
 
@@ -30,6 +30,9 @@ export const LYTEBOAT_PROFILE_TEMPLATES: Readonly<Record<string, LyteboatProfile
   studio: {
     bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/studio'],
   },
+  inspect: {
+    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/inspect'],
+  },
 }
 
 /** The profile `lyteboat try` boots when `--profile` is absent. */
@@ -46,3 +49,6 @@ export const DEFAULT_EVAL_PROFILE = 'eval'
 
 /** The profile `lyteboat studio` boots when `--profile` is absent. */
 export const DEFAULT_STUDIO_PROFILE = 'studio'
+
+/** The profile `lyteboat inspect` boots when `--profile` is absent. */
+export const DEFAULT_INSPECT_PROFILE = 'inspect'

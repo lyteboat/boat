@@ -16,7 +16,7 @@
 
 import { Command, CommanderError } from 'commander'
 import { pluginFilesProblem } from './plugins.ts'
-import { DEFAULT_EVAL_PROFILE, DEFAULT_TRY_PROFILE, DEFAULT_SERVE_PROFILE, DEFAULT_STUDIO_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
+import { DEFAULT_EVAL_PROFILE, DEFAULT_INSPECT_PROFILE, DEFAULT_TRY_PROFILE, DEFAULT_SERVE_PROFILE, DEFAULT_STUDIO_PROFILE, DEFAULT_WEB_PROFILE } from './templates.ts'
 
 /** Boot a named profile and hand it the invocation's inner arguments. */
 interface ProfileInvocation {
@@ -70,6 +70,7 @@ Examples:
   lyteboat eval --agents ./agents --agent finance      run an agent's eval cases and check every turn (lyteboat eval --help)
   lyteboat release --agents ./agents --agent finance   check an agent against its baseline and write its release lock
   lyteboat serve --release ./agents/finance/agent.release.json  serve an agent exactly as released
+  lyteboat inspect --agents ./agents --agent finance   print what an agent is made of, or why it does not mount
   lyteboat studio account add alice --role admin < pw.txt  make the first Studio account (password on stdin)
   lyteboat studio --agents ./agents                    serve the Studio workshop (lyteboat studio --help)
   lyteboat config dump --profile try                   print the composed plugin tree and exit
@@ -176,6 +177,17 @@ export function parseLyteboatArgs(argv: readonly string[], versions: LyteboatVer
     .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
     .action((args: string[], options: BootOptions) => {
       const { profile, patches, plugins } = validateBoot(studio, options)
+      resolved = { mode: 'profile', profile, patches, plugins, args }
+    })
+
+  const inspect = passThrough(program.command('inspect'))
+    .description(`mount one agent and print what it is made of: tools, skills and their checks, eval case files (profile: ${DEFAULT_INSPECT_PROFILE}); the inspect app's own flags follow`)
+    .argument('[args...]', 'arguments for the inspect app (see: lyteboat inspect --help)')
+    .option('--profile <name>', 'the profile under $LYTEBOAT_HOME/profiles to boot', DEFAULT_INSPECT_PROFILE)
+    .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
+    .action((args: string[], options: BootOptions) => {
+      const { profile, patches, plugins } = validateBoot(inspect, options)
       resolved = { mode: 'profile', profile, patches, plugins, args }
     })
 

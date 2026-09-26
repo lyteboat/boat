@@ -165,12 +165,12 @@ describe('lyteboat studio (in process)', () => {
         { name: 'quote-lookup', requiredTools: ['lookup_quote'], path: join('skills', 'quote-lookup', 'SKILL.md') },
       ],
     })
-    expect((diagnostics.body['findings'] as { ruleId: string; passed: boolean }[]).map(({ ruleId, passed }) => ({ ruleId, passed }))).toEqual([
-      { ruleId: 'metadata-valid', passed: true },
-      { ruleId: 'required-tools-registered', passed: true },
-      { ruleId: 'required-tools-declared', passed: true },
-      { ruleId: 'required-tools-auto', passed: true },
-      { ruleId: 'routable', passed: true },
+    expect((diagnostics.body['findings'] as { rule: string; passed: boolean }[]).map(({ rule, passed }) => ({ rule, passed }))).toEqual([
+      { rule: 'metadata-valid', passed: true },
+      { rule: 'required-tools-registered', passed: true },
+      { rule: 'required-tools-declared', passed: true },
+      { rule: 'required-tools-auto', passed: true },
+      { rule: 'routable', passed: true },
     ])
   })
 

@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod'
+import type { LyteboatSkillFinding } from './cli.ts'
 import type { JsonValue, LyteboatAgentIdentity, LyteboatAgentModel, LyteboatRequest, LyteboatRequestOwner, LyteboatTurnOutcome } from './index.ts'
 
 /** The Studio roles, from the most to the least capable. */
@@ -227,23 +228,13 @@ export type StudioSkillUpdateAnswer = {
   agent: StudioAgent
 }
 
-/** One deterministic check of a skill. */
-export type StudioSkillFinding = {
-  ruleId: string
-  label: string
-  passed: boolean
-  /** How much a failure matters: `error` breaks the agent at runtime, `warn` does not. */
-  level: 'error' | 'warn'
-  message: string
-  evidence?: string
-  suggestion?: string
-}
-
-/** `POST agents/:id/skills/:name/diagnostics`. */
+/** `POST agents/:id/skills/:name/diagnostics`: the skill's checks, and what the page words them with. */
 export type StudioSkillDiagnosticsAnswer = {
   skill: string
   generatedAt: number
-  findings: StudioSkillFinding[]
+  requiredTools: string[]
+  routing: StudioSkillRouting['mode']
+  findings: LyteboatSkillFinding[]
 }
 
 /**

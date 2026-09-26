@@ -4,7 +4,8 @@
  * from an agent preset when the invocation named one — or resumes a stored
  * session, drives the task to quiescence, streams provider reasoning to stderr,
  * flushes its Session, prints the turn to stdout (the answer with its cards
- * placed, each as a `[card <area>]` line) and the session id to stderr, and
+ * placed, each as a `[card <area>]` line; with `result: json`, one
+ * {@link LyteboatTryResult} object instead) and the session id to stderr, and
  * exits.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/index.ts
@@ -15,8 +16,8 @@
  * resumed session continuing under the agent it ran under, an imported
  * history seeded into a new session, the task submitted through
  * `intakeGuard.submit` with its request context, the turn printed with its
- * cards placed, no stdin task and no `--json` event stream, and the
- * `lyteboat:` diagnostic prefix.
+ * cards placed or as one result object, no stdin task and no `--json` event
+ * stream, and the `lyteboat:` diagnostic prefix.
  * @module @lyteboat/try
  */
 
@@ -30,7 +31,9 @@ import type { Agent, AgentRegistry, AgentSetup, ModelSelectionRef } from '@deeps
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
-import type { JsonValue, LyteboatAgentIdentity, LyteboatRequestOwner } from '@lyteboat/contracts'
+import { LYTEBOAT_ASSISTANT_PROVIDER, LYTEBOAT_TURN_OUTCOME_OF_REASON } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatAgentIdentity, LyteboatRequestOwner, LyteboatTurnOutcome } from '@lyteboat/contracts'
+import type { LyteboatTryResult } from '@lyteboat/contracts/cli'
 import type {} from '@lyteboat/history-import'
 import type {} from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/intake-guard'
@@ -49,7 +52,7 @@ export const name = 'lyteboat-try'
 const CLI_OWNER: LyteboatRequestOwner = { kind: 'operator', id: 'cli' }
 
 /** Core services required before the one-shot turn can start. */
-export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'agentCatalog', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
+export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'agentCatalog', 'sessions', 'sessionQuery', 'sessionProjections', 'historyImport', 'a2ui', 'intakeGuard']
 
 /** Plugin config: the task and agent resolved from the startup provider service. */
 export interface Config {
@@ -63,6 +66,8 @@ export interface Config {
   sessionId?: string
   /** The request context the task carries; absent keeps a continued session's earlier context. */
   context?: { [key: string]: JsonValue }
+  /** How the turn is printed: the answer as text, or one {@link LyteboatTryResult} object. */
+  result?: 'text' | 'json'
 }
 
 export const Config: z<Config> = z.object({
@@ -71,6 +76,7 @@ export const Config: z<Config> = z.object({
   history: z.string(),
   sessionId: z.string(),
   context: z.dict(z.any()),
+  result: z.union(['text', 'json'] as const).default('text'),
 })
 
 interface RunIo {
@@ -96,6 +102,38 @@ function summarize(session: Session, firstSeq: SessionLogOffset): SessionEvent<'
     if (started && event.type === 'turn/end') reason = event.data.reason
   }
   return reason
+}
+
+/**
+ * The tools the model called in the owned interval, and whether an answer came
+ * from the admission in the loop (a completed turn it answered is `rejected`).
+ */
+function calledIn(session: Session, firstSeq: SessionLogOffset): { tools: string[]; answeredInLoop: boolean } {
+  const tools: string[] = []
+  let answeredInLoop = false
+  for (let seq = firstSeq; seq < session.seq; seq++) {
+    const event = session.eventAt(SessionSeq(seq))
+    if (event?.type !== 'assistant/message') continue
+    if (event.data.message.source.provider === LYTEBOAT_ASSISTANT_PROVIDER) answeredInLoop = true
+    for (const block of event.data.message.content) if (block.type === 'tool-call') tools.push(block.name)
+  }
+  return { tools, answeredInLoop }
+}
+
+/** The turn as one object, as `--result json` prints it. */
+function tryResultOf(ctx: Context, agent: Agent, firstSeq: SessionLogOffset, parts: readonly LyteboatTurnPart[], reason: SessionEvent<'turn/end'>['data']['reason'] | undefined, model: { provider: string; model: string }): LyteboatTryResult {
+  const { tools, answeredInLoop } = calledIn(agent.session, firstSeq)
+  const ended: LyteboatTurnOutcome = reason === undefined ? 'errored' : LYTEBOAT_TURN_OUTCOME_OF_REASON[reason.kind] ?? 'errored'
+  const skill = ctx.sessionProjections.stateOf(agent.session, 'lyteboatActiveSkill')?.active ?? undefined
+  return {
+    sessionId: agent.session.id,
+    outcome: ended === 'completed' && answeredInLoop ? 'rejected' : ended,
+    text: renderTurn(parts),
+    cards: parts.flatMap(part => part.kind === 'card' ? [part.card.area] : []),
+    tools,
+    ...skill === undefined ? {} : { skill },
+    model: { provider: model.provider, model: model.model },
+  }
 }
 
 /** A turn as the terminal shows it: text as written, each card as its own `[card <area>]` line. */
@@ -275,7 +313,8 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   }
   await sessions.flush(agent.session)
   const reason = summarize(agent.session, firstSeq)
-  io.stdout.write(renderTurn(a2ui.turnParts(agent.session, firstSeq)) + '\n')
+  const parts = a2ui.turnParts(agent.session, firstSeq)
+  io.stdout.write(config.result === 'json' ? `${JSON.stringify(tryResultOf(ctx, agent, firstSeq, parts, reason, selection))}\n` : renderTurn(parts) + '\n')
   io.stderr.write(`lyteboat: session ${agent.session.id}\n`)
   if (reason?.kind === 'error') {
     io.stderr.write(`lyteboat: ${reason.error.code}: ${reason.error.message}\n`)

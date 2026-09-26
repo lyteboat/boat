@@ -15,6 +15,11 @@
       "@lyteboat/source": "./src/studio.ts",
       "types": "./lib/studio.d.ts",
       "default": "./lib/studio.js"
+    },
+    "./cli": {
+      "@lyteboat/source": "./src/cli.ts",
+      "types": "./lib/cli.d.ts",
+      "default": "./lib/cli.js"
     }
   },
   "files": [

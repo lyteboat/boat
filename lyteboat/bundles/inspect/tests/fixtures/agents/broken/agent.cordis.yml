@@ -1,0 +1,3 @@
+# A row whose package does not exist: `lyteboat inspect` says why it did not mount.
+- id: missing
+  name: '@lyteboat/no-such-plugin'

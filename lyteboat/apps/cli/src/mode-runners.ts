@@ -1,5 +1,5 @@
 /**
- * The rows that run a lyteboat mode (`lyteboat try`, `serve`, `eval`, `studio`). dsh's
+ * The rows that run a lyteboat mode (`lyteboat try`, `serve`, `eval`, `studio`, `inspect`). dsh's
  * startup audit fails startup when one of dsh's own runners does not activate
  * (its headless runner, its web server), but it knows none of lyteboat's, so a
  * mode runner left waiting on a service a failed row never provided would keep
@@ -13,7 +13,7 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { FIBER_STATE } from './fiber-state.ts'
 
 /** The row ids of lyteboat's mode runners, as the mode bundles insert them. */
-const LYTEBOAT_MODE_RUNNER_IDS = new Set(['lyteboat-try', 'lyteboat-serve', 'lyteboat-eval', 'lyteboat-studio'])
+const LYTEBOAT_MODE_RUNNER_IDS = new Set(['lyteboat-try', 'lyteboat-serve', 'lyteboat-eval', 'lyteboat-studio', 'lyteboat-inspect'])
 
 /**
  * The mode runner a settled tree failed to activate.

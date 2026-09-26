@@ -1,14 +1,15 @@
 /**
  * The one-shot app's command-line provider: it parses the task positional and
  * the `--agent`, `--agents`, `--history`, `--session-id`,
- * and `--context` flags, checks that a root holds the agent, then publishes
+ * `--context`, and `--result` flags, checks that a root holds the agent, then publishes
  * {@link LYTEBOAT_TRY_STARTUP_SERVICE}. The agent catalog, preset registry, and
  * runner rows inject that service and read it from lazy config.
  *
  * Modeled on deepseek-ai/deepseek-harness packages/bundle/headless/src/startup.ts
  * @ dsh-v0.1.7-rc.2 (477b4f42), MIT — see THIRD_PARTY_NOTICES.md. Differences:
  * the agent, agent-root, history, and context flags, resolved and checked
- * here; no stdin task and no `--json`.
+ * here; no stdin task, and `--result json` prints the turn as one object
+ * where dsh-headless's `--json` streams events.
  * @module @lyteboat/try/startup
  */
 
@@ -43,6 +44,8 @@ export interface LyteboatTryStartupValues {
   sessionId: string | undefined
   /** The request context this task carries; absent keeps a continued session's earlier context. */
   context: { [key: string]: JsonValue } | undefined
+  /** How the turn is printed: the answer as text, or one `LyteboatTryResult` object. */
+  result: 'text' | 'json'
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -84,6 +87,7 @@ function command(): Command {
     .option('--history <file>', 'seed the session from an external history file')
     .option('--session-id <id>', 'continue the stored session with this id (every run prints its id to stderr)')
     .option('--context <json>', 'the request context: a JSON object, inline or in a file; logged with the request, read by tools, not shown to the model (an empty one keeps the session\'s)')
+    .option('--result <format>', 'text (the answer, each card as a [card <area>] line), or json (the turn as one object: outcome, text, cards, tools, skill, model, session id)', 'text')
     .addHelpText('after', `
 Examples:
   lyteboat try "run the tests"                         answer one task and exit
@@ -103,7 +107,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agent?: string; agents?: string[]; history?: string; sessionId?: string; context?: string }>()
+    const options = program.opts<{ agent?: string; agents?: string[]; history?: string; sessionId?: string; context?: string; result: string }>()
     const task = program.args.join(' ')
     if (task.trim() === '') program.error('error: a task is required, for example: lyteboat try "run the tests"')
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
@@ -123,8 +127,16 @@ export function apply(ctx: Context): void {
     if (sessionId !== undefined && history !== undefined) program.error('error: --history seeds a new session; it cannot be combined with --session-id')
     const read = options.context === undefined ? undefined : readContext(options.context)
     if (read?.kind === 'problem') program.error(`error: ${read.problem}`)
+    if (options.result !== 'text' && options.result !== 'json') program.error('error: --result must be text or json')
     ctx.provide(LYTEBOAT_TRY_STARTUP_SERVICE, {
-      task, agent, agentRoots, history, sessionId, context: read?.kind === 'context' ? read.context : undefined,
+      task,
+      agent,
+      agentRoots,
+      history,
+      sessionId,
+      context: read?.kind === 'context' ? read.context : undefined,
+      // program.error() exits, but TypeScript cannot narrow through it.
+      result: options.result === 'json' ? 'json' : 'text',
     } satisfies LyteboatTryStartupValues)
   })
   parseCmdline(ctx, program)

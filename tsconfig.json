@@ -114,6 +114,9 @@
       "path": "./lyteboat/bundles/eval"
     },
     {
+      "path": "./lyteboat/bundles/inspect"
+    },
+    {
       "path": "./lyteboat/bundles/web"
     },
     {

@@ -84,12 +84,27 @@ describe('the agent inspector', () => {
     expect(await ctx.agentInspector.skill('counter', 'no-such-skill')).toBeUndefined()
   })
 
+  it('checks every skill against the agent\'s tools and routing, naming the tools a rule failed on', async () => {
+    const ctx = await inspectorHost()
+
+    const findings = await ctx.agentInspector.findings('counter')
+
+    const failed = findings?.map(({ skill, findings: checks }) => ({ skill, failed: checks.filter(check => !check.passed).map(({ rule, tools, problem }) => ({ rule, tools, problem })) }))
+    expect(failed).toEqual([
+      { skill: 'audit-trail', failed: [{ rule: 'required-tools-registered', tools: ['missing_tool'], problem: undefined }] },
+      { skill: 'broken-meta', failed: [{ rule: 'metadata-valid', tools: [], problem: expect.stringMatching(/^metadata\.lyteboat\.requiredTools: /u) }] },
+      { skill: 'item-count', failed: [] },
+    ])
+    expect(findings?.[0]?.findings.map(check => check.rule)).toEqual(['metadata-valid', 'required-tools-registered', 'required-tools-declared', 'required-tools-auto', 'routable'])
+  })
+
   it('answers undefined for an agent the catalog does not serve', async () => {
     const ctx = await inspectorHost()
 
     expect(await ctx.agentInspector.tools('nobody')).toBeUndefined()
     expect(await ctx.agentInspector.skills('nobody')).toBeUndefined()
     expect(await ctx.agentInspector.skill('nobody', 'item-count')).toBeUndefined()
+    expect(await ctx.agentInspector.findings('nobody')).toBeUndefined()
   })
 
   it('reads the host view outside any agent: an agent\'s own tools and skills stay in its scope', async () => {

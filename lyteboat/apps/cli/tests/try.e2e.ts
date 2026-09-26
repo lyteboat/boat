@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
-import { scriptedModelEnv } from '@lyteboat/testing/scripted-model'
+import { lyteboatTryResultSchema } from '@lyteboat/contracts/cli'
+import { scriptedModelEnv, startScriptedModel, withTitle, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 import { eventTypes, findSessionLogs, readSessionLog } from '@lyteboat/testing/session-log'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
@@ -77,5 +78,30 @@ describe('lyteboat try (built bin, mock model)', () => {
 
     // The profile's plugins resolved through the installation's runtime resolution; nothing is linked into the profiles tree.
     expect(existsSync(join(home, 'profiles', 'node_modules'))).toBe(false)
+  })
+})
+
+describe('lyteboat try --result json (built bin, scripted model)', () => {
+  const scratch = createLyteboatScratch('try-result')
+  const agents = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
+  let model: ScriptedModel
+
+  beforeAll(async () => {
+    model = await startScriptedModel(withTitle(() => ({ text: 'RESULT-OK' })), { apiKey: 'mock-key' })
+  })
+
+  afterAll(async () => {
+    await model.close()
+    scratch.remove()
+  })
+
+  it('prints the turn as one result object: outcome, text, cards, tools, model, and session id', async () => {
+    const { home, workspace } = scratch.run('result')
+    const run = await runLyteboat(['try', '--agents', agents, '--agent', 'echo', '--result', 'json', 'hello'], { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(model) } })
+
+    expect(run.code, run.stderr).toBe(0)
+    const result = lyteboatTryResultSchema.parse(JSON.parse(run.stdout))
+    expect(result).toMatchObject({ outcome: 'completed', text: 'RESULT-OK', cards: [], tools: [], model: { provider: expect.any(String), model: expect.any(String) } })
+    expect(run.stderr).toContain(`lyteboat: session ${result.sessionId}`)
   })
 })

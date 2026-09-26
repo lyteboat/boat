@@ -16,6 +16,7 @@
     "@lyteboat/host": "workspace:*",
     "@lyteboat/business-base": "workspace:*",
     "@lyteboat/eval": "workspace:*",
+    "@lyteboat/inspect": "workspace:*",
     "@lyteboat/try": "workspace:*",
     "@lyteboat/serve": "workspace:*",
     "@lyteboat/studio": "workspace:*",
@@ -104,6 +105,7 @@
     "node-addon-require-builtin": "^0.1.6"
   },
   "devDependencies": {
+    "@lyteboat/contracts": "workspace:*",
     "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session-persistence": "workspace:*",
