@@ -1,9 +1,9 @@
 /**
  * An eval run as the Studio shows it, from what is on disk (the run
  * directory's `run.json` and `results.jsonl`) and the Studio job that started
- * it, if one did: its state (a written run is passed or failed by its cases,
- * unless its job ended otherwise; an unwritten one is its job's state, or
- * `incomplete`), its cases with their turns, and two runs compared case by
+ * it, if one did: its state (running while its job's process lives; a written
+ * run is passed or failed by its cases, unless its job ended otherwise; an
+ * unwritten one is its job's state, or `incomplete`), its cases with their turns, and two runs compared case by
  * case the way the original Studio's comparison shows them.
  * @module @lyteboat/studio-api/studio-eval-runs
  */
@@ -13,11 +13,16 @@ import type { StudioEvalCaseResult, StudioEvalCompareAnswer, StudioEvalCompareCa
 import type { EvalRunListing, EvalTurnResult } from '@lyteboat/eval-runner/records'
 import type { StudioEvalJob } from './studio-eval-jobs.ts'
 
-/** A run's state: a job that ended keeps how it ended; otherwise a written run is judged by its cases. */
+/**
+ * A run's state: running while its process lives (it writes run.json a moment
+ * before it exits, and until then the agent's next run is refused); a job that
+ * ended keeps how it ended; otherwise a written run is judged by its cases.
+ */
 function statusOf(listing: EvalRunListing | undefined, job: StudioEvalJob | undefined): StudioEvalRun['status'] {
+  if (job?.status === 'running') return 'running'
   const record = listing?.record
   if (record === undefined) return job?.status ?? 'incomplete'
-  if (job !== undefined && job.status !== 'running' && job.status !== 'interrupted') return job.status
+  if (job !== undefined && job.status !== 'interrupted') return job.status
   return record.cases.every(evalCase => evalCase.pass) ? 'passed' : 'failed'
 }
 

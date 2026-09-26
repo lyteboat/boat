@@ -2,7 +2,7 @@
  * The Studio's eval jobs across a restart: a job still running when the
  * Studio starts is interrupted, keeping the cases its output shows finished,
  * and its run shows the result its process went on to write; a job file cut
- * short is skipped.
+ * short is skipped; a run reads as running until its process exits.
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -55,5 +55,19 @@ describe('the Studio\'s eval jobs', () => {
     expect(studioEvalRunOf(job.runId, undefined, job)).toMatchObject({ status: 'interrupted', cases: { total: 2, done: 1 } })
     expect(studioEvalRunOf(job.runId, written, job)).toMatchObject({ status: 'failed', startedBy: 'root', cases: { total: 2, passed: 1, done: 2 } })
     expect(studioEvalRunOf(job.runId, { runId: job.runId, dir: '/evals/x', modifiedAt: 2_000 }, undefined).status).toBe('incomplete')
+  })
+
+  it('shows a run as running while its process lives, though it has written its run', () => {
+    const written: EvalRunListing = {
+      runId: RUNNING.runId, dir: '/evals/x', modifiedAt: 2_000,
+      record: {
+        agent: { id: 'alpha', digest: `sha256:${'0'.repeat(64)}` }, mode: 'real', cases: [{ id: 'first', pass: true }],
+        turns: { total: 1, passed: 1 }, checks: { total: 1, passed: 1 }, startedAt: '2026-09-26T00:00:00.000Z', durationMs: 5,
+      },
+    }
+
+    const run = studioEvalRunOf(RUNNING.runId, written, RUNNING)
+
+    expect(run).toMatchObject({ status: 'running', cases: { total: 1, passed: 1 } })
   })
 })

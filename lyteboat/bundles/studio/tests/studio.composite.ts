@@ -342,6 +342,7 @@ describe('eval runs started from lyteboat studio (in process, built launcher, sc
 
   const settled = (runId: string, status: string): Promise<EvalRunBody> => vi.waitFor(async () => {
     const answer = await studioCall(origin, 'GET', `evals/runs/${runId}`, { token: admin })
+    expect(answer.status, JSON.stringify(answer.body)).toBe(200)
     const { run } = answer.body as unknown as EvalRunBody
     // A run that ended otherwise says why (its process's last error line).
     if (run.status !== 'running') expect(run.status, JSON.stringify(run)).toBe(status)
@@ -368,11 +369,18 @@ describe('eval runs started from lyteboat studio (in process, built launcher, sc
     scratch.remove()
   })
 
+  /** Start a run; a refusal fails the test with the Studio's answer. */
+  async function started(body: Record<string, unknown>): Promise<{ runId: string }> {
+    const answer = await studioCall(origin, 'POST', 'evals/runs', { token: admin, body })
+    expect(answer.status, JSON.stringify(answer.body)).toBe(200)
+    return answer.body as unknown as { runId: string }
+  }
+
   it('runs the agent\'s cases against the model, replays that run without it, and compares the two', async () => {
-    const real = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'real' } })).body as { runId: string }
+    const real = await started({ agentId: 'desk', mode: 'real' })
     const recorded = await settled(real.runId, 'passed')
     const requests = model.requests.length
-    const replay = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'replay', from: real.runId } })).body as { runId: string }
+    const replay = await started({ agentId: 'desk', mode: 'replay', from: real.runId })
     const replayed = await settled(replay.runId, 'passed')
     const compared = await studioCall(origin, 'GET', `evals/compare?a=${real.runId}&b=${replay.runId}`, { token: admin })
 
@@ -383,12 +391,12 @@ describe('eval runs started from lyteboat studio (in process, built launcher, sc
   })
 
   it('stops a run it started, which ends stopped', async () => {
-    const started = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'real' } })).body as { runId: string }
+    const run = await started({ agentId: 'desk', mode: 'real' })
 
-    const stop = await studioCall(origin, 'POST', `evals/runs/${started.runId}/stop`, { token: admin })
+    const stop = await studioCall(origin, 'POST', `evals/runs/${run.runId}/stop`, { token: admin })
 
     expect(stop.status).toBe(200)
-    expect((await settled(started.runId, 'stopped')).cases).toEqual([])
+    expect((await settled(run.runId, 'stopped')).cases).toEqual([])
   })
 })
 
