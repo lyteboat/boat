@@ -34,7 +34,10 @@ export function kernelTypertFiles(dir: string): string[] {
   return publishedTypertFiles(JSON.parse(readFileSync(join(repoRoot, 'dsh', dir, 'package.json'), 'utf8')) as TypertManifest)
 }
 
-/** SHA-256 over the relative paths ('/'-separated on every platform) and contents of every file under `dsh/<dir>/src`. */
+/**
+ * SHA-256 over the relative paths ('/'-separated) and contents (LF line endings) of every file
+ * under `dsh/<dir>/src`, so every checkout of the same commit has the same digest.
+ */
 export function typertSourceDigest(dir: string): string {
   const src = join(repoRoot, 'dsh', dir, 'src')
   const files = readdirSync(src, { recursive: true, withFileTypes: true })
@@ -43,8 +46,17 @@ export function typertSourceDigest(dir: string): string {
     .map(entry => relative(src, join(entry.parentPath, entry.name)).split('\\').join('/'))
     .sort()
   const hash = createHash('sha256')
-  for (const file of files) hash.update(`${file}\0`).update(readFileSync(join(src, file))).update('\0')
+  for (const file of files) hash.update(`${file}\0`).update(committedText(join(src, file))).update('\0')
   return hash.digest('hex')
+}
+
+/**
+ * A source file's bytes with CRLF line endings turned back into LF: Git for Windows checks text out
+ * with CRLF by default (core.autocrlf), and the kernel's sources are committed with LF. latin1 maps
+ * every byte to one character and back, so nothing else changes.
+ */
+function committedText(file: string): Buffer {
+  return Buffer.from(readFileSync(file).toString('latin1').replaceAll('\r\n', '\n'), 'latin1')
 }
 
 /** Package name → the source digest its Typert files were last regenerated from. */
