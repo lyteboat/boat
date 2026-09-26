@@ -80,6 +80,12 @@ catalogs:
     '@deepseek-ai/dsh-llm-mock-server':
       specifier: 0.1.7-rc.2
       version: 0.1.7-rc.2
+    '@deepseek-ai/dsh-persona':
+      specifier: 0.1.7-rc.2
+      version: 0.1.7-rc.2
+    '@deepseek-ai/dsh-skill-filesystem':
+      specifier: 0.1.7-rc.2
+      version: 0.1.7-rc.2
     '@deepseek-ai/dsh-typert-generator':
       specifier: 0.1.7-rc.2
       version: 0.1.7-rc.2
@@ -1574,6 +1580,67 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
+
+  lyteboat/plugins/agent-def:
+    dependencies:
+      '@deepseek-ai/dsh-scope':
+        specifier: 0.1.7-rc.2
+        version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-invariants@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4))
+      '@lyteboat/a2ui':
+        specifier: workspace:*
+        version: link:../a2ui
+      '@lyteboat/aux-llm':
+        specifier: workspace:*
+        version: link:../aux-llm
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
+      '@lyteboat/intake-guard':
+        specifier: workspace:*
+        version: link:../intake-guard
+      '@lyteboat/request-context':
+        specifier: workspace:*
+        version: link:../request-context
+      '@lyteboat/skill-router':
+        specifier: workspace:*
+        version: link:../skill-router
+      '@lyteboat/tool-policy':
+        specifier: workspace:*
+        version: link:../tool-policy
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../../dsh/core/agent
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../../dsh/llm/llm
+      '@deepseek-ai/dsh-persona':
+        specifier: catalog:dsh
+        version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-system-prompt@dsh+core+system-prompt)
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../../dsh/core/session
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:*
+        version: link:../../../dsh/skill/skill
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: catalog:dsh
+        version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-fs@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-brand@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-invariants@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@dsh+llm+llm)(@deepseek-ai/dsh-sandbox@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-llm@dsh+llm+llm)(@deepseek-ai/dsh-session@dsh+core+session)))(@deepseek-ai/dsh-home-paths@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-skill@dsh+skill+skill)
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../../dsh/core/tools
+      '@lyteboat/distro':
+        specifier: workspace:*
+        version: link:../distro
+      '@lyteboat/testing':
+        specifier: workspace:*
+        version: link:../../tooling/testing
 
   lyteboat/plugins/agent-inspector:
     dependencies:
