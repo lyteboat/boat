@@ -11,6 +11,7 @@
     { "path": "../../../dsh/core/session" },
     { "path": "../../../dsh/llm/llm" },
     { "path": "../../../dsh/session/session-persistence" },
-    { "path": "../../../dsh/test-support/agent-loop-testkit" }
+    { "path": "../../../dsh/test-support/agent-loop-testkit" },
+    { "path": "../../core/contracts" }
   ]
 }

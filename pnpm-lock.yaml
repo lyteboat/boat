@@ -2240,6 +2240,10 @@ importers:
         version: 18.3.1
 
   lyteboat/tooling/testing:
+    dependencies:
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: catalog:cordis

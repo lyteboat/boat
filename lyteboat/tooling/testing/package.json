@@ -50,6 +50,9 @@
   "files": [
     "lib"
   ],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",

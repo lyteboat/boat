@@ -14,9 +14,10 @@
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { LYTEBOAT_AGENT_RELEASE_FILE } from '@lyteboat/contracts'
 
 /** Top-level entries the digest leaves out: the agent's tests, its eval runs and baseline, and its release lock. */
-const TOP_LEVEL_EXCLUDED = new Set(['tests', 'evals', 'agent.release.json'])
+const TOP_LEVEL_EXCLUDED = new Set(['tests', 'evals', LYTEBOAT_AGENT_RELEASE_FILE])
 
 /** An agent directory's digest and the per-file content hashes it is made of. */
 export interface AgentDigest {
