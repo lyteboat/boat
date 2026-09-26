@@ -286,6 +286,8 @@ dsh.upstream.json     所跟踪的 dsh 版本
 
 同步新的 dsh 版本、把包晋升进内核、跑 G3 与持久化闸门，见[发行版约定](docs/02-distribution.md)。
 
+**在 Windows 上。** 仓库的 `.gitattributes` 让每个检出的文本都是 LF，和 dsh 自己的仓库一样：内核逐字节导入，Typert 源码摘要、agent 摘要和发布锁、发布闸门对基线的逐字比对、测试的金标都要在每台机器上看到同样的字节。Git for Windows 默认 `core.autocrlf=true`，在加这个文件之前克隆的仓库里文本还是 CRLF，先提交或暂存本地改动，再重新检出一次：`git rm -r --cached -q . && git reset --hard`。
+
 ### pnpm 设置为什么和常见项目不同
 
 - **增删或移动工作区包之后，从干净的 `node_modules` 重装。** 增量 `pnpm install` 会留下过期的提升链接。

@@ -1003,7 +1003,7 @@ lyteboat-next 与 lyteboat-stable 的规则见 [dsh-compat/COMPAT.md §7](../dsh
 | `model` | `agent.yml` 声明、基线录制时用的模型：`provider`、`model`、可选的 `reasoningEffort` |
 | `dshBase` | 跑发布的这个构建的内核来自哪个 dsh 版本（`lyteboatDistro.dsh`，现在是 `0.1.7-rc.2`） |
 | `files` | 摘要背后的逐文件 sha256（POSIX 相对路径 → 64 位十六进制） |
-| `baseline` | 回放过的基线：`startedAt`，用例、轮次、检查的个数，`results.jsonl` 的 sha256 |
+| `baseline` | 回放过的基线：`startedAt`，用例、轮次、检查的个数，`results.jsonl` 按 LF 读（CRLF 读作 LF）的 sha256 |
 
 **[实跑]** 在 finance 上（它的基线已经带着身份录好，`examples/agents/finance/evals/baseline`；不需要 key，闸门只回放）：
 
@@ -1029,7 +1029,7 @@ lyteboat release: finance 1.0.0 (sha256:184e1e45…) released; lock: <仓库>/ex
 
 | 锁管住 | 怎么查 |
 |---|---|
-| agent 目录的内容 | 摘要和逐文件哈希，serve 声明 agent 前比对，变了就拒绝并列出文件。摘要覆盖除了顶层 `tests/`、`evals/`、`agent.release.json`，以及任何深度的 `node_modules/`、以点开头的条目、`*.tsbuildinfo` 之外的全部普通文件，**构建出的 `lib/` 也在内**；符号链接直接报错（`lyteboat/plugins/agent-catalog/src/agent-digest.ts`） |
+| agent 目录的内容 | 摘要和逐文件哈希，serve 声明 agent 前比对，变了就拒绝并列出文件。摘要覆盖除了顶层 `tests/`、`evals/`、`agent.release.json`，以及任何深度的 `node_modules/`、以点开头的条目、`*.tsbuildinfo` 之外的全部普通文件，**构建出的 `lib/` 也在内**；文本文件的 CRLF 读作 LF，Windows 上的检出和 Linux 得到同一个摘要；符号链接直接报错（`lyteboat/plugins/agent-catalog/src/agent-digest.ts`） |
 | 版本 | serve 比 `agent.yml` 的版本和锁的版本 |
 | 模型 | serve 比进程的默认模型和 `agent.yml` 声明的模型 |
 | 内核的 dsh 版本 | serve 启动时比锁的 `dshBase` 和本构建的 `lyteboatDistro.dsh` |

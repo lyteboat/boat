@@ -5,9 +5,13 @@
  * entries whose name starts with a dot, and `*.tsbuildinfo`. Each file is
  * named by its POSIX path relative to the directory; the paths are sorted by
  * their UTF-8 bytes; the digest is the sha256 of the lines
- * `<path> NUL <sha256 of the content> LF`, as `sha256:<hex>`. File modes and
- * times do not count; a symbolic link outside the excluded entries is an error,
- * so the digest never depends on what a link points to on one machine.
+ * `<path> NUL <sha256 of the content> LF`, as `sha256:<hex>`. A text file's
+ * content is read with its CRLF line endings as LF, the form git commits it in,
+ * so a checkout or an editor on Windows gives the digest Linux gives; a file
+ * with a NUL byte in its first 8000 bytes is binary (git's own test) and counts
+ * as it is. File modes and times do not count; a symbolic link outside the
+ * excluded entries is an error, so the digest never depends on what a link
+ * points to on one machine.
  * @module @lyteboat/agent-catalog/agent-digest
  */
 
@@ -29,6 +33,13 @@ export interface AgentDigest {
 
 const sha256Hex = (data: string | Buffer): string => createHash('sha256').update(data).digest('hex')
 
+/** A file's content as git commits it: a text file's CRLF read as LF (latin1 maps every byte to one character and back), a binary file as it is. */
+function committedContent(file: string): Buffer {
+  const bytes = readFileSync(file)
+  if (bytes.subarray(0, 8000).includes(0)) return bytes
+  return Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1')
+}
+
 function excluded(name: string, depth: number): boolean {
   return name.startsWith('.') || name === 'node_modules' || name.endsWith('.tsbuildinfo') || (depth === 0 && TOP_LEVEL_EXCLUDED.has(name))
 }
@@ -39,7 +50,7 @@ function collect(dir: string, prefix: string, depth: number, files: Map<string, 
     const path = prefix === '' ? entry.name : `${prefix}/${entry.name}`
     if (entry.isSymbolicLink()) throw new Error(`agent-catalog: ${join(dir, path)} is a symbolic link; an agent's digest covers regular files only`)
     if (entry.isDirectory()) collect(dir, path, depth + 1, files)
-    else if (entry.isFile()) files.set(path, sha256Hex(readFileSync(join(dir, path))))
+    else if (entry.isFile()) files.set(path, sha256Hex(committedContent(join(dir, path))))
   }
 }
 

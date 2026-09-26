@@ -288,6 +288,8 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 
 Syncing a new dsh release, promoting a package into the kernel, and running G3 and the persistence gate are covered in the [distribution conventions](docs/02-distribution.md).
 
+**On Windows.** The repository's `.gitattributes` checks every text file out with LF, as dsh's own repository does: the kernel is imported byte for byte, and the Typert source digests, an agent's digest and release lock, the release gate's comparison with its baseline, and the test goldens must see the same bytes on every host. Git for Windows defaults to `core.autocrlf=true`, so a clone made before this file still holds CRLF text: commit or stash local work, then check it out once more with `git rm -r --cached -q . && git reset --hard`.
+
 ### Why the pnpm settings look unusual
 
 - **Reinstall from a clean `node_modules` after adding or moving a workspace package.** An incremental `pnpm install` keeps stale hoisted links.

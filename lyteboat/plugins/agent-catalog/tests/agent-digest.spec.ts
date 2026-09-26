@@ -35,6 +35,14 @@ describe('agentDigest', () => {
     expect(agentDigest(tree({ 'x': 'yz' })).digest).not.toBe(agentDigest(tree({ 'xy': 'z' })).digest)
   })
 
+  it('gives a text file checked out with CRLF line endings the hash of its LF form, and hashes a binary file as it is', () => {
+    const lf = agentDigest(tree({ 'agent.cordis.yml': '- id: a\n- id: b\n', 'assets/skills/a/SKILL.md': '# A\n\nbody\n' }))
+    const crlf = agentDigest(tree({ 'agent.cordis.yml': '- id: a\r\n- id: b\r\n', 'assets/skills/a/SKILL.md': '# A\r\n\r\nbody\r\n' }))
+
+    expect(crlf).toEqual(lf)
+    expect(agentDigest(tree({ 'assets/icon.bin': '\0\r\n' })).digest).not.toBe(agentDigest(tree({ 'assets/icon.bin': '\0\n' })).digest)
+  })
+
   it('leaves out top-level tests, evals, and the release lock, and node_modules, dot entries, and build info at any depth', () => {
     const base = agentDigest(tree({ 'agent.cordis.yml': '[]\n', 'src/tests/case.ts': 'kept' }))
 

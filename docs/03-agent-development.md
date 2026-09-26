@@ -2141,7 +2141,7 @@ agent 交给运维时，运维要知道服务的就是评测过的那一个。ly
 **agent 的身份。** `{ id, version?, digest }`（`LyteboatAgentIdentity`，`lyteboat/core/contracts/src/index.ts` `lyteboatAgentIdentitySchema`）：`id` 是目录名，`version` 是 `agent.yml` 声明的，`digest` 是目录内容的摘要，agent-catalog 每次声明 agent 时算（`lyteboat/plugins/agent-catalog/src/agent-digest.ts`）：
 
 - 算进去的：目录里每一个普通文件，除了顶层的 `tests/`、`evals/`、`agent.release.json`，以及任何深度的 `node_modules/`、名字以点开头的条目和 `*.tsbuildinfo`。构建出的 `lib/` 算在里面，所以要在构建之后、用同一份构建录基线和发布。
-- 怎么算：每个文件用相对目录的 POSIX 路径命名，路径按 UTF-8 字节排序，对每一行 `<路径> NUL <内容的 sha256> LF` 求 sha256，写成 `sha256:<64 位小写十六进制>`。文件的权限和时间不算。
+- 怎么算：每个文件用相对目录的 POSIX 路径命名，路径按 UTF-8 字节排序，对每一行 `<路径> NUL <内容的 sha256> LF` 求 sha256，写成 `sha256:<64 位小写十六进制>`。文本文件的内容按 git 提交它的样子算：CRLF 读作 LF，所以在 Windows 上检出或编辑过的目录和 Linux 上得到同一个摘要；前 8000 字节里有 NUL 字节的文件是二进制文件（git 自己的判断法），按原样算。文件的权限和时间不算。
 - 排除项之外有符号链接就报错：`agent-catalog: <路径> is a symbolic link; an agent's digest covers regular files only`，这个 agent 声明失败。摘要因此不会随某台机器上链接指向什么而变。
 
 try（经 `intakeGuard.submit` 的 `agent`）、`/chat`、eval 把身份写进每条人类消息的 `source.lyteboatRequest.agent`（`lyteboat/bundles/try/src/index.ts` `run`、`lyteboat/plugins/chat-api/src/index.ts` `ChatApiService.answer`、`lyteboat/plugins/eval-runner/src/index.ts` `EvalRunnerService.runCase`）；eval 还写进 `run.json`（§4.14），`GET /agents` 列出版本（§4.13）。`lyteboat web` 不写（§4.15）。
@@ -2164,7 +2164,7 @@ try（经 `intakeGuard.submit` 的 `agent`）、`/chat`、eval 把身份写进�
 | `baseline` | `evals/baseline/run.json` 存在、按 schema 读得出、是 real 运行；每个用例都有录音 | `no baseline at <目录>/evals/baseline: run lyteboat eval with the real model and copy its run directory there`；`<目录> is a replay; a release baseline must be a real run`；`<run.json> is not a run this build reads (…); record the baseline again`；`the baseline has no results.jsonl (<文件>); copy the whole run directory`；`<录音>: line <n> is not JSON (…); record the baseline again` |
 | `stamps` | `run.json` 的 `agent`，和每份录音里每条人类消息的 `agent`，都等于 agent 现在的身份（id、版本、摘要） | `the baseline ran <id> <版本> (<摘要>), but the agent is now <id> <版本> (<摘要>); record the baseline again`；`<录音>: a request went to …, but the agent is now …; record the baseline again` |
 | `model` | 每份录音里每个循环请求头用的都是 `agent.yml` 声明的模型 | `<录音>: a request used <模型>, but agent.yml declares <模型>; record the baseline on the declared model` |
-| `replay` | 在这个构建上回放基线：回放跑的用例正是基线录下的那些（所以每个回放的用例都查过录音的戳和模型），每一轮的 `results.jsonl` 行和基线逐字相同，轮数相同，每个用例都通过 | `the agent's cases are now <ids>, but the baseline ran <ids>; record the baseline again`；`replaying the baseline, case <id> turn <n> no longer shows what the baseline recorded`；`replaying the baseline gave N turn(s); the baseline recorded M`；`the baseline fails case(s) <id>; a release needs every case to pass` |
+| `replay` | 在这个构建上回放基线：回放跑的用例正是基线录下的那些（所以每个回放的用例都查过录音的戳和模型），每一轮的 `results.jsonl` 行和基线逐字相同（基线的 CRLF 读作 LF），轮数相同，每个用例都通过 | `the agent's cases are now <ids>, but the baseline ran <ids>; record the baseline again`；`replaying the baseline, case <id> turn <n> no longer shows what the baseline recorded`；`replaying the baseline gave N turn(s); the baseline recorded M`；`the baseline fails case(s) <id>; a release needs every case to pass` |
 | `version` | 没有已有的锁用同一个版本发布过别的内容 | `<目录>/agent.release.json already releases <id> <版本> as <摘要>; raise the version in agent.yml` |
 
 通过时退出 0，stdout 是 `lyteboat release: <id> <版本> (<摘要>) released; lock: <锁>; replay: <运行目录>/report.md`，回放像普通的 `--model replay` 一样写进 `$LYTEBOAT_HOME/evals/<运行 id>/`。被拒退出 1，stderr 是 `lyteboat release: refused at <步骤>: <原因>`。用法错误或跑不起来退出 2：少了 `--agents` 或 `--agent`（`error: --agent is required`），agent 挂不上（清单不合法、还留着 `preset.yml`、声明的模型不是进程的默认模型）。同一个版本、同样的内容再发布一次照样通过，写出相同的字节。
@@ -2200,7 +2200,7 @@ lyteboat release: refused at stamps: the baseline ran echo 0.1.0 (sha256:06d85e2
 
 接着重录基线再发布，版本还是 0.1.0，第 6 步拒绝：`refused at version: <根>/echo/agent.release.json already releases echo 0.1.0 as sha256:06d85e20…; raise the version in agent.yml`。只把版本升到 0.1.1、不重录，第 3 步拒绝：版本也在身份里，基线记的还是 0.1.0。所以改了 agent，就从第 1 步重来。金融智能体的基线是带着身份录的，`lyteboat release --agents ./examples/agents --agent finance` 不要 key 就能通过（[02-distribution.md](02-distribution.md) §9.3 有这次的输出）。
 
-**锁里有什么。** `LyteboatAgentRelease`（`lyteboat/core/contracts/src/index.ts` `lyteboatAgentReleaseSchema`）：`agent`（id、版本、摘要）、`model`、`dshBase`（这个构建的内核来自哪个 dsh 版本）、`files`（摘要背后的逐文件哈希）、`baseline`（`startedAt`，用例、轮次、检查的个数，`results.jsonl` 的 sha256）。键的顺序固定、两空格缩进、结尾一个换行，所以同样的发布写出同样的字节，锁的 diff 可以像代码一样审。逐字段的表见 [02-distribution.md](02-distribution.md) §9.3。
+**锁里有什么。** `LyteboatAgentRelease`（`lyteboat/core/contracts/src/index.ts` `lyteboatAgentReleaseSchema`）：`agent`（id、版本、摘要）、`model`、`dshBase`（这个构建的内核来自哪个 dsh 版本）、`files`（摘要背后的逐文件哈希）、`baseline`（`startedAt`，用例、轮次、检查的个数，`results.jsonl` 按 LF 读的 sha256）。键的顺序固定、两空格缩进、结尾一个换行，所以同样的发布写出同样的字节，锁的 diff 可以像代码一样审。逐字段的表见 [02-distribution.md](02-distribution.md) §9.3。
 
 **运维怎么用：`lyteboat serve --release <agent>/agent.release.json`。** serve 按锁核对 agent 目录、版本、模型和内核的 dsh 版本，任何一项不对就不起；锁管住什么、管不住什么（例如 lyteboat 框架代码不在锁里，要用发布它的同一个构建去 serve），每一项的原话和实测见 [02-distribution.md](02-distribution.md) §9.3。Studio 的雷达也读 agent 旁边的锁：目录的摘要和锁里的不同，就把这个 agent 标为偏离发布，`serve --release` 这时会拒绝它（§4.17）。
 

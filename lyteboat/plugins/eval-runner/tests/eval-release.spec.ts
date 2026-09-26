@@ -80,6 +80,21 @@ describe('releaseAgent', () => {
     expect(readFileSync(join(agent.dir, 'agent.release.json'), 'utf8')).toBe(bytes)
   })
 
+  it('reads a baseline checked out with CRLF line endings as its LF form, and writes the same lock', async () => {
+    const lf = agentWithBaseline()
+    const crlf = agentWithBaseline()
+    const baseline = join(crlf.dir, 'evals', 'baseline')
+    for (const file of [join(baseline, 'run.json'), join(baseline, 'results.jsonl'), join(baseline, 'sessions', 'hello', 'session.v4.jsonl')]) {
+      writeFileSync(file, readFileSync(file, 'utf8').replaceAll('\n', '\r\n'))
+    }
+
+    await releaseAgent(lf, '0.1.7-rc.2', replaying())
+    const outcome = await releaseAgent(crlf, '0.1.7-rc.2', replaying())
+
+    expect(outcome.released).toBe(true)
+    expect(readFileSync(join(crlf.dir, 'agent.release.json'), 'utf8')).toBe(readFileSync(join(lf.dir, 'agent.release.json'), 'utf8'))
+  })
+
   it('refuses an agent whose manifest declares no version or no model', async () => {
     const agent = agentWithBaseline()
     const { model: _model, ...modelless } = agent

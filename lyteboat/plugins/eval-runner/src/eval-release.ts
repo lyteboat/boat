@@ -108,7 +108,8 @@ function checkRecordings(baselineDir: string, baseline: LyteboatEvalRunRecord, i
 async function checkReplay(baselineDir: string, baseline: LyteboatEvalRunRecord, replay: EvalBaselineReplay): Promise<string> {
   const resultsFile = evalRunResultsFile(baselineDir)
   if (!existsSync(resultsFile)) throw new EvalReleaseRefusal('baseline', `the baseline has no results.jsonl (${resultsFile}); copy the whole run directory`)
-  const recorded = readFileSync(resultsFile, 'utf8')
+  // A checkout on Windows may hold the baseline with CRLF; the replay writes LF, and the lock's digest must not depend on the host.
+  const recorded = readFileSync(resultsFile, 'utf8').replaceAll('\r\n', '\n')
   let replayed: Awaited<ReturnType<EvalBaselineReplay>>
   try {
     replayed = await replay(baselineDir)
