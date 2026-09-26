@@ -4,6 +4,17 @@ lyteboat is an agent harness built as Cordis plugins on top of [DeepSeek Harness
 
 Read [README.md](README.md) for what lyteboat provides and [dsh-compat/COMPAT.md](dsh-compat/COMPAT.md) before touching `dsh/`. When a dsh API is unclear, read the kernel's source under `dsh/` or, for other dsh packages, the tracked tag's checkout (`packages/<group>/<pkg>/src`) rather than guessing from the published `lib/`.
 
+## Behavioral guidelines
+
+lyteboat is a framework: teams build business agents on it and serve them to their own users, so every agent built on top pays for a design mistake here. Design comes before code.
+
+- **Design first.** A structural change (a feature; a new plugin, service, event, projection key, bundle, or agent; anything that touches a public contract or crosses a layer) starts with its design document, and the user reviews it before any code is written ([Task types](#task-types)). When the implementation has to depart from the approved design, stop, update the design, and confirm again.
+- **Think before coding.** State your assumptions; if something is unclear, ask. If a request has more than one reading, surface them; don't pick one silently.
+- **Simplicity first.** No abstraction, configurability, or error handling that nobody asked for. A wrong abstraction is worse than duplication: extract on the third repetition, not the first.
+- **Surgical changes.** Match the existing style; don't refactor working code outside the task ([Scope of change](#scope-of-change)).
+- **Goal-driven.** Each step ends with something that runs from the built CLI, and the tests it needs follow from the task type ([Testing](#testing)).
+- **Framework, not application.** lyteboat is a vertical-agnostic foundation for business agents. `lyteboat/bundles/*`, `lyteboat/plugins/*`, and `lyteboat/core/*` stay domain-neutral: no business rules, industry vocabulary, or branches tied to one scenario. Business logic lives only in the agents (`examples/agents/*`), and a capability the framework adds is one any vertical could use.
+
 ## Stack
 
 TypeScript 6 (`strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`), ESM only, Node ^22.19 || >=24 · pnpm 11 workspaces (`lyteboat/*/*`, `examples/*/*`, `dsh/*/*`; `overrides` route the kernel names to `dsh/`) · `tsc -b` with project references, then tsdown for the kernel bundles (upstream's own build) · vitest 4 (unit, composite, e2e, and upstream's kernel tests in one runner) · oxlint (`correctness` = error) · Cordis 4 IoC (`@deepseek-ai/cordis`) · dsh 0.1.7-rc.2: the kernel from `dsh/`, every other dsh package from npm as a peer dependency · `@deepseek-ai/schemastery` for plugin `Config`, zod for the JSON envelopes lyteboat writes and its projection states.
@@ -89,6 +100,16 @@ Hard rules:
 - **Projections return the same reference when nothing changed.** `apply(state, event)` returns `state` itself for events it ignores; dsh's wire diffing depends on it.
 - **Projections fold appended nodes only.** A surface replacement (compaction pruning, an agent shortening an old tool result) must keep the original `tool/result`'s meta, so a fold that reads meta checks `event.surfaceOp === 'append'`; otherwise the replaced result's delta or card is applied a second time.
 
+### Protocols at boundaries (SOLID)
+
+A boundary between packages is a declared contract, never a concrete class: a type in `@lyteboat/contracts`, or the service a plugin declares on cordis's `Context` (`declare module '@deepseek-ai/cordis' { interface Context { … } }`), which consumers receive through `static inject`.
+
+- **SRP**: one reason to change per module and per service. A service that serves two roles (keeping a catalog and answering HTTP) is two services.
+- **OCP**: extend through a plugin, a seam provider, a registry (`register()` returning its disposer), or an agent row; never edit the kernel or an existing plugin to add a business case or one more variant. A feature that needs a switch in someone else's code is a missing seam: design the seam.
+- **LSP**: every implementation of a contract is substitutable. A seam provider or an alternate service keeps the events, their order, and the failure behavior of the one it replaces, and passes the same contract tests.
+- **ISP**: a service's public surface stays small, about seven methods; when a change would push it past that, split the service by role. No god-services: a consumer depends only on the part it uses.
+- **DIP**: depend on the contract, not the implementation. A swappable dependency arrives through cordis `inject` or a `Config` field; never construct it with `new` or import another plugin's implementation (between plugins only `import type`, as the layer rule already requires).
+
 ## Coding conventions
 
 - **Tooling**: `pnpm` only (never `npm install`/`yarn`). New dependencies are added to the owning package; dsh and cordis packages are `peerDependencies` (+ `devDependencies`) written as `catalog:dsh` / `catalog:cordis`, never a literal version, with one exception: a non-kernel dsh peer is the tracked release's exact version, because dsh's startup admission reads a row's dsh peers from the manifest on disk, where pnpm leaves `catalog:` unresolved, and refuses a row it cannot match. The catalogs in `pnpm-workspace.yaml` and those peers mirror `dsh.upstream.json` (`scripts/upstream-pins.spec.ts` enforces both). Third-party packages used by more than one workspace package go through the default `catalog:`. Workspace packages use `workspace:*`.
@@ -137,7 +158,7 @@ Work is delivered one runnable milestone at a time, and a large milestone is spl
 
 **Simple** (`bug` / `chore` / docs / config): fix it, add the regression test, run the gates the change can affect.
 
-**Structural** (`feature` / `refactor` / a new plugin or agent): design top-down through the C4 layers before code: C1 system context (what lyteboat, dsh, the model, and the client see) → C2 containers (launcher, bundles, kernel, plugins, agents, tests) → C3 components (services, events, projections, prompt sections and their orders) → C4 code (types in contracts, hunks, log nodes, event ordering). Confirm with the user when the change touches a public contract or crosses a layer boundary.
+**Structural** (`feature` / `refactor` / a new plugin or agent): design top-down through the C4 layers before code: C1 system context (what lyteboat, dsh, the model, and the client see) → C2 containers (launcher, bundles, kernel, plugins, agents, tests) → C3 components (services, events, projections, prompt sections and their orders) → C4 code (types in contracts, hunks, log nodes, event ordering). The user reviews the design document before any code is written; confirm with them again when the implementation has to depart from it, touches a public contract, or crosses a layer boundary the design did not name.
 
 **Design deliverable** for a structural task: the design document is a self-contained HTML artifact (mermaid inlined, never a CDN), published through the artifact tool, and never committed under the repository. It must contain the C4 diagrams, the step-by-step flow (one agent-loop step with intake, pre-assemble, routing, activation, assembly; one tool call with state delta and card), the changes-and-impact table, and the acceptance log.
 
