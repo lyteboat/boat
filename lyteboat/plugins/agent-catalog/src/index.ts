@@ -210,9 +210,9 @@ export class AgentCatalogService extends Service {
     if (pin === undefined) return undefined
     if (pin.version !== version) return `agent.yml declares version ${version ?? '(none)'}, but its release pins ${pin.version}`
     if (pin.digest === digest.digest) return undefined
-    const changed = Object.keys(digest.files).filter(path => path in pin.files && pin.files[path] !== digest.files[path])
-    const added = Object.keys(digest.files).filter(path => !(path in pin.files))
-    const removed = Object.keys(pin.files).filter(path => !(path in digest.files))
+    const changed = Object.keys(digest.files).filter(path => Object.hasOwn(pin.files, path) && pin.files[path] !== digest.files[path])
+    const added = Object.keys(digest.files).filter(path => !Object.hasOwn(pin.files, path))
+    const removed = Object.keys(pin.files).filter(path => !Object.hasOwn(digest.files, path))
     const lists = [['changed', changed], ['added', added], ['removed', removed]] as const
     const differences = lists.filter(([, paths]) => paths.length > 0).map(([kind, paths]) => `${kind} ${paths.join(', ')}`)
     return `the directory differs from its release ${pin.version} (${pin.digest}): ${differences.join('; ') || 'the release lists other file hashes'}`

@@ -2158,10 +2158,10 @@ try（经 `intakeGuard.submit` 的 `agent`）、`/chat`、eval 把身份写进�
 | 步骤 | 查什么 | 不过时 stderr 上的原因 |
 |---|---|---|
 | `manifest` | `agent.yml` 声明了 `version` 和 `model` | `<目录>/agent.yml must declare a version and a model to be released` |
-| `baseline` | `evals/baseline/run.json` 存在、按 schema 读得出、是 real 运行；每个用例都有录音 | `no baseline at <目录>/evals/baseline: run lyteboat eval with the real model and copy its run directory there`；`<目录> is a replay; a release baseline must be a real run`；`<run.json> is not a run this build reads (…); record the baseline again` |
+| `baseline` | `evals/baseline/run.json` 存在、按 schema 读得出、是 real 运行；每个用例都有录音 | `no baseline at <目录>/evals/baseline: run lyteboat eval with the real model and copy its run directory there`；`<目录> is a replay; a release baseline must be a real run`；`<run.json> is not a run this build reads (…); record the baseline again`；`the baseline has no results.jsonl (<文件>); copy the whole run directory`；`<录音>: line <n> is not JSON (…); record the baseline again` |
 | `stamps` | `run.json` 的 `agent`，和每份录音里每条人类消息的 `agent`，都等于 agent 现在的身份（id、版本、摘要） | `the baseline ran <id> <版本> (<摘要>), but the agent is now <id> <版本> (<摘要>); record the baseline again`；`<录音>: a request went to …, but the agent is now …; record the baseline again` |
 | `model` | 每份录音里每个循环请求头用的都是 `agent.yml` 声明的模型 | `<录音>: a request used <模型>, but agent.yml declares <模型>; record the baseline on the declared model` |
-| `replay` | 在这个构建上回放基线：每一轮的 `results.jsonl` 行和基线逐字相同，轮数相同，每个用例都通过 | `replaying the baseline, case <id> turn <n> no longer shows what the baseline recorded`；`replaying the baseline gave N turn(s); the baseline recorded M`；`the baseline fails case(s) <id>; a release needs every case to pass` |
+| `replay` | 在这个构建上回放基线：回放跑的用例正是基线录下的那些（所以每个回放的用例都查过录音的戳和模型），每一轮的 `results.jsonl` 行和基线逐字相同，轮数相同，每个用例都通过 | `the agent's cases are now <ids>, but the baseline ran <ids>; record the baseline again`；`replaying the baseline, case <id> turn <n> no longer shows what the baseline recorded`；`replaying the baseline gave N turn(s); the baseline recorded M`；`the baseline fails case(s) <id>; a release needs every case to pass` |
 | `version` | 没有已有的锁用同一个版本发布过别的内容 | `<目录>/agent.release.json already releases <id> <版本> as <摘要>; raise the version in agent.yml` |
 
 通过时退出 0，stdout 是 `lyteboat release: <id> <版本> (<摘要>) released; lock: <锁>; replay: <运行目录>/report.md`，回放像普通的 `--model replay` 一样写进 `$LYTEBOAT_HOME/evals/<运行 id>/`。被拒退出 1，stderr 是 `lyteboat release: refused at <步骤>: <原因>`。用法错误或跑不起来退出 2：少了 `--agents` 或 `--agent`（`error: --agent is required`），agent 挂不上（清单不合法、还留着 `preset.yml`、声明的模型不是进程的默认模型）。同一个版本、同样的内容再发布一次照样通过，写出相同的字节。
@@ -2208,7 +2208,8 @@ lyteboat release: refused at stamps: the baseline ran echo 0.1.0 (sha256:06d85e2
 - 启动器叠上的层（profile 的 `cordis.patch.yml`、`--patch`、`--plugin`）是运维自己的部署配置，锁不看。
 - 旁路调用的路由跟宿主的默认模型走；续聊的会话沿用它之前请求头里的模型；serve 上还有 dsh 自己的 `/api`：这些都不在锁的范围里。
 - 回放不比较请求内容（提示词、工具列表）：它证明的是同一个模型的回答经过今天的代码，显示出同样的技能、工具、卡片、结局和正文。
-- 以点开头的文件、环境变量、agent 自己的 `node_modules` 不在摘要里。
+- 任何深度以点开头的条目（文件和目录）、环境变量、agent 自己的 `node_modules` 不在摘要里。
+- agent 目录以外的代码不在摘要里：行名指向目录外的相对路径（如 `../_shared/extra.mjs`），或代码里有跳出目录的相对 import，那部分代码改了，按锁上线照样启动。要被锁住的代码放在 agent 目录里；几个 agent 共享的代码做成 lyteboat 插件或 agent 的依赖。
 
 ---
 

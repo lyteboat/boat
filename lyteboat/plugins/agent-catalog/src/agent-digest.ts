@@ -53,11 +53,7 @@ export function agentDigest(dir: string): AgentDigest {
   collect(dir, '', 0, hashes)
   const paths = [...hashes.keys()].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))
   const digest = createHash('sha256')
-  const files: Record<string, string> = {}
-  for (const path of paths) {
-    const hash = hashes.get(path) ?? ''
-    digest.update(`${path}\0${hash}\n`)
-    files[path] = hash
-  }
-  return { digest: `sha256:${digest.digest('hex')}`, files }
+  for (const path of paths) digest.update(`${path}\0${hashes.get(path) ?? ''}\n`)
+  // fromEntries defines own properties, so a file named like an Object.prototype member stays a plain entry.
+  return { digest: `sha256:${digest.digest('hex')}`, files: Object.fromEntries(paths.map(path => [path, hashes.get(path) ?? ''])) }
 }

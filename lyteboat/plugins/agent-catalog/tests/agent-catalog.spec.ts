@@ -118,6 +118,7 @@ describe('the agent catalog', () => {
     it('fails an agent whose manifest has a key it does not know, or a version that is not one', async () => {
       expect(await failureOf({ 'agent.yml': 'name: Beta\nundeclared: hidden\n' })).toMatch(/agent\.yml: .*"undeclared"/u)
       expect(await failureOf({ 'agent.yml': 'version: latest\n' })).toContain('agent.yml: version: must look like 1.2.3 or 1.2.3-rc.1')
+      expect(await failureOf({ 'agent.yml': 'version: 1.0\n' })).toContain('agent.yml: version: must be a string such as 1.2.3; quote it in YAML')
       expect(await failureOf({ 'agent.yml': 'model: { provider: deepseek-official }\n' })).toContain('agent.yml: model.model:')
     })
 

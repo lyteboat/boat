@@ -122,6 +122,26 @@ describe('releaseAgent', () => {
     expect(fails).toEqual({ released: false, step: 'replay', reason: 'the baseline fails case(s) hello; a release needs every case to pass' })
   })
 
+  it('refuses a replay that runs other cases than the baseline recorded', async () => {
+    const outcome = await releaseAgent(agentWithBaseline(), '0.1.7', replaying([RESULT], [{ id: 'hello', pass: true }, { id: 'unrecorded', pass: true }]))
+
+    expect(outcome).toEqual({ released: false, step: 'replay', reason: 'the agent\'s cases are now hello, unrecorded, but the baseline ran hello; record the baseline again' })
+  })
+
+  it('refuses a baseline without results.jsonl, or with a recording line that is not JSON, naming the file', async () => {
+    const noResults = agentWithBaseline()
+    rmSync(join(noResults.dir, 'evals', 'baseline', 'results.jsonl'))
+    const torn = agentWithBaseline()
+    const recording = join(torn.dir, 'evals', 'baseline', 'sessions', 'hello', 'session.v4.jsonl')
+    writeFileSync(recording, `${readFileSync(recording, 'utf8')}{"type":\n`)
+
+    const missing = await releaseAgent(noResults, '0.1.7', replaying())
+    const broken = await releaseAgent(torn, '0.1.7', replaying())
+
+    expect(missing).toMatchObject({ released: false, step: 'baseline', reason: expect.stringContaining('the baseline has no results.jsonl') as string })
+    expect(broken).toMatchObject({ released: false, step: 'baseline', reason: expect.stringContaining(`${recording}: line 4 is not JSON`) as string })
+  })
+
   it('refuses to release a version an earlier lock released with other content', async () => {
     const agent = agentWithBaseline()
     writeFileSync(join(agent.dir, 'agent.release.json'), JSON.stringify({ agent: { ...IDENTITY, digest: OTHER_DIGEST }, model: MODEL, dshBase: '0.1.7', files: {}, baseline: { startedAt: '', cases: 0, turns: 0, checks: 0, results: DIGEST } }))

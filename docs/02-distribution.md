@@ -1139,7 +1139,7 @@ lyteboat release: finance 1.0.0 (sha256:184e1e45…) released; lock: <仓库>/ex
 | 续聊的会话 | 沿用它之前请求头里的模型 |
 | serve 上 dsh 自己的 `/api` | serve 挂着 dsh 的 connection 行，这条入口不在锁的范围里 |
 | 请求内容 | 回放不比较请求本身（提示词、工具列表）：它证明的是同一个模型的回答经过今天的代码，显示出同样的 skill、工具、卡片、结局和正文 |
-| 摘要之外的东西 | 以点开头的文件、环境变量、agent 自己的 `node_modules` |
+| 摘要之外的东西 | 任何深度以点开头的条目（文件和目录，例如 `lib/.gen/` 里的代码）、环境变量、agent 自己的 `node_modules`；还有 agent 目录以外的代码：行名是指向目录外的相对路径（如 `../_shared/extra.mjs`），或代码里有跳出目录的相对 import，这部分代码不在摘要里，改了也照常启动。共享代码请放进 lyteboat 插件或 agent 自己的依赖 |
 
 重新构建出不同的 `lib/`（比如换了 TypeScript 版本）会改变摘要，serve 就拒绝这个锁；这时和改了 agent 一样处理：升 `agent.yml` 的版本，在新构建上重录基线，再发布（闸门拒绝同一个版本换内容，见 [03-agent-development.md](03-agent-development.md) §4.16）。
 

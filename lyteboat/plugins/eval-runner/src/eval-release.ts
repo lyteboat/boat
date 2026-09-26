@@ -72,14 +72,24 @@ function readBaseline(baselineDir: string): LyteboatEvalRunRecord {
   return parsed.data
 }
 
+/** A recording's lines: the runner's own output, a header line, then one event per line. */
+function readRecording(file: string): unknown[] {
+  return readFileSync(file, 'utf8').split('\n').filter(line => line.trim() !== '').map((line, index) => {
+    try {
+      return JSON.parse(line) as unknown
+    } catch (error: unknown) {
+      throw new EvalReleaseRefusal('baseline', `${file}: line ${String(index + 1)} is not JSON (${error instanceof Error ? error.message : String(error)}); record the baseline again`)
+    }
+  })
+}
+
 /** Every recorded request of the baseline went to this agent, on the declared model. */
 function checkRecordings(baselineDir: string, baseline: LyteboatEvalRunRecord, identity: LyteboatAgentIdentity, model: LyteboatAgentModel): void {
   if (!sameIdentity(baseline.agent, identity)) throw new EvalReleaseRefusal('stamps', `the baseline ran ${describeAgent(baseline.agent)}, but the agent is now ${describeAgent(identity)}; record the baseline again`)
   for (const evalCase of baseline.cases) {
     const file = recordedSessionFile(baselineDir, evalCase.id)
     if (!existsSync(file)) throw new EvalReleaseRefusal('baseline', `the baseline has no recorded session for case ${evalCase.id} (${file})`)
-    // The recording is the runner's own output: a header line, then one event per line.
-    const events = readFileSync(file, 'utf8').split('\n').filter(line => line.trim() !== '').map(line => JSON.parse(line) as unknown)
+    const events = readRecording(file)
     const agents = recordedAgentsOf(events)
     const strangerAt = agents.findIndex(agent => !sameIdentity(agent, identity))
     if (strangerAt !== -1) {
@@ -91,15 +101,24 @@ function checkRecordings(baselineDir: string, baseline: LyteboatEvalRunRecord, i
   }
 }
 
-/** A replay of the baseline through this build shows every turn as recorded, and passes. */
-async function checkReplay(baselineDir: string, replay: EvalBaselineReplay): Promise<string> {
-  const recorded = readFileSync(join(baselineDir, 'results.jsonl'), 'utf8')
+/**
+ * A replay of the baseline through this build runs the baseline's cases (so
+ * every replayed case is one whose recordings were checked), shows every turn
+ * as recorded, and passes.
+ */
+async function checkReplay(baselineDir: string, baseline: LyteboatEvalRunRecord, replay: EvalBaselineReplay): Promise<string> {
+  const resultsFile = join(baselineDir, 'results.jsonl')
+  if (!existsSync(resultsFile)) throw new EvalReleaseRefusal('baseline', `the baseline has no results.jsonl (${resultsFile}); copy the whole run directory`)
+  const recorded = readFileSync(resultsFile, 'utf8')
   let replayed: Awaited<ReturnType<EvalBaselineReplay>>
   try {
     replayed = await replay(baselineDir)
   } catch (error: unknown) {
     throw new EvalReleaseRefusal('replay', `replaying the baseline failed: ${error instanceof Error ? error.message : String(error)}`)
   }
+  const recordedCases = baseline.cases.map(evalCase => evalCase.id).join(', ')
+  const replayedCases = replayed.record.cases.map(evalCase => evalCase.id).join(', ')
+  if (replayedCases !== recordedCases) throw new EvalReleaseRefusal('replay', `the agent's cases are now ${replayedCases || '(none)'}, but the baseline ran ${recordedCases || '(none)'}; record the baseline again`)
   const lines = recorded.split('\n').filter(line => line !== '')
   const differing = replayed.results.find((result, index) => JSON.stringify(result) !== lines[index])
   if (differing !== undefined) throw new EvalReleaseRefusal('replay', `replaying the baseline, case ${differing.case} turn ${String(differing.turn)} no longer shows what the baseline recorded`)
@@ -136,7 +155,7 @@ export async function releaseAgent(agent: AgentCatalogEntry, dshBase: string, re
   try {
     const baseline = readBaseline(baselineDir)
     checkRecordings(baselineDir, baseline, agent.identity, model)
-    const recorded = await checkReplay(baselineDir, replay)
+    const recorded = await checkReplay(baselineDir, baseline, replay)
     checkEarlierRelease(file, { id, version, digest })
     const release: LyteboatAgentRelease = {
       agent: { id, version, digest },

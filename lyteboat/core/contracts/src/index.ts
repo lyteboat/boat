@@ -281,7 +281,8 @@ export type LyteboatAgentManifest = {
   model?: LyteboatAgentModel
 }
 
-const lyteboatAgentVersionSchema = z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1')
+// YAML reads an unquoted 1.0 as a number: say how to write it.
+const lyteboatAgentVersionSchema = z.string({ error: 'must be a string such as 1.2.3; quote it in YAML (version: "1.0.0")' }).regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1')
 
 const lyteboatAgentDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u, 'must be sha256: and 64 lowercase hex digits')
 
