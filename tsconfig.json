@@ -90,6 +90,9 @@
       "path": "./lyteboat/plugins/agent-inspector"
     },
     {
+      "path": "./lyteboat/plugins/session-index"
+    },
+    {
       "path": "./lyteboat/plugins/studio-auth"
     },
     {

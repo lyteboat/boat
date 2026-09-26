@@ -437,6 +437,21 @@ export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.obj
  */
 export type LyteboatTurnOutcome = 'completed' | 'rejected' | 'tool_stopped' | 'stopped_by_limit' | 'aborted' | 'errored'
 
+/**
+ * A turn's outcome by the kind of its `turn/end` reason. A kind not listed is
+ * `errored`: `error`; `interrupted` and `forked`, which close a turn after the
+ * fact; and any reason a plugin merges into dsh's open reason map. A
+ * `completed` turn whose answer came from the admission in the loop (an
+ * assistant message with provider {@link LYTEBOAT_ASSISTANT_PROVIDER}) is
+ * `rejected`.
+ */
+export const LYTEBOAT_TURN_OUTCOME_OF_REASON: { readonly [reason: string]: LyteboatTurnOutcome } = {
+  completed: 'completed',
+  blocked: 'tool_stopped',
+  'max-tokens': 'stopped_by_limit',
+  aborted: 'aborted',
+}
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */

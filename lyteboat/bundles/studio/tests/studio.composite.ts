@@ -7,20 +7,32 @@
  * skills and their diagnostics, the pages are served at /studio, and neither
  * /chat nor dsh's session channel is served. An admin's hot-fix of a released
  * agent's skill (on a copy of it) is saved, audited, and shows the agent
- * deviating from its release. A Studio without accounts refuses to start and
- * names the command that makes one.
+ * deviating from its release. The sessions serve records from /chat are
+ * listed, searched, and shown by a Studio on the same home, which leaves them
+ * as they were. A Studio without accounts refuses to start and names the
+ * command that makes one.
  */
 import { createHash } from 'node:crypto'
-import { cpSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { setStudioAccount, setStudioGrant } from '@lyteboat/studio-auth/accounts'
-import { LYTEBOAT_STUDIO_BUNDLES, bootComposition, startComposition, type RunningComposition } from '@lyteboat/testing/composition'
+import { postChat } from '@lyteboat/testing/chat-client'
+import { LYTEBOAT_SERVE_BUNDLES, LYTEBOAT_STUDIO_BUNDLES, bootComposition, startComposition, type RunningComposition } from '@lyteboat/testing/composition'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
+import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { findSessionLogs } from '@lyteboat/testing/session-log'
 
 const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
 const WORKSPACE_MODULES = fileURLToPath(new URL('../../../../node_modules', import.meta.url))
+
+/** What the caller wrote last; dsh appends its runtime context to the request message. */
+function latestMessage(request: RecordedRequest): string {
+  const users = request.body.messages.filter(message => message.role === 'user' && message.content.some(block => block.type === 'text'))
+  const texts = users.at(-1)?.content.filter(block => block.type === 'text').map(block => block.text ?? '') ?? []
+  return texts.filter(text => !text.startsWith('Current runtime context.')).at(-1) ?? ''
+}
 
 interface StudioCallOptions {
   token?: string
@@ -223,6 +235,77 @@ describe('a skill hot-fix in lyteboat studio (in process)', () => {
     expect(radar.body).toMatchObject({ agents: [{ id: 'desk', deviates: true }] })
     const audit = readFileSync(join(home, 'studio', 'audit.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line) as Record<string, unknown>)
     expect(audit.filter(line => line['action'] === 'skill.update')).toEqual([{ time: expect.any(Number), actor: 'root', action: 'skill.update', agentId: 'desk', skill: 'quote-lookup', path: join('skills', 'quote-lookup', 'SKILL.md'), before: before.sha256, after }])
+  })
+})
+
+describe('sessions serve records, read by lyteboat studio (in process, scripted model)', () => {
+  const scratch = createLyteboatScratch('studio-sessions')
+  let model: ScriptedModel
+  let serve: RunningComposition
+  let studio: RunningComposition
+  let origin: string
+  let home: string
+  const sessionIds: string[] = []
+
+  beforeAll(async () => {
+    model = await startScriptedModel(withTitle(request => ({ text: `OK:${latestMessage(request)}` })), { apiKey: 'mock-key' })
+    const run = scratch.run('shared')
+    home = run.home
+    addStudioAccounts(run.home)
+    const agents = join(scratch.root, 'agents')
+    cpSync(join(AGENTS, 'desk'), join(agents, 'desk'), { recursive: true })
+    symlinkSync(WORKSPACE_MODULES, join(scratch.root, 'node_modules'))
+    serve = startComposition({
+      bundles: LYTEBOAT_SERVE_BUNDLES,
+      args: ['--agents', agents, '--port', '0'],
+      patches: [{ id: 'chat-api', config: { auth: 'none' } }],
+      cwd: run.workspace,
+      home,
+      env: scriptedModelEnv(model),
+      timeoutMs: 170_000,
+    })
+    const chat = (await serve.waitForStdout(/^lyteboat serve: (http:\/\/127\.0\.0\.1:\d+\/chat) \(agents: desk\)$/mu))[1] ?? ''
+    for (const [user, message] of [['u-1', '第一个问题'], ['u-2', '第二个问题']] as const) {
+      const reply = await postChat(chat, { agent_id: 'desk', user_id: user, message, trace_id: `trace-${user}` })
+      sessionIds.push((reply.body as { session_id: string }).session_id)
+    }
+    await serve.stop()
+    // The harness keeps one profile per home; Studio shares serve's home (its sessions), not serve's bundles.
+    rmSync(join(home, 'profiles'), { recursive: true, force: true })
+    ;({ studio, origin } = await startStudio(agents, run))
+  })
+
+  afterAll(async () => {
+    await studio.stop()
+    await model.close()
+    scratch.remove()
+  })
+
+  it('lists the sessions newest first with their owners, finds one by trace id, and shows its timeline', async () => {
+    const viewer = await studioLogin(origin, 'vera', 'pw-vera')
+    const stored = findSessionLogs(home).map(path => readFileSync(path))
+
+    const listed = await studioCall(origin, 'GET', 'agents/desk/sessions', { token: viewer })
+    const found = await studioCall(origin, 'GET', 'agents/desk/sessions/find?q=TRACE-U-1', { token: viewer })
+    const detail = await studioCall(origin, 'GET', `agents/desk/sessions/${sessionIds[0] ?? ''}`, { token: viewer })
+    const raw = await studioCall(origin, 'GET', `agents/desk/sessions/${sessionIds[0] ?? ''}/raw`, { token: viewer })
+
+    expect(listed.body).toMatchObject({
+      total: 2, hasMore: false,
+      sessions: [
+        { sessionId: sessionIds[1], owner: { kind: 'user', id: 'u-2' }, firstMessage: '第二个问题', turnCount: 1, openTurn: false },
+        { sessionId: sessionIds[0], owner: { kind: 'user', id: 'u-1' }, firstMessage: '第一个问题', errorCount: 0, rejectedCount: 0 },
+      ],
+    })
+    expect(found.body).toMatchObject({ sessions: [{ sessionId: sessionIds[0], matchKind: 'trace', matchedSnippet: 'trace-u-1' }] })
+    const items = (detail.body['items'] as { kind: string }[])
+    expect(items[0]).toMatchObject({ kind: 'user', text: '第一个问题', request: { owner: { kind: 'user', id: 'u-1' }, traceId: 'trace-u-1', agent: { id: 'desk' } } })
+    expect(items.find(item => item.kind === 'aux')).toMatchObject({ purpose: 'skill-router' })
+    expect(items.find(item => item.kind === 'assistant')).toMatchObject({ text: expect.stringMatching(/^OK:/u), model: expect.any(String), answeredByAdmission: false })
+    expect(items.at(-1)).toMatchObject({ kind: 'turn-end', outcome: 'completed' })
+    expect(raw.body['header']).toMatchObject({ id: sessionIds[0], agentPreset: 'desk' })
+    // Studio reads with read handles only: the stored logs are byte for byte what serve wrote.
+    expect(findSessionLogs(home).map(path => readFileSync(path))).toEqual(stored)
   })
 })
 

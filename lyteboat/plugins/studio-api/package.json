@@ -19,6 +19,7 @@
     "@lyteboat/agent-catalog": "workspace:*",
     "@lyteboat/agent-inspector": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
+    "@lyteboat/session-index": "workspace:*",
     "@lyteboat/studio-auth": "workspace:*",
     "@deepseek-ai/dsh-home-paths": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
@@ -40,6 +41,9 @@
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-host-webserver": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:*",
     "@deepseek-ai/dsh-skill": "workspace:*",
     "@types/js-yaml": "catalog:"
   }

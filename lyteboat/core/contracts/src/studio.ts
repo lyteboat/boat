@@ -8,6 +8,7 @@
  */
 
 import { z } from 'zod'
+import type { JsonValue, LyteboatRequest, LyteboatRequestOwner, LyteboatTurnOutcome } from './index.ts'
 
 /** The Studio roles, from the most to the least capable. */
 export const STUDIO_ROLES = ['admin', 'editor', 'viewer'] as const
@@ -243,6 +244,107 @@ export type StudioSkillDiagnosticsAnswer = {
   skill: string
   generatedAt: number
   findings: StudioSkillFinding[]
+}
+
+/**
+ * One stored session of an agent, as the Sessions list shows it. The counts
+ * leave out imported history: `errorCount`, tool results that failed and
+ * turns that ended `errored`; `rejectedCount`, turns the admission answered;
+ * `abortedCount`, turns cancelled; `slowCount`, model answers and tool calls
+ * that took 10 seconds or more.
+ */
+export type StudioSessionSummary = {
+  sessionId: string
+  /** The owner the session's first request named. */
+  owner?: LyteboatRequestOwner
+  createdAt: number
+  /** When its last event was written (epoch ms). */
+  updatedAt: number
+  /** Human messages and assistant answers. */
+  messageCount: number
+  turnCount: number
+  /** The first and the latest human message, cut to 80 characters. */
+  firstMessage?: string
+  lastUserMessage?: string
+  errorCount: number
+  rejectedCount: number
+  abortedCount: number
+  slowCount: number
+  /** The last turn has no `turn/end`: it is running, or its process exited. */
+  openTurn: boolean
+  /** The session starts with imported history. */
+  seeded: boolean
+}
+
+/** `GET agents/:id/sessions`: newest first, a page of the sessions in the window. */
+export type StudioSessionsAnswer = {
+  sessions: StudioSessionSummary[]
+  /** Sessions in the window and owner filter, all pages. */
+  total: number
+  hasMore: boolean
+}
+
+/** What a search matched: the session id, a human message, or a request's trace id. */
+export type StudioSessionMatchKind = 'session' | 'question' | 'trace'
+
+/** One session a search found, with where it matched. */
+export type StudioSessionMatch = StudioSessionSummary & {
+  matchKind: StudioSessionMatchKind
+  matchedSnippet: string
+}
+
+/** `GET agents/:id/sessions/find`: at most 500 newest sessions of the window are searched. */
+export type StudioSessionFindAnswer = {
+  sessions: StudioSessionMatch[]
+  hasMore: boolean
+}
+
+/** One entry of a session's timeline, folded from its log in log order. */
+export type StudioTimelineItem =
+  | { kind: 'user'; seq: number; turn: number; time: number; text: string; request?: LyteboatRequest; imported: boolean }
+  | {
+    kind: 'assistant'; seq: number; turn: number; time: number; text: string
+    reasoning?: string
+    usage?: { inputTokens: number; outputTokens: number; totalTokens?: number; cacheReadTokens?: number; reasoningTokens?: number }
+    /** `provider/model`. */
+    model?: string
+    /** From the step's start to the answer, and to its first streamed chunk. */
+    llmMs?: number
+    firstTokenMs?: number
+    /** The admission answered, not a model. */
+    answeredByAdmission: boolean
+    imported: boolean
+  }
+  | {
+    kind: 'tool'; seq: number; turn: number; time: number; callId: string; name: string
+    /** The arguments as the model wrote them, parsed when they are JSON. */
+    arguments: JsonValue
+    /** The model-facing result text; absent while the call has no result. */
+    result?: string
+    isError: boolean
+    durationMs?: number
+    /** The areas of the cards the call rendered. */
+    cards: string[]
+    stateDelta?: { [path: string]: JsonValue }
+    /** A later surface replacement shortened the result the model sees. */
+    pruned: boolean
+  }
+  | { kind: 'skill'; seq: number; turn: number; time: number; skill: string }
+  | { kind: 'aux'; seq: number; turn: number; time: number; purpose: string; durationMs: number; failure?: string }
+  | { kind: 'compaction'; seq: number; turn: number; time: number; replaced: number }
+  | { kind: 'turn-end'; seq: number; turn: number; time: number; outcome: LyteboatTurnOutcome }
+
+/** `GET agents/:id/sessions/:sid`. */
+export type StudioSessionDetail = {
+  summary: StudioSessionSummary
+  items: StudioTimelineItem[]
+}
+
+/** `GET agents/:id/sessions/:sid/raw`: the stored header and events, as stored. */
+export type StudioSessionRaw = {
+  header: JsonValue
+  inheritedEventCount: number
+  events: JsonValue[]
 }
 
 /** Why a Studio request was refused. */

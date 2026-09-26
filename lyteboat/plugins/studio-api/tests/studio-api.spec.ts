@@ -2,9 +2,10 @@
  * The Studio API on the unit host, over a real listener: the Host allowlist,
  * the headers every answer carries, sign-in and role checks, the Users
  * endpoints and their audit lines, request bodies, the System page, the
- * agent radar with release locks, and the agent workspace (skills, tools,
- * diagnostics, and the skill hot-fix). The agent catalog and inspector, the
- * services they read, the web server, and studioAuth are mounted, not stubbed;
+ * agent radar with release locks, the agent workspace (skills, tools,
+ * diagnostics, and the skill hot-fix), and an agent's sessions. The agent
+ * catalog, inspector, and session index, the services they read (a JSONL
+ * session store), the web server, and studioAuth are mounted, not stubbed;
  * only the credentials service is a table.
  */
 import { createHash } from 'node:crypto'
@@ -19,11 +20,15 @@ import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
 import WebServer from '@deepseek-ai/dsh-host-webserver'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { SESSION_FORMAT_VERSION, SessionId, SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session'
+import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import AgentCatalogService from '@lyteboat/agent-catalog'
 import AgentInspectorService from '@lyteboat/agent-inspector'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
+import SessionIndexService from '@lyteboat/session-index'
 import SkillRouterService from '@lyteboat/skill-router'
 import * as studioApi from '@lyteboat/studio-api'
 import StudioAuthService from '@lyteboat/studio-auth'
@@ -86,6 +91,8 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
   await ctx.plugin(AgentDefaultModelConfig, { provider: 'deepseek-official', model: 'deepseek-flash' })
   await ctx.plugin(AgentCatalogService, { roots: [agentsDir], strict: false, workdirsDir: join(root, 'workdirs') })
   await ctx.plugin(AgentInspectorService)
+  await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
+  await ctx.plugin(SessionIndexService)
   await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
   await ctx.plugin(StudioAuthService, { dir: studioDir })
   await ctx.plugin(studioApi, { dir: studioDir, agentRoots: [agentsDir], ...config })
@@ -372,5 +379,60 @@ describe('the agent workspace', () => {
     expect(saved).toMatchObject({ status: 400, body: { error: { message: expect.stringContaining('the previous file is restored') } } })
     expect(readFileSync(skillFile(studio, 'balance-lookup'), 'utf8')).toBe(current.file)
     expect(reread.body).toMatchObject({ sha256: current.sha256 })
+  })
+})
+
+describe('an agent\'s sessions', () => {
+  /** One stored turn of `alpha`, as serve would write it: the human message with its request, then the turn's end. */
+  async function storeSession(studio: StudioFixture, id: string, text: string, owner: string): Promise<void> {
+    const events = [
+      { type: 'turn/start', data: { turn: 1 } },
+      { type: 'step/start', data: { turn: 1, step: 1 } },
+      { type: 'user/message', data: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user', lyteboatRequest: { owner: { kind: 'user', id: owner }, traceId: `t-${id}` } } }), surfaceOp: 'append' },
+      { type: 'step/end', data: { turn: 1, step: 1 } },
+      { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } },
+    ].map((event, seq) => ({ ...event, seq: SessionSeq(seq), time: 1_000 + seq }) as unknown as SessionEvent)
+    const cwd = studio.ctx.agentCatalog.get('alpha')?.workdir
+    const handle = await studio.ctx.sessionPersistence.create({ version: SESSION_FORMAT_VERSION, id: SessionId(id), createdAt: 1_000, ...cwd === undefined ? {} : { cwd }, isSeeded: false })
+    await handle.append(events)
+    await handle.close()
+  }
+
+  it('lists, finds, and shows an agent\'s sessions to a viewer, and its stored form', async () => {
+    const studio = await studioFixture()
+    await storeSession(studio, 's-1', '第一个问题', 'alice')
+    await storeSession(studio, 's-2', '第二个问题', 'bob')
+    const viewer = await studio.login('vera', 'pw-vera')
+
+    const listed = await studio.call('GET', 'agents/alpha/sessions?owner=user%3Abob', { token: viewer })
+    const found = await studio.call('GET', `agents/alpha/sessions/find?q=${encodeURIComponent('第一')}`, { token: viewer })
+    const detail = await studio.call('GET', 'agents/alpha/sessions/s-1', { token: viewer })
+    const raw = await studio.call('GET', 'agents/alpha/sessions/s-1/raw', { token: viewer })
+
+    expect(listed).toMatchObject({ status: 200, body: { total: 1, hasMore: false, sessions: [{ sessionId: 's-2', owner: { kind: 'user', id: 'bob' }, firstMessage: '第二个问题' }] } })
+    expect(found.body).toMatchObject({ hasMore: false, sessions: [{ sessionId: 's-1', matchKind: 'question', matchedSnippet: '第一个问题' }] })
+    expect(detail.body).toMatchObject({ summary: { sessionId: 's-1' }, items: [{ kind: 'user', text: '第一个问题', request: { traceId: 't-s-1' } }, { kind: 'turn-end', outcome: 'completed' }] })
+    expect(raw.body).toMatchObject({ header: { id: 's-1' }, inheritedEventCount: 0 })
+    expect((raw.body as { events: unknown[] }).events).toHaveLength(5)
+  })
+
+  it('answers 404 for an unknown agent or session, and refuses a malformed query', async () => {
+    const studio = await studioFixture()
+    const viewer = await studio.login('vera', 'pw-vera')
+
+    const noAgent = await studio.call('GET', 'agents/nobody/sessions', { token: viewer })
+    const noSession = await studio.call('GET', 'agents/alpha/sessions/nope', { token: viewer })
+    const badOwner = await studio.call('GET', 'agents/alpha/sessions?owner=robot%3Ax', { token: viewer })
+    const badLimit = await studio.call('GET', 'agents/alpha/sessions?limit=500', { token: viewer })
+    const noText = await studio.call('GET', 'agents/alpha/sessions/find?q=%20', { token: viewer })
+    const anonymous = await studio.call('GET', 'agents/alpha/sessions')
+
+    expect(noAgent.status).toBe(404)
+    expect(noSession.status).toBe(404)
+    expect(badOwner).toMatchObject({ status: 400, body: { error: { message: expect.stringContaining('owner must be <kind>:<id>') } } })
+    expect(badLimit.status).toBe(400)
+    expect(noText.status).toBe(400)
+    expect(anonymous.status).toBe(401)
+    expect(await studio.call('GET', 'agents/alpha/sessions', { token: viewer })).toMatchObject({ status: 200, body: { sessions: [], total: 0, hasMore: false } })
   })
 })

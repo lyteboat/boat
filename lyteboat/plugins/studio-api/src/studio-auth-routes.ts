@@ -26,7 +26,8 @@ export function studioCallerOf(call: StudioApiCall): StudioPrincipal {
   return call.principal
 }
 
-function wholeNumberOf(query: URLSearchParams, name: string, fallback: number, max: number): number {
+/** A whole-number query parameter up to `max`, or `fallback` when absent. */
+export function studioWholeNumberOf(query: URLSearchParams, name: string, fallback: number, max: number): number {
   const text = query.get(name)
   if (text === null) return fallback
   const value = Number(text)
@@ -70,8 +71,8 @@ export function studioAuthRoutes(auth: StudioAuthService, audit: StudioAudit): S
         return auth.grants({
           ...text === '' ? {} : { text },
           ...role === undefined ? {} : { role },
-          limit: wholeNumberOf(call.query, 'limit', 50, USERS_PAGE_LIMIT),
-          offset: wholeNumberOf(call.query, 'offset', 0, Number.MAX_SAFE_INTEGER),
+          limit: studioWholeNumberOf(call.query, 'limit', 50, USERS_PAGE_LIMIT),
+          offset: studioWholeNumberOf(call.query, 'offset', 0, Number.MAX_SAFE_INTEGER),
         })
       },
     },

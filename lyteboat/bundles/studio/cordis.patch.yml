@@ -6,12 +6,14 @@
 # before any row below starts. The agent catalog declares every agent of the
 # roots and reloads them when a root changes; one that fails is reported on the
 # radar instead of stopping the Studio. The agent inspector reads an agent's
-# tools, skills, and routing from its standing scope. The web server listens
+# tools, skills, and routing from its standing scope; the session index reads
+# the sessions serve writes, with read handles only. The web server listens
 # where startup says; studio-auth signs people in (Studio's own accounts, or
 # an authorizing gateway), studio-api answers /api/studio on it, and
-# studio-web serves the pages at /studio. No session controller or client connection is mounted, so
-# dsh's /api/remote.mux is not served and Studio never creates or continues a
-# session. The last row reports the listener once the catalog is ready.
+# studio-web serves the pages at /studio. No session controller or client
+# connection is mounted, so dsh's /api/remote.mux is not served and Studio
+# never creates or continues a session. The last row reports the listener once
+# the catalog is ready.
 
 - insert:
     - id: lyteboat-studio-startup
@@ -33,6 +35,9 @@
 
     - id: agent-inspector
       name: '@lyteboat/agent-inspector'
+
+    - id: session-index
+      name: '@lyteboat/session-index'
 
     - id: webserver
       name: '@deepseek-ai/dsh-host-webserver'

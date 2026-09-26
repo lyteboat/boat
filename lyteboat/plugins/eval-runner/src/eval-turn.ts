@@ -14,7 +14,7 @@ import { brandString } from '@deepseek-ai/dsh-brand'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import { SessionSeq, type SessionEvent, type SessionId, type SessionLogOffset, type TurnEndReason } from '@deepseek-ai/dsh-session'
 import type {} from '@lyteboat/a2ui'
-import { LYTEBOAT_ASSISTANT_PROVIDER, type JsonValue, type LyteboatTurnOutcome } from '@lyteboat/contracts'
+import { LYTEBOAT_ASSISTANT_PROVIDER, LYTEBOAT_TURN_OUTCOME_OF_REASON, type JsonValue, type LyteboatTurnOutcome } from '@lyteboat/contracts'
 import type { EvalObservation } from './eval-check.ts'
 
 /** One message to send. */
@@ -34,15 +34,8 @@ interface EvalTurnInput {
  * @param answeredInLoop - whether the answer came from the admission in the loop.
  */
 function turnOutcome(reason: TurnEndReason['kind'], answeredInLoop: boolean): LyteboatTurnOutcome {
-  switch (reason) {
-    case 'completed': return answeredInLoop ? 'rejected' : 'completed'
-    case 'blocked': return 'tool_stopped'
-    case 'max-tokens': return 'stopped_by_limit'
-    case 'aborted': return 'aborted'
-    // `error`; `interrupted` and `forked`, which close a turn after the fact;
-    // and any reason a plugin merges into dsh's open TurnEndReasonMap.
-    default: return 'errored'
-  }
+  const outcome = LYTEBOAT_TURN_OUTCOME_OF_REASON[reason] ?? 'errored'
+  return outcome === 'completed' && answeredInLoop ? 'rejected' : outcome
 }
 
 /** The request id a human message's source carries, when the session controller wrote it. */
