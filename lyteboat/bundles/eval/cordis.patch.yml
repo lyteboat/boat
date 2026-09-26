@@ -43,6 +43,6 @@
     - id: lyteboat-eval
       name: '@lyteboat/eval'
 
-# An eval run applies the user layers at startup only, as the headless mode does.
+# An eval run applies the user layers at startup only, as the try mode does.
 - id: hmr
   disabled: true

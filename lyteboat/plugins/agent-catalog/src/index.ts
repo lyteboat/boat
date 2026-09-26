@@ -6,7 +6,7 @@
  * that fail to read or mount, using the registry's own diagnostics. It answers
  * only which agents there are and where each one works (its working directory,
  * the `cwd` its sessions are recorded under); driving them is the caller's
- * (`lyteboat headless`, `/chat`, eval, and Studio).
+ * (`lyteboat try`, `/chat`, eval, and Studio).
  *
  * The declarations are made once the host tree has settled: the registry's
  * diagnostics wait for that settlement, so they cannot run inside this row's
@@ -22,12 +22,12 @@ import { join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
-import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
 import z from '@deepseek-ai/schemastery'
+import type { LyteboatAgentModel } from '@lyteboat/contracts'
 import { locateAgents, readAgentDefinition } from './agent-directory.ts'
-import type { AgentCatalogLocation } from './agent-directory.ts'
+import type { AgentCatalogLocation, AgentDirectoryDefinition } from './agent-directory.ts'
 
 export { agentIds } from './agent-directory.ts'
 
@@ -51,6 +51,10 @@ export interface AgentCatalogEntry {
   readonly name?: string
   readonly description?: string
   readonly order?: number
+  /** The version the agent's `agent.yml` declares. */
+  readonly version?: string
+  /** The model the agent's `agent.yml` declares. */
+  readonly model?: LyteboatAgentModel
 }
 
 /** One agent the catalog cannot serve, and why. */
@@ -178,7 +182,7 @@ export class AgentCatalogService extends Service {
   private async declare({ id, dir }: AgentCatalogLocation): Promise<void> {
     const fail = (reason: string): void => { this.problems.set(id, { id, dir, reason }) }
     if (!isSkillName(id)) return fail(`"${id}" is not a kebab-case id; rename the directory`)
-    let definition: PresetDefinition
+    let definition: AgentDirectoryDefinition
     try {
       definition = readAgentDefinition(id, dir)
     } catch (error: unknown) {
@@ -187,19 +191,21 @@ export class AgentCatalogService extends Service {
     // The registry takes the declaration's base URL from its caller's context.
     const presets = this.ctx.extend({ baseUrl: pathToFileURL(join(dir, sep)).href }).agentPresets
     try {
-      this.declared.set(id, this.ctx.effect(() => presets.register(definition), `agent-catalog.declare(${id})`))
+      this.declared.set(id, this.ctx.effect(() => presets.register(definition.preset), `agent-catalog.declare(${id})`))
     } catch (error: unknown) {
       return fail(error instanceof Error ? error.message : String(error))
     }
     const preset = await this.ctx.agentPresets.resolve(id)
     if (preset.broken !== undefined) return fail(preset.broken)
-    const { name, description, order } = definition
+    const { preset: { name, description, order }, version, model } = definition
     this.entries.set(id, {
       id, dir,
       workdir: join(this.config.workdirsDir ?? dshHomePath('agent-workdirs'), id),
       ...name === undefined ? {} : { name },
       ...description === undefined ? {} : { description },
       ...order === undefined ? {} : { order },
+      ...version === undefined ? {} : { version },
+      ...model === undefined ? {} : { model },
     })
   }
 }

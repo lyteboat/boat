@@ -1,5 +1,5 @@
 # The @lyteboat/business-base bundle patch: the business modes' base, applied
-# after dsh-base and @lyteboat/host and before the mode bundle (headless,
+# after dsh-base and @lyteboat/host and before the mode bundle (try,
 # serve, eval). A business agent gets only the capabilities its own
 # composition declares: an agent that needs a dsh tool lists the tool's row
 # in its agent.cordis.yml, where it runs in the agent's standing scope; the

@@ -55,6 +55,6 @@
     - id: lyteboat-serve
       name: '@lyteboat/serve'
 
-# A service applies the user layers at startup only, as the headless mode does.
+# A service applies the user layers at startup only, as the try mode does.
 - id: hmr
   disabled: true

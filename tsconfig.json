@@ -87,7 +87,7 @@
       "path": "./lyteboat/plugins/studio-pages/tsconfig.client.json"
     },
     {
-      "path": "./lyteboat/bundles/headless"
+      "path": "./lyteboat/bundles/try"
     },
     {
       "path": "./lyteboat/bundles/serve"

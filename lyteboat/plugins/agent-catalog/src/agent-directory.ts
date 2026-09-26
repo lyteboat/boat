@@ -1,15 +1,17 @@
 /**
  * An agent directory: `<root>/<id>/agent.cordis.yml` holds the agent's plugin
  * rows (a Cordis entry list, `!!js` included) and the optional
- * `<root>/<id>/preset.yml` its display `name`, `description`, and `order`. A
- * directory reads into one dsh agent preset declaration: the id is the
- * directory name, the rows are taken verbatim, and the display fields come
- * from `preset.yml`.
+ * `<root>/<id>/agent.yml` its manifest (`LyteboatAgentManifest`: display
+ * fields, version, model). A directory reads into one dsh agent preset
+ * declaration (the id is the directory name, the rows are taken verbatim, the
+ * display fields come from the manifest) and the manifest fields the preset
+ * registry has no place for.
  *
- * Adapted from deepseek-ai/deepseek-harness packages/preset/agent-presets/src/discovery.ts
- * and metadata.ts @ dsh-v0.1.5-alpha.2 (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md.
- * Differences: a directory's id must be unique across the roots, and a
- * malformed `preset.yml` fails loud instead of degrading to no metadata.
+ * The discovery is adapted from deepseek-ai/deepseek-harness
+ * packages/preset/agent-presets/src/discovery.ts @ dsh-v0.1.5-alpha.2
+ * (b2e3b2a0), MIT — see THIRD_PARTY_NOTICES.md. Differences: a directory's id
+ * must be unique across the roots; the manifest is lyteboat's and a malformed
+ * one fails loud.
  * @module @lyteboat/agent-catalog/agent-directory
  */
 
@@ -18,12 +20,16 @@ import { join } from 'node:path'
 import { load, type LoadOptions } from 'js-yaml'
 import { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
+import { lyteboatAgentManifestSchema, type LyteboatAgentManifest, type LyteboatAgentModel } from '@lyteboat/contracts'
 
 /** The composition file that makes a directory an agent. */
 const AGENT_COMPOSITION_FILE = 'agent.cordis.yml'
 
-/** The optional display-metadata file beside the composition. */
-const AGENT_METADATA_FILE = 'preset.yml'
+/** The optional manifest beside the composition. */
+const AGENT_MANIFEST_FILE = 'agent.yml'
+
+/** The display-metadata file the manifest replaced; its presence is a stale directory. */
+const RETIRED_METADATA_FILE = 'preset.yml'
 
 function isAgentDirectory(root: string, name: string): boolean {
   return existsSync(join(root, name, AGENT_COMPOSITION_FILE))
@@ -82,35 +88,51 @@ function readYaml(path: string, options?: LoadOptions): unknown {
   }
 }
 
-function displayFields(dir: string): Pick<PresetDefinition, 'name' | 'description' | 'order'> {
-  const path = join(dir, AGENT_METADATA_FILE)
-  if (!existsSync(path)) return {}
-  const raw = readYaml(path)
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new Error(`agent-catalog: ${path} must be a mapping of name, description, and order`)
-  const { name, description, order } = raw as Record<string, unknown>
-  if (name !== undefined && typeof name !== 'string') throw new Error(`agent-catalog: ${path}: name must be a string`)
-  if (description !== undefined && typeof description !== 'string') throw new Error(`agent-catalog: ${path}: description must be a string`)
-  if (order !== undefined && (typeof order !== 'number' || !Number.isFinite(order))) throw new Error(`agent-catalog: ${path}: order must be a finite number`)
-  return {
-    ...name === undefined ? {} : { name },
-    ...description === undefined ? {} : { description },
-    ...order === undefined ? {} : { order },
+function readManifest(dir: string): LyteboatAgentManifest {
+  if (existsSync(join(dir, RETIRED_METADATA_FILE))) {
+    throw new Error(`agent-catalog: ${join(dir, RETIRED_METADATA_FILE)} is now ${AGENT_MANIFEST_FILE}: rename it (name, description, and order stay; version and model are new)`)
   }
+  const path = join(dir, AGENT_MANIFEST_FILE)
+  if (!existsSync(path)) return {}
+  const parsed = lyteboatAgentManifestSchema.safeParse(readYaml(path) ?? {})
+  if (!parsed.success) {
+    const problems = parsed.error.issues.map(issue => `${issue.path.join('.') || '(the file)'}: ${issue.message}`)
+    throw new Error(`agent-catalog: ${path}: ${problems.join('; ')}`)
+  }
+  return parsed.data
+}
+
+/** One agent directory read: the preset the registry mounts, and the manifest fields it has no place for. */
+export interface AgentDirectoryDefinition {
+  readonly preset: PresetDefinition
+  readonly version?: string
+  readonly model?: LyteboatAgentModel
 }
 
 /**
- * Read one agent directory into its preset declaration. The row list is
- * checked for being a list only; the preset registry judges the rows
+ * Read one agent directory into its preset declaration and manifest. The row
+ * list is checked for being a list only; the preset registry judges the rows
  * themselves and refuses a composition it cannot mount.
  * @param id - the agent id.
  * @param dir - the agent directory.
- * @returns the declaration to register.
- * @throws when a file is unreadable or not the shape its role requires.
+ * @returns the declaration to register, with the manifest's version and model.
+ * @throws when a file is unreadable or not the shape its role requires, or the retired `preset.yml` is still there.
  */
-export function readAgentDefinition(id: string, dir: string): PresetDefinition {
+export function readAgentDefinition(id: string, dir: string): AgentDirectoryDefinition {
   const path = join(dir, AGENT_COMPOSITION_FILE)
   const rows = readYaml(path, { schema: entryListSchema })
   if (!Array.isArray(rows)) throw new Error(`agent-catalog: ${path} must be a list of plugin rows`)
-  // YAML boundary: beyond being a list the rows are unchecked here; the registry validates each one.
-  return { id, ...displayFields(dir), plugins: rows }
+  const { name, description, order, version, model } = readManifest(dir)
+  return {
+    // YAML boundary: beyond being a list the rows are unchecked here; the registry validates each one.
+    preset: {
+      id,
+      ...name === undefined ? {} : { name },
+      ...description === undefined ? {} : { description },
+      ...order === undefined ? {} : { order },
+      plugins: rows,
+    },
+    ...version === undefined ? {} : { version },
+    ...model === undefined ? {} : { model },
+  }
 }

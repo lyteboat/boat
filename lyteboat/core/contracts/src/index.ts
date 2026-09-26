@@ -250,6 +250,47 @@ export const lyteboatRequestOwnerSchema: z.ZodType<LyteboatRequestOwner> = z.obj
 })
 
 /**
+ * The model an agent declares in its `agent.yml`: the provider route, the
+ * provider's model id, and the reasoning effort when the agent fixes one. A
+ * business mode that enforces the declaration compares all three exactly.
+ */
+export type LyteboatAgentModel = {
+  provider: string
+  model: string
+  reasoningEffort?: string
+}
+
+/** The schema of {@link LyteboatAgentModel}. */
+export const lyteboatAgentModelSchema: z.ZodType<LyteboatAgentModel> = z.strictObject({
+  provider: z.string().min(1),
+  model: z.string().min(1),
+  reasoningEffort: z.string().min(1).exactOptional(),
+})
+
+/**
+ * An agent's manifest, `<agent>/agent.yml`: display fields (`name`,
+ * `description`, `order`), the version its author promises (`1.2.3` or
+ * `1.2.3-rc.1`), and the model it is evaluated on. Every field is optional; a
+ * release needs `version` and `model`.
+ */
+export type LyteboatAgentManifest = {
+  name?: string
+  description?: string
+  order?: number
+  version?: string
+  model?: LyteboatAgentModel
+}
+
+/** The schema of {@link LyteboatAgentManifest}; an unknown key fails. */
+export const lyteboatAgentManifestSchema: z.ZodType<LyteboatAgentManifest> = z.strictObject({
+  name: z.string().exactOptional(),
+  description: z.string().exactOptional(),
+  order: z.number().finite().exactOptional(),
+  version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1').exactOptional(),
+  model: lyteboatAgentModelSchema.exactOptional(),
+})
+
+/**
  * The request a human message answers to, carried on its `source` beside
  * `kind: 'user'`, so every dsh consumer still reads the message as human
  * input. `@lyteboat/request-context` reads it back.

@@ -24,7 +24,7 @@
   },
   "files": [
     "lib",
-    "preset.yml",
+    "agent.yml",
     "agent.cordis.yml",
     "assets"
   ],
@@ -53,7 +53,7 @@
     "@lyteboat/business-base": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
     "@lyteboat/request-context": "workspace:*",
-    "@lyteboat/headless": "workspace:*",
+    "@lyteboat/try": "workspace:*",
     "@lyteboat/serve": "workspace:*",
     "@lyteboat/skill-router": "workspace:*",
     "@lyteboat/testing": "workspace:*",

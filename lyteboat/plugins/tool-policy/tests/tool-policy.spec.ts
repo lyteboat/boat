@@ -248,7 +248,7 @@ describe('distribution', () => {
   })
 })
 
-describe('preset row', () => {
+describe('agent row', () => {
   it('declares the configured policies in its scope and rejects a misspelt key instead of declaring nothing', async () => {
     const adapter = new MockAdapter([textResponse('one')])
     const ctx = await harness(adapter)

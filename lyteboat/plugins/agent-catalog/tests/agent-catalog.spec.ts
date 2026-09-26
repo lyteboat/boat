@@ -1,9 +1,9 @@
 /**
  * The agent catalog: scan the roots, declare each agent to the preset
  * registry, and report the ones that cannot be served. A row that fails to
- * mount needs the host's loader tree; the headless composition covers it.
+ * mount needs the host's loader tree; the try composition covers it.
  */
-import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,13 +27,13 @@ async function catalogHost(config: Config): Promise<Context> {
 }
 
 describe('the agent catalog', () => {
-  it('declares every agent the roots hold to the preset registry, with its display fields and working directory', async () => {
+  it('declares every agent the roots hold to the preset registry, with its manifest and working directory', async () => {
     const ctx = await catalogHost({ roots: [fixture('good')], workdirsDir: '/srv/lyteboat/workdirs' })
 
     await ctx.agentCatalog.whenReady()
 
     expect(ctx.agentCatalog.list()).toEqual([
-      { id: 'alpha', dir: fixture('good/alpha'), workdir: '/srv/lyteboat/workdirs/alpha', name: 'Alpha', description: 'the first fixture agent', order: 1 },
+      { id: 'alpha', dir: fixture('good/alpha'), workdir: '/srv/lyteboat/workdirs/alpha', name: 'Alpha', description: 'the first fixture agent', order: 1, version: '0.3.1', model: { provider: 'deepseek-official', model: 'deepseek-flash' } },
       { id: 'beta', dir: fixture('good/beta'), workdir: '/srv/lyteboat/workdirs/beta' },
     ])
     expect(await ctx.agentPresets.resolve('alpha')).toEqual({ id: 'alpha' })
@@ -85,6 +85,37 @@ describe('the agent catalog', () => {
 
     await expect(duplicated.agentCatalog.whenReady()).rejects.toThrow(`agent-catalog: agent "alpha" is in two roots: ${fixture('good')} and ${fixture('dup')}`)
     await expect(unknown.agentCatalog.whenReady()).rejects.toThrow('agent-catalog: no root holds "gamma" (available: alpha, beta)')
+  })
+
+  describe('an agent\'s manifest', () => {
+    const roots: string[] = []
+    afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
+
+    /** A root holding a copy of the fixture agent beta with the given files added. */
+    function rootWithBeta(files: Record<string, string>): string {
+      const root = mkdtempSync(join(tmpdir(), 'agent-catalog-manifest-'))
+      roots.push(root)
+      cpSync(fixture('good/beta'), join(root, 'beta'), { recursive: true })
+      for (const [name, text] of Object.entries(files)) writeFileSync(join(root, 'beta', name), text)
+      return root
+    }
+
+    async function failureOf(files: Record<string, string>): Promise<string | undefined> {
+      const ctx = await catalogHost({ roots: [rootWithBeta(files)], strict: false })
+      await ctx.agentCatalog.whenReady()
+      expect(ctx.agentCatalog.get('beta')).toBeUndefined()
+      return ctx.agentCatalog.failures().find(problem => problem.id === 'beta')?.reason
+    }
+
+    it('fails an agent whose manifest has a key it does not know, or a version that is not one', async () => {
+      expect(await failureOf({ 'agent.yml': 'name: Beta\nundeclared: hidden\n' })).toMatch(/agent\.yml: .*"undeclared"/u)
+      expect(await failureOf({ 'agent.yml': 'version: latest\n' })).toContain('agent.yml: version: must look like 1.2.3 or 1.2.3-rc.1')
+      expect(await failureOf({ 'agent.yml': 'model: { provider: deepseek-official }\n' })).toContain('agent.yml: model.model:')
+    })
+
+    it('fails an agent that still has preset.yml, naming the rename', async () => {
+      expect(await failureOf({ 'preset.yml': 'name: Beta\n' })).toBe(`agent-catalog: ${join(roots[0] ?? '', 'beta', 'preset.yml')} is now agent.yml: rename it (name, description, and order stay; version and model are new)`)
+    })
   })
 
   describe('when the roots change', () => {

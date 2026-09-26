@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { LYTEBOAT_HEADLESS_BUNDLES } from '@lyteboat/testing/composition'
+import { LYTEBOAT_TRY_BUNDLES } from '@lyteboat/testing/composition'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { runLyteboat } from './support/lyteboat-process.ts'
 
@@ -25,19 +25,19 @@ describe('lyteboat config dump (built bin)', () => {
     rmSync(home, { recursive: true, force: true })
   })
 
-  it('initializes the headless profile from lyteboat\'s template and prints its composition', async () => {
-    const result = await runLyteboat(['config', 'dump', '--profile', 'headless'], { env: { LYTEBOAT_HOME: home } })
+  it('initializes the try profile from lyteboat\'s template and prints its composition', async () => {
+    const result = await runLyteboat(['config', 'dump', '--profile', 'try'], { env: { LYTEBOAT_HOME: home } })
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toContain('@deepseek-ai/dsh-base')
     expect(result.stdout).toContain('@lyteboat/host')
-    expect(result.stdout).toContain('@lyteboat/headless')
+    expect(result.stdout).toContain('@lyteboat/try')
     expect(result.stdout).toContain('id: agent-loop')
-    const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'headless', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
-    expect(manifest.dsh.profile).toEqual({ bundles: LYTEBOAT_HEADLESS_BUNDLES })
+    const manifest = JSON.parse(readFileSync(join(home, 'profiles', 'try', 'package.json'), 'utf8')) as { dsh: { profile: { bundles: string[] } } }
+    expect(manifest.dsh.profile).toEqual({ bundles: LYTEBOAT_TRY_BUNDLES })
   })
 
   it('keeps dsh-base\'s feedback telemetry export off in both profiles, without DSH_TELEMETRY_DISABLED', async () => {
-    for (const profile of ['headless', 'studio']) {
+    for (const profile of ['try', 'studio']) {
       const result = await runLyteboat(['config', 'dump', '--profile', profile], { env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: undefined } })
       expect(result.code, result.stderr).toBe(0)
       expect(dumpedRow(result.stdout, 'session-telemetry-otel')).toMatch(/^ {2}disabled: true$/mu)

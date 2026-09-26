@@ -149,7 +149,7 @@ export class ToolPolicyService extends Service {
 
   /**
    * Declare metadata for a tool registered elsewhere (an official dsh tool, a
-   * preset row's tool), in the calling scope's layer. Nearest scope wins.
+   * agent row's tool), in the calling scope's layer. Nearest scope wins.
    * @param name - the tool name as registered.
    * @param meta - lyteboat-side metadata.
    * @returns the exact disposer that withdraws the declaration.
@@ -273,7 +273,7 @@ export class ToolPolicyService extends Service {
       .filter(([name, meta]) => meta.visibility === 'auto' && this.ctx.tools.get(name, inheritedView) === undefined)
       .map(([name]) => name)
     if (unrestrictable.length > 0) {
-      throw new Error(`lyteboat tool policy: auto tool${unrestrictable.length > 1 ? 's' : ''} ${unrestrictable.map(name => JSON.stringify(name)).join(', ')} registered in agent "${agent.id}"'s own layer, which restrict() cannot hide; register through the host or a preset row`)
+      throw new Error(`lyteboat tool policy: auto tool${unrestrictable.length > 1 ? 's' : ''} ${unrestrictable.map(name => JSON.stringify(name)).join(', ')} registered in agent "${agent.id}"'s own layer, which restrict() cannot hide; register through the host or an agent row`)
     }
     const declaredNames = new Set(declared.map(([name]) => name))
     // The parent's view is what the agent inherits before its own restriction;
