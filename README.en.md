@@ -24,7 +24,7 @@ lyteboat (轻舟) is a harness for business agents built on [DeepSeek Harness](h
 
 The model is the engine, not the harvester: however strong the engine, it brings in no grain until a purpose-built header is mounted on it.
 
-Every industry faces the same situation today. Model capability is no longer the bottleneck; wiring the model into real business and closing the last mile is. The last mile holds no new algorithm, only concrete questions: which tools the model sees at which step, which operations need a person's confirmation first, whose business state is authoritative, how a result reaches the user as a business interface, and how to reconstruct what the model saw when something goes wrong. Every industry team answers them again from scratch.
+Every industry faces the same situation today. Model capability is no longer the bottleneck; wiring the model into real business and closing the last mile is. The last mile holds no new algorithm, only concrete questions: which tools the model sees at which step, whose business state is authoritative, how a result reaches the user as a business interface, and how to reconstruct what the model saw when something goes wrong. Every industry team answers them again from scratch.
 
 lyteboat turns that last mile into a reusable chassis for vertical agents. A team adds its business skills, tools, and card templates and gets an agent that can go to production.
 
@@ -32,13 +32,14 @@ lyteboat turns that last mile into a reusable chassis for vertical agents. A tea
 
 - **Business capabilities out of the box**, as Cordis plugins on dsh's seams; the framework packages carry no business vocabulary:
   - Skill routing: `full` puts every skill body in the prompt; `dynamic` picks a skill with a side model call each turn and applies it in the same step; the routed skill is dsh's own skill-invocation message, so the session reopens and continues (`@lyteboat/skill-router`).
-  - Tool visibility, confirmation before a call, and state deltas carried by tool results; an agent can hide every inherited tool it does not declare (`@lyteboat/tool-policy`).
+  - Tool visibility and state deltas carried by tool results; an agent can hide every inherited tool it does not declare (`@lyteboat/tool-policy`).
   - A2UI template cards: a tool result can carry several, shown at once or placed where the answer writes a `[[card:<area>]]` marker, by emission mode; the `render_a2ui` tool renders them, and so can an agent's own tools (`@lyteboat/a2ui`).
   - Request context: a request enters the log with its own context and admission verdict, and the session keeps the context (`@lyteboat/request-context`).
   - Admission ahead of the loop: an agent registers an admission function that lets a request in or answers it before the loop, cards included (`@lyteboat/intake-guard`); the lower-level `lyteboat/intake` hook is available too.
   - Audited side calls: routing and classification calls leave their full prompt and answer in the session (`@lyteboat/aux-llm`).
   - Import of external conversation history (`@lyteboat/history-import`).
 - **One business agent is one directory.** Write its composition file, skills, tools, and card templates under `examples/agents/<id>/`.
+- **A business agent gets only what it declares.** The three business modes, `lyteboat headless`, `serve`, and `eval`, all list the business base (`@lyteboat/business-base`): no coding tools, no sandbox, no human approval; no host persona, no working-directory AGENTS.md, and no list of the installed packages in model requests. The dsh tools an agent uses, and its skills, are written in its own composition.
 - **Compatible with the dsh ecosystem.** lyteboat is a distribution of dsh: it owns the source of dsh's 14 kernel packages under their published names (`dsh/`), so official packages and community plugins run on lyteboat's implementation unchanged. It keeps the protocol, interfaces, and behavior of the dsh release it tracks, and six gates, G1–G6, prove it ([`dsh-compat/`](dsh-compat/README.md)).
 - **Traceable.** Everything a model sees is reconstructable from the session log, and every fact lyteboat records rides an envelope dsh already knows.
 
@@ -80,7 +81,7 @@ Side calls (skill routing, intake classification) use their route's default reas
 ### Run
 
 ```sh
-lyteboat headless "summarize this workspace"                       # one-shot task: answer and exit
+lyteboat headless --agents ./examples/agents --agent finance "什么是再平衡"   # one-shot task as an agent: answer and exit
 lyteboat headless --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat serve --agents ./examples/agents                     # HTTP service: POST /chat, answered at once or as an enterprise stream
 lyteboat eval --agents ./examples/agents --agent finance      # run an agent's eval cases and check every turn
@@ -93,7 +94,7 @@ lyteboat studio --agents ./examples/agents --no-open          # browser UI: dsh 
 
 | Command | What it does |
 |---|---|
-| `lyteboat headless [options] "task"` | Answers one task, prints the result, and exits (profile `headless`) |
+| `lyteboat headless [options] "task"` | Answers one task, prints the result, and exits (profile `headless`); without `--agent` the model has the `skill` tool only, for plugin smoke tests and quick checks, not as a coding assistant |
 | `lyteboat serve [options]` | Serves every agent of the `--agents` directories over HTTP (profile `serve`): `POST /chat`, `GET /agents`, `GET /health` |
 | `lyteboat eval [options]` | Runs an agent's eval cases and checks every turn (profile `eval`); `lyteboat eval compare <before> <after>` compares two runs |
 | `lyteboat studio [options]` | Serves Studio, the browser UI (profile `studio`): dsh web with lyteboat's Agents and Evals pages and the lyteboat tab of a session's right sidebar; `--agents` (repeatable, reloaded when a directory changes), `--agent` (the agent a new session runs), and dsh web's own flags; `lyteboat studio --help` |
@@ -128,7 +129,6 @@ All five accept:
 | `--port <port>` | 8080 by default; 0 lets the OS pick a free port |
 | `--auth <mode>` | `none` (the default, `127.0.0.1` only) or `shared-secret` (`Authorization: Bearer <secret>`) |
 | `--secret-env <name>` | The environment variable that holds the shared secret; `LYTEBOAT_CHAT_SECRET` by default |
-| `--workspace <dir>` | The working directory of new sessions; the current directory by default |
 
 A `/chat` request:
 
@@ -146,17 +146,16 @@ A `/chat` request:
 | `--cases <path>` | A case file or a directory of them (repeatable); the agent directory's `evals/` by default |
 | `--model real\|replay` | `real` (the default) calls the model and records every case's session; `replay` plays back the run `--from` names, with no model and no key |
 | `--from <run>` | The run a replay plays back: its directory, or its id under `$LYTEBOAT_HOME/evals` |
-| `--workspace <dir>` | The working directory of the sessions; the current directory by default |
 
 Every case is a new session whose turns go through the session controller (the path a `/chat` message takes). After each turn the session is read for the active skill, the tools called, the cards shown, the outcome, the answer text, and the loop's model calls, and each `expect` of the case is checked. A run is written to `$LYTEBOAT_HOME/evals/<run id>/`: `run.json`, `results.jsonl` (one line per turn and no timings, so one recording replays into the same lines), `sessions/` (a real run's recordings), and `report.md`. It exits 0 when every check passed, 1 when one failed, and 2 when it could not run (an invalid case file, a missing recording). [`examples/agents/finance/evals/cases.yml`](examples/agents/finance/evals/cases.yml) shows how cases are written.
 
-Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outcome` (`completed`, `tool_stopped`, `rejected`, `stopped_by_limit`, `aborted`, `errored`), `response`, `cards` (`area`, `surface_id`, `a2ui`), and `tool_calls`. With `"stream": true` it is the enterprise event stream (SSE, AGUI envelopes): `run_started`, at most one `reasoning_*` pair (reasoning deltas and tool calls), at most one `text_message_*` pair (text deltas, with each card as a `ui_protocol: "A2UI"` frame where the answer marks it), and exactly one `run_finished` or `run_error`; an idle stream sends `: keep-alive` every 15 seconds. A session belongs to the `user_id` that created it, and another caller's session answers as one that does not exist (404); a repeated `message_id` in a session is refused with 409; a session's messages queue and are answered in turn; a stream whose caller disconnects cancels that message's running turn.
+Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outcome` (`completed`, `tool_stopped`, `rejected`, `stopped_by_limit`, `aborted`, `errored`), `response`, `cards` (`area`, `surface_id`, `a2ui`), and `tool_calls`. With `"stream": true` it is the enterprise event stream (SSE, AGUI envelopes): `run_started`, at most one `reasoning_*` pair (reasoning deltas and tool calls), at most one `text_message_*` pair (text deltas, with each card as a `ui_protocol: "A2UI"` frame where the answer marks it), and exactly one `run_finished` or `run_error`; an idle stream sends `: keep-alive` every 15 seconds. A session belongs to the `user_id` that created it: another user's session, and a session not started through `/chat` (from Studio, the command line, or an eval), answers as one that does not exist (404); a repeated `message_id` in a session is refused with 409; a session's messages queue and are answered in turn; a stream whose caller disconnects cancels that message's running turn.
 
 ### Writing a business agent
 
 A business agent is a directory `examples/agents/<id>/`, named by its id. Business agents are not part of the distribution: they build on `lyteboat/`, and nothing in `lyteboat/` depends on them.
 
-- `agent.cordis.yml` (required): the plugin rows for persona, skill routing, tools, and policy; each row applies to this agent's sessions only.
+- `agent.cordis.yml` (required): the plugin rows for persona, skill routing, tools, and policy; each row applies to this agent's sessions only. A dsh tool the agent uses (`@deepseek-ai/dsh-tool-todo`, say) is a row here too: besides dsh's `skill` tool, the business modes give an agent no tool it does not declare.
 - `preset.yml`: display information such as the name.
 - `assets/`: the non-code files read at runtime, beside `src/` and `lib/`: `skills/` (one `SKILL.md` per skill), `a2ui/` (card templates), `sample-data/`.
 - `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
@@ -166,7 +165,9 @@ The [agent development guide](docs/03-agent-development.md) walks through every 
 
 ### Data and session logs
 
-- All lyteboat data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`). The launcher exports that directory as `DSH_HOME` before any dsh package loads, so your own `~/.dsh` is never touched.
+- All lyteboat data lives under `$LYTEBOAT_HOME` (default `~/.lyteboat`). The launcher exports that directory as `DSH_HOME`, and its `.agents` as `DSH_AGENTS_HOME`, before any dsh package loads, so your own `~/.dsh` and `~/.agents` are never touched.
+- Every agent has a working directory of its own, `$LYTEBOAT_HOME/agent-workdirs/<id>`: the sessions of `/chat`, of evals, and of `lyteboat headless --agent` are recorded under it wherever the process started, so `lyteboat headless --agent <id> --session-id <session>` continues a session from any directory; `lyteboat headless` without `--agent` still runs in the directory it was started in.
+- Every request records who sent it: `/chat` records `user:<user_id>`, Studio's lyteboat tab `operator:studio`, `lyteboat headless` `operator:cli`, and an eval run `system:eval`.
 - The session log is the single source of truth. A card and a state delta sit on `tool/result.meta.lyteboat`, a request's context and admission verdict on the human message's `source.lyteboatRequest`, a routed skill is dsh's own skill-invocation message, an intake reply is an assistant message whose `source.provider` is `lyteboat`, and imported history is closed turns of ordinary nodes; the side-call audit `lyteboat/aux-llm-call` is marked ignorable. So these sessions reopen under dsh's own persistence.
 - `@lyteboat/host` turns off dsh-base's `session-log-deepseek` row: the model provider receives the request and nothing else.
 
@@ -188,9 +189,9 @@ The guides are written in Chinese.
 
 ```
 dsh/                  the kernel: the 14 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
-lyteboat/             lyteboat's 18 packages, one directory per layer
+lyteboat/             lyteboat's 21 packages, one directory per layer
   apps/               processes: the lyteboat launcher
-  bundles/            compositions: host (in every profile), and one each behind lyteboat headless, serve, and eval
+  bundles/            compositions: host (in every profile), business-base (in the three business modes), and one each behind lyteboat headless, serve, eval, and studio
   plugins/            capability plugins
   core/               declarations
   tooling/            test infrastructure
@@ -207,19 +208,20 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 |---|---|---|
 | `lyteboat/apps/cli` | `@lyteboat/cli` | The `lyteboat` launcher: profile templates, patch stack, boot (adapted from dsh's CLI) |
 | `lyteboat/bundles/host` | `@lyteboat/host` | The host bundle every profile lists: the distribution marker and the capability plugins' service rows |
+| `lyteboat/bundles/business-base` | `@lyteboat/business-base` | The business modes' base, listed by the headless, serve, and eval profiles (not by Studio), one patch and nothing else: the coding tools and the rows only they use off; sandbox, approval, and permissions off; the workspace's AGENTS.md, the package inventory, the plugin manager, and the session-title side call off; no default skill roots of the host, and no host persona or harness identity |
 | `lyteboat/bundles/headless` | `@lyteboat/headless` | The one-shot bundle behind `lyteboat headless`: task, `--agent`, `--agents`, `--history`, `--session-id`, `--context`; a request is admitted before the loop, and the output composes the turn's cards |
-| `lyteboat/bundles/eval` | `@lyteboat/eval` | The bundle behind `lyteboat eval`: declares the one agent the cases talk to, mounts the session controller (without the web UI) and the eval runner, and exits with the run's result; it keeps session titles (a replay has no recording of them), the package inventory, and the workspace's AGENTS.md out |
-| `lyteboat/bundles/studio` | `@lyteboat/studio` | The bundle behind `lyteboat studio`: over dsh web it declares every agent of the `--agents` directories (reloaded when a directory changes, a failure reported on the Agents page), mounts lyteboat's pages, and turns off dsh's coding presets; the agent plane dsh web moves behind its presets goes back on the host, so a session runs as a `/chat` one does |
-| `lyteboat/bundles/serve` | `@lyteboat/serve` | The service bundle behind `lyteboat serve`: declares every agent of the `--agents` directories, mounts dsh's session controller (without the web UI) and `/chat`, and keeps the local package inventory and the workspace's AGENTS.md out of model requests |
+| `lyteboat/bundles/eval` | `@lyteboat/eval` | The bundle behind `lyteboat eval`: declares the one agent the cases talk to, mounts the session controller (without the web UI) and the eval runner, and exits with the run's result |
+| `lyteboat/bundles/studio` | `@lyteboat/studio` | The bundle behind `lyteboat studio`: over dsh web it declares every agent of the `--agents` directories (reloaded when a directory changes, a failure reported on the Agents page), mounts lyteboat's pages, and turns off dsh's coding presets; the agent plane dsh web moves behind its presets goes back on the host. It does not list the business base and keeps dsh's own capabilities, so a session does not run the way `/chat` runs it |
+| `lyteboat/bundles/serve` | `@lyteboat/serve` | The service bundle behind `lyteboat serve`: declares every agent of the `--agents` directories, mounts dsh's session controller (without the web UI) and `/chat` |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
-| `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility, confirmation, and state deltas; `./agent` declares policy in an agent's composition file, and its `undeclared: always \| auto` sets whether the inherited tools it does not name are visible |
+| `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility and state deltas; `./agent` declares policy in an agent's composition file, and its `inherited: visible \| hidden` sets whether the inherited tools no declaration names are visible |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record; an answer cut off at `maxTokens` is a failure; `reasoningEffort` sets the effort side calls request |
-| `lyteboat/plugins/request-context` | `@lyteboat/request-context` | The request context: the request a human message answers to (request id, context, admission verdict) rides its own source; the `lyteboatRequest` projection keeps the session's context |
+| `lyteboat/plugins/request-context` | `@lyteboat/request-context` | The request context: the request a human message answers to (request id, owner, context, admission verdict) rides its own source; the `lyteboatRequest` projection keeps the session's context and owner |
 | `lyteboat/plugins/intake-guard` | `@lyteboat/intake-guard` | Admission ahead of the loop: an agent registers an admission function, and the caller submits each request with `submit`, which admits it and records the request with its verdict; the loop answers a recorded reply verdict directly and admits in the loop what arrives unadmitted |
 | `lyteboat/plugins/skill-router` | `@lyteboat/skill-router` | Skill load modes and model routing (`historyWindow`, `timeoutMs`, `maxTokens` configurable); `./agent` declares the mode in an agent's composition file |
 | `lyteboat/plugins/a2ui` | `@lyteboat/a2ui` | The A2UI template engine, the `render_a2ui` tool, and the `lyteboatCards` projection; a result may carry several cards, laid into the turn by emission mode (immediate, deferred, deferred-discard) and the answer's `[[card:<area>]]` markers (`turnParts`); `./agent` mounts the tool from a composition file, and an agent's own tools render cards with `renderCard`, `cardsPresentationMeta`, and `cardMarker`; the default component catalog carries no business vocabulary |
 | `lyteboat/plugins/history-import` | `@lyteboat/history-import` | Parsing of external conversation history and the session seed behind `lyteboat headless --history` |
-| `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | The agent catalog: scans agent roots, declares each agent as a dsh preset, and reports the agents that fail to mount; `reload()` declares them again from what the roots hold now, and `watch` reloads whenever a root changes |
+| `lyteboat/plugins/agent-catalog` | `@lyteboat/agent-catalog` | The agent catalog: scans agent roots, declares each agent as a dsh preset with its working directory, and reports the agents that fail to mount; `reload()` declares them again from what the roots hold now, and `watch` reloads whenever a root changes |
 | `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`, a business caller's entry: each message enters its session through dsh's session controller with its request (owner, trace id, context) on the human message; the answer is one JSON body or the enterprise event stream with its cards where the answer marks them; shared-secret auth, session ownership, duplicate `message_id` refusal, and cancellation when the caller leaves; an agent row may register a frame decorator that adds fields to its frames |
 | `lyteboat/plugins/eval-runner` | `@lyteboat/eval-runner` | Evals: reads the cases (YAML, checked strictly), runs every case as a new session whose turns go through the session controller, reads each turn from the session log and checks it; a real run records the sessions, a replay answers every model call from them through an `llm/stream` listener bound per session (loop calls from the recorded assistant messages, side calls from the `lyteboat/aux-llm-call` records); writes the run and its report, and compares two runs |
 | `lyteboat/plugins/studio-pages` | `@lyteboat/studio-pages` | lyteboat's pages in dsh web: Agents (the list, why one failed to mount, a reload), Evals (the runs and their reports), and the lyteboat tab of a session's right sidebar, which sends a message with its request context (through the session controller, the path `/chat` takes) and shows the session's active skill, request, cards, and state as they change. The Host face answers the pages at `/api/lyteboat/<endpoint>` on dsh's connection, behind the same authentication as every dsh web request |
@@ -254,9 +256,10 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 ## Status and roadmap
 
 - Tracks dsh **0.1.7-rc.2** (`dsh.upstream.json`). The kernel is its import plus lyteboat's four registered extensions (`agent-loop-intake`, `agent-loop-pre-assemble`, `session-append-ignorable`, `session-controller-prompt-source`), and every gate above passes against it.
-- Provides: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the finance agent; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 13-package kernel; the compatibility gates G1–G6. The [CHANGELOG](CHANGELOG.md) has the full list.
+- Provides: the launcher and profiles; the capability plugins tool-policy, skill-router, a2ui, aux-llm, request-context, intake-guard, and history-import; the finance agent; continuation (`--session-id`) and request context (`--context`); the distribution tooling and the 14-package kernel; the compatibility gates G1–G6. The [CHANGELOG](CHANGELOG.md) has the full list.
 - Known limitations:
-  - A message sent from dsh's own composer in Studio carries no request context; the lyteboat tab sends one that does. dsh's conversation shows a card as its marker only; the tab shows the cards as JSON.
+  - Studio is dsh web with lyteboat's pages and keeps dsh's own capabilities (coding tools, sandbox, approval), so its sessions do not run the way `/chat` runs them; to debug an agent as `/chat` runs it, use `lyteboat eval` or `lyteboat headless --agent`. A message sent from dsh's own composer in Studio carries no request context; the lyteboat tab sends one that does. dsh's conversation shows a card as its marker only; the tab shows the cards as JSON.
+  - A business mode's model requests still carry a few traces of the host: dsh's skill-invocation message names the skill's absolute directory; the compaction summarizer's instructions are written for a coding assistant; `{{cwd}}` in a persona renders the server's path, so a business persona should not use it. The launcher also still reads a `.env` in the directory it starts in (kept for the operator's deployment settings).
   - There is no memory and there are no suggested questions. Side calls use the agent's own model by default; skill routing can name its own provider and model in the `@lyteboat/skill-router/agent` row, intake classification cannot yet.
 - What comes next: the forward plan in the [alignment analysis](docs/04-reference-alignment.md).
 
