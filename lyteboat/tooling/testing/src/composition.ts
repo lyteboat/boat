@@ -47,13 +47,13 @@ const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', impor
 const QUIET: readonly PatchOptions[] = [{ id: 'session-telemetry-otel', disabled: true }]
 
 /** The `headless` profile's bundle layers, in the order the launcher's profile template lists them. */
-export const LYTEBOAT_HEADLESS_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/headless']
+export const LYTEBOAT_HEADLESS_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/headless']
 
 /** The `serve` profile's bundle layers, in the order the launcher's profile template lists them. */
-export const LYTEBOAT_SERVE_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/serve']
+export const LYTEBOAT_SERVE_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/serve']
 
 /** The `eval` profile's bundle layers, in the order the launcher's profile template lists them. */
-export const LYTEBOAT_EVAL_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/eval']
+export const LYTEBOAT_EVAL_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/eval']
 
 /** The `studio` profile's bundle layers, in the order the launcher's profile template lists them. */
 export const LYTEBOAT_STUDIO_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@deepseek-ai/dsh-web-app', '@lyteboat/studio']

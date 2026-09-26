@@ -50,9 +50,10 @@ describe('lyteboat headless --history (in process, scripted model)', () => {
     expect(types.indexOf('session/end-seed')).toBeGreaterThan(types.indexOf('turn/end'))
     expect(types.indexOf('session/end-seed')).toBeLessThan(types.lastIndexOf('turn/start'))
     expect(records.filter(record => record.type === 'turn/end').at(-1)?.data).toEqual({ turn: 3, reason: { kind: 'completed' } })
-    // The first request replaces the seed's empty system head, so its header opens a new series.
+    // Without an agent the business base composes an empty system prompt, the seed's own
+    // system head, so the first request continues the seed's series instead of opening one.
     const headers = records.filter(record => record.type === 'request/header').map(record => [record.data?.['reason'], record.data?.['startsSeries']])
-    expect(headers).toEqual([['initial', true]])
+    expect(headers).toEqual([['initial', undefined]])
     // The seed is closed turns of dsh nodes, so dsh's persistence reopens the log.
     expect(reopenRefusal(records)).toBeUndefined()
   })

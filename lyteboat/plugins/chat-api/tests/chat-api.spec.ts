@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { ChatApiError, parseChatRequest } from '../src/chat-request.ts'
+import { isChatSessionOwner } from '../src/chat-session-owner.ts'
 import { ChatEnterpriseWriter, sseFrame, type ChatEnterpriseFrame, type ChatFrameDecorator } from '../src/enterprise-frames.ts'
 
 const context = { agentId: 'finance', sessionId: 'session-1', messageId: 'm-1', userId: 'u-1' }
@@ -12,6 +13,20 @@ function writer(decorators: readonly ChatFrameDecorator[] = []): { frames: ChatE
   const frames: ChatEnterpriseFrame[] = []
   return { frames, write: new ChatEnterpriseWriter({ context, decorators, send: frame => { frames.push(frame) }, now: () => new Date(0) }) }
 }
+
+describe('isChatSessionOwner', () => {
+  it('lets the end user who owns a session continue it', () => {
+    expect(isChatSessionOwner({ kind: 'user', id: 'u-1' }, 'u-1')).toBe(true)
+  })
+
+  it('refuses another user, an operator or system owner of the same id, and a session without an owner', () => {
+    expect(isChatSessionOwner({ kind: 'user', id: 'u-2' }, 'u-1')).toBe(false)
+    expect(isChatSessionOwner({ kind: 'operator', id: 'u-1' }, 'u-1')).toBe(false)
+    expect(isChatSessionOwner({ kind: 'system', id: 'u-1' }, 'u-1')).toBe(false)
+    expect(isChatSessionOwner(null, 'u-1')).toBe(false)
+    expect(isChatSessionOwner(undefined, 'u-1')).toBe(false)
+  })
+})
 
 describe('parseChatRequest', () => {
   it('reads the request fields, with stream off unless asked', () => {

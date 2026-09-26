@@ -3,13 +3,14 @@
  * registry, and report the ones that cannot be served. A row that fails to
  * mount needs the host's loader tree; the headless composition covers it.
  */
-import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import AgentPresetRegistry from '@deepseek-ai/dsh-agent-preset-registry'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { MockAdapter, createLyteboatUnitHost } from '@lyteboat/testing'
 import AgentCatalogService from '@lyteboat/agent-catalog'
 import type { Config } from '@lyteboat/agent-catalog'
@@ -26,17 +27,27 @@ async function catalogHost(config: Config): Promise<Context> {
 }
 
 describe('the agent catalog', () => {
-  it('declares every agent the roots hold to the preset registry, with its display fields', async () => {
-    const ctx = await catalogHost({ roots: [fixture('good')] })
+  it('declares every agent the roots hold to the preset registry, with its display fields and working directory', async () => {
+    const ctx = await catalogHost({ roots: [fixture('good')], workdirsDir: '/srv/lyteboat/workdirs' })
 
     await ctx.agentCatalog.whenReady()
 
     expect(ctx.agentCatalog.list()).toEqual([
-      { id: 'alpha', dir: fixture('good/alpha'), name: 'Alpha', description: 'the first fixture agent', order: 1 },
-      { id: 'beta', dir: fixture('good/beta') },
+      { id: 'alpha', dir: fixture('good/alpha'), workdir: '/srv/lyteboat/workdirs/alpha', name: 'Alpha', description: 'the first fixture agent', order: 1 },
+      { id: 'beta', dir: fixture('good/beta'), workdir: '/srv/lyteboat/workdirs/beta' },
     ])
     expect(await ctx.agentPresets.resolve('alpha')).toEqual({ id: 'alpha' })
     expect(ctx.agentCatalog.failures()).toEqual([])
+  })
+
+  it('puts an agent\'s working directory under the home\'s agent-workdirs by default, without creating it', async () => {
+    const ctx = await catalogHost({ roots: [fixture('good')] })
+
+    await ctx.agentCatalog.whenReady()
+
+    const workdir = ctx.agentCatalog.get('beta')?.workdir
+    expect(workdir).toBe(dshHomePath('agent-workdirs', 'beta'))
+    expect(existsSync(workdir ?? '')).toBe(false)
   })
 
   it('declares only the included agents when include names them', async () => {

@@ -4,8 +4,9 @@
  * an agent, its directory name the id), declares every agent to dsh's agent
  * preset registry with its directory as the base URL, and reports the agents
  * that fail to read or mount, using the registry's own diagnostics. It answers
- * only which agents there are; driving them is the caller's (`lyteboat
- * headless`, later `/chat`, eval, and Studio).
+ * only which agents there are and where each one works (its working directory,
+ * the `cwd` its sessions are recorded under); driving them is the caller's
+ * (`lyteboat headless`, `/chat`, eval, and Studio).
  *
  * The declarations are made once the host tree has settled: the registry's
  * diagnostics wait for that settlement, so they cannot run inside this row's
@@ -22,6 +23,7 @@ import { pathToFileURL } from 'node:url'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type { PresetDefinition } from '@deepseek-ai/dsh-agent-preset-registry'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
 import z from '@deepseek-ai/schemastery'
 import { locateAgents, readAgentDefinition } from './agent-directory.ts'
@@ -40,6 +42,12 @@ export interface AgentCatalogEntry {
   readonly id: string
   /** The agent directory, the base its rows resolve against. */
   readonly dir: string
+  /**
+   * The agent's working directory, the `cwd` its sessions are recorded under,
+   * wherever the process started; not created until a session needs it, and
+   * shown to the model by no prompt of lyteboat's.
+   */
+  readonly workdir: string
   readonly name?: string
   readonly description?: string
   readonly order?: number
@@ -63,6 +71,8 @@ export interface Config {
   watch?: boolean
   /** How long a change waits for the next before it reloads. */
   watchDelayMs?: number
+  /** Where each agent's working directory is (`<workdirsDir>/<id>`); default `$LYTEBOAT_HOME/agent-workdirs`. */
+  workdirsDir?: string
 }
 
 export const Config: z<Config> = z.object({
@@ -71,6 +81,7 @@ export const Config: z<Config> = z.object({
   strict: z.boolean().default(true),
   watch: z.boolean().default(false),
   watchDelayMs: z.natural().default(300),
+  workdirsDir: z.string(),
 })
 
 /** Host service: the agent roster and its failures. */
@@ -185,6 +196,7 @@ export class AgentCatalogService extends Service {
     const { name, description, order } = definition
     this.entries.set(id, {
       id, dir,
+      workdir: join(this.config.workdirsDir ?? dshHomePath('agent-workdirs'), id),
       ...name === undefined ? {} : { name },
       ...description === undefined ? {} : { description },
       ...order === undefined ? {} : { order },

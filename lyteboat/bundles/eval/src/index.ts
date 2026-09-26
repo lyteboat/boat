@@ -36,7 +36,6 @@ async function runCases(ctx: Context, command: LyteboatEvalRunCommand): Promise<
     mode: command.mode,
     ...command.from === undefined ? {} : { from: command.from },
     out: command.runDir,
-    cwd: command.workspace,
     onCase: (evalCase, results) => { process.stdout.write(caseLine(evalCase.id, results)) },
   })
   const passed = record.cases.filter(evalCase => evalCase.pass).length

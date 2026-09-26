@@ -29,10 +29,11 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
-import type {} from '@lyteboat/agent-catalog'
-import type { JsonValue } from '@lyteboat/contracts'
+import type { AgentCatalogEntry } from '@lyteboat/agent-catalog'
+import type { JsonValue, LyteboatRequestState } from '@lyteboat/contracts'
 import type {} from '@lyteboat/request-context'
 import { ChatApiError, parseChatRequest, readChatBody, type ChatRequest } from './chat-request.ts'
+import { isChatSessionOwner } from './chat-session-owner.ts'
 import { watchChatTurn, type ChatToolCall, type ChatTurnResult } from './chat-turn.ts'
 import { ChatEnterpriseWriter, sseFrame, type ChatFrameContext, type ChatFrameDecorator } from './enterprise-frames.ts'
 
@@ -50,8 +51,6 @@ export interface Config {
   auth: 'shared-secret' | 'none'
   /** The environment variable (credential reference) that holds the shared secret. */
   credentialRef?: string
-  /** The working directory of the sessions `/chat` creates. */
-  workspace?: string
   /** The largest request body accepted. */
   maxBodyBytes?: number
   /** How often an open stream sends a `: keep-alive` comment. */
@@ -61,10 +60,11 @@ export interface Config {
 export const Config: z<Config> = z.object({
   auth: z.union([z.const('shared-secret' as const), z.const('none' as const)]).required(),
   credentialRef: z.string(),
-  workspace: z.string(),
   maxBodyBytes: z.natural().default(1024 * 1024),
   keepAliveMs: z.natural().default(15_000),
 })
+
+const CHAT_API_CONFIG_KEYS = new Set(['auth', 'credentialRef', 'maxBodyBytes', 'keepAliveMs'])
 
 class FrameDecoratorLayer implements ScopeLayer {
   readonly entries = new AnonymousEntries<ChatFrameDecorator>()
@@ -107,6 +107,11 @@ export class ChatApiService extends Service {
 
   constructor(ctx: Context, private readonly config: Config) {
     super(ctx, 'chatApi')
+    // schemastery passes unknown keys through; a misspelt or retired one (`workspace`) must not be ignored.
+    const unknown = Object.keys(config).filter(key => !CHAT_API_CONFIG_KEYS.has(key))
+    if (unknown.length > 0) {
+      throw new Error(`chat-api: unknown config key${unknown.length > 1 ? 's' : ''} ${unknown.map(key => JSON.stringify(key)).join(', ')}; allowed: ${[...CHAT_API_CONFIG_KEYS].join(', ')}`)
+    }
     if (config.auth === 'none' && ctx.webServer.host !== '127.0.0.1') {
       throw new Error('chat-api: auth none serves only a 127.0.0.1 listener; set auth: shared-secret and a credentialRef to listen on other interfaces')
     }
@@ -179,16 +184,16 @@ export class ChatApiService extends Service {
   }
 
   /** The session a request continues or starts, after checking the caller and the agent. */
-  private async sessionFor(request: ChatRequest, messageId: string): Promise<SessionId> {
+  private async sessionFor(request: ChatRequest, agent: AgentCatalogEntry, messageId: string): Promise<SessionId> {
     if (request.sessionId === undefined) {
-      const created = await this.ctx.sessionController.create({ cwd: this.config.workspace ?? process.cwd(), agentPreset: request.agentId })
+      const created = await this.ctx.sessionController.create({ cwd: agent.workdir, agentPreset: agent.id })
       return created.sessionId
     }
     const sessionId = brandString<SessionId>(request.sessionId)
     const projections = await this.ctx.sessionController.projections({ sessionId }, new AbortController().signal)
-    const owner = (projections?.values['lyteboatRequest'] as { owner?: unknown } | undefined)?.owner
-    // A session owned by someone else answers as one that does not exist.
-    if (projections === null || (typeof owner === 'string' && owner !== request.userId)) {
+    const owner = (projections?.values['lyteboatRequest'] as Partial<LyteboatRequestState> | undefined)?.owner
+    // A session the caller does not own answers as one that does not exist.
+    if (projections === null || !isChatSessionOwner(owner, request.userId)) {
       throw new ChatApiError('session_not_found', `session ${JSON.stringify(sessionId)} does not exist`)
     }
     const agentPreset = projections.values['agentPreset']
@@ -211,12 +216,13 @@ export class ChatApiService extends Service {
       await this.authorize(request)
       const chat = parseChatRequest(await readChatBody(request, this.config.maxBodyBytes ?? 1024 * 1024))
       await this.catalogSettled()
-      if (this.ctx.agentCatalog.get(chat.agentId) === undefined) throw new ChatApiError('agent_not_found', `no agent ${JSON.stringify(chat.agentId)}`)
+      const agent = this.ctx.agentCatalog.get(chat.agentId)
+      if (agent === undefined) throw new ChatApiError('agent_not_found', `no agent ${JSON.stringify(chat.agentId)}`)
       const messageId = chat.messageId ?? randomUUID()
       if (chat.sessionId !== undefined && this.inFlight.has(`${chat.sessionId}\0${messageId}`)) {
         throw new ChatApiError('message_duplicate', `message ${JSON.stringify(messageId)} is already being answered`)
       }
-      const sessionId = await this.sessionFor(chat, messageId)
+      const sessionId = await this.sessionFor(chat, agent, messageId)
       key = `${sessionId}\0${messageId}`
       if (this.inFlight.has(key)) throw new ChatApiError('message_duplicate', `message ${JSON.stringify(messageId)} is already being answered`)
       this.inFlight.add(key)
@@ -264,7 +270,7 @@ export class ChatApiService extends Service {
         sessionId,
         mode: 'queue',
         content: [{ type: 'text', text: chat.message }],
-        sourceFields: this.ctx.requestContext.sourceFields({ requestId: messageId, owner: chat.userId, ...chat.traceId === undefined ? {} : { traceId: chat.traceId }, ...chat.context === undefined ? {} : { context: chat.context } }),
+        sourceFields: this.ctx.requestContext.sourceFields({ requestId: messageId, owner: { kind: 'user', id: chat.userId }, ...chat.traceId === undefined ? {} : { traceId: chat.traceId }, ...chat.context === undefined ? {} : { context: chat.context } }),
       }, aborted.signal)
       if (stream !== undefined) {
         stream.open()

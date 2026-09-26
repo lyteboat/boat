@@ -16,6 +16,7 @@
     "lib"
   ],
   "dependencies": {
+    "@deepseek-ai/dsh-home-paths": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
     "js-yaml": "catalog:"
   },

@@ -99,12 +99,13 @@ export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type LyteboatToolVisibility = 'always' | 'auto'
 
+/** Whether the tools an agent inherits from the host, and no declaration names, reach the model. */
+export type LyteboatInheritedToolVisibility = 'visible' | 'hidden'
+
 /** lyteboat-side metadata registered beside a dsh ToolDefinition (the reference AgentTool fields). */
 export interface LyteboatToolMeta {
   /** Defaults to `always`. */
   visibility?: LyteboatToolVisibility
-  /** Route the call through the approval seam before execution. */
-  requiresConfirmation?: boolean
   /**
    * Derive a state delta (dot-path keys, deep-merged into the session state
    * projection) from the tool's validated return value. Runs where dsh
@@ -230,6 +231,25 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 })
 
 /**
+ * Who a request comes from: `user`, an end user the caller names (`/chat`'s
+ * `user_id`); `operator`, a person at a lyteboat surface (the Studio pages,
+ * the command line); `system`, lyteboat itself (an eval run). Only a `user`
+ * owner can continue a session over `/chat`. Not dsh's `source.kind: 'user'`,
+ * which says a human message came from the conversation's human side, whoever
+ * sent it.
+ */
+export type LyteboatRequestOwner = {
+  kind: 'user' | 'operator' | 'system'
+  id: string
+}
+
+/** The schema of {@link LyteboatRequestOwner}. */
+export const lyteboatRequestOwnerSchema: z.ZodType<LyteboatRequestOwner> = z.object({
+  kind: z.enum(['user', 'operator', 'system']),
+  id: z.string().min(1),
+})
+
+/**
  * The request a human message answers to, carried on its `source` beside
  * `kind: 'user'`, so every dsh consumer still reads the message as human
  * input. `@lyteboat/request-context` reads it back.
@@ -237,8 +257,8 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 export type LyteboatRequest = {
   /** The caller's id for the request, when it gave one. */
   requestId?: string
-  /** Who sent the request, as the caller identifies them; a session's owner is its first request's. */
-  owner?: string
+  /** Who sent the request; a session's owner is its first request's. */
+  owner?: LyteboatRequestOwner
   /** The caller's trace id for the request, so its logs and the session's can be joined. */
   traceId?: string
   /** The request context as the caller passed it; absent keeps the session's earlier context. */
@@ -249,7 +269,7 @@ export type LyteboatRequest = {
 /** The schema of {@link LyteboatRequest}, the envelope on a human message's `source.lyteboatRequest`. */
 export const lyteboatRequestSchema: z.ZodType<LyteboatRequest> = z.object({
   requestId: z.string().exactOptional(),
-  owner: z.string().exactOptional(),
+  owner: lyteboatRequestOwnerSchema.exactOptional(),
   traceId: z.string().exactOptional(),
   context: lyteboatJsonObjectSchema.exactOptional(),
   intake: lyteboatIntakeVerdictSchema.exactOptional(),
@@ -264,7 +284,7 @@ export type LyteboatRequestState = {
   /** The latest request's verdict, when an admission function ran on it. */
   intake: LyteboatIntakeVerdict | null
   /** The first owner a request named; null before any did. */
-  owner: string | null
+  owner: LyteboatRequestOwner | null
 }
 
 /** The schema of {@link LyteboatRequestState}. */
@@ -272,7 +292,7 @@ export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.obj
   requests: z.number(),
   context: lyteboatJsonObjectSchema,
   intake: lyteboatIntakeVerdictSchema.nullable(),
-  owner: z.string().nullable(),
+  owner: lyteboatRequestOwnerSchema.nullable(),
 })
 
 /**

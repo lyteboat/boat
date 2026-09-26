@@ -21,6 +21,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { mkdirSync } from 'node:fs'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -29,7 +30,7 @@ import type { Agent, AgentRegistry, AgentSetup, ModelSelectionRef } from '@deeps
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type { LyteboatTurnPart } from '@lyteboat/a2ui'
-import type { JsonValue } from '@lyteboat/contracts'
+import type { JsonValue, LyteboatRequestOwner } from '@lyteboat/contracts'
 import type {} from '@lyteboat/history-import'
 import type {} from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/intake-guard'
@@ -44,6 +45,9 @@ import type {} from '@deepseek-ai/dsh-cmdline'
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-headless'
 
+/** Who a task typed at the command line comes from. */
+const CLI_OWNER: LyteboatRequestOwner = { kind: 'operator', id: 'cli' }
+
 /** Core services required before the one-shot turn can start. */
 export const inject = ['agentDefaultModel', 'agents', 'agentPresets', 'agentCatalog', 'sessions', 'sessionQuery', 'historyImport', 'a2ui', 'intakeGuard']
 
@@ -55,7 +59,7 @@ export interface Config {
   agent?: string
   /** An external history file (entries grouped into rounds) seeded into the session as closed turns before the task. */
   history?: string
-  /** A stored session to continue; it must run under `agent` (or under none, without one) and belong to this directory. */
+  /** A stored session to continue; it must run under `agent` (or under none, without one), and a session without an agent must belong to this directory. */
   sessionId?: string
   /** The request context the task carries; absent keeps a continued session's earlier context. */
   context?: { [key: string]: JsonValue }
@@ -165,7 +169,7 @@ function storedPreset(header: SessionHeader, events: readonly SessionEvent[]): s
 }
 
 /** Refuse a stored session this invocation cannot continue as it was run. */
-function assertContinuable(header: SessionHeader, events: readonly SessionEvent[], sessionId: SessionId, agentPreset: string | undefined): void {
+function assertContinuable(header: SessionHeader, events: readonly SessionEvent[], sessionId: SessionId, agentPreset: string | undefined, cwd: string): void {
   const stored = storedPreset(header, events)
   if (stored !== agentPreset) {
     throw new Error(stored === undefined
@@ -173,7 +177,7 @@ function assertContinuable(header: SessionHeader, events: readonly SessionEvent[
       : `session "${sessionId}" runs under agent "${stored}"; continue it with --agent ${stored}`)
   }
   if (header.origin === 'subagent' || header.parentSession !== undefined) throw new Error(`session "${sessionId}" is a subagent or forked session and cannot be continued directly`)
-  if (header.cwd !== process.cwd()) throw new Error(`session "${sessionId}" was recorded in "${header.cwd ?? 'no directory'}", not "${process.cwd()}"`)
+  if (header.cwd !== cwd) throw new Error(`session "${sessionId}" was recorded in "${header.cwd ?? 'no directory'}", not "${cwd}"`)
 }
 
 /**
@@ -186,12 +190,12 @@ function assertContinuable(header: SessionHeader, events: readonly SessionEvent[
 async function resumeAgent(
   ctx: Context,
   agents: AgentRegistry,
-  options: { sessionId: SessionId; agentPreset: string | undefined; agentOptions: { provider: string; model: string }; setup: AgentSetup },
+  options: { sessionId: SessionId; agentPreset: string | undefined; cwd: string; agentOptions: { provider: string; model: string }; setup: AgentSetup },
 ): Promise<Agent> {
-  const { sessionId, agentPreset, agentOptions, setup } = options
+  const { sessionId, agentPreset, cwd, agentOptions, setup } = options
   try {
     using observation = await ctx.sessionQuery.observeSession(sessionId)
-    assertContinuable(observation.header, observation.events, sessionId, agentPreset)
+    assertContinuable(observation.header, observation.events, sessionId, agentPreset, cwd)
   } catch (error: unknown) {
     if (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_SESSION_NOT_FOUND') {
       throw new Error(`session "${sessionId}" does not exist; omit --session-id to start a new session`, { cause: error })
@@ -221,9 +225,17 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
 
   const selection = agentDefaultModel.currentSelection()
   let agentPreset: string | undefined
+  // An agent's sessions live in its working directory, so a later run continues
+  // one from any directory; a run without an agent stays where it was started.
+  let cwd = process.cwd()
   if (config.agent !== undefined) {
     await agentCatalog.whenReady()
     agentPreset = (await presets.resolve(config.agent)).id
+    const entry = agentCatalog.get(agentPreset)
+    if (entry === undefined) throw new Error(`lyteboat headless: agent "${agentPreset}" is not in the agent catalog`)
+    cwd = entry.workdir
+    // Unlike the session controller, dsh's agent registry does not create a session's directory.
+    mkdirSync(cwd, { recursive: true })
   }
   const setup: AgentSetup = async (agentCtx) => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
@@ -241,10 +253,10 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const seeded = seed !== undefined && seed.events.length > 0
   const agentOptions = { provider: selection.provider, model: selection.model }
   const agent = config.sessionId !== undefined
-    ? await resumeAgent(ctx, agents, { sessionId: brandString<SessionId>(config.sessionId), agentPreset, agentOptions, setup })
+    ? await resumeAgent(ctx, agents, { sessionId: brandString<SessionId>(config.sessionId), agentPreset, cwd, agentOptions, setup })
     : (await agents.create({
       sessionId: brandString<SessionId>(`session-${randomUUID()}`),
-      meta: { cwd: process.cwd(), ...agentPreset === undefined ? {} : { agentPreset }, ...seeded ? { isSeeded: true } : {} },
+      meta: { cwd, ...agentPreset === undefined ? {} : { agentPreset }, ...seeded ? { isSeeded: true } : {} },
       ...seeded && seed !== undefined ? { seed: seed.events, inheritedEventCount: SessionLogOffset(seed.events.length) } : {},
       agentOptions,
       setup,
@@ -254,7 +266,7 @@ async function run(ctx: Context, config: Config, io: RunIo): Promise<void> {
   const stopReasoning = streamReasoning(ctx, agent, io.stderr)
   try {
     // Admission runs before the request enters the loop, so its verdict is recorded with the request.
-    await intakeGuard.submit(agent, { text: config.task, context: config.context }, new AbortController().signal)
+    await intakeGuard.submit(agent, { text: config.task, context: config.context, owner: CLI_OWNER }, new AbortController().signal)
     await agent.whenIdle()
   } finally {
     stopReasoning()

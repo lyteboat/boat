@@ -42,7 +42,7 @@ describe('lyteboat profile templates', () => {
   test('an existing profile whose bundle list predates the template fails loud with the fix', () => {
     const dir = home()
     initProfile(resolveProfileDir('headless', dir), ['@deepseek-ai/dsh-base', '@lyteboat/headless'])
-    expect(() => { ensureProfileInitialized('headless', dir) }).toThrow(/profile "headless" .* lists bundles \[@deepseek-ai\/dsh-base, @lyteboat\/headless\].*\[@deepseek-ai\/dsh-base, @lyteboat\/host, @lyteboat\/headless\]/su)
+    expect(() => { ensureProfileInitialized('headless', dir) }).toThrow(/profile "headless" .* lists bundles \[@deepseek-ai\/dsh-base, @lyteboat\/headless\].*\[@deepseek-ai\/dsh-base, @lyteboat\/host, @lyteboat\/business-base, @lyteboat\/headless\]/su)
   })
 
   test('an existing profile that matches the template boots unchanged', () => {

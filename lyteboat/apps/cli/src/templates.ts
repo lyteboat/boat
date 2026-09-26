@@ -16,16 +16,16 @@ interface LyteboatProfileTemplate {
 /** Templates by profile name. */
 export const LYTEBOAT_PROFILE_TEMPLATES: Readonly<Record<string, LyteboatProfileTemplate>> = {
   headless: {
-    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/headless'],
+    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/headless'],
   },
   studio: {
     bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@deepseek-ai/dsh-web-app', '@lyteboat/studio'],
   },
   serve: {
-    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/serve'],
+    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/serve'],
   },
   eval: {
-    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/eval'],
+    bundles: ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/eval'],
   },
 }
 

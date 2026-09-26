@@ -31,7 +31,7 @@
 - id: finance-tool-surface
   name: '@lyteboat/tool-policy/agent'
   config:
-    undeclared: auto
+    inherited: hidden
     tools:
       skill: { visibility: always }
 

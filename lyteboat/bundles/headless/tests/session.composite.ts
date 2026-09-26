@@ -13,15 +13,6 @@ import { FIXTURES, headlessComposition, type RunTarget } from './support/headles
 import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
 
 const AGENTS = join(FIXTURES, 'agents')
-const ASSET_SKILL = `---
-name: asset-overview
-description: 资产总览。
-metadata:
-  lyteboat:
-    requiredTools: [todo_write]
----
-ASSET-OVERVIEW-BODY
-`
 
 describe('lyteboat headless --session-id (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('session')
@@ -39,7 +30,7 @@ describe('lyteboat headless --session-id (in process, scripted model)', () => {
   })
 
   function fresh(label: string): RunTarget {
-    const { home, workspace } = scratch.run(label, { '.dsh/skills/asset-overview/SKILL.md': ASSET_SKILL })
+    const { home, workspace } = scratch.run(label)
     return { cwd: workspace, home, env: scriptedModelEnv(model) }
   }
 

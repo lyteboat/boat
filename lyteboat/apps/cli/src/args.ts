@@ -60,7 +60,7 @@ const collect = (value: string, previous: string[] = []): string[] => [...previo
 
 const HELP_EXAMPLES = `
 Examples:
-  lyteboat headless "summarize this workspace"         answer one task, print the result, and exit
+  lyteboat headless --agents ./agents --agent finance "task"  answer one task as an agent, print the result, and exit
   lyteboat headless --patch ./extra.yml "task"         boot the headless profile with one extra overlay
   lyteboat headless --plugin ./my-plugin.mjs "task"    insert a local plugin file into the tree
   lyteboat headless -h                                 the one-shot app's own flags and help

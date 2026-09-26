@@ -5,31 +5,8 @@
 # connection, and file upload are its host services); the eval runner sends
 # every case's turns through it, and the last row runs the invocation and
 # exits with its result. lyteboat's service rows come from @lyteboat/host and
-# the agent loop (lyteboat's kernel) from dsh-base, both listed before this
-# bundle in the eval profile.
-
-- id: system-prompt
-  config:
-    personaSuffix: Your working directory is {{cwd}}.
-    personaPrefix: >-
-      You are a coding agent powered by the {{model}} model.
-
-- id: tools
-  config:
-    mode: !!js process.env.DSH_TOOLS_MODE
-
-# The cases see what a /chat caller's requests carry: not the list of installed
-# packages dsh-base attaches on DeepSeek's route, and not the working directory's
-# AGENTS.md.
-- id: plugin-package-inventory-deepseek
-  disabled: true
-
-- id: agent-instructions
-  disabled: true
-
-# A session title is a model call of its own; a replay has no recording of it.
-- id: session-title-llm
-  disabled: true
+# the agent loop (lyteboat's kernel) from dsh-base, and the business base from
+# @lyteboat/business-base, all listed before this bundle in the eval profile.
 
 - insert:
     - id: lyteboat-eval-startup

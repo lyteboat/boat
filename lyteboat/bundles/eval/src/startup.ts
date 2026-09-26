@@ -37,8 +37,6 @@ export interface LyteboatEvalRunCommand {
   from: string | undefined
   /** Where this run is written: `$LYTEBOAT_HOME/evals/<run id>`. */
   runDir: string
-  /** The working directory of the sessions. */
-  workspace: string
 }
 
 /** Compare two runs. */
@@ -93,7 +91,6 @@ function command(): Command {
     .option('--cases <path>', 'a case file or a directory of them (repeatable; default: the agent\'s evals/)', collect)
     .option('--model <mode>', 'real (call the model and record the sessions) or replay (play a recorded run back, no key)', 'real')
     .option('--from <run>', 'the recorded run a replay plays back: its directory or its id under $LYTEBOAT_HOME/evals')
-    .option('--workspace <dir>', 'the working directory of the sessions (default: the current directory)')
     .addHelpText('after', `
 Examples:
   lyteboat eval --agents ./agents --agent finance                         run finance's evals/ against the model and record them
@@ -110,7 +107,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agents?: string[]; agent?: string; cases?: string[]; model: string; from?: string; workspace?: string }>()
+    const options = program.opts<{ agents?: string[]; agent?: string; cases?: string[]; model: string; from?: string }>()
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
     if (agentRoots.length === 0) program.error('error: at least one --agents directory is required', USAGE)
     for (const dir of agentRoots) {
@@ -125,12 +122,10 @@ export function apply(ctx: Context): void {
     if (options.from !== undefined && from === undefined) program.error(`error: --from names no eval run: ${options.from}`, USAGE)
     if (mode === 'replay' && from === undefined) program.error('error: --model replay needs --from, the recorded run to play back', USAGE)
     const cases = (options.cases ?? []).map(path => resolve(path))
-    const workspace = resolve(options.workspace ?? process.cwd())
-    if (!isDirectory(workspace)) program.error(`error: --workspace directory not found: ${workspace}`, USAGE)
     ctx.provide(LYTEBOAT_EVAL_STARTUP_SERVICE, {
       agentRoots,
       include: [agent],
-      command: { action: 'run', agent, cases, mode, from, runDir: dshHomePath('evals', newRunId()), workspace },
+      command: { action: 'run', agent, cases, mode, from, runDir: dshHomePath('evals', newRunId()) },
     } satisfies LyteboatEvalStartupValues)
   })
   program.command('compare')

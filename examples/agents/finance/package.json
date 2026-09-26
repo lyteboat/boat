@@ -50,6 +50,7 @@
     "@lyteboat/distro": "workspace:*",
     "@lyteboat/eval": "workspace:*",
     "@lyteboat/host": "workspace:*",
+    "@lyteboat/business-base": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
     "@lyteboat/request-context": "workspace:*",
     "@lyteboat/headless": "workspace:*",

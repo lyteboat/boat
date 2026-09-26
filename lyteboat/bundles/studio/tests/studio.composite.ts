@@ -124,7 +124,7 @@ describe('lyteboat studio (in process, scripted model)', () => {
       return log
     }, { timeout: 15_000, interval: 100 })
     const human = records.find(record => record.type === 'user/message')
-    expect(human?.data?.['source']).toEqual({ kind: 'user', rpcId: requestId, lyteboatRequest: { requestId, owner: 'studio', context: { customer: 'c-1' } } })
+    expect(human?.data?.['source']).toEqual({ kind: 'user', rpcId: requestId, lyteboatRequest: { requestId, owner: { kind: 'operator', id: 'studio' }, context: { customer: 'c-1' } } })
     // dsh appends its runtime context to the human message's text.
     const loop = model.requests.filter(request => request.purpose === 'loop' && request.lastUser.startsWith('hello'))
     expect(loop).toHaveLength(1)
@@ -135,7 +135,7 @@ describe('lyteboat studio (in process, scripted model)', () => {
     expect(loop[0]?.toolNames).not.toContain('plugin_manager')
     expect(loop[0]?.toolNames.includes('pwsh')).toBe(process.platform === 'win32')
     const projections = await value('session/projections', { args: { request: { sessionId } } }) as { values: { [key: string]: unknown } }
-    expect(projections.values['lyteboatRequest']).toMatchObject({ requests: 1, context: { customer: 'c-1' }, owner: 'studio' })
+    expect(projections.values['lyteboatRequest']).toMatchObject({ requests: 1, context: { customer: 'c-1' }, owner: { kind: 'operator', id: 'studio' } })
   })
 
   it('serves an agent directory that appears under a root, without a restart', async () => {

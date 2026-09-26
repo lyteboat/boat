@@ -27,6 +27,10 @@
       "entry": [],
       "project": []
     },
+    "lyteboat/bundles/business-base": {
+      "entry": [],
+      "project": []
+    },
     // A plugin's browser face (src/client) is TSX.
     "lyteboat/plugins/*": {
       "entry": ["tests/**/*.{spec,composite,e2e}.ts"],

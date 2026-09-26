@@ -55,9 +55,9 @@ describe('lyteboat headless --context and admission (in process, scripted model)
     expect(third.code, third.stderr).toBe(0)
 
     expect(humanSources(target.home)).toEqual([
-      { kind: 'user', lyteboatRequest: { context: { customer: 'c-1', channel: 'app' } } },
-      { kind: 'user' },
-      { kind: 'user', lyteboatRequest: { context: { customer: 'c-2' } } },
+      { kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' }, context: { customer: 'c-1', channel: 'app' } } },
+      { kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' } } },
+      { kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' }, context: { customer: 'c-2' } } },
     ])
   })
 
@@ -81,6 +81,7 @@ describe('lyteboat headless --context and admission (in process, scripted model)
     expect(humanSources(target.home)).toEqual([{
       kind: 'user',
       lyteboatRequest: {
+        owner: { kind: 'operator', id: 'cli' },
         context: { channel: '本渠道' },
         intake: { by: 'example-admission', decision: 'reply', verdict: 'out_of_scope', text: '抱歉，本渠道不提供股票买卖建议。', cards: [{ surfaceId: 'scope-card', area: 'scope', emission: 'immediate', payload: { rootComponentId: 'root' } }] },
       },
@@ -92,6 +93,6 @@ describe('lyteboat headless --context and admission (in process, scripted model)
     const result = await headlessComposition(['看看我的资产'], target, [ADMISSION])
     expect(result.code, result.stderr).toBe(0)
     expect(result.stdout).toBe('REQUEST-OK\n')
-    expect(humanSources(target.home)).toEqual([{ kind: 'user', lyteboatRequest: { intake: { by: 'example-admission', decision: 'pass' } } }])
+    expect(humanSources(target.home)).toEqual([{ kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' }, intake: { by: 'example-admission', decision: 'pass' } } }])
   })
 })

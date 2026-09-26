@@ -1,11 +1,12 @@
 /**
- * The serve composition in process (dsh-base, @lyteboat/host, @lyteboat/serve)
+ * The serve composition in process (dsh-base, @lyteboat/host, @lyteboat/business-base, @lyteboat/serve)
  * over two fixture agents and the scripted model: `/chat` answers in one JSON
  * body or as the enterprise stream through dsh's session controller, records
  * the request on the human message, continues and queues within a session,
  * cancels the turn of a caller that left, and refuses what it cannot answer
  * with the status the protocol names.
  */
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { postChat, streamChat, type ChatWireFrame } from '@lyteboat/testing/chat-client'
@@ -69,9 +70,9 @@ describe('lyteboat serve (in process, scripted model)', () => {
     home = run.home
     serve = startComposition({
       bundles: LYTEBOAT_SERVE_BUNDLES,
-      args: ['--agents', AGENTS, '--port', '0', '--workspace', run.workspace],
+      args: ['--agents', AGENTS, '--port', '0'],
       // A short keep-alive, so a held turn shows the stream's heartbeat.
-      patches: [{ id: 'chat-api', config: { auth: 'none', workspace: run.workspace, keepAliveMs: 50 } }],
+      patches: [{ id: 'chat-api', config: { auth: 'none', keepAliveMs: 50 } }],
       cwd: run.workspace,
       home,
       env: scriptedModelEnv(model),
@@ -98,20 +99,29 @@ describe('lyteboat serve (in process, scripted model)', () => {
     expect(human?.data?.['source']).toEqual({
       kind: 'user',
       rpcId: body.message_id,
-      lyteboatRequest: { requestId: body.message_id, owner: 'u-1', traceId: 't-1', context: { channel: 'app' } },
+      lyteboatRequest: { requestId: body.message_id, owner: { kind: 'user', id: 'u-1' }, traceId: 't-1', context: { channel: 'app' } },
     })
+    // The session works in the agent's own directory under the lyteboat home, and starts without permission events.
+    expect(records[0]).toMatchObject({ type: 'session', cwd: join(home, 'agent-workdirs', 'alpha'), agentPreset: 'alpha' })
+    expect(records.map(record => record.type).filter(type => type.startsWith('permission/') || type.startsWith('approval/'))).toEqual([])
     expect(reopenRefusal(records)).toBeUndefined()
   })
 
-  it('carries neither the package inventory nor the workspace instructions to the model', async () => {
+  it('gives the model the agent\'s own composition only: its persona, no coding tool, and nothing of the host\'s', async () => {
     const before = model.requests.length
     await postChat(chat, { agent_id: 'beta', user_id: 'u-1', message: 'what do you see' })
 
-    const loop = model.requests.slice(before).filter(request => request.purpose === 'loop')
-    expect(loop).toHaveLength(1)
-    expect(loop[0]?.systemText).toContain('SERVE-BETA')
-    expect(loop[0]?.systemText).not.toContain('SERVE-WORKSPACE-INSTRUCTIONS')
-    expect(loop[0]?.body['dsh_plugin_packages']).toBeUndefined()
+    const requests = model.requests.slice(before)
+    expect(requests.map(request => request.purpose)).toEqual(['loop'])
+    const [loop] = requests
+    expect(loop?.systemText).toMatch(/^You are SERVE-BETA/u)
+    expect(loop?.systemText).not.toContain('DeepSeek Harness')
+    expect(loop?.systemText).not.toContain('SERVE-WORKSPACE-INSTRUCTIONS')
+    // `skill` is the one dsh-base tool the business base leaves, and beta declares no policy.
+    expect(loop?.toolNames).toEqual(['skill'])
+    // No runtime context either: no sandbox or approval policy, no state.
+    expect(loop?.body.messages).toEqual([{ role: 'user', content: [{ type: 'text', text: 'what do you see' }] }])
+    expect(loop?.body['dsh_plugin_packages']).toBeUndefined()
   })
 
   it('streams the enterprise frames in protocol order, each tagged by the agent\'s frame decorator', async () => {
@@ -267,5 +277,15 @@ describe('lyteboat serve startup (in process)', () => {
     expect(open.stderr).toContain('error: --auth none serves only 127.0.0.1; use --auth shared-secret with --host 0.0.0.0')
     expect(none.code).not.toBe(0)
     expect(none.stderr).toContain('error: at least one --agents directory is required')
+  })
+
+  it('refuses a chat-api config key it does not have, such as the retired workspace', async () => {
+    const run = scratch.run('retired')
+    const target = { cwd: run.workspace, home: run.home, env: { DSH_TELEMETRY_DISABLED: '1' } }
+
+    const result = await bootComposition({ bundles: LYTEBOAT_SERVE_BUNDLES, args: ['--agents', AGENTS], patches: [{ id: 'chat-api', config: { auth: 'none', workspace: run.workspace } }], ...target })
+
+    expect(result.code).not.toBe(0)
+    expect(result.stderr).toContain('chat-api: unknown config key "workspace"; allowed: auth, credentialRef, maxBodyBytes, keepAliveMs')
   })
 })

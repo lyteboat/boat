@@ -36,7 +36,7 @@ describe('finance agent behind /chat (in process, scripted model)', () => {
     home = run.home
     serve = startComposition({
       bundles: LYTEBOAT_SERVE_BUNDLES,
-      args: ['--agents', AGENTS, '--port', '0', '--workspace', run.workspace],
+      args: ['--agents', AGENTS, '--port', '0'],
       cwd: run.workspace,
       home,
       env: scriptedModelEnv(model),
@@ -76,8 +76,8 @@ describe('finance agent behind /chat (in process, scripted model)', () => {
     const records = await storedLog(sessionId, 2)
     const humans = records.filter(record => record.type === 'user/message').map(record => record.data?.['source'] as { kind: string }).filter(source => source.kind === 'user')
     expect(humans).toEqual([
-      { kind: 'user', rpcId: 'm-1', lyteboatRequest: { requestId: 'm-1', owner: 'u-1', traceId: 't-1', context: { customer: 'young-idle-cash' } } },
-      { kind: 'user', rpcId: 'm-2', lyteboatRequest: { requestId: 'm-2', owner: 'u-1' } },
+      { kind: 'user', rpcId: 'm-1', lyteboatRequest: { requestId: 'm-1', owner: { kind: 'user', id: 'u-1' }, traceId: 't-1', context: { customer: 'young-idle-cash' } } },
+      { kind: 'user', rpcId: 'm-2', lyteboatRequest: { requestId: 'm-2', owner: { kind: 'user', id: 'u-1' } } },
     ])
     expect(reopenRefusal(records)).toBeUndefined()
   })

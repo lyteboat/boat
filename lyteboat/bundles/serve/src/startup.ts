@@ -1,6 +1,6 @@
 /**
  * The service app's command-line provider: it parses `--agents`, `--host`,
- * `--port`, `--auth`, `--secret-env`, and `--workspace`, checks them, and
+ * `--port`, `--auth`, and `--secret-env`, checks them, and
  * publishes {@link LYTEBOAT_SERVE_STARTUP_SERVICE}, which the agent catalog,
  * web server, and chat-api rows read from lazy config.
  * @module @lyteboat/serve/startup
@@ -33,8 +33,6 @@ export interface LyteboatServeStartupValues {
   auth: 'none' | 'shared-secret'
   /** The environment variable that holds the shared secret. */
   credentialRef: string
-  /** The working directory of the sessions `/chat` creates. */
-  workspace: string
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -55,7 +53,6 @@ function command(): Command {
     .option('--port <port>', 'listen port; 0 picks a free one', '8080')
     .option('--auth <mode>', 'none (only on 127.0.0.1) or shared-secret (Authorization: Bearer <secret>)', 'none')
     .option('--secret-env <name>', 'the environment variable that holds the shared secret', 'LYTEBOAT_CHAT_SECRET')
-    .option('--workspace <dir>', 'the working directory of new sessions (default: the current directory)')
     .addHelpText('after', `
 Examples:
   lyteboat serve --agents ./agents                              serve on http://127.0.0.1:8080 without auth
@@ -73,7 +70,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agents?: string[]; host: string; port: string; auth: string; secretEnv: string; workspace?: string }>()
+    const options = program.opts<{ agents?: string[]; host: string; port: string; auth: string; secretEnv: string }>()
     const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
     if (agentRoots.length === 0) program.error('error: at least one --agents directory is required')
     for (const dir of agentRoots) {
@@ -87,15 +84,12 @@ export function apply(ctx: Context): void {
     // program.error() exits, but TypeScript cannot narrow through it.
     const host = options.host === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1'
     const auth = options.auth === 'shared-secret' ? 'shared-secret' : 'none'
-    const workspace = resolve(options.workspace ?? process.cwd())
-    if (!existsSync(workspace) || !statSync(workspace).isDirectory()) program.error(`error: --workspace directory not found: ${workspace}`)
     ctx.provide(LYTEBOAT_SERVE_STARTUP_SERVICE, {
       agentRoots,
       host,
       port,
       auth,
       credentialRef: options.secretEnv,
-      workspace,
     } satisfies LyteboatServeStartupValues)
   })
   parseCmdline(ctx, program)

@@ -17,7 +17,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-llm'
-import type {} from '@lyteboat/agent-catalog'
+import type { AgentCatalogEntry } from '@lyteboat/agent-catalog'
 import type {} from '@lyteboat/request-context'
 import { loadEvalCases, type EvalCase } from './eval-case.ts'
 import { checkTurn } from './eval-check.ts'
@@ -56,8 +56,6 @@ export interface EvalRunOptions {
   from?: string
   /** The directory the run is written to. */
   out: string
-  /** The working directory of the sessions. */
-  cwd: string
   /** Hears each case as it finishes. */
   onCase?: (evalCase: EvalCase, results: readonly EvalTurnResult[]) => void
 }
@@ -95,7 +93,7 @@ export class EvalRunnerService extends Service {
     const results: EvalTurnResult[] = []
     try {
       for (const evalCase of cases) {
-        const caseResults = await this.runCase(evalCase, options, replay)
+        const caseResults = await this.runCase(evalCase, agent, options, replay)
         results.push(...caseResults)
         options.onCase?.(evalCase, caseResults)
       }
@@ -125,8 +123,8 @@ export class EvalRunnerService extends Service {
     return compareEvalResults(readEvalResults(before), readEvalResults(after))
   }
 
-  private async runCase(evalCase: EvalCase, options: EvalRunOptions, replay: EvalReplay | undefined): Promise<EvalTurnResult[]> {
-    const { sessionId } = await this.ctx.sessionController.create({ cwd: options.cwd, agentPreset: options.agentId })
+  private async runCase(evalCase: EvalCase, agent: AgentCatalogEntry, options: EvalRunOptions, replay: EvalReplay | undefined): Promise<EvalTurnResult[]> {
+    const { sessionId } = await this.ctx.sessionController.create({ cwd: agent.workdir, agentPreset: agent.id })
     if (replay !== undefined) replay.bind(sessionId, recordedSessionFile(replaySourceOf(options), evalCase.id))
     const resolved = await this.ctx.sessionController.resolveAgent(sessionId)
     if ('error' in resolved) throw new Error(`eval-runner: case ${evalCase.id}: ${resolved.error.message}`)
@@ -139,7 +137,7 @@ export class EvalRunnerService extends Service {
         sessionId,
         requestId,
         text: turn.message,
-        sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: 'eval', ...context === undefined ? {} : { context } }),
+        sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: { kind: 'system', id: 'eval' }, ...context === undefined ? {} : { context } }),
         timeoutMs: this.config.turnTimeoutMs ?? 300_000,
       })
       const checks = checkTurn(turn.expect, observed)

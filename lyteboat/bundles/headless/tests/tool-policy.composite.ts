@@ -36,7 +36,8 @@ describe('@lyteboat/tool-policy in the headless composition (in process, scripte
       expect(loop).toHaveLength(2)
       const first = loop[0]!.toolNames
       expect(first).toContain('lookup_assets')
-      expect(first).toContain('bash')
+      // The business base composes no coding tools.
+      expect(first).not.toContain('bash')
       expect(first).not.toContain('rebalance')
       expect(JSON.stringify(loop[0]!.body.messages)).not.toContain('Session state')
       const second = JSON.stringify(loop[1]!.body.messages)
@@ -47,7 +48,6 @@ describe('@lyteboat/tool-policy in the headless composition (in process, scripte
       expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])
       const toolResult = records.find(record => record.type === 'tool/result')
       expect(toolResult?.data?.['meta']).toEqual({ lyteboat: { stateDelta: { 'assets.total': 1234, 'assets.currency': 'CNY' } } })
-      expect(records.map(record => record.type)).not.toContain('approval/asked')
       // The delta rides tool/result.meta, a dsh envelope, so dsh's persistence reopens the log.
       expect(reopenRefusal(records)).toBeUndefined()
     } finally {
@@ -55,10 +55,10 @@ describe('@lyteboat/tool-policy in the headless composition (in process, scripte
     }
   })
 
-  it('activates an auto tool from lyteboat/pre-assemble for the same step and denies its confirmation without an answerer', async () => {
+  it('activates an auto tool from lyteboat/pre-assemble for the same step and runs it', async () => {
     const model = await startScriptedModel(callThenAnswer('rebalance', { target: '股债均衡' }), { apiKey: 'mock-key' })
     try {
-      const { home, workspace } = scratch.run('confirm')
+      const { home, workspace } = scratch.run('activate')
       const result = await headlessComposition(['帮我调仓'], { cwd: workspace, home, env: scriptedModelEnv(model) }, [pluginFileRow(PLUGIN)])
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()
@@ -66,41 +66,29 @@ describe('@lyteboat/tool-policy in the headless composition (in process, scripte
       expect(loop[0]!.toolNames).toContain('rebalance')
       const [log] = findSessionLogs(home)
       const records = readSessionLog(log!) as { type: string; data?: Record<string, unknown> }[]
-      const types = records.map(record => record.type)
-      expect(types).toContain('approval/asked')
-      expect(types).toContain('approval/decided')
-      const asked = records.find(record => record.type === 'approval/asked')
-      expect(asked?.data).toMatchObject({ toolName: 'rebalance', reason: 'tool "rebalance" requires confirmation' })
-      const decided = records.find(record => record.type === 'approval/decided')
-      expect(decided?.data).toMatchObject({ outcome: 'unavailable' })
+      expect(records.map(record => record.type).filter(type => type.startsWith('approval/'))).toEqual([])
       const toolResult = records.find(record => record.type === 'tool/result')
-      expect(JSON.stringify(toolResult)).toContain('requires approval, but no approval channel is available')
-      expect(JSON.stringify(toolResult)).not.toContain('stateDelta')
+      expect(JSON.stringify(toolResult)).toContain('已按“股债均衡”调仓')
     } finally {
       await model.close()
     }
   })
 
-  it('applies a preset\'s declared policy to the official tools it inherits', async () => {
-    const model = await startScriptedModel(callThenAnswer('bash', { command: 'echo hi' }), { apiKey: 'mock-key' })
+  it('gives an agent the dsh tool its own composition brings and hides the inherited tools no policy declares', async () => {
+    const model = await startScriptedModel(callThenAnswer('todo_write', { todos: [{ content: '整理资产', status: 'pending' }] }), { apiKey: 'mock-key' })
     try {
       const { home, workspace } = scratch.run('preset')
       const result = await headlessComposition(
-        ['--agents', AGENTS, '--agent', 'policy', 'list the files'],
+        ['--agents', AGENTS, '--agent', 'policy', 'plan the review'],
         { cwd: workspace, home, env: scriptedModelEnv(model) },
+        [pluginFileRow(PLUGIN)],
       )
       expect(result.code, result.stderr).toBe(0)
       const loop = model.loopRequests()
       expect(loop).toHaveLength(2)
       expect(loop[0]!.systemText).toContain('POLICY-PRESET-PERSONA')
-      const first = loop[0]!.toolNames
-      expect(first).toContain('bash')
-      expect(first).not.toContain('todo_write')
-      const [log] = findSessionLogs(home)
-      const records = readSessionLog(log!) as { type: string; data?: Record<string, unknown> }[]
-      const asked = records.find(record => record.type === 'approval/asked')
-      expect(asked?.data).toMatchObject({ toolName: 'bash' })
-      expect(records.find(record => record.type === 'approval/decided')?.data).toMatchObject({ outcome: 'unavailable' })
+      // `skill` is the one dsh-base tool the business base leaves; lookup_assets is declared by the host plugin.
+      expect([...loop[0]!.toolNames].sort()).toEqual(['lookup_assets', 'todo_write'])
     } finally {
       await model.close()
     }

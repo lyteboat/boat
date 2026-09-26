@@ -1,13 +1,21 @@
-# Dynamic skill routing for every agent joined to this preset. Skills come
-# from the workspace's project roots (the base skill-filesystem row); the
-# router row only turns routing on, and the tool-policy row makes the official
-# todo_write tool an `auto` tool a skill can require.
+# Dynamic skill routing for every agent joined to this preset. The agent
+# brings its own skills (./skills.mjs mounts skills/) and the official
+# todo_write tool; the router row turns routing on, and the tool-policy row
+# makes todo_write an `auto` tool a skill can require.
 - id: persona
   name: '@deepseek-ai/dsh-persona'
   config:
     prefix: >-
       You are ROUTED-PRESET-PERSONA, a test agent powered by the {{model}} model.
     suffix: Your working directory is {{cwd}}.
+
+- id: routed-skills
+  name: ./skills.mjs
+
+- id: todo
+  name: '@deepseek-ai/dsh-tool-todo'
+  config:
+    allowParallelInProgress: false
 
 - id: lyteboat-tool-policy
   name: '@lyteboat/tool-policy/agent'

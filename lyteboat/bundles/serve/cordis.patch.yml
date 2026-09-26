@@ -1,32 +1,14 @@
 # The @lyteboat/serve bundle patch: lyteboat's service mode over dsh-base and
 # @lyteboat/host. The startup row parses `--agents` / `--host` / `--port` /
-# `--auth` / `--secret-env` / `--workspace` into the `lyteboatServeStartup`
+# `--auth` / `--secret-env` into the `lyteboatServeStartup`
 # service; the agent catalog declares every agent of the roots; dsh's session
 # controller runs without the web UI (workspace, connection, and file upload are
 # its host services); the web server listens where startup says, and chat-api
 # serves /chat, /agents, and /health on it. The last row reports the service
 # once the catalog is ready, or stops it. lyteboat's service rows come from
-# @lyteboat/host and the agent loop (lyteboat's kernel) from dsh-base, both
-# listed before this bundle in the serve profile.
-
-- id: system-prompt
-  config:
-    personaSuffix: Your working directory is {{cwd}}.
-    personaPrefix: >-
-      You are a coding agent powered by the {{model}} model.
-
-- id: tools
-  config:
-    mode: !!js process.env.DSH_TOOLS_MODE
-
-# A business caller's model requests carry its agent's conversation only: not the
-# list of installed packages dsh-base attaches to requests on DeepSeek's route, and
-# not the AGENTS.md of the server's working directory.
-- id: plugin-package-inventory-deepseek
-  disabled: true
-
-- id: agent-instructions
-  disabled: true
+# @lyteboat/host, the agent loop (lyteboat's kernel) from dsh-base, and the
+# business base from @lyteboat/business-base, all listed before this bundle in
+# the serve profile.
 
 - insert:
     - id: lyteboat-serve-startup
@@ -69,7 +51,6 @@
       config:
         auth: !!js ctx.lyteboatServeStartup.auth
         credentialRef: !!js ctx.lyteboatServeStartup.credentialRef
-        workspace: !!js ctx.lyteboatServeStartup.workspace
 
     - id: lyteboat-serve
       name: '@lyteboat/serve'

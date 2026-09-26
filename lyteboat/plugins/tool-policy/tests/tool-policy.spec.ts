@@ -93,15 +93,15 @@ describe('visibility', () => {
     expect(errorMessage(turnEnd)).toContain('registered in agent "own-layer"\'s own layer')
   })
 
-  it('hides every inherited tool the policy does not declare under undeclared: auto, keeps a declared always tool visible, and activates declared tools only', async () => {
+  it('hides every inherited tool the policy does not declare under inherited: hidden, keeps a declared always tool visible, and activates declared tools only', async () => {
     const adapter = new MockAdapter([textResponse('one'), textResponse('two'), textResponse('three')])
     const ctx = await harness(adapter)
     ctx.tools.register(echo('official_tool'))
     ctx.tools.register(echo('kept_tool'))
     ctx.toolPolicy.register(echo('auto_tool'), { visibility: 'auto' })
-    const agent = await ctx.agentLoop.create(SessionId('undeclared-auto'), { provider: 'mock', model: 'mock' })
-    const plain = await ctx.agentLoop.create(SessionId('undeclared-default'), { provider: 'mock', model: 'mock' })
-    await agent.ctx.plugin(ToolPolicyAgent, { undeclared: 'auto', tools: { kept_tool: { visibility: 'always' } } })
+    const agent = await ctx.agentLoop.create(SessionId('inherited-hidden'), { provider: 'mock', model: 'mock' })
+    const plain = await ctx.agentLoop.create(SessionId('inherited-default'), { provider: 'mock', model: 'mock' })
+    await agent.ctx.plugin(ToolPolicyAgent, { inherited: 'hidden', tools: { kept_tool: { visibility: 'always' } } })
 
     await send(agent, 'hello')
     expect(toolNames(adapter, 0)).toEqual(['kept_tool'])
@@ -114,10 +114,10 @@ describe('visibility', () => {
     expect(toolNames(adapter, 2).sort()).toEqual(['kept_tool', 'official_tool'])
   })
 
-  it('refuses a second declaration of the undeclared visibility in one scope', async () => {
+  it('refuses a second declaration of the inherited visibility in one scope', async () => {
     const ctx = await harness(new MockAdapter([]))
-    ctx.toolPolicy.declareUndeclared('auto')
-    expect(() => ctx.toolPolicy.declareUndeclared('always')).toThrow(/already declared in this scope/u)
+    ctx.toolPolicy.declareInherited('hidden')
+    expect(() => ctx.toolPolicy.declareInherited('visible')).toThrow(/already declared in this scope/u)
   })
 
   it('activate() rejects undeclared names and takes effect at once; clear() hides again', async () => {
@@ -180,25 +180,6 @@ describe('tool updates (dsh 0.1.7-rc.2)', () => {
     expect(adapter.requests[1]?.tools?.map(tool => [tool.name, tool.deferLoading])).toEqual([['always_tool', undefined], ['auto_tool', true]])
     expect(adapter.requests[1]?.messages.filter(message => message.role === 'developer').map(message => message.content))
       .toEqual([[{ type: 'tool-addition', toolName: 'auto_tool' }]])
-  })
-})
-
-describe('confirmation', () => {
-  it('turns a requiresConfirmation call into ask, which denies without an approval service', async () => {
-    const adapter = new MockAdapter([toolCallResponse('c1', 'guarded', {}), textResponse('done')])
-    const ctx = await harness(adapter)
-    let executed = false
-    ctx.toolPolicy.register(defineContentToolFixture({
-      name: 'guarded', description: 'guarded', parameters: {},
-      execute: async () => { executed = true; return [{ type: 'text', text: 'ran' }] },
-    }), { requiresConfirmation: true })
-    const agent = await ctx.agentLoop.create(SessionId('confirm'), { provider: 'mock', model: 'mock' })
-
-    await send(agent, 'go')
-    expect(executed).toBe(false)
-    const result = agent.session.snapshotEvents().find((event): event is SessionEvent<'tool/result'> => event.type === 'tool/result')!
-    expect(result.data.message.isError).toBe(true)
-    expect(JSON.stringify(result.data.message.content)).toContain('requires confirmation')
   })
 })
 
@@ -275,5 +256,13 @@ describe('preset row', () => {
     await ctx.plugin(ToolPolicyAgent, { tools: { official_tool: { visibility: 'auto' } } })
     expect(ctx.toolPolicy.metaOf('official_tool')).toEqual({ visibility: 'auto' })
     await expect(ctx.plugin(ToolPolicyAgent, { tools: { official_tool: { visibilty: 'auto' } as never } })).rejects.toThrow(/unknown key "visibilty"/u)
+  })
+
+  it('rejects the retired keys instead of declaring nothing', async () => {
+    const ctx = await harness(new MockAdapter([]))
+    ctx.tools.register(echo('official_tool'))
+
+    await expect(ctx.plugin(ToolPolicyAgent, { undeclared: 'auto', tools: {} } as never)).rejects.toThrow(/unknown key "undeclared"/u)
+    await expect(ctx.plugin(ToolPolicyAgent, { tools: { official_tool: { visibility: 'always', requiresConfirmation: true } as never } })).rejects.toThrow(/unknown key "requiresConfirmation"/u)
   })
 })

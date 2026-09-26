@@ -63,17 +63,17 @@ describe('the request on a human message', () => {
     const agent = await ctx.agentLoop.create(SessionId('owner'), { provider: 'mock', model: 'mock' })
 
     await send(agent, ctx.requestContext.message('第一句', {}))
-    await send(agent, ctx.requestContext.message('第二句', { owner: 'u-1', traceId: 't-1' }))
-    await send(agent, ctx.requestContext.message('第三句', { owner: 'u-2' }))
+    await send(agent, ctx.requestContext.message('第二句', { owner: { kind: 'user', id: 'u-1' }, traceId: 't-1' }))
+    await send(agent, ctx.requestContext.message('第三句', { owner: { kind: 'user', id: 'u-2' } }))
 
-    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatRequest')?.owner).toBe('u-1')
+    expect(ctx.sessionProjections.stateOf(agent.session, 'lyteboatRequest')?.owner).toEqual({ kind: 'user', id: 'u-1' })
   })
 })
 
 describe('the request as session-controller source fields', () => {
   it('carries the request as lyteboatRequest, and a request with nothing to record adds no field', async () => {
     const ctx = await harness(new MockAdapter([]))
-    const request = { requestId: 'm-1', owner: 'u-1', traceId: 't-1', context: { customer: 'c-1' } }
+    const request = { requestId: 'm-1', owner: { kind: 'user' as const, id: 'u-1' }, traceId: 't-1', context: { customer: 'c-1' } }
 
     expect(ctx.requestContext.sourceFields(request)).toEqual({ lyteboatRequest: request })
     expect(ctx.requestContext.sourceFields({})).toEqual({})
@@ -82,6 +82,6 @@ describe('the request as session-controller source fields', () => {
   it('refuses a request that fails the contract', async () => {
     const ctx = await harness(new MockAdapter([]))
 
-    expect(() => ctx.requestContext.sourceFields({ owner: 42 } as never)).toThrow()
+    expect(() => ctx.requestContext.sourceFields({ owner: 'u-1' } as never)).toThrow()
   })
 })

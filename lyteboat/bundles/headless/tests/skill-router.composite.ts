@@ -13,20 +13,13 @@ type SessionRecord = { type: string; ignorable?: true; data?: Record<string, unk
 const isSkillInvocation = (record: SessionRecord): boolean =>
   record.type === 'user/message' && (record.data?.['source'] as { kind?: unknown } | undefined)?.kind === 'skill-invocation'
 
-const ASSET_SKILL = `---
-name: asset-overview
-description: 资产总览与配置诊断：查看总资产、持仓结构与配置建议。
-metadata:
-  lyteboat:
-    requiredTools: [todo_write]
+// A skill in the workspace's project root: the business base lends no agent a
+// host skill root, so it is never a routing candidate.
+const WORKSPACE_SKILL = `---
+name: workspace-notes
+description: 工作区里的笔记。
 ---
-ASSET-OVERVIEW-BODY: 先列出持仓，再给出配置建议。
-`
-const NEWS_SKILL = `---
-name: market-news
-description: 市场行情与新闻解读。
----
-MARKET-NEWS-BODY: 只解读公开行情。
+WORKSPACE-NOTES-BODY
 `
 
 describe('@lyteboat/skill-router in the headless composition (in process, scripted model)', () => {
@@ -45,7 +38,7 @@ describe('@lyteboat/skill-router in the headless composition (in process, script
   })
 
   function fresh(label: string): { home: string; workspace: string } {
-    return scratch.run(label, { '.dsh/skills/asset-overview/SKILL.md': ASSET_SKILL, '.dsh/skills/market-news/SKILL.md': NEWS_SKILL })
+    return scratch.run(label, { '.dsh/skills/workspace-notes/SKILL.md': WORKSPACE_SKILL })
   }
 
   it('routes the task through the router model and puts the skill body and its tool into the same request', async () => {
@@ -63,6 +56,7 @@ describe('@lyteboat/skill-router in the headless composition (in process, script
     expect(router[0]!.lastUser).toContain('<available_skills>')
     expect(router[0]!.lastUser).toContain('id: asset-overview')
     expect(router[0]!.lastUser).toContain('id: market-news')
+    expect(router[0]!.lastUser).not.toContain('workspace-notes')
     expect(router[0]!.lastUser).toContain('<latest_user_input>看看我的资产</latest_user_input>')
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(1)
@@ -84,7 +78,7 @@ describe('@lyteboat/skill-router in the headless composition (in process, script
     expect(reopenRefusal(records)).toBeUndefined()
   })
 
-  it('leaves the host composition alone without the preset: no router call, no skill injected', async () => {
+  it('leaves the host composition alone without an agent: no router call and no skill, not even the workspace\'s', async () => {
     const { home, workspace } = fresh('off')
     const before = model.requests.length
     const result = await headlessComposition(['看看我的资产'], { cwd: workspace, home, env: scriptedModelEnv(model) })
@@ -93,7 +87,7 @@ describe('@lyteboat/skill-router in the headless composition (in process, script
     expect(requests.filter(request => request.purpose === 'router')).toHaveLength(0)
     const loop = requests.filter(request => request.purpose === 'loop')
     expect(loop).toHaveLength(1)
-    expect(JSON.stringify(loop[0]!.body.messages)).not.toContain('ASSET-OVERVIEW-BODY')
+    expect(JSON.stringify(loop[0]!.body)).not.toContain('workspace-notes')
     const [log] = findSessionLogs(home)
     const records = readSessionLog(log!) as SessionRecord[]
     expect(records.map(record => record.type).filter(type => type.startsWith('lyteboat/'))).toEqual([])

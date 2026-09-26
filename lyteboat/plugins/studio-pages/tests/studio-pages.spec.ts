@@ -99,7 +99,7 @@ describe('the Studio pages\' endpoints', () => {
       sessionId: 'sess-1',
       mode: 'queue',
       content: [{ type: 'text', text: '看看我的资产' }],
-      sourceFields: { lyteboatRequest: { requestId, owner: 'studio', context: { customer: 'young-idle-cash' } } },
+      sourceFields: { lyteboatRequest: { requestId, owner: { kind: 'operator', id: 'studio' }, context: { customer: 'young-idle-cash' } } },
     }])
   })
 

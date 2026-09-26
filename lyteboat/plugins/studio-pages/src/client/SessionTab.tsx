@@ -49,9 +49,10 @@ export function SessionTab({ sessionId, useProjection, studio }: SessionTabProps
 
 function RequestSummary({ request }: { request: LyteboatRequestState | undefined }): ReactNode {
   const intake = request?.intake ?? null
+  const owner = request?.owner ?? null
   return (
     <p style={mutedStyle} data-testid="lyteboat-request-summary">
-      Requests: {request?.requests ?? 0} · owner: {request?.owner ?? 'none'} · admission:{' '}
+      Requests: {request?.requests ?? 0} · owner: {owner === null ? 'none' : `${owner.kind} ${owner.id}`} · admission:{' '}
       {intake === null ? 'none' : `${intake.decision}${intake.verdict === undefined ? '' : ` (${intake.verdict})`} by ${intake.by}`}
     </p>
   )

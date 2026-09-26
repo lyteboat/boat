@@ -146,7 +146,7 @@ export class StudioPagesService extends Service {
       sessionId: brandString<SessionId>(message.sessionId),
       mode: 'queue',
       content: [{ type: 'text', text: message.text }],
-      sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: this.config.owner ?? 'studio', ...message.context === undefined ? {} : { context: message.context } }),
+      sourceFields: this.ctx.requestContext.sourceFields({ requestId, owner: { kind: 'operator', id: this.config.owner ?? 'studio' }, ...message.context === undefined ? {} : { context: message.context } }),
     }, signal)
     return { requestId }
   }

@@ -1,8 +1,7 @@
 // Two lyteboat tools over `ctx.toolPolicy`. `lookup_assets` is always visible and
 // folds its result into the session state; `rebalance` stays hidden until the
-// user talks about rebalancing, and then still needs confirmation (denied under
-// `lyteboat headless`, which composes no approval answerer). The tool-policy
-// composition test inserts it the way `lyteboat headless --plugin <this file>` would.
+// user talks about rebalancing. The tool-policy composition test inserts it the
+// way `lyteboat headless --plugin <this file>` would.
 import { defineTool } from '@deepseek-ai/dsh-tools'
 
 export const name = 'example-tools'
@@ -48,7 +47,7 @@ export function apply(ctx) {
       render: (args, _value) => [{ type: 'text', text: `已按“${args.target}”调仓` }],
     },
     execute: async () => ({ ok: true }),
-  }), { visibility: 'auto', requiresConfirmation: true })
+  }), { visibility: 'auto' })
 
   ctx.on('lyteboat/pre-assemble', async (payload, next) => {
     if (WANTS_REBALANCE.test(textOf(payload.messages))) ctx.toolPolicy.activate(payload.agent, ['rebalance'])

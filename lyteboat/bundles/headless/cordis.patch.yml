@@ -6,18 +6,9 @@
 # that agent to the agent preset registry from its root, and the runner row
 # creates one agent composed from it (or resumes the stored session), drives the
 # task to quiescence, prints the final answer, and exits. lyteboat's service rows
-# come from @lyteboat/host and the agent loop (lyteboat's kernel) from dsh-base,
-# both listed before this bundle in the headless profile.
-
-- id: system-prompt
-  config:
-    personaSuffix: Your working directory is {{cwd}}.
-    personaPrefix: >-
-      You are a coding agent powered by the {{model}} model.
-
-- id: tools
-  config:
-    mode: !!js process.env.DSH_TOOLS_MODE
+# come from @lyteboat/host, the agent loop (lyteboat's kernel) from dsh-base,
+# and the business base from @lyteboat/business-base, all listed before this
+# bundle in the headless profile.
 
 - insert:
     - id: lyteboat-headless-startup

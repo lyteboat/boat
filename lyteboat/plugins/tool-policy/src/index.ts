@@ -1,18 +1,15 @@
 /**
  * @lyteboat/tool-policy — lyteboat's tool policy over the dsh tool registry. One host
  * service, `ctx.toolPolicy`, holds lyteboat-side metadata for tools registered in
- * the global layer or a preset's standing layer, and enforces it at three dsh
+ * the global layer or a preset's standing layer, and enforces it at two dsh
  * seams:
  *
  * - visibility: an `auto` tool stays out of the model's schemas until a
- *   plugin activates it for the agent (`activate`); a scope can make every
- *   inherited tool its policy does not declare `auto` as well
- *   (`declareUndeclared`), and such a tool stays hidden: only declared tools
- *   are activated. The agent's restriction is recomputed after every
- *   `lyteboat/pre-assemble` and reissued only when the denied set changed;
- * - confirmation: a `requiresConfirmation` tool answers `tools/pre-execute`
- *   with `ask`, so the approval seam decides (and denies when no answerer is
- *   composed);
+ *   plugin activates it for the agent (`activate`); a scope can hide every
+ *   inherited tool its policy does not declare (`declareInherited('hidden')`),
+ *   and such a tool stays hidden: only declared tools are activated. The
+ *   agent's restriction is recomputed after every `lyteboat/pre-assemble` and
+ *   reissued only when the denied set changed;
  * - state: a tool registered with `stateDelta` carries its delta on the
  *   result's presentation meta (`meta.lyteboat.stateDelta`); the `lyteboatState`
  *   projection folds it straight from the `tool/result` node (successful,
@@ -31,11 +28,11 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { NamedEntries, ScopedLayers, scopeOf, scopeParentOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { RUN_CODE_NAME } from '@deepseek-ai/dsh-tools'
-import type { PreToolDecision, ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { LYTEBOAT_STATE_CONTEXT_ORDER } from '@lyteboat/contracts'
-import type { LyteboatToolMeta, LyteboatToolVisibility, JsonValue } from '@lyteboat/contracts'
+import type { LyteboatInheritedToolVisibility, LyteboatToolMeta, JsonValue } from '@lyteboat/contracts'
 import { lyteboatStateProjectionDefinition, isJsonObject, renderLyteboatState } from './state.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -51,7 +48,7 @@ export type LyteboatToolPolicy = Omit<LyteboatToolMeta, 'stateDelta'>
 class PolicyLayer implements ScopeLayer {
   readonly metas: NamedEntries<LyteboatToolMeta>
   /** The visibility of the inherited tools no declaration on the chain names; one cell, since two answers contradict. */
-  undeclared: LyteboatToolVisibility | undefined
+  inherited: LyteboatInheritedToolVisibility | undefined
 
   constructor(scope: ScopeKey | undefined) {
     this.metas = new NamedEntries(name => new Error(scope === undefined
@@ -60,7 +57,7 @@ class PolicyLayer implements ScopeLayer {
   }
 
   isEmpty(): boolean {
-    return this.metas.isEmpty() && this.undeclared === undefined
+    return this.metas.isEmpty() && this.inherited === undefined
   }
 }
 
@@ -125,14 +122,6 @@ export class ToolPolicyService extends Service {
       await next()
       this.reconcile(payload.agent)
     })
-    ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
-      const decision = await next()
-      if (decision.kind !== 'allow') return decision
-      const meta = this.metaOf(exec.name, exec.agent)
-      return meta?.requiresConfirmation === true
-        ? { kind: 'ask', reason: `tool "${exec.name}" requires confirmation` }
-        : decision
-    })
   }
 
   /**
@@ -174,23 +163,23 @@ export class ToolPolicyService extends Service {
   }
 
   /**
-   * Declare, in the calling scope's layer, the visibility of every tool its
-   * agents inherit that no declaration on their chain names. Nearest scope
-   * wins; without one such tools are `always`. An undeclared tool made `auto`
-   * this way stays hidden: `activate` names declared tools only.
-   * @param visibility - the visibility the undeclared tools get.
+   * Declare, in the calling scope's layer, whether the tools its agents
+   * inherit and no declaration on their chain names reach the model. Nearest
+   * scope wins; without one they are `visible`. A hidden inherited tool stays
+   * hidden: `activate` names declared tools only.
+   * @param visibility - `visible` or `hidden`.
    * @returns the exact disposer that withdraws the declaration.
    * @throws when the scope already declared it.
    */
-  declareUndeclared(visibility: LyteboatToolVisibility): () => void {
+  declareInherited(visibility: LyteboatInheritedToolVisibility): () => void {
     return this.layers.effect(
       this.ctx,
       (layer) => {
-        if (layer.undeclared !== undefined) throw new Error(`lyteboat tool policy: the visibility of undeclared tools is already declared in this scope (${layer.undeclared})`)
-        layer.undeclared = visibility
-        return () => { layer.undeclared = undefined }
+        if (layer.inherited !== undefined) throw new Error(`lyteboat tool policy: the visibility of inherited tools is already declared in this scope (${layer.inherited})`)
+        layer.inherited = visibility
+        return () => { layer.inherited = undefined }
       },
-      { label: 'toolPolicy.declareUndeclared()', notify: false },
+      { label: 'toolPolicy.declareInherited()', notify: false },
     )
   }
 
@@ -250,17 +239,17 @@ export class ToolPolicyService extends Service {
     return state
   }
 
-  /** The visibility of the undeclared tools one scope inherits: the nearest declaration on its chain, `always` without one. */
-  private undeclaredOf(key: ScopeKey): LyteboatToolVisibility {
-    let visibility: LyteboatToolVisibility = 'always'
-    for (const layer of [this.layers.global, ...this.layers.chainLayers(key)]) visibility = layer.undeclared ?? visibility
+  /** Whether one scope's undeclared inherited tools reach the model: the nearest declaration on its chain, `visible` without one. */
+  private inheritedOf(key: ScopeKey): LyteboatInheritedToolVisibility {
+    let visibility: LyteboatInheritedToolVisibility = 'visible'
+    for (const layer of [this.layers.global, ...this.layers.chainLayers(key)]) visibility = layer.inherited ?? visibility
     return visibility
   }
 
   /**
    * Recompute one agent's restriction: every `auto` tool it inherits and has
-   * not activated is denied, and under `undeclared: auto` every inherited tool
-   * no declaration names. Reissued only when the set changed.
+   * not activated is denied, and with inherited tools `hidden` every inherited
+   * tool no declaration names. Reissued only when the set changed.
    * @throws when a declared name reaches the agent registered by no row, or
    * an `auto` tool sits in the agent's own layer, where `restrict` cannot hide
    * it: both are composition mistakes and never silently pass.
@@ -289,13 +278,13 @@ export class ToolPolicyService extends Service {
     const declaredNames = new Set(declared.map(([name]) => name))
     // The parent's view is what the agent inherits before its own restriction;
     // the PTC transport sits outside every restriction and is never named.
-    const undeclared = this.undeclaredOf(key) === 'auto'
+    const hiddenInherited = this.inheritedOf(key) === 'hidden'
       ? this.ctx.tools.schemas(inheritedView).map(schema => schema.name).filter(name => name !== RUN_CODE_NAME && !declaredNames.has(name))
       : []
     const deny = declared
       .filter(([name, meta]) => meta.visibility === 'auto' && !state.activated.has(name))
       .map(([name]) => name)
-      .concat(undeclared)
+      .concat(hiddenInherited)
       .sort()
     if (sameNames(deny, state.deny)) return
     state.dispose?.()

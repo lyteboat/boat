@@ -11,12 +11,8 @@ import { runLyteboat } from './support/lyteboat-process.ts'
 const SUCCESS_TEXT = 'LYTEBOAT-RUN-SMOKE-OK'
 const ANNOUNCE_PLUGIN = fileURLToPath(new URL('./fixtures/plugins/announce.mjs', import.meta.url))
 
-/**
- * The session-title provider issues its own model request whose events land at
- * timing-dependent positions and whose request would consume the scripted mock
- * sequence; the smoke disables that row through the ordinary --patch path.
- */
-const TITLE_LLM_OVERLAY = '- id: session-title-llm\n  disabled: true\n'
+/** A --patch overlay the smoke proves applied: the persona it sets reaches the model. */
+const PERSONA_OVERLAY = '- id: system-prompt\n  config:\n    personaPrefix: LYTEBOAT-PATCHED-PERSONA\n    includeHarnessIdentity: false\n'
 
 describe('lyteboat headless (built bin, mock model)', () => {
   const scratch = createLyteboatScratch('run-smoke')
@@ -28,11 +24,11 @@ describe('lyteboat headless (built bin, mock model)', () => {
       apiKey: 'mock-key',
       sequence: ['tool_call_success', 'success', 'success'],
       repeatLast: true,
-      toolName: 'read',
-      toolArguments: JSON.stringify({ file_path: 'README.md' }),
+      toolName: 'announce_status',
+      toolArguments: '{}',
       successText: SUCCESS_TEXT,
     })
-    writeFileSync(join(scratch.root, 'disable-title-llm.patch.yml'), TITLE_LLM_OVERLAY)
+    writeFileSync(join(scratch.root, 'persona.patch.yml'), PERSONA_OVERLAY)
   })
 
   afterAll(async () => {
@@ -40,10 +36,10 @@ describe('lyteboat headless (built bin, mock model)', () => {
     scratch.remove()
   })
 
-  it('answers one task through the real tool path and persists the turn when a --plugin file joins the tree', async () => {
+  it('answers one task through the real tool path and persists the turn when a --plugin file and a --patch join the tree', async () => {
     const { home, workspace } = scratch.run('smoke')
     const result = await runLyteboat(
-      ['headless', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'disable-title-llm.patch.yml'), 'read the readme and report'],
+      ['headless', '--plugin', ANNOUNCE_PLUGIN, '--patch', join(scratch.root, 'persona.patch.yml'), 'check the status and report'],
       { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(mock) } },
     )
     expect(result.code, result.stderr).toBe(0)
@@ -59,22 +55,25 @@ describe('lyteboat headless (built bin, mock model)', () => {
     const records = readSessionLog(logs[0]!)
     expect(records[0]).toMatchObject({ type: 'session', version: 4 })
     const types = eventTypes(records)
-    expect(types[0]).toBe('permission/preset')
+    // The business base composes no permission or approval rows, so the session opens on the message.
+    expect(types[0]).toBe('agent/inbox/spliced')
+    expect(types.filter(type => type.startsWith('permission/') || type.startsWith('approval/'))).toEqual([])
     expect(types).toContain('turn/start')
     expect(types).toContain('request/header')
     expect(types.filter(type => type === 'step/start')).toHaveLength(2)
     expect(types).not.toContain('session/title-llm-request')
     expect(types.at(-1)).toBe('turn/end')
     const toolCall = records.find(record => record['type'] === 'tool/call') as { data: { name: string; arguments: string } } | undefined
-    expect(toolCall?.data).toMatchObject({ name: 'read', arguments: JSON.stringify({ file_path: 'README.md' }) })
+    expect(toolCall?.data).toMatchObject({ name: 'announce_status', arguments: '{}' })
     const toolResult = records.find(record => record['type'] === 'tool/result') as { data: { message: { role: string; isError: boolean } } } | undefined
     expect(toolResult?.data.message).toMatchObject({ role: 'tool', isError: false })
-    expect(JSON.stringify(toolResult)).toContain('# run-smoke workspace')
+    expect(JSON.stringify(toolResult)).toContain('fixture-announce: status ok')
     const turnEnd = records.at(-1) as { data: { reason: { kind: string } } }
     expect(turnEnd.data.reason.kind).toBe('completed')
 
-    // Two model requests reached the mock: the tool-call step and the final answer.
+    // Two model requests reached the mock: the tool-call step and the final answer; the patched persona is in them.
     expect(mock.requests).toHaveLength(2)
+    expect(JSON.stringify(mock.requests[0])).toContain('LYTEBOAT-PATCHED-PERSONA')
 
     // The profile's plugins resolved through the installation's runtime resolution; nothing is linked into the profiles tree.
     expect(existsSync(join(home, 'profiles', 'node_modules'))).toBe(false)
