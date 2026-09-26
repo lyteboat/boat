@@ -87,6 +87,12 @@
       "path": "./lyteboat/plugins/web-pages/tsconfig.client.json"
     },
     {
+      "path": "./lyteboat/plugins/studio-auth"
+    },
+    {
+      "path": "./lyteboat/plugins/studio-api"
+    },
+    {
       "path": "./lyteboat/bundles/try"
     },
     {
@@ -97,6 +103,9 @@
     },
     {
       "path": "./lyteboat/bundles/web"
+    },
+    {
+      "path": "./lyteboat/bundles/studio"
     },
     {
       "path": "./lyteboat/apps/cli"

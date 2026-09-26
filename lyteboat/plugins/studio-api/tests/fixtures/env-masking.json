@@ -1,0 +1,167 @@
+[
+ {
+  "name": "DB_PASSWORD",
+  "value": "hunter2",
+  "masked": "***"
+ },
+ {
+  "name": "MY_PASSWD",
+  "value": "x",
+  "masked": "***"
+ },
+ {
+  "name": "APP_SECRET",
+  "value": "s",
+  "masked": "***"
+ },
+ {
+  "name": "CI_TOKEN",
+  "value": "t",
+  "masked": "***"
+ },
+ {
+  "name": "MODEL_API_KEY",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "SERVICE_APIKEY",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "SSH_PRIVATE_KEY",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "SSH_PRIVATEKEY",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "CLOUD_ACCESS_KEY",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "APPLICATION_CREDENTIALS",
+  "value": "/etc/creds.json",
+  "masked": "***"
+ },
+ {
+  "name": "COOKIE_SIGNING",
+  "value": "k",
+  "masked": "***"
+ },
+ {
+  "name": "DISK_ENCRYPTION",
+  "value": "on",
+  "masked": "***"
+ },
+ {
+  "name": "my_token",
+  "value": "lower",
+  "masked": "***"
+ },
+ {
+  "name": "Api_Key_Extra",
+  "value": "mixed",
+  "masked": "***"
+ },
+ {
+  "name": "PUBLIC_KEY",
+  "value": "not-masked",
+  "masked": "not-masked"
+ },
+ {
+  "name": "KEY_ID",
+  "value": "abc",
+  "masked": "abc"
+ },
+ {
+  "name": "HOME",
+  "value": "/home/user",
+  "masked": "/home/user"
+ },
+ {
+  "name": "PATH",
+  "value": "/usr/bin:/bin",
+  "masked": "/usr/bin:/bin"
+ },
+ {
+  "name": "EMPTY",
+  "value": "",
+  "masked": ""
+ },
+ {
+  "name": "DATABASE_URL",
+  "value": "postgres://user:pw@db.example:5432/app",
+  "masked": "postgres://***@db.example:5432/app"
+ },
+ {
+  "name": "REDIS_URL",
+  "value": "redis://:pw@localhost:6379/0",
+  "masked": "redis://***@localhost:6379/0"
+ },
+ {
+  "name": "DOUBLE_AT",
+  "value": "https://u:p@@host.example/x",
+  "masked": "https://***@host.example/x"
+ },
+ {
+  "name": "PLAIN_URL",
+  "value": "http://example.com/a@b",
+  "masked": "http://example.com/a@b"
+ },
+ {
+  "name": "NO_SLASHES",
+  "value": "mailto:someone@example.com",
+  "masked": "mailto:someone@example.com"
+ },
+ {
+  "name": "URL_SPACE",
+  "value": "https://u:p@host example",
+  "masked": "https://u:p@host example"
+ },
+ {
+  "name": "URL_NEWLINE",
+  "value": "https://u:p@host.example/x\n",
+  "masked": "https://***@host.example/x"
+ },
+ {
+  "name": "SESSION_JWT_VALUE",
+  "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTEifQ.c2lnbmF0dXJlLXZhbHVl",
+  "masked": "***"
+ },
+ {
+  "name": "SHORT_DOTS",
+  "value": "a.b.c",
+  "masked": "a.b.c"
+ },
+ {
+  "name": "VERSION",
+  "value": "1.2.3",
+  "masked": "1.2.3"
+ },
+ {
+  "name": "BLOB_100",
+  "value": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD",
+  "masked": "***"
+ },
+ {
+  "name": "BLOB_99",
+  "value": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJ",
+  "masked": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJ"
+ },
+ {
+  "name": "BLOB_NEWLINE",
+  "value": "QUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJDQUJD\n",
+  "masked": "***"
+ },
+ {
+  "name": "JWT_NEWLINE",
+  "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLTEifQ.c2lnbmF0dXJlLXZhbHVl\n",
+  "masked": "***"
+ }
+]

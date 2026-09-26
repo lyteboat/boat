@@ -1,0 +1,68 @@
+# The @lyteboat/studio bundle patch: the Studio workshop over dsh-base,
+# @lyteboat/host, and @lyteboat/business-base (the studio profile lists them in
+# that order), so an agent's tools and skills mount as `lyteboat serve` mounts
+# them. The startup row parses `lyteboat studio` into the
+# `lyteboatStudioStartup` service, or does one `account` command and exits
+# before any row below starts. The agent catalog declares every agent of the
+# roots and reloads them when a root changes; one that fails is reported on the
+# radar instead of stopping the Studio. The web server listens where startup
+# says; studio-auth signs people in (Studio's own accounts, or an authorizing
+# gateway) and studio-api answers /api/studio on it. No session controller or
+# client connection is mounted, so dsh's /api/remote.mux is not served and
+# Studio never creates or continues a session. The last row reports the
+# listener once the catalog is ready.
+
+- insert:
+    - id: lyteboat-studio-startup
+      name: '@lyteboat/studio/startup'
+
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatStudioStartup]
+      config:
+        roots: !!js ctx.lyteboatStudioStartup.agentRoots
+        strict: false
+        watch: true
+
+    # Studio names each agent it inspects; nothing runs a session under a default.
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: none
+
+    - id: webserver
+      name: '@deepseek-ai/dsh-host-webserver'
+      inject: [lyteboatStudioStartup]
+      config:
+        host: !!js ctx.lyteboatStudioStartup.host
+        port: !!js ctx.lyteboatStudioStartup.port
+
+    - id: studio-auth
+      name: '@lyteboat/studio-auth'
+      inject: [lyteboatStudioStartup]
+      config:
+        gateway: !!js ctx.lyteboatStudioStartup.gateway
+        admins: !!js ctx.lyteboatStudioStartup.admins
+        anonymousViewer: !!js ctx.lyteboatStudioStartup.anonymousViewer
+
+    - id: studio-api
+      name: '@lyteboat/studio-api'
+      inject: [lyteboatStudioStartup]
+      config:
+        trustedHosts: !!js ctx.lyteboatStudioStartup.trustedHosts
+        agentRoots: !!js ctx.lyteboatStudioStartup.agentRoots
+        lyteboatVersion: !!js ctx.lyteboatStudioStartup.lyteboatVersion
+        traceLinkTemplate: !!js ctx.lyteboatStudioStartup.traceLinkTemplate
+        maskedEnv: !!js ctx.lyteboatStudioStartup.maskedEnv
+
+    - id: lyteboat-studio
+      name: '@lyteboat/studio'
+
+# The projection cache writes a projection back into a session's storage on
+# a cold read; Studio reads the sessions serve writes and must never write them.
+- id: session-projection-cache
+  disabled: true
+
+# A service applies the user layers at startup only, as serve does.
+- id: hmr
+  disabled: true

@@ -1,0 +1,54 @@
+{
+  "name": "@lyteboat/studio",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat's Studio workshop bundle over dsh-base, @lyteboat/host, and @lyteboat/business-base: the agents of the --agents directories inspected without running a session, behind Studio's own sign-in and roles, on /api/studio; `lyteboat studio account` manages the accounts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./startup": {
+      "@lyteboat/source": "./src/startup.ts",
+      "types": "./lib/startup.d.ts",
+      "default": "./lib/startup.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "@lyteboat/agent-catalog": "workspace:*",
+    "@lyteboat/contracts": "workspace:*",
+    "@lyteboat/studio-api": "workspace:*",
+    "@lyteboat/studio-auth": "workspace:*",
+    "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
+    "@deepseek-ai/dsh-app-boot": "catalog:dsh",
+    "@deepseek-ai/dsh-cmdline": "catalog:dsh",
+    "@deepseek-ai/dsh-home-paths": "catalog:dsh",
+    "@deepseek-ai/dsh-host-webserver": "catalog:dsh",
+    "commander": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis"
+  },
+  "devDependencies": {
+    "@lyteboat/host": "workspace:*",
+    "@lyteboat/business-base": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis"
+  }
+}

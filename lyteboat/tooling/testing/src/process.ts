@@ -16,6 +16,8 @@ export interface LyteboatSpawnOptions {
   env?: Record<string, string | undefined>
   cwd?: string
   timeoutMs?: number
+  /** Written to the child's stdin, which then ends; without it stdin is empty. */
+  input?: string
 }
 
 function childEnv(overrides: Record<string, string | undefined> | undefined): Record<string, string> {
@@ -40,8 +42,9 @@ function startLyteboat(bin: string, args: readonly string[], options: LyteboatSp
   const child = spawn(process.execPath, [bin, ...args], {
     env: childEnv(options.env),
     cwd: options.cwd,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: [options.input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'],
   })
+  child.stdin?.end(options.input)
   let out = ''
   let err = ''
   const listeners = new Set<() => void>()

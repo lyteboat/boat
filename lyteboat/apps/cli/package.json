@@ -18,6 +18,7 @@
     "@lyteboat/eval": "workspace:*",
     "@lyteboat/try": "workspace:*",
     "@lyteboat/serve": "workspace:*",
+    "@lyteboat/studio": "workspace:*",
     "@lyteboat/web": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",

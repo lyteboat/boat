@@ -88,6 +88,8 @@ lyteboat eval --agents ./examples/agents --agent finance       # 跑 agent 的�
 lyteboat release --agents ./examples/agents --agent finance    # 按基线检查 agent，写下发布锁 agent.release.json
 lyteboat serve --release ./examples/agents/finance/agent.release.json   # 只服务发布过的那个 agent
 lyteboat web --agents ./examples/agents --no-open              # 浏览器界面：dsh web 加轻舟的页面
+lyteboat studio account add admin --role admin < pw.txt        # Studio 工作台的第一个账户，口令从标准输入读
+lyteboat studio --agents ./examples/agents                     # Studio 工作台：只查看 agent，不跑会话
 ```
 
 ## 使用
@@ -101,9 +103,10 @@ lyteboat web --agents ./examples/agents --no-open              # 浏览器界面
 | `lyteboat eval [选项]` | 跑一个 agent 的评测用例并逐轮检查（profile `eval`）；`lyteboat eval compare <前> <后>` 比较两次运行 |
 | `lyteboat release [选项]` | 让一个 agent 过发布闸门，通过就写下它的发布锁 `<agent>/agent.release.json`（profile `eval`，同 `lyteboat eval release`）；`--agents`、`--agent` 必填；通过退出 0，被拒退出 1 并在 stderr 说明是哪一步 |
 | `lyteboat web [选项]` | 启动浏览器界面（profile `web`）：dsh web 加轻舟的 Agents、Evals 页面和会话右侧栏的 lyteboat 页签；`--agents`（可重复，目录一变就重新声明）、`--agent`（新会话默认用的 agent），其余参数同 dsh web；`lyteboat web --help` |
+| `lyteboat studio [选项]` | 启动 Studio 工作台（profile `studio`）：只查看 agent，不建也不续会话；用自己的账户与角色（admin、editor、viewer）或经授权网关登录；目前提供 `/api/studio`（登录、用户与角色、系统信息、agent 雷达），页面随后加入；`lyteboat studio account add \| set-password \| remove \| list` 管账户，口令从标准输入读；`lyteboat studio --help` |
 | `lyteboat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
 
-六个命令都接受：
+七个命令都接受：
 
 | 选项 | 作用 |
 |---|---|
@@ -133,6 +136,21 @@ lyteboat web --agents ./examples/agents --no-open              # 浏览器界面
 | `--port <端口>` | 默认 8080；0 由系统挑一个空闲端口 |
 | `--auth <方式>` | `none`（默认，只能配 `127.0.0.1`）或 `shared-secret`（`Authorization: Bearer <密钥>`） |
 | `--secret-env <变量名>` | 存放共享密钥的环境变量，默认 `LYTEBOAT_CHAT_SECRET` |
+
+`lyteboat studio` 另有：
+
+| 选项 | 作用 |
+|---|---|
+| `--agents <目录>` | 要查看的 agent 目录（可重复，至少一个）；目录一变就重新读 |
+| `--host <地址>` | `127.0.0.1`（默认）或 `0.0.0.0`（须同时给 `--trusted-host`） |
+| `--port <端口>` | 默认 8090；0 由系统挑一个空闲端口 |
+| `--trusted-host <名字>` | 人们访问 Studio 用的主机名，或 `名字:端口`（可重复）；回环地址之外的 Host 头只认这些，其余回 421 |
+| `--gateway-secret-env <变量名>` | 网关模式：授权网关在每个请求上带这个变量的值和用户 id，缺了或不对回 401；第一次出现的身份自动成为 viewer |
+| `--admin <用户 id>` | 网关模式：启动时把这个用户设为 admin（可重复） |
+| `--anonymous-viewer` | 账户模式：不带令牌的请求按匿名 viewer 处理（只能配 `127.0.0.1`） |
+| `--trace-link <URL>` | 追踪界面里一条 trace 的地址，`{trace_id}` 处填 trace id |
+
+账户模式下没有任何账户时 Studio 不启动，并提示用 `lyteboat studio account add` 建第一个。账户、角色、令牌密钥和审计日志在 `$LYTEBOAT_HOME/studio/`，文件权限 0600；和 serve 同一个系统用户运行时，serve 也读得到它们。
 
 `/chat` 的请求体：
 
@@ -217,6 +235,7 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/bundles/eval` | `@lyteboat/eval` | `lyteboat eval` 背后的 bundle：只声明选中的 agent，挂上 session-controller（不带 Web 界面）和 eval-runner，跑完按结果退出 |
 | `lyteboat/bundles/web` | `@lyteboat/web` | `lyteboat web` 背后的 bundle：在 dsh web 之上声明 `--agents` 里的全部 agent（目录变了就重载，挂不上的在 Agents 页报原因），挂上轻舟的页面，关掉 dsh 自带的编码 preset；把 dsh web 挪进 preset 的 agent 层放回宿主。不带业务底座，保留 dsh 自己的能力，所以会话不按 `/chat` 的方式跑 |
 | `lyteboat/bundles/serve` | `@lyteboat/serve` | `lyteboat serve` 背后的服务 bundle：声明 `--agents` 里的全部 agent，挂上 dsh 的 session-controller（不带 Web 界面）和 `/chat` |
+| `lyteboat/bundles/studio` | `@lyteboat/studio` | `lyteboat studio` 背后的 bundle：带业务底座，agent 的工具和技能按 serve 的样子挂上；声明 `--agents` 里的全部 agent（目录变了就重载，挂不上的在雷达上报原因），挂上 studio-auth 与 studio-api；不挂 session-controller，Studio 不建也不续会话；`account` 子命令管账户 |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | `lyteboatDistro` 服务：内核来自哪个 dsh 版本、这次构建带了哪些内核扩展 |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | 工具可见性、状态增量；`./agent` 在 agent 的组合文件里声明策略，`inherited: visible \| hidden` 决定没有声明点名的继承工具是否可见 |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | 旁路模型调用（技能路由、准入分类）：各自带超时，每次调用在会话里留一条可忽略的审计记录；在 `maxTokens` 处截断的回答算失败；`reasoningEffort` 配置旁路调用请求的推理强度 |
@@ -229,7 +248,9 @@ dsh.upstream.json     所跟踪的 dsh 版本
 | `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`：业务调用方的入口。消息经 dsh 的 session-controller 进会话，请求（owner、trace id、上下文）记在人类消息上；回答是一个 JSON 或 enterprise 事件流，卡片放在正文标记处；共享密钥鉴权、会话归属、重复 `message_id` 检查、断连取消；agent 行可以登记帧装饰器给帧加字段 |
 | `lyteboat/plugins/eval-runner` | `@lyteboat/eval-runner` | 评测：读用例（YAML，严格校验），每个用例一个新会话、逐轮经 session-controller 提交，从会话日志读出每轮的表现并检查；real 模式录下会话，replay 模式用一个 `llm/stream` 监听按会话绑定的录音回答全部模型调用（主循环的从录下的助手消息推出，旁路调用的从 `lyteboat/aux-llm-call` 记录取）；写出运行结果、报告，比较两次运行 |
 | `lyteboat/plugins/web-pages` | `@lyteboat/web-pages` | 轻舟在 dsh web 里的页面：Agents（列表、挂载失败的原因、重载）、Evals（运行列表与报告），以及会话右侧栏的 lyteboat 页签：带请求上下文发一条消息（经 session-controller，和 `/chat` 同一条路），实时显示会话的激活技能、请求、卡片、状态。Host 面在 dsh 连接的 `/api/lyteboat/<端点>` 上回答页面，与其它 dsh web 请求同一套鉴权 |
-| `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema |
+| `lyteboat/plugins/studio-auth` | `@lyteboat/studio-auth` | Studio 的登录：运维用命令建的账户（scrypt 口令）、admin/editor/viewer 角色授予（不能改自己的角色，至少留一个 admin）、签名令牌、网关模式（共享密钥头加用户 id 头）、登录限流（同一用户名与来源连续 5 次失败，锁 30 秒）；`./accounts` 给账户命令用 |
+| `lyteboat/plugins/studio-api` | `@lyteboat/studio-api` | Studio 的 HTTP API，挂在宿主 web server 的 `/api/studio`：Host 允许名单（防 DNS 重绑定）、每个回答都带 nosniff 与 CSP、按角色检查、请求体按 contracts 的 schema 严格校验；登录、用户与角色、系统信息（环境变量打码）、trace 链接、agent 雷达（版本、指纹、发布锁、是否偏离发布）；每次改动写进审计日志 |
+| `lyteboat/core/contracts` | `@lyteboat/contracts` | 轻舟在 dsh 接缝上的声明：工具与技能元数据、内核的 `lyteboat/*` 事件（再导出）、日志节点、投影键、提示词顺序、`LyteboatDistro`，以及所声明 JSON 类型的 zod schema；`./studio` 是 Studio API 的请求与回答类型 |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | 金融智能体：刻意做到最小的示例业务 agent，只用公开理财常识。资产总览、按「100 减年龄」的配置诊断（两张卡）、三个概念的投资者教育，三个路由技能；请求进入循环前先准入（未授权出门槛卡、范围外拒识、投教与寒暄放行），客户由请求上下文指明 |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | 测试支撑：单元宿主（dsh 不变量、dsh 服务、内核的 agent loop）与 `MockAdapter`、进程内组合启动（一次性的跑到退出，服务型的边跑边测）、每个测试文件的临时 home 与工作区、会话日志读取与重开检查、脚本化模型、`/chat` 测试客户端、启动器进程 |
 

@@ -45,7 +45,7 @@ const PROFILE = 'composition'
 const WORKSPACE_ANCHOR = fileURLToPath(new URL('../../../../package.json', import.meta.url))
 
 /** lyteboat's mode runner rows; the launcher fails a startup that leaves one inactive (@lyteboat/cli mode-runners.ts). */
-const LYTEBOAT_MODE_RUNNER_IDS = new Set(['lyteboat-try', 'lyteboat-serve', 'lyteboat-eval'])
+const LYTEBOAT_MODE_RUNNER_IDS = new Set(['lyteboat-try', 'lyteboat-serve', 'lyteboat-eval', 'lyteboat-studio'])
 
 /** Cordis's active fiber state, spelled out: the const enum does not survive vitest's transform (@lyteboat/cli fiber-state.ts). */
 const FIBER_ACTIVE = 2 as FiberState.ACTIVE
@@ -73,6 +73,9 @@ export const LYTEBOAT_EVAL_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base'
 
 /** The `web` profile's bundle layers, in the order the launcher's profile template lists them. */
 export const LYTEBOAT_WEB_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@deepseek-ai/dsh-web-app', '@lyteboat/web']
+
+/** The `studio` profile's bundle layers, in the order the launcher's profile template lists them. */
+export const LYTEBOAT_STUDIO_BUNDLES: readonly string[] = ['@deepseek-ai/dsh-base', '@lyteboat/host', '@lyteboat/business-base', '@lyteboat/studio']
 
 /** What to boot and how. */
 export interface CompositionOptions {

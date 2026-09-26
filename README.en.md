@@ -88,6 +88,8 @@ lyteboat eval --agents ./examples/agents --agent finance      # run an agent's e
 lyteboat release --agents ./examples/agents --agent finance   # check an agent against its baseline and write its release lock
 lyteboat serve --release ./examples/agents/finance/agent.release.json   # serve only the agent the lock releases
 lyteboat web --agents ./examples/agents --no-open             # browser UI: dsh web with lyteboat's pages
+lyteboat studio account add admin --role admin < pw.txt       # the Studio workshop's first account; the password is read from stdin
+lyteboat studio --agents ./examples/agents                    # the Studio workshop: inspects agents, runs no session
 ```
 
 ## Usage
@@ -101,9 +103,10 @@ lyteboat web --agents ./examples/agents --no-open             # browser UI: dsh 
 | `lyteboat eval [options]` | Runs an agent's eval cases and checks every turn (profile `eval`); `lyteboat eval compare <before> <after>` compares two runs |
 | `lyteboat release [options]` | Puts an agent through the release gate and, when it passes, writes its release lock `<agent>/agent.release.json` (profile `eval`, as `lyteboat eval release`); `--agents` and `--agent` are required; exits 0 when released, 1 when refused, naming the step on stderr |
 | `lyteboat web [options]` | Serves the browser UI (profile `web`): dsh web with lyteboat's Agents and Evals pages and the lyteboat tab of a session's right sidebar; `--agents` (repeatable, reloaded when a directory changes), `--agent` (the agent a new session runs), and dsh web's own flags; `lyteboat web --help` |
+| `lyteboat studio [options]` | Serves the Studio workshop (profile `studio`): it inspects agents and never creates or continues a session; people sign in with Studio's own accounts and roles (admin, editor, viewer) or through an authorizing gateway; for now it serves `/api/studio` (sign-in, users and roles, the System page, the agent radar), and the pages follow; `lyteboat studio account add \| set-password \| remove \| list` manages the accounts, reading a password from stdin; `lyteboat studio --help` |
 | `lyteboat config dump [options]` | Prints the composed plugin tree and exits; `--default` shows the bundle layers only |
 
-All six accept:
+All seven accept:
 
 | Option | What it does |
 |---|---|
@@ -133,6 +136,21 @@ All six accept:
 | `--port <port>` | 8080 by default; 0 lets the OS pick a free port |
 | `--auth <mode>` | `none` (the default, `127.0.0.1` only) or `shared-secret` (`Authorization: Bearer <secret>`) |
 | `--secret-env <name>` | The environment variable that holds the shared secret; `LYTEBOAT_CHAT_SECRET` by default |
+
+`lyteboat studio` also takes:
+
+| Option | What it does |
+|---|---|
+| `--agents <dir>` | A directory of agents to inspect (repeatable, at least one); re-read when it changes |
+| `--host <host>` | `127.0.0.1` (the default) or `0.0.0.0` (with `--trusted-host`) |
+| `--port <port>` | 8090 by default; 0 lets the OS pick a free port |
+| `--trusted-host <name>` | A host name people reach the Studio by, or `name:port` (repeatable); beside the loopback names only these Host headers are answered, any other gets 421 |
+| `--gateway-secret-env <name>` | Gateway mode: an authorizing gateway sends this variable's value and the user's id on every request, and a request without them gets 401; an identity seen for the first time becomes a viewer |
+| `--admin <user-id>` | Gateway mode: makes this user an admin at startup (repeatable) |
+| `--anonymous-viewer` | Account mode: a request without a token reads as an anonymous viewer (`127.0.0.1` only) |
+| `--trace-link <url>` | The tracing UI's URL for one trace, with `{trace_id}` where the id goes |
+
+In account mode a Studio without any account refuses to start and names `lyteboat studio account add`. Accounts, roles, the token secret, and the audit log live in `$LYTEBOAT_HOME/studio/`, mode 0600; serve can read them when it runs as the same system user.
 
 A `/chat` request:
 
@@ -219,6 +237,7 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/bundles/eval` | `@lyteboat/eval` | The bundle behind `lyteboat eval`: declares the one agent the cases talk to, mounts the session controller (without the web UI) and the eval runner, and exits with the run's result |
 | `lyteboat/bundles/web` | `@lyteboat/web` | The bundle behind `lyteboat web`: over dsh web it declares every agent of the `--agents` directories (reloaded when a directory changes, a failure reported on the Agents page), mounts lyteboat's pages, and turns off dsh's coding presets; the agent plane dsh web moves behind its presets goes back on the host. It does not list the business base and keeps dsh's own capabilities, so a session does not run the way `/chat` runs it |
 | `lyteboat/bundles/serve` | `@lyteboat/serve` | The service bundle behind `lyteboat serve`: declares every agent of the `--agents` directories, mounts dsh's session controller (without the web UI) and `/chat` |
+| `lyteboat/bundles/studio` | `@lyteboat/studio` | The bundle behind `lyteboat studio`: it lists the business base, so an agent's tools and skills mount as serve mounts them; it declares every agent of the `--agents` directories (reloaded when a directory changes, a failure reported on the radar) and mounts studio-auth and studio-api; no session controller, so Studio never creates or continues a session; its `account` commands manage the accounts |
 | `lyteboat/plugins/distro` | `@lyteboat/distro` | The `lyteboatDistro` service: the dsh release the kernel came from and the kernel extensions this build carries |
 | `lyteboat/plugins/tool-policy` | `@lyteboat/tool-policy` | Tool visibility and state deltas; `./agent` declares policy in an agent's composition file, and its `inherited: visible \| hidden` sets whether the inherited tools no declaration names are visible |
 | `lyteboat/plugins/aux-llm` | `@lyteboat/aux-llm` | Side model calls (skill routing, intake classification), each under its own deadline and recorded in the session as an ignorable audit record; an answer cut off at `maxTokens` is a failure; `reasoningEffort` sets the effort side calls request |
@@ -231,7 +250,9 @@ Dependencies point down only: `apps` → `bundles` → `plugins` → `core`; `ex
 | `lyteboat/plugins/chat-api` | `@lyteboat/chat-api` | `/chat`, a business caller's entry: each message enters its session through dsh's session controller with its request (owner, trace id, context) on the human message; the answer is one JSON body or the enterprise event stream with its cards where the answer marks them; shared-secret auth, session ownership, duplicate `message_id` refusal, and cancellation when the caller leaves; an agent row may register a frame decorator that adds fields to its frames |
 | `lyteboat/plugins/eval-runner` | `@lyteboat/eval-runner` | Evals: reads the cases (YAML, checked strictly), runs every case as a new session whose turns go through the session controller, reads each turn from the session log and checks it; a real run records the sessions, a replay answers every model call from them through an `llm/stream` listener bound per session (loop calls from the recorded assistant messages, side calls from the `lyteboat/aux-llm-call` records); writes the run and its report, and compares two runs |
 | `lyteboat/plugins/web-pages` | `@lyteboat/web-pages` | lyteboat's pages in dsh web: Agents (the list, why one failed to mount, a reload), Evals (the runs and their reports), and the lyteboat tab of a session's right sidebar, which sends a message with its request context (through the session controller, the path `/chat` takes) and shows the session's active skill, request, cards, and state as they change. The Host face answers the pages at `/api/lyteboat/<endpoint>` on dsh's connection, behind the same authentication as every dsh web request |
-| `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, projection keys, prompt orders, `LyteboatDistro`, and the zod schemas of the JSON types it declares |
+| `lyteboat/plugins/studio-auth` | `@lyteboat/studio-auth` | Studio's sign-in: accounts an operator makes from the command line (scrypt passwords), admin/editor/viewer role grants (nobody changes their own, the last admin stays one), signed tokens, gateway mode (a shared-secret header and a user-id header), and login throttling (five failures of one username from one address lock it for 30 seconds); `./accounts` serves the account commands |
+| `lyteboat/plugins/studio-api` | `@lyteboat/studio-api` | Studio's HTTP API at `/api/studio` on the host web server: a Host allowlist (against DNS rebinding), `nosniff` and a CSP on every answer, role checks, request bodies checked strictly against the contracts' schemas; sign-in, users and roles, the System page (secrets in the environment masked), the trace link, and the agent radar (version, digest, release lock, whether the agent deviates from it); every change is appended to an audit log |
+| `lyteboat/core/contracts` | `@lyteboat/contracts` | lyteboat's declarations over the dsh seams: tool and skill metadata, the kernel's `lyteboat/*` events (re-exported), log nodes, projection keys, prompt orders, `LyteboatDistro`, and the zod schemas of the JSON types it declares; `./studio` holds the Studio API's requests and answers |
 | `examples/agents/finance` | `@lyteboat/agent-finance` | The finance agent, kept deliberately minimal and built from public financial knowledge only: an asset overview, an allocation diagnosis by the 100-minus-age rule (two cards), investor education on three concepts; three routed skills; requests are admitted before the loop (the unauthorized card, an out-of-scope reply, investor education and small talk always in), and the request context names the customer |
 | `lyteboat/tooling/testing` | `@lyteboat/testing` | Test infrastructure: the unit host (dsh's invariants, the dsh services, the kernel's agent loop) and `MockAdapter`, in-process composition boots (a one-shot run until it exits, a service while the test talks to it), per-file scratch homes and workspaces, the session-log reader and its reopen check, the scripted model, a `/chat` test client, launcher processes |
 
