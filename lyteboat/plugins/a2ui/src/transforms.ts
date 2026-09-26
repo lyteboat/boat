@@ -5,16 +5,11 @@
  * @module @lyteboat/a2ui/transforms
  */
 
-/** A transform failure, with the operator and field for diagnostics. */
+/** A transform failure; its message mirrors the reference implementation's. */
 export class TransformError extends Error {
-  readonly operator: string
-  readonly field: string
-
-  constructor(message: string, operator = '', field = '') {
+  constructor(message: string) {
     super(message)
     this.name = 'TransformError'
-    this.operator = operator
-    this.field = field
   }
 }
 
@@ -95,24 +90,24 @@ export function resolvePath(data: unknown, path: string): unknown {
         index = Number(bracket[2])
       }
       if (!Object.hasOwn(current, key)) {
-        throw new TransformError(`字段 '${path}' 不存在于数据中 (在 '${part}' 处失败, 可用字段: ${reprList(Object.keys(current))})`, '', path)
+        throw new TransformError(`字段 '${path}' 不存在于数据中 (在 '${part}' 处失败, 可用字段: ${reprList(Object.keys(current))})`)
       }
       current = current[key]
       if (index !== undefined) {
-        if (!Array.isArray(current)) throw new TransformError(`字段 '${path}' 中 '${key}' 不是数组 (在 '${part}' 处失败)`, '', path)
-        if (index < 0 || index >= current.length) throw new TransformError(`字段 '${path}' 数组下标越界 '${part}' (长度 ${String(current.length)})`, '', path)
+        if (!Array.isArray(current)) throw new TransformError(`字段 '${path}' 中 '${key}' 不是数组 (在 '${part}' 处失败)`)
+        if (index < 0 || index >= current.length) throw new TransformError(`字段 '${path}' 数组下标越界 '${part}' (长度 ${String(current.length)})`)
         current = current[index]
       }
     } else if (Array.isArray(current)) {
       if (/^\d+$/u.test(part)) {
         const index = Number(part)
-        if (index < 0 || index >= current.length) throw new TransformError(`字段 '${path}' 数组下标越界 (在 '${part}' 处失败)`, '', path)
+        if (index < 0 || index >= current.length) throw new TransformError(`字段 '${path}' 数组下标越界 (在 '${part}' 处失败)`)
         current = current[index]
       } else {
         current = current.filter((item): item is Record<string, unknown> => isRecord(item) && Object.hasOwn(item, part)).map(item => item[part])
       }
     } else {
-      throw new TransformError(`路径 '${path}' 中 '${part}' 不是 dict 或 list`, '', path)
+      throw new TransformError(`路径 '${path}' 中 '${part}' 不是 dict 或 list`)
     }
   }
   return current
@@ -142,7 +137,7 @@ function evalCondition(item: Record<string, unknown>, where: Record<string, unkn
     const value = item[field]
     const text = String(expr).trim()
     const match = CONDITION.exec(text)
-    if (match === null) throw new TransformError(`无效的条件表达式: ${text}`, 'where')
+    if (match === null) throw new TransformError(`无效的条件表达式: ${text}`)
     // Both groups are mandatory; the defaults only satisfy noUncheckedIndexedAccess.
     const [, op = '', rhsRaw = ''] = match
     const rhs = parseRhs(rhsRaw.trim())
@@ -175,7 +170,7 @@ function evalCondition(item: Record<string, unknown>, where: Record<string, unkn
 function filterArray(data: RawData, arrayPath: string, where: Record<string, unknown> | undefined): Record<string, unknown>[] {
   let array = resolvePath(data, arrayPath)
   if (isRecord(array)) array = [array]
-  if (!Array.isArray(array)) throw new TransformError(`'${arrayPath}' 不是数组`, 'filter', arrayPath)
+  if (!Array.isArray(array)) throw new TransformError(`'${arrayPath}' 不是数组`)
   const items = array.filter(isRecord)
   return where === undefined ? items : items.filter(item => evalCondition(item, where))
 }
@@ -253,7 +248,7 @@ export function execOne(spec: unknown, data: RawData, log: A2uiLog = SILENT_LOG)
     let total = 0
     for (const target of targets) {
       const dot = target.indexOf('.')
-      if (dot < 0) throw new TransformError(`sum 路径格式应为 'array.field': ${target}`, 'sum')
+      if (dot < 0) throw new TransformError(`sum 路径格式应为 'array.field': ${target}`)
       const arrayPath = target.slice(0, dot)
       const field = target.slice(dot + 1)
       for (const item of filterArray(data, arrayPath, where)) {
@@ -269,7 +264,7 @@ export function execOne(spec: unknown, data: RawData, log: A2uiLog = SILENT_LOG)
   }
   if ('concat' in spec) {
     const parts = spec['concat']
-    if (!Array.isArray(parts)) throw new TransformError('concat 参数必须是数组', 'concat')
+    if (!Array.isArray(parts)) throw new TransformError('concat 参数必须是数组')
     return parts.map((part) => {
       if (typeof part === 'string') return part
       if (isRecord(part)) {
@@ -300,7 +295,7 @@ export function execOne(spec: unknown, data: RawData, log: A2uiLog = SILENT_LOG)
   if ('get' in spec) {
     const path = spec['get']
     const format = typeof spec['format'] === 'string' ? spec['format'] : undefined
-    if (typeof path === 'string' && path.startsWith('$.')) throw new TransformError(`'$.' 引用只能在 select/map 中使用: ${path}`, 'get')
+    if (typeof path === 'string' && path.startsWith('$.')) throw new TransformError(`'$.' 引用只能在 select/map 中使用: ${path}`)
     try {
       return applyFormat(resolvePath(data, String(path)), format)
     } catch (error: unknown) {

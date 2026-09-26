@@ -228,7 +228,7 @@ export function StudioShell() {
   return (
     <div className="studio-shell">
       <StudioTopBar />
-      <div className="studio-main studio-main-dock-collapsed" style={mainStyle}>
+      <div className="studio-main" style={mainStyle}>
         <aside aria-label="Agent radar" className={`agent-radar ${radar.resizing ? 'agent-radar-resizing' : ''}`}>
           <button aria-label="Resize agent radar" className="agent-radar-resize-handle" onPointerDown={radar.startResize} type="button" />
           <div className="side-section">

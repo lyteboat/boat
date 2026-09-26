@@ -30,10 +30,6 @@ export class BoundPathTracker {
     this.boundPaths.add(path)
     return this.flat[path]
   }
-
-  value(path: string): unknown {
-    return this.flat[path]
-  }
 }
 
 const BINDING_CONTRACT_FIELDS = new Set(['text', 'url', 'name'])

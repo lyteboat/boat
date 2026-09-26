@@ -190,7 +190,7 @@ export function StudioEvalsChecksTable({ checks }: { checks: readonly StudioEval
 }
 
 /** The failing checks of one side, in the `└─ check` tree the original Studio uses; nothing when none failed. */
-export function StudioEvalsFailPanel({ failures, noteOf }: { failures: readonly string[]; noteOf?: (failure: string) => string | undefined }) {
+export function StudioEvalsFailPanel({ failures }: { failures: readonly string[] }) {
   if (failures.length === 0) return null
   return (
     <div className="evals-turn-section">
@@ -200,18 +200,14 @@ export function StudioEvalsFailPanel({ failures, noteOf }: { failures: readonly 
         </span>
       </div>
       <div className="evals-turn-fail-panel">
-        {failures.map(failure => {
-          const note = noteOf?.(failure)
-          return (
-            <div className="evals-turn-fail-row" key={failure}>
-              <span aria-hidden="true" className="evals-turn-fail-tree">└─</span>
-              <div className="evals-turn-fail-content">
-                <div className="evals-turn-fail-rule">{failure}</div>
-                {note !== undefined && <div className="evals-turn-fail-note">{note}</div>}
-              </div>
+        {failures.map(failure => (
+          <div className="evals-turn-fail-row" key={failure}>
+            <span aria-hidden="true" className="evals-turn-fail-tree">└─</span>
+            <div className="evals-turn-fail-content">
+              <div className="evals-turn-fail-rule">{failure}</div>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   )
