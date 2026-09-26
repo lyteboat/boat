@@ -4,12 +4,12 @@
  * on its declared model and replays unchanged, and names the step that
  * refuses anything else.
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { AgentCatalogEntry } from '@lyteboat/agent-catalog'
 import type { LyteboatAgentIdentity, LyteboatEvalRunRecord } from '@lyteboat/contracts'
+import { lyteboatTempDir } from '@lyteboat/testing/scratch'
 import { releaseAgent, type EvalBaselineReplay } from '../src/eval-release.ts'
 import type { EvalTurnResult } from '../src/eval-report.ts'
 
@@ -37,13 +37,9 @@ interface BaselineParts {
   headerModel?: string
 }
 
-const dirs: string[] = []
-afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
-
 /** An agent directory whose `evals/baseline` records the case `hello` as the parts say (by default: a real run of IDENTITY on MODEL). */
 function agentWithBaseline(parts: BaselineParts = {}): AgentCatalogEntry {
-  const dir = mkdtempSync(join(tmpdir(), 'eval-release-'))
-  dirs.push(dir)
+  const dir = lyteboatTempDir('eval-release')
   const baseline = join(dir, 'evals', 'baseline')
   mkdirSync(join(baseline, 'sessions', 'hello'), { recursive: true })
   writeFileSync(join(baseline, 'run.json'), JSON.stringify({ ...RECORD, ...parts.record }, null, 2) + '\n')
