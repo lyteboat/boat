@@ -2,20 +2,19 @@ import { join, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { GenerateOptions } from '@deepseek-ai/dsh-llm'
-import { bindScopeParent, createScope, scopeOf } from '@deepseek-ai/dsh-scope'
+import { createScope } from '@deepseek-ai/dsh-scope'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { defineContentToolFixture, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import A2uiService from '@lyteboat/a2ui'
-import { lyteboatAgentDef, type LyteboatAgentDef, type LyteboatAgentHost, type LyteboatAgentPlugin } from '@lyteboat/agent-def'
+import { lyteboatAgentDef, type LyteboatAgentDef, type LyteboatAgentHost } from '@lyteboat/agent-def'
 import AuxLlmService from '@lyteboat/aux-llm'
 import LyteboatDistroService from '@lyteboat/distro'
 import IntakeGuardService from '@lyteboat/intake-guard'
 import RequestContextService from '@lyteboat/request-context'
 import SkillRouterService from '@lyteboat/skill-router'
-import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse } from '@lyteboat/testing'
+import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, mountAgentStandingScope, textResponse } from '@lyteboat/testing'
 import ToolPolicyService from '@lyteboat/tool-policy'
 
 const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
@@ -35,28 +34,6 @@ async function harness(adapter: MockAdapter): Promise<Context> {
 
 function echo(name: string): ToolDefinition {
   return defineContentToolFixture({ name, description: name, parameters: {}, execute: async () => [{ type: 'text', text: `${name} ran` }] })
-}
-
-/** A standing scope, mounted as the preset registry mounts an agent's rows: its base URL is the agent directory. */
-async function mountAgent(ctx: Context, agentPlugin: LyteboatAgentPlugin, agentDir: string): Promise<{ standingKey: object }> {
-  const standingKey = {}
-  const standing = createScope(ctx, standingKey)
-  await standing.ctx.extend({ baseUrl: pathToFileURL(join(agentDir, sep)).href }).plugin(agentPlugin)
-  return { standingKey }
-}
-
-/** An agent joined to a standing scope in its setup window, as a session of that agent is. */
-async function agentUnder(ctx: Context, standingKey: object, sessionId: string): Promise<Agent> {
-  const { agent } = await ctx.agents.create({
-    sessionId: SessionId(sessionId),
-    agentOptions: { provider: 'mock', model: 'mock' },
-    setup: (agentCtx) => {
-      const key = scopeOf(agentCtx)
-      if (key === undefined) throw new Error('agent context has no scope')
-      bindScopeParent(key, standingKey)
-    },
-  })
-  return agent
 }
 
 const toolNames = (request: GenerateOptions): string[] => (request.tools ?? []).map(tool => tool.name).sort()
@@ -89,8 +66,8 @@ describe('lyteboatAgentDef', () => {
         return { 'agent/request': async (payload, next) => { requestTurns.push(payload.turn); return await next() } }
       },
     })
-    const { standingKey } = await mountAgent(ctx, DeskAgent, join(AGENTS, 'desk'))
-    const agent = await agentUnder(ctx, standingKey, 'desk-session')
+    const deskScope = await mountAgentStandingScope(ctx, join(AGENTS, 'desk'), DeskAgent)
+    const agent = await deskScope.createAgentInstance('desk-session')
 
     await send(agent, 'quote ABC')
 
@@ -115,8 +92,8 @@ describe('lyteboatAgentDef', () => {
       ...DESK_DEF,
       eventListeners: () => ({ 'agent/request': async (payload, next) => { requestTurns.push(payload.agent.session.id); return await next() } }),
     })
-    const { standingKey } = await mountAgent(ctx, DeskAgent, join(AGENTS, 'desk'))
-    const desk = await agentUnder(ctx, standingKey, 'desk-session')
+    const deskScope = await mountAgentStandingScope(ctx, join(AGENTS, 'desk'), DeskAgent)
+    const desk = await deskScope.createAgentInstance('desk-session')
     const other = await ctx.agentLoop.create(SessionId('other-session'), { provider: 'mock', model: 'mock' })
 
     await send(desk, 'hello')
@@ -142,31 +119,31 @@ describe('lyteboatAgentDef', () => {
 
   it('mounts no skills when the default skill directory does not exist', async () => {
     const ctx = await harness(new MockAdapter([]))
-    const { standingKey } = await mountAgent(ctx, lyteboatAgentDef({ agentId: 'bare', agentName: 'Bare' }), join(AGENTS, 'bare'))
+    const { standingKey } = await mountAgentStandingScope(ctx, join(AGENTS, 'bare'), lyteboatAgentDef({ agentId: 'bare', agentName: 'Bare' }))
     expect((await ctx.skills.snapshot({ scope: standingKey })).skills).toEqual([])
   })
 
   it('fails to mount on a key the definition does not have, at every level it owns', async () => {
     const ctx = await harness(new MockAdapter([]))
     const desk = join(AGENTS, 'desk')
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, skilRouting: { mode: 'full' } } as never), desk)).rejects.toThrow(/lyteboat agent def: unknown key "skilRouting"/u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, toolPolicy: { inherited: 'hidden', undeclared: 'auto' } } as never), desk)).rejects.toThrow(/toolPolicy: unknown key "undeclared"/u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, toolPolicy: { tools: { skill: { visibility: 'always', requiresConfirmation: true } } } } as never), desk)).rejects.toThrow(/toolPolicy\.tools\.skill: unknown key "requiresConfirmation"/u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, a2uiRenderTool: { templatesDir: 'assets/a2ui', stateKey: ['x'] } } as never), desk)).rejects.toThrow(/a2uiRenderTool: unknown key "stateKey"/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, skilRouting: { mode: 'full' } } as never))).rejects.toThrow(/lyteboat agent def: unknown key "skilRouting"/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, toolPolicy: { inherited: 'hidden', undeclared: 'auto' } } as never))).rejects.toThrow(/toolPolicy: unknown key "undeclared"/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, toolPolicy: { tools: { skill: { visibility: 'always', requiresConfirmation: true } } } } as never))).rejects.toThrow(/toolPolicy\.tools\.skill: unknown key "requiresConfirmation"/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, a2uiRenderTool: { templatesDir: 'assets/a2ui', stateKey: ['x'] } } as never))).rejects.toThrow(/a2uiRenderTool: unknown key "stateKey"/u)
   })
 
   it('fails to mount on a malformed value or a missing identity', async () => {
     const ctx = await harness(new MockAdapter([]))
     const desk = join(AGENTS, 'desk')
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, skillRouting: { mode: 'dynamc' } } as never), desk)).rejects.toThrow(/skillRouting\.mode/u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, agentId: 'Desk Agent' }), desk)).rejects.toThrow(/agentId: must be kebab-case/u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ agentId: 'desk' } as never), desk)).rejects.toThrow(/agentName/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, skillRouting: { mode: 'dynamc' } } as never))).rejects.toThrow(/skillRouting\.mode/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ ...DESK_DEF, agentId: 'Desk Agent' }))).rejects.toThrow(/agentId: must be kebab-case/u)
+    await expect(mountAgentStandingScope(ctx, desk, lyteboatAgentDef({ agentId: 'desk' } as never))).rejects.toThrow(/agentName/u)
   })
 
   it('names the field whose service refuses it', async () => {
     const ctx = await harness(new MockAdapter([]))
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, persona: {} as never }), join(AGENTS, 'desk'))).rejects.toThrow(/lyteboat agent def desk: persona: /u)
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, skillRouting: { provider: 'mock' } }), join(AGENTS, 'desk'))).rejects.toThrow(/lyteboat agent def desk: skillRouting: .*provider and model are declared together/u)
+    await expect(mountAgentStandingScope(ctx, join(AGENTS, 'desk'), lyteboatAgentDef({ ...DESK_DEF, persona: {} as never }))).rejects.toThrow(/lyteboat agent def desk: persona: /u)
+    await expect(mountAgentStandingScope(ctx, join(AGENTS, 'desk'), lyteboatAgentDef({ ...DESK_DEF, skillRouting: { provider: 'mock' } }))).rejects.toThrow(/lyteboat agent def desk: skillRouting: .*provider and model are declared together/u)
   })
 
   it('refuses a row config, which it would otherwise drop', async () => {
@@ -178,13 +155,13 @@ describe('lyteboatAgentDef', () => {
 
   it('fails to mount when agentId is not the name of its directory', async () => {
     const ctx = await harness(new MockAdapter([]))
-    await expect(mountAgent(ctx, lyteboatAgentDef({ ...DESK_DEF, agentId: 'wealth' }), join(AGENTS, 'desk')))
+    await expect(mountAgentStandingScope(ctx, join(AGENTS, 'desk'), lyteboatAgentDef({ ...DESK_DEF, agentId: 'wealth' })))
       .rejects.toThrow(/agentId "wealth" is declared in the agent directory "desk"/u)
   })
 
   it('fails to mount when a listed skill directory does not exist', async () => {
     const ctx = await harness(new MockAdapter([]))
-    await expect(mountAgent(ctx, lyteboatAgentDef({ agentId: 'bare', agentName: 'Bare', skillDirs: ['skills'] }), join(AGENTS, 'bare')))
+    await expect(mountAgentStandingScope(ctx, join(AGENTS, 'bare'), lyteboatAgentDef({ agentId: 'bare', agentName: 'Bare', skillDirs: ['skills'] })))
       .rejects.toThrow(/lyteboat agent def bare: skillDirs: skill directory not found: .*bare\/skills/u)
   })
 
