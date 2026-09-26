@@ -14,7 +14,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import type { LyteboatRunHeartbeat, LyteboatRunMetric } from '@lyteboat/contracts'
-import * as runMetrics from '@lyteboat/run-metrics'
+import RunMetricsRecorder from '@lyteboat/run-metrics'
 import RunMetricsReaderService from '@lyteboat/run-metrics/reader'
 import { MockAdapter, createLyteboatUnitHost, followUpAndWait as send, textResponse, toolCallResponse } from '@lyteboat/testing'
 import { runMetricDayOf } from '../src/run-metric-files.ts'
@@ -30,7 +30,7 @@ function scratch(): string {
 
 async function recorderHost(adapter: MockAdapter, dir: string): Promise<Context> {
   const ctx = await createLyteboatUnitHost(adapter)
-  await ctx.plugin(runMetrics, { dir, heartbeatMs: 60_000 })
+  await ctx.plugin(RunMetricsRecorder, { dir, heartbeatMs: 60_000 })
   for (const name of ['lookup', 'skill']) {
     ctx.tools.register(defineContentToolFixture({ name, description: name, parameters: {}, execute: async () => [{ type: 'text', text: `${name} ran` }] }))
   }

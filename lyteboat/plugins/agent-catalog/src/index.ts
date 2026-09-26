@@ -98,7 +98,7 @@ export interface Config {
   pinnedAgents?: Record<string, AgentCatalogPin>
 }
 
-export const Config: z<Config> = z.object({
+const Config: z<Config> = z.object({
   roots: z.array(z.string()).required(),
   include: z.array(z.string()),
   strict: z.boolean().default(true),
