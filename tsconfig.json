@@ -93,6 +93,9 @@
       "path": "./lyteboat/plugins/session-index"
     },
     {
+      "path": "./lyteboat/plugins/run-metrics"
+    },
+    {
       "path": "./lyteboat/plugins/studio-auth"
     },
     {

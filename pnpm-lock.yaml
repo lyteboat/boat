@@ -1212,6 +1212,9 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
+      '@lyteboat/run-metrics':
+        specifier: workspace:*
+        version: link:../../plugins/run-metrics
       commander:
         specifier: 'catalog:'
         version: 15.0.0
@@ -1261,6 +1264,9 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
+      '@lyteboat/run-metrics':
+        specifier: workspace:*
+        version: link:../../plugins/run-metrics
       '@lyteboat/session-index':
         specifier: workspace:*
         version: link:../../plugins/session-index
@@ -1798,6 +1804,40 @@ importers:
         specifier: workspace:*
         version: link:../../tooling/testing
 
+  lyteboat/plugins/run-metrics:
+    dependencies:
+      '@deepseek-ai/dsh-home-paths':
+        specifier: 0.1.7-rc.2
+        version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/schemastery':
+        specifier: 'catalog:'
+        version: 3.18.4
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: catalog:cordis
+        version: 4.0.4(@deepseek-ai/cordis-plugin-include@1.0.9)(@deepseek-ai/cordis-plugin-loader@1.0.5)
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:*
+        version: link:../../../dsh/core/agent
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:*
+        version: link:../../../dsh/llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../../dsh/core/session
+      '@deepseek-ai/dsh-session-projection':
+        specifier: workspace:*
+        version: link:../../../dsh/session/session-projection
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:*
+        version: link:../../../dsh/core/tools
+      '@lyteboat/testing':
+        specifier: workspace:*
+        version: link:../../tooling/testing
+
   lyteboat/plugins/session-index:
     dependencies:
       '@lyteboat/agent-catalog':
@@ -1907,6 +1947,9 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
+      '@lyteboat/run-metrics':
+        specifier: workspace:*
+        version: link:../run-metrics
       '@lyteboat/session-index':
         specifier: workspace:*
         version: link:../session-index

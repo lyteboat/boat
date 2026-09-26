@@ -27,7 +27,9 @@ import SkillRegistry from '@deepseek-ai/dsh-skill'
 import AgentCatalogService from '@lyteboat/agent-catalog'
 import AgentInspectorService from '@lyteboat/agent-inspector'
 import AuxLlmService from '@lyteboat/aux-llm'
+import type { LyteboatRunMetric } from '@lyteboat/contracts'
 import LyteboatDistroService from '@lyteboat/distro'
+import RunMetricsReaderService from '@lyteboat/run-metrics/reader'
 import SessionIndexService from '@lyteboat/session-index'
 import SkillRouterService from '@lyteboat/skill-router'
 import * as studioApi from '@lyteboat/studio-api'
@@ -50,6 +52,7 @@ interface StudioFixture {
   ctx: Context
   studioDir: string
   agentsDir: string
+  metricsDir: string
   call(method: string, path: string, options?: { token?: string; body?: unknown; host?: string; contentType?: string; ifMatch?: string }): Promise<{ status: number; headers: Record<string, string | string[] | undefined>; body: unknown }>
   login(username: string, password: string): Promise<string>
 }
@@ -67,6 +70,7 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
   const root = scratch()
   const studioDir = join(root, 'studio')
   const agentsDir = join(root, 'agents')
+  const metricsDir = join(root, 'run-metrics')
   writeAgent(agentsDir, 'alpha', 'name: Alpha\ndescription: the first agent\nversion: "1.0.0"\n')
   writeAgent(agentsDir, 'beta', 'version: "0.2.0"\n')
   if (setup.workspace === true) {
@@ -93,6 +97,7 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
   await ctx.plugin(AgentInspectorService)
   await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   await ctx.plugin(SessionIndexService)
+  await ctx.plugin(RunMetricsReaderService, { dir: metricsDir })
   await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
   await ctx.plugin(StudioAuthService, { dir: studioDir })
   await ctx.plugin(studioApi, { dir: studioDir, agentRoots: [agentsDir], ...config })
@@ -122,7 +127,7 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
     const answer = await call('POST', 'auth/login', { body: { username, password } })
     return (answer.body as { token: string }).token
   }
-  return { ctx, studioDir, agentsDir, call, login }
+  return { ctx, studioDir, agentsDir, metricsDir, call, login }
 }
 
 function auditLines(studioDir: string): Record<string, unknown>[] {
@@ -434,5 +439,74 @@ describe('an agent\'s sessions', () => {
     expect(noText.status).toBe(400)
     expect(anonymous.status).toBe(401)
     expect(await studio.call('GET', 'agents/alpha/sessions', { token: viewer })).toMatchObject({ status: 200, body: { sessions: [], total: 0, hasMore: false } })
+  })
+})
+
+describe('the Dashboard', () => {
+  const HOUR = 3_600_000
+  const T = Date.UTC(2026, 8, 20, 8)
+
+  function metric(agentId: string, startedAt: number, extra: Partial<LyteboatRunMetric> = {}): LyteboatRunMetric {
+    return {
+      agentId, sessionId: `s-${String(startedAt)}`, turn: 1, owner: { kind: 'user', id: `u-${agentId}` }, startedAt, durationMs: 2_000, firstContentMs: 400,
+      steps: 2, modelRequests: 2, auxCalls: 0, tools: [{ name: 'lookup', durationMs: 120, isError: false }], activatedSkills: [], outcome: 'completed', ...extra,
+    }
+  }
+
+  function writeMetrics(studio: StudioFixture, rows: LyteboatRunMetric[]): void {
+    mkdirSync(studio.metricsDir, { recursive: true })
+    // One UTC day file, as the recorder names it.
+    writeFileSync(join(studio.metricsDir, `${new Date(T).toISOString().slice(0, 10)}.jsonl`), rows.map(row => `${JSON.stringify(row)}\n`).join(''))
+  }
+
+  it('answers the health of every agent the catalog serves, or of one, bucketed, with a comparison window', async () => {
+    const studio = await studioFixture()
+    writeMetrics(studio, [
+      metric('alpha', T + 10 * 60_000),
+      metric('alpha', T + 2 * HOUR, { outcome: 'errored', errorCode: 'provider_error' }),
+      metric('beta', T + 3 * HOUR, { activatedSkills: ['help'] }),
+      metric('ghost', T + 3 * HOUR),
+      metric('alpha', T - 2 * HOUR),
+    ])
+    const viewer = await studio.login('vera', 'pw-vera')
+
+    const all = await studio.call('GET', `dashboard/health?from=${String(T)}&to=${String(T + 4 * HOUR)}`, { token: viewer })
+    const alpha = await studio.call('GET', `dashboard/health?from=${String(T)}&to=${String(T + 4 * HOUR)}&agent=alpha&bucket=60&compareFrom=${String(T - 4 * HOUR)}&compareTo=${String(T)}`, { token: viewer })
+
+    expect(all).toMatchObject({ status: 200, body: { agentIds: ['alpha', 'beta'], current: { bucketMinutes: 30, summary: { requestCount: 3, technicalFailureCount: 1, skillTriggerCount: 1, activeUsers: 2 } } } })
+    expect((all.body as { current: { series: unknown[] } }).current.series).toHaveLength(8)
+    expect(alpha.body).toMatchObject({
+      agentIds: ['alpha'],
+      current: { bucketMinutes: 60, summary: { requestCount: 2, completionRate: 0.5 }, toolRankings: [{ name: 'lookup', count: 2, averageDurationMs: 120 }] },
+      comparison: { bucketMinutes: 60, summary: { requestCount: 1 } },
+    })
+  })
+
+  it('refuses a health window that is missing, backwards, too finely bucketed, or half a comparison, and an agent it does not serve', async () => {
+    const studio = await studioFixture()
+    const viewer = await studio.login('vera', 'pw-vera')
+    const health = (query: string): ReturnType<StudioFixture['call']> => studio.call('GET', `dashboard/health?${query}`, { token: viewer })
+
+    expect((await health(`to=${String(T)}`)).status).toBe(400)
+    expect((await health(`from=${String(T)}&to=${String(T)}`)).status).toBe(400)
+    expect(await health(`from=${String(T)}&to=${String(T + 30 * 24 * HOUR)}&bucket=30`)).toMatchObject({ status: 400, body: { error: { message: expect.stringContaining('more than 500 buckets') } } })
+    expect((await health(`from=${String(T)}&to=${String(T + HOUR)}&compareFrom=${String(T - HOUR)}`)).status).toBe(400)
+    expect((await health(`from=${String(T)}&to=${String(T + HOUR)}&agent=nobody`)).status).toBe(404)
+    expect((await studio.call('GET', `dashboard/health?from=${String(T)}&to=${String(T + HOUR)}`)).status).toBe(401)
+  })
+
+  it('answers the static summary of the agents and the turns serve processes are running now', async () => {
+    const studio = await studioFixture()
+    mkdirSync(join(studio.metricsDir, 'running'), { recursive: true })
+    const turn = { agentId: 'alpha', sessionId: 's-live', turn: 1, startedAt: Date.now() - 1_000 }
+    writeFileSync(join(studio.metricsDir, 'running', 'h1-1.json'), JSON.stringify({ host: 'h1', pid: 1, heartbeatAt: Date.now(), turns: [turn, { ...turn, sessionId: 's-other' }] }))
+    const viewer = await studio.login('vera', 'pw-vera')
+
+    const summary = await studio.call('GET', 'dashboard/summary', { token: viewer })
+    const running = await studio.call('GET', 'dashboard/running', { token: viewer })
+
+    expect(summary).toMatchObject({ status: 200, body: { totalAgents: 2, totalSessions: 0, totalSkills: 0, activity: [] } })
+    expect((summary.body as { trends: { sessions: unknown[] } }).trends.sessions).toHaveLength(6)
+    expect(running.body).toEqual({ total: 2, agents: [{ agentId: 'alpha', agentLabel: 'Alpha', running: 2 }] })
   })
 })

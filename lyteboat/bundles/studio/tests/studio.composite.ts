@@ -238,13 +238,15 @@ describe('a skill hot-fix in lyteboat studio (in process)', () => {
   })
 })
 
-describe('sessions serve records, read by lyteboat studio (in process, scripted model)', () => {
+describe('sessions and run metrics serve records, read by lyteboat studio (in process, scripted model)', () => {
   const scratch = createLyteboatScratch('studio-sessions')
   let model: ScriptedModel
   let serve: RunningComposition
   let studio: RunningComposition
   let origin: string
   let home: string
+  let servedFrom: number
+  let servedTo: number
   const sessionIds: string[] = []
 
   beforeAll(async () => {
@@ -265,11 +267,13 @@ describe('sessions serve records, read by lyteboat studio (in process, scripted 
       timeoutMs: 170_000,
     })
     const chat = (await serve.waitForStdout(/^lyteboat serve: (http:\/\/127\.0\.0\.1:\d+\/chat) \(agents: desk\)$/mu))[1] ?? ''
+    servedFrom = Date.now()
     for (const [user, message] of [['u-1', '第一个问题'], ['u-2', '第二个问题']] as const) {
       const reply = await postChat(chat, { agent_id: 'desk', user_id: user, message, trace_id: `trace-${user}` })
       sessionIds.push((reply.body as { session_id: string }).session_id)
     }
     await serve.stop()
+    servedTo = Date.now()
     // The harness keeps one profile per home; Studio shares serve's home (its sessions), not serve's bundles.
     rmSync(join(home, 'profiles'), { recursive: true, force: true })
     ;({ studio, origin } = await startStudio(agents, run))
@@ -306,6 +310,18 @@ describe('sessions serve records, read by lyteboat studio (in process, scripted 
     expect(raw.body['header']).toMatchObject({ id: sessionIds[0], agentPreset: 'desk' })
     // Studio reads with read handles only: the stored logs are byte for byte what serve wrote.
     expect(findSessionLogs(home).map(path => readFileSync(path))).toEqual(stored)
+  })
+
+  it('draws the Dashboard from the turns serve recorded, and shows none running once serve stopped', async () => {
+    const viewer = await studioLogin(origin, 'vera', 'pw-vera')
+
+    const health = await studioCall(origin, 'GET', `dashboard/health?from=${String(servedFrom)}&to=${String(servedTo)}`, { token: viewer })
+    const summary = await studioCall(origin, 'GET', 'dashboard/summary', { token: viewer })
+    const running = await studioCall(origin, 'GET', 'dashboard/running', { token: viewer })
+
+    expect(health).toMatchObject({ status: 200, body: { agentIds: ['desk'], current: { bucketMinutes: 30, summary: { requestCount: 2, completionRate: 1, technicalFailureCount: 0, activeUsers: 2 } } } })
+    expect(summary.body).toMatchObject({ totalAgents: 1, totalUsers: 2, totalSessions: 2, sessions: { agents: [{ label: 'Desk', value: 2 }] } })
+    expect(running.body).toEqual({ total: 0, agents: [] })
   })
 })
 

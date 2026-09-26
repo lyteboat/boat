@@ -7,7 +7,8 @@
 # roots and reloads them when a root changes; one that fails is reported on the
 # radar instead of stopping the Studio. The agent inspector reads an agent's
 # tools, skills, and routing from its standing scope; the session index reads
-# the sessions serve writes, with read handles only. The web server listens
+# the sessions serve writes, with read handles only, and the run-metrics
+# reader the metrics serve's recorder writes. The web server listens
 # where startup says; studio-auth signs people in (Studio's own accounts, or
 # an authorizing gateway), studio-api answers /api/studio on it, and
 # studio-web serves the pages at /studio. No session controller or client
@@ -38,6 +39,9 @@
 
     - id: session-index
       name: '@lyteboat/session-index'
+
+    - id: run-metrics-reader
+      name: '@lyteboat/run-metrics/reader'
 
     - id: webserver
       name: '@deepseek-ai/dsh-host-webserver'

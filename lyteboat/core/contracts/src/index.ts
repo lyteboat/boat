@@ -452,6 +452,79 @@ export const LYTEBOAT_TURN_OUTCOME_OF_REASON: { readonly [reason: string]: Lyteb
   aborted: 'aborted',
 }
 
+/** The turn outcomes, as a list. */
+export const LYTEBOAT_TURN_OUTCOMES = ['completed', 'rejected', 'tool_stopped', 'stopped_by_limit', 'aborted', 'errored'] as const satisfies readonly LyteboatTurnOutcome[]
+
+/**
+ * One turn a service ran, as its run-metrics recorder appends it to
+ * `$LYTEBOAT_HOME/run-metrics/<YYYY-MM-DD>.jsonl` (the UTC day the turn
+ * started), one line each, after the turn's `turn/end`. It carries counts and
+ * timings, no message text: the Studio's dashboard reads it.
+ */
+export type LyteboatRunMetric = {
+  agentId: string
+  sessionId: string
+  turn: number
+  owner?: LyteboatRequestOwner
+  /** When the turn started (epoch ms). */
+  startedAt: number
+  durationMs: number
+  /** From the start to the first answer text or immediate card; the duration when there was neither. */
+  firstContentMs: number
+  steps: number
+  modelRequests: number
+  auxCalls: number
+  /** The tool calls, dsh's `skill` tool (a skill load) left out. */
+  tools: { name: string; durationMs?: number; isError: boolean; errorCode?: string }[]
+  /** Every skill active at some point of the turn, in order, once each. */
+  activatedSkills: string[]
+  /** The skill active when the turn ended. */
+  activeSkill?: string
+  outcome: LyteboatTurnOutcome
+  /** The failure code of an `errored` turn. */
+  errorCode?: string
+}
+
+/** The schema of {@link LyteboatRunMetric}. */
+export const lyteboatRunMetricSchema: z.ZodType<LyteboatRunMetric> = z.object({
+  agentId: z.string(),
+  sessionId: z.string(),
+  turn: z.number(),
+  owner: lyteboatRequestOwnerSchema.exactOptional(),
+  startedAt: z.number(),
+  durationMs: z.number(),
+  firstContentMs: z.number(),
+  steps: z.number(),
+  modelRequests: z.number(),
+  auxCalls: z.number(),
+  tools: z.array(z.object({ name: z.string(), durationMs: z.number().exactOptional(), isError: z.boolean(), errorCode: z.string().exactOptional() })),
+  activatedSkills: z.array(z.string()),
+  activeSkill: z.string().exactOptional(),
+  outcome: z.enum(LYTEBOAT_TURN_OUTCOMES),
+  errorCode: z.string().exactOptional(),
+})
+
+/**
+ * The turns one service process is running, as its recorder keeps them in
+ * `$LYTEBOAT_HOME/run-metrics/running/<host>-<pid>.json`: rewritten at each
+ * turn's start and end and every ten seconds. A reader treats a file whose
+ * heartbeat is older than 30 seconds as a process that is gone.
+ */
+export type LyteboatRunHeartbeat = {
+  host: string
+  pid: number
+  heartbeatAt: number
+  turns: { agentId: string; sessionId: string; turn: number; startedAt: number }[]
+}
+
+/** The schema of {@link LyteboatRunHeartbeat}. */
+export const lyteboatRunHeartbeatSchema: z.ZodType<LyteboatRunHeartbeat> = z.object({
+  host: z.string(),
+  pid: z.number(),
+  heartbeatAt: z.number(),
+  turns: z.array(z.object({ agentId: z.string(), sessionId: z.string(), turn: z.number(), startedAt: z.number() })),
+})
+
 /** The `lyteboatActiveSkill` fold state. */
 export interface LyteboatActiveSkillState {
   /** The skill in force; null before any skill is active. */

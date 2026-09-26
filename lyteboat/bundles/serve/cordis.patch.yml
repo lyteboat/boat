@@ -5,11 +5,13 @@
 # released agents pinned to their locks; dsh's session
 # controller runs without the web UI (workspace, connection, and file upload are
 # its host services); the web server listens where startup says, and chat-api
-# serves /chat, /agents, and /health on it. The last row reports the service
-# once the catalog is ready, or stops it. lyteboat's service rows come from
-# @lyteboat/host, the agent loop (lyteboat's kernel) from dsh-base, and the
-# business base from @lyteboat/business-base, all listed before this bundle in
-# the serve profile.
+# serves /chat, /agents, and /health on it. The run-metrics recorder writes one
+# line per turn and a heartbeat of the running turns under
+# $LYTEBOAT_HOME/run-metrics, which the Studio's Dashboard reads. The last row
+# reports the service once the catalog is ready, or stops it. lyteboat's
+# service rows come from @lyteboat/host, the agent loop (lyteboat's kernel)
+# from dsh-base, and the business base from @lyteboat/business-base, all
+# listed before this bundle in the serve profile.
 
 - insert:
     - id: lyteboat-serve-startup
@@ -41,6 +43,9 @@
 
     - id: session-controller
       name: '@deepseek-ai/dsh-api-session-controller'
+
+    - id: run-metrics
+      name: '@lyteboat/run-metrics'
 
     - id: webserver
       name: '@deepseek-ai/dsh-host-webserver'

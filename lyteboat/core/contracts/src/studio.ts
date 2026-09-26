@@ -347,6 +347,118 @@ export type StudioSessionRaw = {
   events: JsonValue[]
 }
 
+/**
+ * The health of a set of turns, as the Dashboard's performance view shows it:
+ * requests (turns), how they ended, first-content and total durations
+ * (nearest-rank percentiles), steps, tool calls, skills, and users (distinct
+ * owners; the peak is how many had a turn running at once).
+ */
+export type StudioHealthAggregate = {
+  requestCount: number
+  /** Completed or tool-stopped turns over all. */
+  completionRate: number
+  /** Errored turns, contention left out. */
+  technicalFailureCount: number
+  /** Turns stopped by the output limit. */
+  incompleteCount: number
+  /** Aborted turns and turns the admission answered. */
+  controlledExitCount: number
+  /** Turns refused because their session was busy. */
+  contentionCount: number
+  firstContentP50Ms: number | null
+  firstContentP95Ms: number | null
+  durationP50Ms: number | null
+  durationP95Ms: number | null
+  averageDurationMs: number | null
+  /** Steps per turn (the original Studio's turns per run). */
+  averageTurns: number
+  turnsP95: number | null
+  averageTurnDurationMs: number | null
+  toolCallCount: number
+  toolErrorCount: number
+  averageToolDurationMs: number | null
+  skillTriggerCount: number
+  activeUsers: number
+  peakConcurrentUsers: number
+}
+
+/** One time bucket of a health window. */
+export type StudioHealthSeriesPoint = StudioHealthAggregate & {
+  bucketIndex: number
+  /** The bucket's start (epoch ms). */
+  startedAt: number
+}
+
+/** A tool by calls, with its mean duration. */
+export type StudioToolRanking = { name: string; count: number; averageDurationMs: number | null }
+
+/** A skill by the turns it was active in, with their mean steps. */
+export type StudioSkillRanking = { skillId: string; count: number; averageTurns: number }
+
+/** The health of a time window: its summary, its buckets, and the top six tools and skills. */
+export type StudioHealthWindow = {
+  startedAt: number
+  endedAt: number
+  bucketMinutes: number
+  summary: StudioHealthAggregate
+  series: StudioHealthSeriesPoint[]
+  toolRankings: StudioToolRanking[]
+  skillRankings: StudioSkillRanking[]
+}
+
+/** `GET dashboard/health?from=&to=[&agent=][&bucket=][&compareFrom=&compareTo=]`. */
+export type StudioDashboardHealth = {
+  agentIds: string[]
+  current: StudioHealthWindow
+  /** The window to compare with, bucketed alike; overlay by bucket index. */
+  comparison?: StudioHealthWindow
+}
+
+/** One agent's turns running now. */
+export type StudioRunningAgent = { agentId: string; agentLabel: string; running: number }
+
+/** `GET dashboard/running`: the turns serve processes are running, from their heartbeats. */
+export type StudioDashboardRunning = {
+  total: number
+  agents: StudioRunningAgent[]
+}
+
+/** A month's cumulative count. */
+export type StudioTrendPoint = { label: string; shortLabel: string; value: number }
+
+/** One bar of a distribution. */
+export type StudioDistributionItem = { label: string; value: number; hint?: string }
+
+/** One figure of a section. */
+export type StudioInsightStat = { label: string; value: string; hint?: string }
+
+/** One entry of the activity feed. */
+export type StudioActivityItem = {
+  time: number
+  kind: 'skill' | 'session'
+  agentId: string
+  agentLabel: string
+  text: string
+  status: 'ok' | 'warn'
+}
+
+/** `GET dashboard/summary`: the Dashboard's static view. */
+export type StudioDashboardSummary = {
+  totalAgents: number
+  /** Distinct owners of the end users' sessions. */
+  totalUsers: number
+  totalSkills: number
+  /** Tools that reach the model, always or once activated. */
+  totalTools: number
+  totalSessions: number
+  /** Six months, cumulative: users by their first session, skills by their files, sessions by their last update. */
+  trends: { users: StudioTrendPoint[]; skills: StudioTrendPoint[]; sessions: StudioTrendPoint[] }
+  skills: { stats: StudioInsightStat[]; agents: StudioDistributionItem[]; requiredTools: StudioDistributionItem[] }
+  sessions: { stats: StudioInsightStat[]; agents: StudioDistributionItem[]; messageBands: StudioDistributionItem[] }
+  activity: StudioActivityItem[]
+  generatedAt: number
+}
+
 /** Why a Studio request was refused. */
 export type StudioErrorCode =
   | 'invalid_request'

@@ -3,10 +3,10 @@
  * over two fixture agents and the scripted model: `/chat` answers in one JSON
  * body or as the enterprise stream through dsh's session controller, records
  * the request on the human message, continues and queues within a session,
- * cancels the turn of a caller that left, and refuses what it cannot answer
- * with the status the protocol names.
+ * cancels the turn of a caller that left, refuses what it cannot answer
+ * with the status the protocol names, and records each turn's run metric.
  */
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -107,6 +107,27 @@ describe('lyteboat serve (in process, scripted model)', () => {
     expect(records[0]).toMatchObject({ type: 'session', cwd: join(home, 'agent-workdirs', 'alpha'), agentPreset: 'alpha' })
     expect(records.map(record => record.type).filter(type => type.startsWith('permission/') || type.startsWith('approval/'))).toEqual([])
     expect(reopenRefusal(records)).toBeUndefined()
+  })
+
+  it('records the turn\'s run metric with its owner and outcome, and lists no running turn once it ended', async () => {
+    const reply = await postChat(chat, { agent_id: 'beta', user_id: 'u-metrics', message: 'measure me' })
+    const { session_id: sessionId } = reply.body as { session_id: string }
+    const metricsDir = join(home, 'run-metrics')
+
+    const metric = await vi.waitFor(() => {
+      const rows = readdirSync(metricsDir).filter(name => name.endsWith('.jsonl'))
+        .flatMap(name => readFileSync(join(metricsDir, name), 'utf8').trim().split('\n'))
+        .map(line => JSON.parse(line) as { sessionId: string })
+      const row = rows.find(candidate => candidate.sessionId === sessionId)
+      if (row === undefined) throw new Error(`no run metric for ${sessionId} yet`)
+      return row
+    }, { timeout: 10_000, interval: 50 })
+
+    expect(metric).toMatchObject({ agentId: 'beta', turn: 1, owner: { kind: 'user', id: 'u-metrics' }, outcome: 'completed', steps: 1, tools: [] })
+    await vi.waitFor(() => {
+      const heartbeats = readdirSync(join(metricsDir, 'running')).map(name => JSON.parse(readFileSync(join(metricsDir, 'running', name), 'utf8')) as { turns: unknown[] })
+      expect(heartbeats.map(heartbeat => heartbeat.turns)).toEqual([[]])
+    }, { timeout: 10_000, interval: 50 })
   })
 
   it('gives the model the agent\'s own composition only: its persona, no coding tool, and nothing of the host\'s', async () => {
