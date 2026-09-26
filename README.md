@@ -180,10 +180,11 @@ lyteboat studio --agents ./examples/agents                     # Studio 工作�
 
 一个业务 agent 是一个目录 `examples/agents/<id>/`，目录名就是 id。业务 agent 不属于发行版：它建在 `lyteboat/` 之上，`lyteboat/` 里没有任何包依赖它。
 
-- `agent.cordis.yml`（必需）：persona、技能路由、工具与策略等插件行；每一行只作用于这个 agent 的会话。要用的 dsh 工具（例如 `@deepseek-ai/dsh-tool-todo`）也在这里列一行：业务模式除了 dsh 的 `skill` 工具，不给 agent 它没声明的工具。
-- `agent.yml`（可选）：清单，名字、描述、排序等展示信息，以及版本（`version`）和评测用的模型（`model`）；未知键加载时报错。
-- `assets/`：运行时读的非代码文件，与 `src/`、`lib/` 同级：`skills/`（每个技能一个 `SKILL.md`）、`a2ui/`（卡片模板）、`sample-data/`（示例数据）。
-- `src/`：业务代码，编译到 `lib/`，由组合文件里的 `./lib/x.js` 行加载。
+- `src/agent.ts`：agent 的唯一声明，默认导出 `lyteboatAgentDef({…})`（`@lyteboat/agent-def`）：`agentId`（即目录名）、`agentName`，以及要用到的人设、技能路由、工具策略、模型请求参数、业务工具、准入函数、事件监听。每一项只作用于这个 agent 的会话；业务模式除了 dsh 的 `skill` 工具，不给 agent 它没声明的工具。
+- `src/` 里其余的业务代码：工具、准入、纯逻辑，编译到 `lib/`；框架加载 `lib/agent.js`。
+- `assets/`：运行时读的非代码文件，与 `src/`、`lib/` 同级：`skills/`（每个技能一个 `SKILL.md`，默认从这里挂载）、`a2ui/`（卡片模板）、`sample-data/`（示例数据）。
+- `agent.yml`（可选）：清单，描述、排序等展示信息，以及版本（`version`）和评测用的模型（`model`）；未知键加载时报错。
+- `agent.cordis.yml`（可选）：有它时以它为准，原样作为这个 agent 的插件行。只在 agent 要加一个 dsh 工具（例如 `@deepseek-ai/dsh-tool-todo`）这类额外的行时才写：第一行是 `./lib/agent.js`，后面列那一行。
 - `evals/`：评测用例（`lyteboat eval` 默认读这里）和一份真模型录下的基线，组合测试免 key 回放它。
 
 完整步骤和一个可运行的例子见[开发业务 agent](docs/03-agent-development.md)，现成的示例是 [`examples/agents/finance`](examples/agents/finance)：一个刻意做到最小、只为跑通端到端流程的金融智能体。

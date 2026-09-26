@@ -180,10 +180,11 @@ Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outc
 
 A business agent is a directory `examples/agents/<id>/`, named by its id. Business agents are not part of the distribution: they build on `lyteboat/`, and nothing in `lyteboat/` depends on them.
 
-- `agent.cordis.yml` (required): the plugin rows for persona, skill routing, tools, and policy; each row applies to this agent's sessions only. A dsh tool the agent uses (`@deepseek-ai/dsh-tool-todo`, say) is a row here too: besides dsh's `skill` tool, the business modes give an agent no tool it does not declare.
-- `agent.yml` (optional): the manifest: display fields such as the name, plus the version (`version`) and the model it is evaluated on (`model`); an unknown key fails at load.
-- `assets/`: the non-code files read at runtime, beside `src/` and `lib/`: `skills/` (one `SKILL.md` per skill), `a2ui/` (card templates), `sample-data/`.
-- `src/`: business code, compiled to `lib/` and loaded by `./lib/x.js` rows of the composition file.
+- `src/agent.ts`: the agent's one declaration, a default export of `lyteboatAgentDef({…})` (`@lyteboat/agent-def`): `agentId` (the directory name), `agentName`, and whichever it uses of persona, skill routing, tool policy, model request parameters, business tools, admission, and event listeners. Each applies to this agent's sessions only; besides dsh's `skill` tool, the business modes give an agent no tool it does not declare.
+- The rest of `src/`: business code (tools, admission, pure logic), compiled to `lib/`; the framework loads `lib/agent.js`.
+- `assets/`: the non-code files read at runtime, beside `src/` and `lib/`: `skills/` (one `SKILL.md` per skill, mounted from here by default), `a2ui/` (card templates), `sample-data/`.
+- `agent.yml` (optional): the manifest: display fields such as the description, plus the version (`version`) and the model it is evaluated on (`model`); an unknown key fails at load.
+- `agent.cordis.yml` (optional): when present it wins, taken verbatim as the agent's plugin rows. Write it only when the agent adds a row such as a dsh tool (`@deepseek-ai/dsh-tool-todo`, say): the `./lib/agent.js` row first, then that row.
 - `evals/`: eval cases (where `lyteboat eval` looks by default) and a baseline recorded against the real model, which the composition test replays without a key.
 
 The [agent development guide](docs/03-agent-development.md) walks through every step with a runnable example; [`examples/agents/finance`](examples/agents/finance) is a working agent kept deliberately minimal, there to exercise the end-to-end flow.
