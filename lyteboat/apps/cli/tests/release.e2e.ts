@@ -50,6 +50,23 @@ describe('lyteboat release, then lyteboat serve --release (built bin, scripted m
     expect(JSON.parse(readFileSync(lock, 'utf8'))).toMatchObject({ agent: { id: 'echo', version: '0.1.0' }, baseline: { cases: 1, turns: 1 } })
   })
 
+  it('exits 1 naming the changed file when the agent differs from its lock, and nothing else fails', async () => {
+    const { home, workspace } = scratch.run('changed')
+    const composition = join(root, 'echo', 'agent.cordis.yml')
+    const original = readFileSync(composition, 'utf8')
+    writeFileSync(composition, `${original}# edited after the release\n`)
+    try {
+      const result = await runLyteboat(['serve', '--release', lock, '--port', '0'], { cwd: workspace, env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: '1' } })
+
+      expect(result.code).toBe(1)
+      expect(result.stderr).toContain('echo: the directory differs from its release 0.1.0')
+      expect(result.stderr).toContain('changed agent.cordis.yml')
+      expect(result.stderr).not.toContain('fatal')
+    } finally {
+      writeFileSync(composition, original)
+    }
+  })
+
   it('serves the agent its lock pins, with the version on /agents', async () => {
     const { home, workspace } = scratch.run('serve')
     const lyteboat = startLyteboat(['serve', '--release', lock, '--port', '0'], { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(model) } })

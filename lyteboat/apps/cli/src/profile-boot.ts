@@ -260,6 +260,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     overlays: composed.overlays,
     telemetryDisabledEnv: process.env['DSH_TELEMETRY_DISABLED'],
   }
+  let exitRequested = false
   const ctx = await boot(NAME, rootConfig, readProfilePatches(NAME, profileContext, composed.profile), async (hostCtx) => {
     app.current = hostCtx
     hostCtx.provide('profileContext', profileContext)
@@ -268,12 +269,16 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     await hostCtx.plugin(PluginPackages, { resolution: composed.resolution })
     provideCmdline(hostCtx, {
       args: options.args,
-      exit: code => void shutdown.shutdown(code),
+      exit: (code) => {
+        exitRequested = true
+        void shutdown.shutdown(code)
+      },
       ready: appReady.service,
     })
   })
   app.current = ctx
-  const inactiveRunner = inactiveModeRunner(ctx)
+  // A runner that already asked to exit is tearing the tree down, and has reported why.
+  const inactiveRunner = exitRequested ? undefined : inactiveModeRunner(ctx)
   if (inactiveRunner !== undefined) {
     // The launcher reports its own startup failures on stderr, as dsh's audit does.
     process.stderr.write(`${NAME}: startup failed: ${inactiveRunner} did not activate (the entries above say why)\n`)
