@@ -294,7 +294,7 @@ Syncing a new dsh release, promoting a package into the kernel, and running G3 a
 - Known limitations:
   - `lyteboat web` is dsh web with lyteboat's pages and keeps dsh's own capabilities (coding tools, sandbox, approval), so its sessions do not run the way `/chat` runs them; to debug an agent as `/chat` runs it, use `lyteboat eval` or `lyteboat try --agent`. A message sent from dsh's own composer in `lyteboat web` carries no request context; the lyteboat tab sends one that does. dsh's conversation shows a card as its marker only; the tab shows the cards as JSON.
   - A business mode's model requests still carry a few traces of the host: dsh's skill-invocation message names the skill's absolute directory; the compaction summarizer's instructions are written for a coding assistant; `{{cwd}}` in a persona renders the server's path, so a business persona should not use it. The launcher also still reads a `.env` in the directory it starts in (kept for the operator's deployment settings).
-  - There is no memory and there are no suggested questions. Side calls use the agent's own model by default; skill routing can name its own provider and model in the `@lyteboat/skill-router/agent` row, intake classification cannot yet.
+  - There is no memory and there are no suggested questions. Side calls use the agent's own model by default; skill routing can name its own provider and model in `lyteboatAgentDef`'s `skillRouting`, intake classification cannot yet.
 - What comes next: the forward plan in the [alignment analysis](docs/04-reference-alignment.md).
 
 ## Contributing
