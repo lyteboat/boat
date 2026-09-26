@@ -9,14 +9,16 @@
  * agent's skill (on a copy of it) is saved, audited, and shows the agent
  * deviating from its release. The sessions serve records from /chat are
  * listed, searched, and shown by a Studio on the same home, which leaves them
- * as they were. A Studio without accounts refuses to start and names the
- * command that makes one.
+ * as they were. An admin starts an agent's eval cases from the Studio as a
+ * `lyteboat eval` process of the built launcher, replays that run, compares
+ * the two, and stops a run. A Studio without accounts refuses to start and
+ * names the command that makes one.
  */
 import { createHash } from 'node:crypto'
-import { cpSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { setStudioAccount, setStudioGrant } from '@lyteboat/studio-auth/accounts'
 import { postChat } from '@lyteboat/testing/chat-client'
 import { LYTEBOAT_SERVE_BUNDLES, LYTEBOAT_STUDIO_BUNDLES, bootComposition, startComposition, type RunningComposition } from '@lyteboat/testing/composition'
@@ -26,6 +28,8 @@ import { findSessionLogs } from '@lyteboat/testing/session-log'
 
 const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
 const WORKSPACE_MODULES = fileURLToPath(new URL('../../../../node_modules', import.meta.url))
+/** The built launcher an eval run the Studio starts runs; `pnpm run test` builds it first. */
+const LYTEBOAT_BIN = fileURLToPath(new URL('../../../apps/cli/lib/bin.js', import.meta.url))
 
 /** What the caller wrote last; dsh appends its runtime context to the request message. */
 function latestMessage(request: RecordedRequest): string {
@@ -67,13 +71,15 @@ function addStudioAccounts(home: string): void {
   setStudioGrant(join(home, 'studio'), 'vera', 'viewer', 'cli')
 }
 
-async function startStudio(agents: string, run: { workspace: string; home: string }): Promise<{ studio: RunningComposition; origin: string }> {
+async function startStudio(agents: string, run: { workspace: string; home: string }, launch: { env: Record<string, string>; lyteboatBin?: string } = { env: {} }): Promise<{ studio: RunningComposition; origin: string }> {
   const studio = startComposition({
     bundles: LYTEBOAT_STUDIO_BUNDLES,
     args: ['--agents', agents, '--port', '0'],
+    // No launcher boots the composition, so the test names the bin an eval run starts; a patch replaces the row's config whole.
+    ...launch.lyteboatBin === undefined ? {} : { patches: [{ id: 'studio-api', config: { agentRoots: [agents], lyteboatBin: launch.lyteboatBin } }] },
     cwd: run.workspace,
     home: run.home,
-    env: {},
+    env: launch.env,
     timeoutMs: 170_000,
   })
   const [, port] = await studio.waitForStdout(/^lyteboat studio: http:\/\/127\.0\.0\.1:(\d+)\/studio\/ \(internal sign-in\)$/mu) as unknown as [string, string]
@@ -322,6 +328,67 @@ describe('sessions and run metrics serve records, read by lyteboat studio (in pr
     expect(health).toMatchObject({ status: 200, body: { agentIds: ['desk'], current: { bucketMinutes: 30, summary: { requestCount: 2, completionRate: 1, technicalFailureCount: 0, activeUsers: 2 } } } })
     expect(summary.body).toMatchObject({ totalAgents: 1, totalUsers: 2, totalSessions: 2, sessions: { agents: [{ label: 'Desk', value: 2 }] } })
     expect(running.body).toEqual({ total: 0, agents: [] })
+  })
+})
+
+describe('eval runs started from lyteboat studio (in process, built launcher, scripted model)', () => {
+  const scratch = createLyteboatScratch('studio-evals')
+  let model: ScriptedModel
+  let studio: RunningComposition
+  let origin: string
+  let admin: string
+
+  type EvalRunBody = { run: { runId: string; status: string; mode: string; from?: string; cases: { total?: number; passed: number } }; cases: { caseId: string; pass: boolean }[] }
+
+  const settled = (runId: string, status: string): Promise<EvalRunBody> => vi.waitFor(async () => {
+    const answer = await studioCall(origin, 'GET', `evals/runs/${runId}`, { token: admin })
+    const { run } = answer.body as unknown as EvalRunBody
+    // A run that ended otherwise says why (its process's last error line).
+    if (run.status !== 'running') expect(run.status, JSON.stringify(run)).toBe(status)
+    expect(run.status).toBe(status)
+    return answer.body as unknown as EvalRunBody
+  }, { timeout: 90_000, interval: 250 })
+
+  beforeAll(async () => {
+    model = await startScriptedModel(withTitle(request => ({ text: `OK:${latestMessage(request)}` })), { apiKey: 'mock-key' })
+    const run = scratch.run('evals')
+    addStudioAccounts(run.home)
+    const agents = join(scratch.root, 'agents')
+    cpSync(join(AGENTS, 'desk'), join(agents, 'desk'), { recursive: true })
+    mkdirSync(join(agents, 'desk', 'evals'))
+    writeFileSync(join(agents, 'desk', 'evals', 'cases.yml'), 'cases:\n  - id: ask-time\n    turns:\n      - message: 现在几点？\n        expect: { outcome: completed }\n')
+    symlinkSync(WORKSPACE_MODULES, join(scratch.root, 'node_modules'))
+    ;({ studio, origin } = await startStudio(agents, run, { env: { ...scriptedModelEnv(model), DSH_TELEMETRY_DISABLED: '1' }, lyteboatBin: LYTEBOAT_BIN }))
+    admin = await studioLogin(origin, 'root', 'pw-root')
+  })
+
+  afterAll(async () => {
+    await studio.stop()
+    await model.close()
+    scratch.remove()
+  })
+
+  it('runs the agent\'s cases against the model, replays that run without it, and compares the two', async () => {
+    const real = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'real' } })).body as { runId: string }
+    const recorded = await settled(real.runId, 'passed')
+    const requests = model.requests.length
+    const replay = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'replay', from: real.runId } })).body as { runId: string }
+    const replayed = await settled(replay.runId, 'passed')
+    const compared = await studioCall(origin, 'GET', `evals/compare?a=${real.runId}&b=${replay.runId}`, { token: admin })
+
+    expect(recorded).toMatchObject({ run: { mode: 'real', cases: { total: 1, passed: 1 } }, cases: [{ caseId: 'ask-time', pass: true }] })
+    expect(replayed.run).toMatchObject({ mode: 'replay', from: real.runId })
+    expect(model.requests.length).toBe(requests)
+    expect(compared.body).toMatchObject({ breakdown: { unchangedPass: 1, regressed: 0 }, changes: [] })
+  })
+
+  it('stops a run it started, which ends stopped', async () => {
+    const started = (await studioCall(origin, 'POST', 'evals/runs', { token: admin, body: { agentId: 'desk', mode: 'real' } })).body as { runId: string }
+
+    const stop = await studioCall(origin, 'POST', `evals/runs/${started.runId}/stop`, { token: admin })
+
+    expect(stop.status).toBe(200)
+    expect((await settled(started.runId, 'stopped')).cases).toEqual([])
   })
 })
 

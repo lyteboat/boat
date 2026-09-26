@@ -3,7 +3,8 @@
  * their end users' sessions, ported from the original Studio's summary
  * (`plugins/studio/api/dashboard.py`): six-month cumulative trends, the top
  * six of each distribution with its share, the sessions' coverage and
- * message bands, and the twelve newest activities. lyteboat has no memory,
+ * message bands, and the twelve newest activities (skill changes, sessions,
+ * and eval runs). lyteboat has no memory,
  * no skill groups or tags, and no tool file times: the memory figures are
  * gone, the skills section shows skills per agent and the tools skills
  * require, and tools have a total only.
@@ -25,6 +26,8 @@ export interface StudioSummaryAgent {
   /** Its tools that reach the model. */
   toolCount: number
   sessions: StudioSessionSummary[]
+  /** Its written eval runs, for the activity feed. */
+  evalRuns?: { runId: string; startedAt: number; passed: number; total: number }[]
 }
 
 function ratio(part: number, total: number): string {
@@ -116,6 +119,9 @@ function activity(agents: readonly StudioSummaryAgent[]): StudioActivityItem[] {
   for (const agent of agents) {
     for (const skill of agent.skills) {
       if (skill.updatedAt !== undefined) items.push({ time: skill.updatedAt, kind: 'skill', agentId: agent.id, agentLabel: agent.label, text: `Skill ${skill.name} updated`, status: 'ok' })
+    }
+    for (const run of agent.evalRuns ?? []) {
+      items.push({ time: run.startedAt, kind: 'eval', agentId: agent.id, agentLabel: agent.label, text: `Eval ${run.runId} (${String(run.passed)}/${String(run.total)} cases)`, status: run.passed === run.total ? 'ok' : 'warn' })
     }
     for (const session of agent.sessions) {
       const id = session.sessionId.replace(/^session-/u, '').slice(0, 8)

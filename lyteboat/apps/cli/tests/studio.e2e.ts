@@ -2,12 +2,14 @@
  * `lyteboat studio` on the built launcher: an operator makes, lists, changes,
  * and removes accounts with the password on stdin; the Studio refuses to start
  * without one, serves `/api/studio` and the built pages once there is one
- * (sign-in, the agent radar, the page's script), and stops cleanly on SIGTERM; flags that would widen who can reach
- * it are usage errors.
+ * (sign-in, the agent radar, the page's script), and stops cleanly on SIGTERM; it
+ * starts an agent's eval run as a process of its own launcher's bin; flags
+ * that would widen who can reach it are usage errors.
  */
 import { fileURLToPath } from 'node:url'
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
+import { scriptedModelEnv, startScriptedModel, withTitle } from '@lyteboat/testing/scripted-model'
 import { runLyteboat, startLyteboat } from './support/lyteboat-process.ts'
 
 const AGENTS = fileURLToPath(new URL('./fixtures/agents', import.meta.url))
@@ -60,6 +62,31 @@ describe('lyteboat studio (built bin)', () => {
 
     const removed = await runLyteboat(['studio', 'account', 'remove', 'root'], { cwd: workspace, env })
     expect(removed).toMatchObject({ code: 0, stdout: 'lyteboat studio: account root removed\n' })
+  })
+
+  it('starts an agent\'s eval run as a process of its own launcher\'s bin, and shows it passed', async () => {
+    const { home, workspace } = scratch.run('evals')
+    const model = await startScriptedModel(withTitle(() => ({ text: 'SMOKE-OK' })), { apiKey: 'mock-key' })
+    const env = { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: '1', ...scriptedModelEnv(model) }
+    await runLyteboat(['studio', 'account', 'add', 'root', '--role', 'admin'], { cwd: workspace, env, input: 'pw\n' })
+    const studio = startLyteboat(['studio', '--agents', AGENTS, '--port', '0'], { cwd: workspace, env })
+    try {
+      const origin = (await studio.waitForStdout(/lyteboat studio: (http:\/\/127\.0\.0\.1:\d+)\/studio\/ \(internal sign-in\)/u, 90_000))[1] ?? ''
+      const login = await fetch(`${origin}/api/studio/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'root', password: 'pw' }) })
+      const headers = { authorization: `Bearer ${(await login.json() as { token: string }).token}`, 'content-type': 'application/json' }
+
+      const started = await (await fetch(`${origin}/api/studio/evals/runs`, { method: 'POST', headers, body: JSON.stringify({ agentId: 'echo', mode: 'real' }) })).json() as { runId: string }
+      const run = await vi.waitFor(async () => {
+        const detail = await (await fetch(`${origin}/api/studio/evals/runs/${started.runId}`, { headers })).json() as { run: { status: string } }
+        expect(detail.run.status).not.toBe('running')
+        return detail
+      }, { timeout: 90_000, interval: 250 })
+
+      expect(run).toMatchObject({ run: { status: 'passed', mode: 'real', startedBy: 'root', cases: { total: 1, passed: 1 } }, cases: [{ caseId: 'smoke', pass: true }] })
+    } finally {
+      expect(await studio.stop('SIGTERM'), studio.output()).toBe(0)
+      await model.close()
+    }
   })
 
   it('refuses flags that would let the wrong people in', async () => {

@@ -4,8 +4,9 @@
  * catalog serves, bucketed, with an optional comparison window; answers are
  * reused for 30 seconds), `dashboard/summary` (the static view from the
  * agents, their skills and tools, and their end users' sessions; reused for
- * 2 seconds), and `dashboard/running` (the turns serve processes are running,
- * from their heartbeats).
+ * 2 seconds; its activity includes the agents' eval runs), and
+ * `dashboard/running` (the turns serve processes are running, from their
+ * heartbeats).
  * @module @lyteboat/studio-api/studio-dashboard-routes
  */
 
@@ -13,6 +14,7 @@ import { statSync } from 'node:fs'
 import type { AgentCatalogService } from '@lyteboat/agent-catalog'
 import type { AgentInspectorService } from '@lyteboat/agent-inspector'
 import type { StudioDashboardHealth, StudioDashboardRunning, StudioDashboardSummary } from '@lyteboat/contracts/studio'
+import type { EvalRecordsService } from '@lyteboat/eval-runner/records'
 import type { RunMetricsReaderService } from '@lyteboat/run-metrics/reader'
 import type { SessionIndexService } from '@lyteboat/session-index'
 import { studioWholeNumberOf } from './studio-auth-routes.ts'
@@ -26,6 +28,7 @@ interface StudioDashboardServices {
   inspector: AgentInspectorService
   sessions: SessionIndexService
   metrics: RunMetricsReaderService
+  evals: EvalRecordsService
 }
 
 const HEALTH_REUSE_MS = 30_000
@@ -116,6 +119,9 @@ async function summaryAgents(services: StudioDashboardServices): Promise<StudioS
     // Not strict: the agents that mounted are the ones the Dashboard counts.
   }
   const agents: StudioSummaryAgent[] = []
+  const evalRuns = services.evals.runs().flatMap(({ runId, record }) => record === undefined ? [] : [{
+    agentId: record.agent.id, runId, startedAt: Date.parse(record.startedAt), passed: record.cases.filter(evalCase => evalCase.pass).length, total: record.cases.length,
+  }])
   for (const entry of services.catalog.list()) {
     const skills = (await services.inspector.skills(entry.id))?.skills ?? []
     const tools = await services.inspector.tools(entry.id) ?? []
@@ -129,6 +135,7 @@ async function summaryAgents(services: StudioDashboardServices): Promise<StudioS
       }),
       toolCount: tools.filter(tool => tool.reach !== 'hidden').length,
       sessions,
+      evalRuns: evalRuns.filter(run => run.agentId === entry.id),
     })
   }
   return agents
@@ -136,7 +143,7 @@ async function summaryAgents(services: StudioDashboardServices): Promise<StudioS
 
 /**
  * The routes.
- * @param services - the catalog, the inspector, the session index, and the run-metrics reader.
+ * @param services - the catalog, the inspector, the session index, the run-metrics reader, and the eval records.
  */
 export function studioDashboardRoutes(services: StudioDashboardServices): StudioApiRoute[] {
   const health = new StudioReusedAnswers<StudioDashboardHealth>(HEALTH_REUSE_MS)

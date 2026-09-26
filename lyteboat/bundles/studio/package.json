@@ -32,6 +32,7 @@
     "@lyteboat/agent-catalog": "workspace:*",
     "@lyteboat/agent-inspector": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
+    "@lyteboat/eval-runner": "workspace:*",
     "@lyteboat/run-metrics": "workspace:*",
     "@lyteboat/session-index": "workspace:*",
     "@lyteboat/studio-api": "workspace:*",

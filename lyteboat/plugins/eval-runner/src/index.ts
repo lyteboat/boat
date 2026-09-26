@@ -56,6 +56,8 @@ export interface EvalRunOptions {
   agentId: string
   /** Case files or directories; none: the agent directory's `evals/`. */
   cases: readonly string[]
+  /** Only these cases of the files, by id, in file order; absent: every case. */
+  caseIds?: readonly string[]
   /** `real` calls the model and records the sessions; `replay` answers from the recordings of `from`. */
   mode: 'real' | 'replay'
   /** The run directory whose `sessions/` a replay plays back. */
@@ -74,6 +76,17 @@ export interface EvalReleaseOptions {
   dshBase: string
   /** The directory the baseline's replay is written to. */
   out: string
+}
+
+/**
+ * The cases a run asked for, in file order.
+ * @throws when an id names no case, so a typo never passes as an empty run.
+ */
+function selectedCases(cases: EvalCase[], ids: readonly string[] | undefined): EvalCase[] {
+  if (ids === undefined) return cases
+  const unknown = ids.filter(id => !cases.some(evalCase => evalCase.id === id))
+  if (unknown.length > 0) throw new Error(`eval-runner: no case ${unknown.map(id => JSON.stringify(id)).join(', ')} in the case files`)
+  return cases.filter(evalCase => ids.includes(evalCase.id))
 }
 
 /** The run a replay plays back; a replay without one cannot start. */
@@ -101,7 +114,7 @@ export class EvalRunnerService extends Service {
     await this.ctx.agentCatalog.whenReady()
     const agent = this.ctx.agentCatalog.get(options.agentId)
     if (agent === undefined) throw new Error(`eval-runner: no agent ${JSON.stringify(options.agentId)}`)
-    const cases = loadEvalCases(options.cases.length > 0 ? options.cases : [join(agent.dir, 'evals')])
+    const cases = selectedCases(loadEvalCases(options.cases.length > 0 ? options.cases : [join(agent.dir, 'evals')]), options.caseIds)
     const startedAt = new Date()
     const replay = options.mode === 'replay' ? new EvalReplay() : undefined
     // A replay answers every call itself: nothing behind it may reach a provider.

@@ -7,14 +7,16 @@
 # roots and reloads them when a root changes; one that fails is reported on the
 # radar instead of stopping the Studio. The agent inspector reads an agent's
 # tools, skills, and routing from its standing scope; the session index reads
-# the sessions serve writes, with read handles only, and the run-metrics
-# reader the metrics serve's recorder writes. The web server listens
-# where startup says; studio-auth signs people in (Studio's own accounts, or
-# an authorizing gateway), studio-api answers /api/studio on it, and
-# studio-web serves the pages at /studio. No session controller or client
-# connection is mounted, so dsh's /api/remote.mux is not served and Studio
-# never creates or continues a session. The last row reports the listener once
-# the catalog is ready.
+# the sessions serve writes, with read handles only, the run-metrics reader
+# the metrics serve's recorder writes, and the eval records the eval runs and
+# an agent's case files. The web server listens where startup says;
+# studio-auth signs people in (Studio's own accounts, or an authorizing
+# gateway), studio-api answers /api/studio on it, and studio-web serves the
+# pages at /studio. An eval run the Studio starts is a `lyteboat eval`
+# process of the launcher's bin. No session controller or client connection
+# is mounted, so dsh's /api/remote.mux is not served and Studio never creates
+# or continues a session. The last row reports the listener once the catalog
+# is ready.
 
 - insert:
     - id: lyteboat-studio-startup
@@ -43,6 +45,9 @@
     - id: run-metrics-reader
       name: '@lyteboat/run-metrics/reader'
 
+    - id: eval-records
+      name: '@lyteboat/eval-runner/records'
+
     - id: webserver
       name: '@deepseek-ai/dsh-host-webserver'
       inject: [lyteboatStudioStartup]
@@ -67,6 +72,7 @@
         lyteboatVersion: !!js ctx.lyteboatStudioStartup.lyteboatVersion
         traceLinkTemplate: !!js ctx.lyteboatStudioStartup.traceLinkTemplate
         maskedEnv: !!js ctx.lyteboatStudioStartup.maskedEnv
+        lyteboatBin: !!js ctx.lyteboatStudioStartup.lyteboatBin
 
     - id: studio-web
       name: '@lyteboat/studio-web'

@@ -84,7 +84,7 @@ function compiles(pattern: string): boolean {
 }
 
 /** The case files a path names: the file itself, or a directory's `.yml` / `.yaml` files in name order. */
-function caseFiles(path: string): string[] {
+export function evalCaseFilesOf(path: string): string[] {
   let isDirectory: boolean
   try {
     isDirectory = statSync(path).isDirectory()
@@ -95,7 +95,11 @@ function caseFiles(path: string): string[] {
   return readdirSync(path).filter(name => ['.yml', '.yaml'].includes(extname(name))).sort().map(name => join(path, name))
 }
 
-function readCaseFile(file: string): EvalCase[] {
+/**
+ * Read one case file.
+ * @throws when it cannot be read or fails the schema, naming the file.
+ */
+export function readEvalCaseFile(file: string): EvalCase[] {
   let raw: unknown
   try {
     raw = load(readFileSync(file, 'utf8'))
@@ -120,8 +124,8 @@ function readCaseFile(file: string): EvalCase[] {
 export function loadEvalCases(paths: readonly string[]): EvalCase[] {
   const cases: EvalCase[] = []
   const seen = new Map<string, string>()
-  for (const file of paths.flatMap(caseFiles)) {
-    for (const evalCase of readCaseFile(file)) {
+  for (const file of paths.flatMap(evalCaseFilesOf)) {
+    for (const evalCase of readEvalCaseFile(file)) {
       const earlier = seen.get(evalCase.id)
       if (earlier !== undefined) throw new Error(`eval-runner: case ${JSON.stringify(evalCase.id)} is in both ${earlier} and ${file}`)
       seen.set(evalCase.id, file)

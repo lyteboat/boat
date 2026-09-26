@@ -334,6 +334,9 @@ export type LyteboatEvalRunRecord = {
 
 const lyteboatEvalTotalsSchema = z.object({ total: z.number(), passed: z.number() })
 
+/** An eval run's id, its directory's name under `$LYTEBOAT_HOME/evals`: one path segment of letters, digits, dots, dashes, and underscores. */
+export const LYTEBOAT_EVAL_RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u
+
 /** The schema of {@link LyteboatEvalRunRecord}: a `run.json` is a file, read at a boundary. */
 export const lyteboatEvalRunRecordSchema: z.ZodType<LyteboatEvalRunRecord> = z.object({
   agent: lyteboatAgentIdentitySchema,

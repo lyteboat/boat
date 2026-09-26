@@ -1,7 +1,7 @@
 /**
  * `lyteboat eval` on the built launcher: a real run of the agent's own cases
  * against the scripted model, then a replay of that run with no model and no
- * key, which reproduces its results.
+ * key, which reproduces its results; a run a caller names by id, of one case.
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -43,5 +43,15 @@ describe('lyteboat eval (built bin, scripted model)', () => {
     expect(replay.code, replay.stderr).toBe(0)
     expect(model.requests.length).toBe(before)
     expect(readFileSync(join(runDirOf(replay.stdout), 'results.jsonl'), 'utf8')).toBe(readFileSync(join(runDirOf(real.stdout), 'results.jsonl'), 'utf8'))
+  })
+
+  it('writes a run a caller names by id, of the one case it names', async () => {
+    const { home, workspace } = scratch.run('named')
+
+    const run = await runLyteboat(['eval', '--agents', AGENTS, '--agent', 'echo', '--run-id', 'from-studio-1', '--case', 'smoke'], { cwd: workspace, env: { LYTEBOAT_HOME: home, ...scriptedModelEnv(model) } })
+
+    expect(run.code, run.stderr).toBe(0)
+    expect(runDirOf(run.stdout)).toBe(join(home, 'evals', 'from-studio-1'))
+    expect(JSON.parse(readFileSync(join(home, 'evals', 'from-studio-1', 'run.json'), 'utf8'))).toMatchObject({ cases: [{ id: 'smoke', pass: true }] })
   })
 })

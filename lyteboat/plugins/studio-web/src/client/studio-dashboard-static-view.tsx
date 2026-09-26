@@ -24,8 +24,8 @@ import { useStudioShell } from './studio-shell.tsx'
 
 type StudioActivityFilter = 'all' | StudioActivityItem['kind']
 
-const STUDIO_ACTIVITY_FILTERS: readonly (readonly [StudioActivityFilter, string])[] = [['all', 'All'], ['session', 'Sessions'], ['skill', 'Skills']]
-const STUDIO_ACTIVITY_LETTER: Record<StudioActivityItem['kind'], string> = { skill: 'K', session: 'S' }
+const STUDIO_ACTIVITY_FILTERS: readonly (readonly [StudioActivityFilter, string])[] = [['all', 'All'], ['session', 'Sessions'], ['skill', 'Skills'], ['eval', 'Evals']]
+const STUDIO_ACTIVITY_LETTER: Record<StudioActivityItem['kind'], string> = { skill: 'K', session: 'S', eval: 'E' }
 const STUDIO_STATIC_LOADING_TEXT = 'Collecting agents, skills, tools, and sessions across the current workspace.'
 
 function studioTrendDelta(points: readonly StudioTrendPoint[]): number {

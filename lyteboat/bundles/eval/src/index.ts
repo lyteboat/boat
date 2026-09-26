@@ -35,6 +35,7 @@ async function runCases(ctx: Context, command: LyteboatEvalRunCommand): Promise<
   const { record } = await ctx.evalRunner.run({
     agentId: command.agent,
     cases: command.cases,
+    ...command.caseIds.length === 0 ? {} : { caseIds: command.caseIds },
     mode: command.mode,
     ...command.from === undefined ? {} : { from: command.from },
     out: command.runDir,

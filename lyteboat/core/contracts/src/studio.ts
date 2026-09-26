@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod'
-import type { JsonValue, LyteboatRequest, LyteboatRequestOwner, LyteboatTurnOutcome } from './index.ts'
+import type { JsonValue, LyteboatAgentIdentity, LyteboatAgentModel, LyteboatRequest, LyteboatRequestOwner, LyteboatTurnOutcome } from './index.ts'
 
 /** The Studio roles, from the most to the least capable. */
 export const STUDIO_ROLES = ['admin', 'editor', 'viewer'] as const
@@ -435,7 +435,7 @@ export type StudioInsightStat = { label: string; value: string; hint?: string }
 /** One entry of the activity feed. */
 export type StudioActivityItem = {
   time: number
-  kind: 'skill' | 'session'
+  kind: 'skill' | 'session' | 'eval'
   agentId: string
   agentLabel: string
   text: string
@@ -458,6 +458,160 @@ export type StudioDashboardSummary = {
   activity: StudioActivityItem[]
   generatedAt: number
 }
+
+/** What one eval turn must show, as the agent's case file says it; an absent check is not made. */
+export type StudioEvalExpect = {
+  skill?: string | null
+  tools?: { called?: string[]; not_called?: string[] }
+  cards?: { areas?: string[]; count?: number }
+  outcome?: LyteboatTurnOutcome
+  text?: { includes?: string[]; excludes?: string[]; matches?: string }
+  model_requests?: { min?: number; max?: number }
+}
+
+/** One case of an agent's case file: a new session and its turns. */
+export type StudioEvalCase = {
+  id: string
+  context?: { [key: string]: JsonValue }
+  turns: { message: string; context?: { [key: string]: JsonValue }; expect: StudioEvalExpect }[]
+}
+
+/** One case file under the agent's `evals/`: its cases, or why it does not load. */
+export type StudioEvalCaseFile = {
+  /** Relative to the agent directory, POSIX: `evals/finance.yml`. */
+  file: string
+  cases: StudioEvalCase[]
+  error?: string
+}
+
+/** `GET agents/<id>/evals/cases`: the agent's case files in name order, read only. */
+export type StudioEvalCasesAnswer = {
+  files: StudioEvalCaseFile[]
+}
+
+/**
+ * An eval run's state: a run the Studio started carries its job's state
+ * (`running`, then `passed`, `failed`, `error`, `stopped`, or `interrupted`
+ * when the Studio restarted while it ran); a run found only on disk is
+ * `passed` or `failed` by its cases, or `incomplete` when it has no
+ * `run.json` (a run that stopped or broke before writing it).
+ */
+export type StudioEvalRunStatus = 'running' | 'passed' | 'failed' | 'error' | 'stopped' | 'interrupted' | 'incomplete'
+
+/** One eval run: the run directory's `run.json`, and the Studio job that started it, if one did. */
+export type StudioEvalRun = {
+  /** The run directory's name under `$LYTEBOAT_HOME/evals`. */
+  runId: string
+  agentId: string
+  status: StudioEvalRunStatus
+  mode: 'real' | 'replay'
+  /** The run a replay played back, by id. */
+  from?: string
+  /** The cases asked for; absent: every case. */
+  caseIds?: string[]
+  /** Epoch ms. */
+  startedAt: number
+  durationMs?: number
+  /** The agent that ran, as `run.json` records it. */
+  agent?: LyteboatAgentIdentity
+  model?: LyteboatAgentModel
+  /** `done` counts the cases finished so far while the run is running. */
+  cases: { total?: number; passed: number; done: number }
+  turns?: { total: number; passed: number }
+  checks?: { total: number; passed: number }
+  /** The user who started it from the Studio. */
+  startedBy?: string
+  /** Why the run broke (`error`), from the eval process's last error line. */
+  error?: string
+}
+
+/** `GET evals/runs?agent=<id>`: runs newest first. */
+export type StudioEvalRunsAnswer = {
+  runs: StudioEvalRun[]
+}
+
+/** One expectation's check and its result. */
+export type StudioEvalCheck = {
+  check: string
+  expected: JsonValue
+  actual: JsonValue
+  pass: boolean
+}
+
+/** One turn of an eval case: what it showed and each check. */
+export type StudioEvalTurnResult = {
+  turn: number
+  message: string
+  observed: { skill: string | null; tools: string[]; cards: string[]; outcome: LyteboatTurnOutcome; text: string; modelRequests: number }
+  checks: StudioEvalCheck[]
+  pass: boolean
+}
+
+/** One case of a run, its turns in order. */
+export type StudioEvalCaseResult = {
+  caseId: string
+  pass: boolean
+  turns: StudioEvalTurnResult[]
+}
+
+/** `GET evals/runs/<id>`: the run and its results (none until the run is written). */
+export type StudioEvalRunDetail = {
+  run: StudioEvalRun
+  cases: StudioEvalCaseResult[]
+}
+
+/** How a case moved from run A to run B. */
+export type StudioEvalCompareStatus = 'improved' | 'regressed' | 'unchanged_pass' | 'unchanged_fail' | 'only_a' | 'only_b'
+
+/** One case compared across two runs. */
+export type StudioEvalCompareCase = {
+  caseId: string
+  /** The case's first message. */
+  message: string
+  turnCount: number
+  aPass: boolean | null
+  bPass: boolean | null
+  aPassedTurns: number
+  bPassedTurns: number
+  /** The first turn (1-based) whose result differs; 0 when none does or one side did not run the case. */
+  divergedAtTurn: number
+  status: StudioEvalCompareStatus
+  aFailingChecks: string[]
+  bFailingChecks: string[]
+}
+
+/** `GET evals/compare?a=<run>&b=<run>`: A is the baseline, B the run compared with it. */
+export type StudioEvalCompareAnswer = {
+  a: StudioEvalRun
+  b: StudioEvalRun
+  cases: StudioEvalCompareCase[]
+  /** Every check whose result differs, in B's order. */
+  changes: { case: string; turn: number; check: string; before: 'pass' | 'fail' | 'absent'; after: 'pass' | 'fail' | 'absent' }[]
+  breakdown: { improved: number; regressed: number; unchangedPass: number; unchangedFail: number; onlyA: number; onlyB: number }
+}
+
+/** `POST evals/runs` (editor and above): run an agent's cases in a new eval process. */
+export type StudioEvalRunRequest = {
+  agentId: string
+  mode: 'real' | 'replay'
+  /** The run a replay plays back, by id; required for a replay. */
+  from?: string
+  /** Only these cases; absent: every case. */
+  caseIds?: string[]
+}
+
+/** `DELETE evals/runs/<id>` (editor and above): the run directory removed. */
+export type StudioEvalRunDeleted = {
+  runId: string
+}
+
+/** The schema of {@link StudioEvalRunRequest}. */
+export const studioEvalRunRequestSchema: z.ZodType<StudioEvalRunRequest> = z.strictObject({
+  agentId: z.string().min(1),
+  mode: z.enum(['real', 'replay']),
+  from: z.string().min(1).exactOptional(),
+  caseIds: z.array(z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u)).min(1).exactOptional(),
+})
 
 /** Why a Studio request was refused. */
 export type StudioErrorCode =

@@ -4,7 +4,8 @@
  * own cases through dsh's session controller, checks every turn, writes the
  * run, and records the sessions; a replay of that run needs no model and
  * reproduces the same results; a failed check exits 1 and the report says
- * why; compare finds a regression; usage errors exit 2.
+ * why; compare finds a regression; a run named by id runs only the cases it
+ * names; usage errors exit 2.
  */
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -110,6 +111,24 @@ describe('lyteboat eval (in process, scripted model)', () => {
     expect(same.stdout).toBe('lyteboat eval compare: 0 changes, 0 regressions\n')
     expect(regressed.code).toBe(1)
     expect(regressed.stdout).toBe('✗ hello turn 1 outcome: pass → fail\nlyteboat eval compare: 1 change, 1 regression\n')
+  })
+
+  it('runs only the cases it names into the run directory its id names, and refuses a run id that exists or a case that does not', async () => {
+    const run = await evalRun(['--agents', AGENTS, '--agent', 'greeter', '--case', 'short', '--run-id', 'picked-1'], scriptedModelEnv(model))
+    const again = await evalRun(['--agents', AGENTS, '--agent', 'greeter', '--run-id', 'picked-1'], scriptedModelEnv(model))
+    const badId = await evalRun(['--agents', AGENTS, '--agent', 'greeter', '--run-id', '../escape'], scriptedModelEnv(model))
+    const noCase = await evalRun(['--agents', AGENTS, '--agent', 'greeter', '--case', 'missing'], scriptedModelEnv(model))
+
+    expect(run.code, run.stderr).toBe(0)
+    expect(runDirOf(run)).toBe(join(home, 'evals', 'picked-1'))
+    expect(run.stdout).toMatch(/^✓ short \(1 turn\)\nlyteboat eval: 1\/1 cases passed/u)
+    expect(JSON.parse(readFileSync(join(home, 'evals', 'picked-1', 'run.json'), 'utf8'))).toMatchObject({ cases: [{ id: 'short', pass: true }] })
+    expect(again.code).toBe(2)
+    expect(again.stderr).toContain('error: --run-id names a run that exists')
+    expect(badId.code).toBe(2)
+    expect(badId.stderr).toContain('error: --run-id must be letters, digits, dots, dashes, and underscores')
+    expect(noCase.code).toBe(2)
+    expect(noCase.stderr).toContain('eval-runner: no case "missing" in the case files')
   })
 
   it('refuses a replay without a recorded run, and a run without an agent, as usage errors', async () => {

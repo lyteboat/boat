@@ -33,7 +33,7 @@ function found<T>(value: T | undefined, what: string): T {
 }
 
 /** An agent the catalog serves once it has settled: a reload (the roots' watcher's too) empties it until then. */
-async function settledAgentOf(catalog: AgentCatalogService, agentId: string): Promise<AgentCatalogEntry> {
+export async function settledAgentOf(catalog: AgentCatalogService, agentId: string): Promise<AgentCatalogEntry> {
   try {
     await catalog.whenReady()
   } catch {

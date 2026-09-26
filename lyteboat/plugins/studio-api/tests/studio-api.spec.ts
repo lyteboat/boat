@@ -14,7 +14,7 @@ import { request as httpRequest } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
@@ -29,6 +29,7 @@ import AgentInspectorService from '@lyteboat/agent-inspector'
 import AuxLlmService from '@lyteboat/aux-llm'
 import type { LyteboatRunMetric } from '@lyteboat/contracts'
 import LyteboatDistroService from '@lyteboat/distro'
+import EvalRecordsService from '@lyteboat/eval-runner/records'
 import RunMetricsReaderService from '@lyteboat/run-metrics/reader'
 import SessionIndexService from '@lyteboat/session-index'
 import SkillRouterService from '@lyteboat/skill-router'
@@ -40,7 +41,10 @@ import ToolPolicyService from '@lyteboat/tool-policy'
 import { studioHostAllowed } from '../src/studio-host-allowlist.ts'
 
 const dirs: string[] = []
-afterEach(() => { for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true }) })
+afterEach(() => {
+  vi.unstubAllEnvs()
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+})
 
 function scratch(): string {
   const dir = mkdtempSync(join(tmpdir(), 'studio-api-'))
@@ -50,6 +54,7 @@ function scratch(): string {
 
 interface StudioFixture {
   ctx: Context
+  root: string
   studioDir: string
   agentsDir: string
   metricsDir: string
@@ -65,9 +70,12 @@ function writeAgent(agentsDir: string, id: string, manifest: string): void {
 
 const workspaceAgent = fileURLToPath(new URL('./fixtures/workspace/ledger', import.meta.url))
 const repositoryModules = fileURLToPath(new URL('../../../../node_modules', import.meta.url))
+const evalProcess = fileURLToPath(new URL('./fixtures/eval-process.mjs', import.meta.url))
 
-async function studioFixture(config: studioApi.Config = {}, setup: { workspace?: boolean } = {}): Promise<StudioFixture> {
+async function studioFixture(config: studioApi.Config = {}, setup: { workspace?: boolean; home?: boolean } = {}): Promise<StudioFixture> {
   const root = scratch()
+  // An eval process runs in the Studio's lyteboat home, where the records read its runs.
+  if (setup.home === true) vi.stubEnv('DSH_HOME', root)
   const studioDir = join(root, 'studio')
   const agentsDir = join(root, 'agents')
   const metricsDir = join(root, 'run-metrics')
@@ -98,6 +106,7 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
   await ctx.plugin(JsonlSessionPersistence, { root: join(root, 'sessions') })
   await ctx.plugin(SessionIndexService)
   await ctx.plugin(RunMetricsReaderService, { dir: metricsDir })
+  await ctx.plugin(EvalRecordsService, { dir: join(root, 'evals') })
   await ctx.plugin(WebServer, { host: '127.0.0.1', port: 0 })
   await ctx.plugin(StudioAuthService, { dir: studioDir })
   await ctx.plugin(studioApi, { dir: studioDir, agentRoots: [agentsDir], ...config })
@@ -127,7 +136,7 @@ async function studioFixture(config: studioApi.Config = {}, setup: { workspace?:
     const answer = await call('POST', 'auth/login', { body: { username, password } })
     return (answer.body as { token: string }).token
   }
-  return { ctx, studioDir, agentsDir, metricsDir, call, login }
+  return { ctx, root, studioDir, agentsDir, metricsDir, call, login }
 }
 
 function auditLines(studioDir: string): Record<string, unknown>[] {
@@ -508,5 +517,113 @@ describe('the Dashboard', () => {
     expect(summary).toMatchObject({ status: 200, body: { totalAgents: 2, totalSessions: 0, totalSkills: 0, activity: [] } })
     expect((summary.body as { trends: { sessions: unknown[] } }).trends.sessions).toHaveLength(6)
     expect(running.body).toEqual({ total: 2, agents: [{ agentId: 'alpha', agentLabel: 'Alpha', running: 2 }] })
+  })
+})
+
+describe('the Evals endpoints', () => {
+  type RunBody = { run: { runId: string; status: string; cases: { total?: number; passed: number; done: number }; error?: string }; cases: { caseId: string; pass: boolean; turns: unknown[] }[] }
+
+  function writeCases(studio: StudioFixture, agentId: string, ids: readonly string[]): void {
+    mkdirSync(join(studio.agentsDir, agentId, 'evals'), { recursive: true })
+    const cases = ids.map(id => `  - id: ${id}\n    turns:\n      - message: ${id} message\n        expect: { outcome: completed }\n`).join('')
+    writeFileSync(join(studio.agentsDir, agentId, 'evals', 'cases.yml'), `cases:\n${cases}`)
+  }
+
+  async function settled(studio: StudioFixture, token: string, runId: string, status: string): Promise<RunBody> {
+    return vi.waitFor(async () => {
+      const answer = await studio.call('GET', `evals/runs/${runId}`, { token })
+      expect((answer.body as RunBody).run.status).toBe(status)
+      return answer.body as RunBody
+    }, { timeout: 15_000, interval: 100 })
+  }
+
+  async function evalStudio(): Promise<{ studio: StudioFixture; admin: string; viewer: string }> {
+    const studio = await studioFixture({ lyteboatBin: evalProcess }, { home: true })
+    writeCases(studio, 'alpha', ['first', 'second', 'hold'])
+    return { studio, admin: await studio.login('root', 'pw-root'), viewer: await studio.login('vera', 'pw-vera') }
+  }
+
+  it('lists an agent\'s case files, runs its cases for an editor, and shows the run as it ends, audited', async () => {
+    const { studio, admin, viewer } = await evalStudio()
+
+    const cases = await studio.call('GET', 'agents/alpha/evals/cases', { token: viewer })
+    const refused = await studio.call('POST', 'evals/runs', { token: viewer, body: { agentId: 'alpha', mode: 'real' } })
+    const started = await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real', caseIds: ['first', 'second'] } })
+    const runId = (started.body as { runId: string }).runId
+    const done = await settled(studio, viewer, runId, 'passed')
+    const listed = await studio.call('GET', 'evals/runs?agent=alpha', { token: viewer })
+
+    expect(cases.body).toMatchObject({ files: [{ file: 'evals/cases.yml', cases: [{ id: 'first' }, { id: 'second' }, { id: 'hold' }] }] })
+    expect(refused.status).toBe(403)
+    expect(started.body).toMatchObject({ agentId: 'alpha', status: 'running', mode: 'real', caseIds: ['first', 'second'], startedBy: 'root', cases: { total: 2, done: 0 } })
+    expect(done).toMatchObject({ run: { status: 'passed', cases: { total: 2, passed: 2, done: 2 } }, cases: [{ caseId: 'first', pass: true }, { caseId: 'second', pass: true }] })
+    expect(listed.body).toMatchObject({ runs: [{ runId, status: 'passed', startedBy: 'root' }] })
+    expect(auditLines(studio.studioDir)).toContainEqual(expect.objectContaining({ actor: 'root', action: 'eval.start', runId, agentId: 'alpha', mode: 'real' }))
+  })
+
+  it('replays a real run, compares the two case by case, and refuses a run it cannot start', async () => {
+    const { studio, admin } = await evalStudio()
+    const real = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real', caseIds: ['first', 'second'] } })).body as { runId: string }
+    await settled(studio, admin, real.runId, 'passed')
+
+    const replay = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'replay', from: real.runId, caseIds: ['first', 'second'] } })).body as { runId: string }
+    const replayed = await settled(studio, admin, replay.runId, 'failed')
+    const compared = await studio.call('GET', `evals/compare?a=${real.runId}&b=${replay.runId}`, { token: admin })
+
+    expect(replayed.run).toMatchObject({ cases: { passed: 1, total: 2 } })
+    expect(compared.body).toMatchObject({
+      breakdown: { regressed: 1, unchangedPass: 1 },
+      cases: [{ caseId: 'first', status: 'unchanged_pass' }, { caseId: 'second', status: 'regressed', aPass: true, bPass: false, divergedAtTurn: 1, bFailingChecks: ['outcome'] }],
+      changes: [{ case: 'second', turn: 1, check: 'outcome', before: 'pass', after: 'fail' }],
+    })
+    const start = (body: unknown): ReturnType<StudioFixture['call']> => studio.call('POST', 'evals/runs', { token: admin, body })
+    expect((await start({ agentId: 'alpha', mode: 'replay' })).status).toBe(400)
+    expect((await start({ agentId: 'alpha', mode: 'replay', from: replay.runId })).status).toBe(400)
+    expect(await start({ agentId: 'alpha', mode: 'real', caseIds: ['nope'] })).toMatchObject({ status: 400, body: { error: { message: expect.stringContaining('has no case nope') } } })
+    expect((await start({ agentId: 'beta', mode: 'real' })).status).toBe(400)
+    expect((await start({ agentId: 'nobody', mode: 'real' })).status).toBe(404)
+    expect((await studio.call('GET', `evals/compare?a=${real.runId}`, { token: admin })).status).toBe(400)
+  })
+
+  it('stops a running run, one run per agent at a time, and deletes a run only once it is not running', async () => {
+    const { studio, admin } = await evalStudio()
+    const held = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real', caseIds: ['hold'] } })).body as { runId: string }
+
+    const second = await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real' } })
+    const deleteRunning = await studio.call('DELETE', `evals/runs/${held.runId}`, { token: admin })
+    await vi.waitFor(() => { expect(readFileSync(join(studio.studioDir, 'eval-jobs', `${held.runId}.log`), 'utf8')).toContain('holding') }, { timeout: 10_000 })
+    const stop = await studio.call('POST', `evals/runs/${held.runId}/stop`, { token: admin })
+    const stopped = await settled(studio, admin, held.runId, 'stopped')
+    const deleted = await studio.call('DELETE', `evals/runs/${held.runId}`, { token: admin })
+
+    expect(second).toMatchObject({ status: 409, body: { error: { message: expect.stringContaining('has an eval run running') } } })
+    expect(deleteRunning.status).toBe(409)
+    expect(stop.status).toBe(200)
+    expect(stopped).toMatchObject({ run: { status: 'stopped' }, cases: [] })
+    expect(deleted.body).toEqual({ runId: held.runId })
+    expect((await studio.call('GET', `evals/runs/${held.runId}`, { token: admin })).status).toBe(404)
+    expect(auditLines(studio.studioDir).map(line => line['action'])).toEqual(expect.arrayContaining(['eval.start', 'eval.stop', 'eval.delete']))
+  })
+
+  it('shows a run whose process could not run the agent as an error, with its last error line', async () => {
+    const { studio, admin } = await evalStudio()
+    writeCases(studio, 'broken', ['first'])
+    writeFileSync(join(studio.agentsDir, 'broken', 'agent.cordis.yml'), '[]\n')
+    await studio.call('POST', 'agents/reload', { token: admin })
+
+    const started = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'broken', mode: 'real' } })).body as { runId: string }
+    const failed = await settled(studio, admin, started.runId, 'error')
+
+    expect(failed.run.error).toBe('lyteboat: eval-runner: the agent failed to mount')
+  })
+
+  it('refuses to start a run in a Studio the launcher did not start', async () => {
+    const studio = await studioFixture()
+    writeCases(studio, 'alpha', ['first'])
+    const admin = await studio.login('root', 'pw-root')
+
+    const refused = await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real' } })
+
+    expect(refused).toMatchObject({ status: 409, body: { error: { message: expect.stringContaining('not started by the lyteboat launcher') } } })
   })
 })

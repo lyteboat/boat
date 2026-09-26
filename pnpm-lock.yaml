@@ -1264,6 +1264,9 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
+      '@lyteboat/eval-runner':
+        specifier: workspace:*
+        version: link:../../plugins/eval-runner
       '@lyteboat/run-metrics':
         specifier: workspace:*
         version: link:../../plugins/run-metrics
@@ -1670,6 +1673,9 @@ importers:
       '@deepseek-ai/dsh-brand':
         specifier: 0.1.7-rc.2
         version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)
+      '@deepseek-ai/dsh-home-paths':
+        specifier: 0.1.7-rc.2
+        version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)
       '@deepseek-ai/dsh-llm-replay':
         specifier: 0.1.7-rc.2
         version: 0.1.7-rc.2(@deepseek-ai/cordis@4.0.4)(@deepseek-ai/dsh-agent@dsh+core+agent)(@deepseek-ai/dsh-compaction@dsh+compaction+compaction)(@deepseek-ai/dsh-deepseek-llm-api-extensions@0.1.7-rc.2(@deepseek-ai/cordis@4.0.4))(@deepseek-ai/dsh-llm@dsh+llm+llm)(@deepseek-ai/dsh-session@dsh+core+session)
@@ -1947,6 +1953,9 @@ importers:
       '@lyteboat/contracts':
         specifier: workspace:*
         version: link:../../core/contracts
+      '@lyteboat/eval-runner':
+        specifier: workspace:*
+        version: link:../eval-runner
       '@lyteboat/run-metrics':
         specifier: workspace:*
         version: link:../run-metrics

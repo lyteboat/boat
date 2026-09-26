@@ -13,7 +13,7 @@
  */
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { Command } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-app-boot'
@@ -50,6 +50,8 @@ export interface LyteboatStudioStartupValues {
   maskedEnv: string[]
   /** The launcher's version, when a launcher booted this Studio. */
   lyteboatVersion?: string
+  /** The launcher's bin, which the Studio's eval runs start; absent when no launcher booted this Studio. */
+  lyteboatBin?: string
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -103,7 +105,7 @@ Examples:
 }
 
 /** Check the serve flags and build the values; a bad one is a usage error. */
-function studioValuesOf(program: Command, options: StudioServeOptions, lyteboatVersion: string | undefined): LyteboatStudioStartupValues {
+function studioValuesOf(program: Command, options: StudioServeOptions, launcher: StudioLauncher): LyteboatStudioStartupValues {
   const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
   if (agentRoots.length === 0) program.error('error: at least one --agents directory is required')
   for (const dir of agentRoots) {
@@ -134,16 +136,27 @@ function studioValuesOf(program: Command, options: StudioServeOptions, lyteboatV
     anonymousViewer: options.anonymousViewer === true,
     ...options.traceLink === undefined ? {} : { traceLinkTemplate: options.traceLink },
     maskedEnv: secretRef === undefined ? [] : [secretRef],
-    ...lyteboatVersion === undefined ? {} : { lyteboatVersion },
+    ...launcher.version === undefined ? {} : { lyteboatVersion: launcher.version },
+    ...launcher.bin === undefined ? {} : { lyteboatBin: launcher.bin },
   }
 }
 
-/** The launcher's version, from the package.json its install anchor names. */
-function launcherVersionOf(ctx: Context): string | undefined {
+/** The launcher that booted this Studio: its version and its bin. */
+interface StudioLauncher {
+  version?: string
+  bin?: string
+}
+
+/** The launcher, from the package.json its install anchor names; nothing when no launcher booted this Studio. */
+function launcherOf(ctx: Context): StudioLauncher {
   const anchor = ctx.get('profileContext')?.installAnchor
-  if (anchor === undefined) return undefined
-  const manifest = JSON.parse(readFileSync(anchor, 'utf8')) as { version?: unknown }
-  return typeof manifest.version === 'string' ? manifest.version : undefined
+  if (anchor === undefined) return {}
+  const manifest = JSON.parse(readFileSync(anchor, 'utf8')) as { version?: unknown; bin?: { lyteboat?: unknown } }
+  const bin = manifest.bin?.lyteboat
+  return {
+    ...typeof manifest.version === 'string' ? { version: manifest.version } : {},
+    ...typeof bin === 'string' ? { bin: resolve(dirname(anchor), bin) } : {},
+  }
 }
 
 /** The one-line password piped on stdin; a terminal or an empty line is a usage error. */
@@ -202,7 +215,7 @@ function accountCommands(program: Command, done: (text: string) => void): void {
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    ctx.provide(LYTEBOAT_STUDIO_STARTUP_SERVICE, studioValuesOf(program, program.opts<StudioServeOptions>(), launcherVersionOf(ctx)))
+    ctx.provide(LYTEBOAT_STUDIO_STARTUP_SERVICE, studioValuesOf(program, program.opts<StudioServeOptions>(), launcherOf(ctx)))
   })
   accountCommands(program, (text) => {
     // The launcher's CLI output: an account command prints what it changed and ends the process.

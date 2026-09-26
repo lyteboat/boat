@@ -1,8 +1,9 @@
 /**
  * The eval app's command-line provider. `lyteboat eval --agents <dir> --agent
  * <id>` runs the agent's cases (`--cases` names other case files or
- * directories; `--model replay --from <run>` plays a recorded run back
- * without a model); `lyteboat eval compare <before> <after>` compares two
+ * directories, `--case` picks cases by id; `--model replay --from <run>`
+ * plays a recorded run back without a model; `--run-id` names the run's
+ * directory, which must not exist yet); `lyteboat eval compare <before> <after>` compares two
  * runs; `lyteboat eval release --agents <dir> --agent <id>` (also `lyteboat
  * release`) puts the agent through the release gate. A run is named by its
  * directory or by its id under `$LYTEBOAT_HOME/evals`. A bad flag, a missing
@@ -18,6 +19,7 @@ import { Command } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import { parseCmdline } from '@deepseek-ai/dsh-cmdline'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
+import { LYTEBOAT_EVAL_RUN_ID_PATTERN } from '@lyteboat/contracts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-eval-startup'
@@ -34,6 +36,8 @@ export interface LyteboatEvalRunCommand {
   agent: string
   /** Case files or directories; empty: the agent directory's `evals/`. */
   cases: string[]
+  /** Only these cases, by id; empty: every case. */
+  caseIds: string[]
   mode: 'real' | 'replay'
   /** The recorded run a replay plays back. */
   from: string | undefined
@@ -113,6 +117,8 @@ function command(): Command {
     .option('--agents <dir>', 'a directory of agents (repeatable, at least one)', collect)
     .option('--agent <id>', 'the agent whose cases run')
     .option('--cases <path>', 'a case file or a directory of them (repeatable; default: the agent\'s evals/)', collect)
+    .option('--case <id>', 'run only this case (repeatable; default: every case)', collect)
+    .option('--run-id <id>', 'the run\'s id, its directory under $LYTEBOAT_HOME/evals; it must not exist yet (default: the start time and four random hex digits)')
     .option('--model <mode>', 'real (call the model and record the sessions) or replay (play a recorded run back, no key)', 'real')
     .option('--from <run>', 'the recorded run a replay plays back: its directory or its id under $LYTEBOAT_HOME/evals')
     .addHelpText('after', `
@@ -120,6 +126,7 @@ Examples:
   lyteboat eval --agents ./agents --agent finance                         run finance's evals/ against the model and record them
   lyteboat eval --agents ./agents --agent finance --model replay --from <run>
                                                                           play a recorded run back without a model
+  lyteboat eval --agents ./agents --agent finance --case asset-overview   run one case
   lyteboat eval compare <before> <after>                                  list the checks whose results changed
   lyteboat eval release --agents ./agents --agent finance                 check finance against its baseline and write its release lock
 `)
@@ -132,7 +139,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
-    const options = program.opts<{ agents?: string[]; agent?: string; cases?: string[]; model: string; from?: string }>()
+    const options = program.opts<{ agents?: string[]; agent?: string; cases?: string[]; case?: string[]; runId?: string; model: string; from?: string }>()
     const { agentRoots, agent } = agentOf(program, options)
     if (options.model !== 'real' && options.model !== 'replay') program.error('error: --model must be real or replay', USAGE)
     // program.error() exits, but TypeScript cannot narrow through it.
@@ -141,10 +148,13 @@ export function apply(ctx: Context): void {
     if (options.from !== undefined && from === undefined) program.error(`error: --from names no eval run: ${options.from}`, USAGE)
     if (mode === 'replay' && from === undefined) program.error('error: --model replay needs --from, the recorded run to play back', USAGE)
     const cases = (options.cases ?? []).map(path => resolve(path))
+    if (options.runId !== undefined && !LYTEBOAT_EVAL_RUN_ID_PATTERN.test(options.runId)) program.error(`error: --run-id must be letters, digits, dots, dashes, and underscores, not ${options.runId}`, USAGE)
+    const runDir = dshHomePath('evals', options.runId ?? newRunId())
+    if (existsSync(runDir)) program.error(`error: --run-id names a run that exists: ${runDir}`, USAGE)
     ctx.provide(LYTEBOAT_EVAL_STARTUP_SERVICE, {
       agentRoots,
       include: [agent],
-      command: { action: 'run', agent, cases, mode, from, runDir: dshHomePath('evals', newRunId()) },
+      command: { action: 'run', agent, cases, caseIds: options.case ?? [], mode, from, runDir },
     } satisfies LyteboatEvalStartupValues)
   })
   program.command('compare')
