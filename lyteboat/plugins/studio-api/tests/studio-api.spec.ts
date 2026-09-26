@@ -585,6 +585,19 @@ describe('the Evals endpoints', () => {
     expect((await studio.call('GET', `evals/compare?a=${real.runId}`, { token: admin })).status).toBe(400)
   })
 
+  it('replays only the cases a run recorded when asked for none, and refuses a case it did not record', async () => {
+    const { studio, admin } = await evalStudio()
+    const partial = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real', caseIds: ['first'] } })).body as { runId: string }
+    await settled(studio, admin, partial.runId, 'passed')
+
+    const replay = await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'replay', from: partial.runId } })
+    const unrecorded = await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'replay', from: partial.runId, caseIds: ['second'] } })
+
+    expect(replay.body).toMatchObject({ mode: 'replay', from: partial.runId, caseIds: ['first'], cases: { total: 1 } })
+    expect(await settled(studio, admin, (replay.body as { runId: string }).runId, 'passed')).toMatchObject({ cases: [{ caseId: 'first', pass: true }] })
+    expect(unrecorded).toMatchObject({ status: 400, body: { error: { message: `run ${partial.runId} recorded no case second` } } })
+  })
+
   it('stops a running run, one run per agent at a time, and deletes a run only once it is not running', async () => {
     const { studio, admin } = await evalStudio()
     const held = (await studio.call('POST', 'evals/runs', { token: admin, body: { agentId: 'alpha', mode: 'real', caseIds: ['hold'] } })).body as { runId: string }

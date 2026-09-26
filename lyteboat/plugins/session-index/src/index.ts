@@ -2,7 +2,8 @@
  * @lyteboat/session-index — an agent's stored sessions, read for the Studio:
  * the sessions of the agent's working directory whose requests name no other
  * agent, newest first, a page at a time within a time window and optionally
- * of one owner (eval runs, owner kind `system`, are never listed); a bounded
+ * of one owner (only end users' and operators' sessions are listed: an eval
+ * run, owner kind `system`, is not, nor a session no request owns); a bounded
  * search (the 500 newest sessions of the window) by session id, human message,
  * or trace id; one session folded into its timeline; and one session as
  * stored. Everything is read through `sessionPersistence` with read handles,
@@ -25,7 +26,7 @@ import type {
   StudioSessionsAnswer,
   StudioSessionSummary,
 } from '@lyteboat/contracts/studio'
-import { foldSession, type FoldedSession, type SessionSearchFacts } from './session-fold.ts'
+import { foldSession, type SessionSearchFacts } from './session-fold.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -154,9 +155,15 @@ export class SessionIndexService extends Service {
     return { header: stored.header as unknown as JsonValue, inheritedEventCount: stored.inheritedEventCount, events: stored.events as unknown as JsonValue[] }
   }
 
-  /** An eval run is the system's, and a session whose requests name another agent is that agent's. */
-  private belongs(folded: FoldedSession, agentId: string): boolean {
-    return folded.summary.owner?.kind !== 'system' && folded.search.agentIds.every(id => id === agentId)
+  /**
+   * An end user's or an operator's session of this agent. An eval run is the
+   * system's; a session no request owns has no message to show (an eval that
+   * broke after opening its case's session leaves one); a session whose
+   * requests name another agent is that agent's.
+   */
+  private belongs(session: IndexedSession, agentId: string): boolean {
+    const kind = session.summary.owner?.kind
+    return (kind === 'user' || kind === 'operator') && session.search.agentIds.every(id => id === agentId)
   }
 
   private async entryOf(agentId: string): Promise<AgentCatalogEntry | undefined> {
@@ -177,7 +184,7 @@ export class SessionIndexService extends Service {
     for (const snapshot of await this.ctx.sessionPersistence.list()) {
       if (snapshot.header.cwd !== entry.workdir) continue
       const session = await this.indexed(snapshot)
-      if (session !== undefined && session.summary.owner?.kind !== 'system' && session.search.agentIds.every(id => id === agentId)) sessions.push(session)
+      if (session !== undefined && this.belongs(session, agentId)) sessions.push(session)
     }
     sessions.sort((a, b) => b.summary.updatedAt - a.summary.updatedAt || a.summary.sessionId.localeCompare(b.summary.sessionId))
     this.listings.set(agentId, { at: Date.now(), sessions })

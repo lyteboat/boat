@@ -5932,7 +5932,15 @@ pre.code-block {
 .evals-run-progress-term-line.muted { color: #6c7079; }
 .evals-run-progress-term-line .seq { color: #6c7079; }
 .evals-run-progress-term-line .prompt { color: #6c7079; }
-.evals-run-progress-term-line .case-id { color: #9cc7ff; }
+/* A long id is cut at its own width, so the tools and the verdict stay on the line. */
+.evals-run-progress-term-line .case-id {
+  color: #9cc7ff;
+  display: inline-block;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
 .evals-run-progress-term-line .chain { color: #d6d8de; }
 .evals-run-progress-term-line .tag.ok { color: #7ee787; }
 .evals-run-progress-term-line .tag.err { color: #ff7b72; }

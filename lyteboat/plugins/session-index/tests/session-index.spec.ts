@@ -1,7 +1,8 @@
 /**
  * The session index over dsh's JSONL session store and the agent catalog:
  * an agent's sessions by working directory, newest first, paged, windowed,
- * and by owner, without eval runs or sessions another agent's requests name;
+ * and by owner, without eval runs, sessions no request owns, or sessions
+ * another agent's requests name;
  * the bounded search; one session's timeline and its stored form; and a
  * listing that follows a session written after it.
  */
@@ -69,16 +70,20 @@ async function threeSessions(index: IndexFixture): Promise<void> {
   await index.write('s-eval', alpha, log => log.turnStart().stepStart().user('eval case', asked({ kind: 'system', id: 'eval' })).assistant('答').turnEnd(), 4_000)
   await index.write('s-beta-named', alpha, log => log.turnStart().stepStart().user('sent to beta', asked(alice, { agent: { id: 'beta', digest: `sha256:${'0'.repeat(64)}` } })).turnEnd(), 5_000)
   await index.write('s-beta', index.workdir('beta'), log => log.turnStart().stepStart().user('beta question', asked(alice)).turnEnd(), 6_000)
+  // An eval that broke after opening its case's session leaves it with no request, hence no owner.
+  await index.write('s-orphan', alpha, log => log, 7_000)
 }
 
 describe('the session index', () => {
-  it('lists an agent\'s sessions newest first, without eval runs or sessions its requests address to another agent', async () => {
+  it('lists an agent\'s sessions newest first, without eval runs, sessions no request owns, or sessions its requests address to another agent', async () => {
     const index = await indexFixture()
     await threeSessions(index)
 
     const answer = await index.ctx.sessionIndex.list('alpha', { limit: 50, offset: 0 })
+    const orphan = await index.ctx.sessionIndex.detail('alpha', 's-orphan')
 
     expect(answer?.sessions.map(session => session.sessionId)).toEqual(['s-new', 's-mid', 's-old'])
+    expect(orphan).toBeUndefined()
     expect(answer).toMatchObject({ total: 3, hasMore: false })
     expect(answer?.sessions[0]).toMatchObject({ owner: alice, firstMessage: '第三个问题', messageCount: 2, turnCount: 1, openTurn: false })
     expect((await index.ctx.sessionIndex.list('beta', { limit: 50, offset: 0 }))?.sessions.map(session => session.sessionId)).toEqual(['s-beta'])

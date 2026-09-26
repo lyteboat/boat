@@ -2,12 +2,15 @@
  * The Studio's eval jobs across a restart: a job still running when the
  * Studio starts is interrupted, keeping the cases its output shows finished,
  * and its run shows the result its process went on to write; a job file cut
- * short is skipped; a run reads as running until its process exits.
+ * short is skipped; a run reads as running until its process exits; an
+ * interrupted run whose process still runs reads as running and can be
+ * stopped from the restarted Studio.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { EvalRunListing } from '@lyteboat/eval-runner/records'
 import { StudioEvalJobs, type StudioEvalJob } from '../src/studio-eval-jobs.ts'
 import { studioEvalRunOf } from '../src/studio-eval-runs.ts'
@@ -69,5 +72,36 @@ describe('the Studio\'s eval jobs', () => {
     const run = studioEvalRunOf(RUNNING.runId, written, RUNNING)
 
     expect(run).toMatchObject({ status: 'running', cases: { total: 1, passed: 1 } })
+  })
+
+  it.skipIf(!existsSync('/proc/self/cmdline'))('lets a restarted Studio stop a run whose process outlived the one that started it (reads /proc)', async () => {
+    const studioDir = scratch()
+    const runId = '20260926T000000Z-beef'
+    // A stand-in for the eval process: its command line names the run, and SIGINT ends it with the launcher's 130.
+    const orphan = spawn(process.execPath, ['-e', 'process.on("SIGINT", () => process.exit(130)); process.stdout.write("ready"); setInterval(() => {}, 1000)', '--', '--run-id', runId], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] })
+    const exited = new Promise<number | null>((resolve) => { orphan.on('exit', code => resolve(code)) })
+    await new Promise((resolve) => { orphan.stdout.once('data', resolve) })
+    mkdirSync(join(studioDir, 'eval-jobs'))
+    writeFileSync(join(studioDir, 'eval-jobs', `${runId}.json`), JSON.stringify({ ...RUNNING, runId, pid: orphan.pid }))
+
+    const jobs = new StudioEvalJobs(studioDir, undefined, () => {})
+    await vi.waitFor(() => { expect(jobs.get(runId)?.status).toBe('running') })
+    const stopped = jobs.stop(runId)
+
+    expect(stopped).toMatchObject({ status: 'stopped', stopRequested: true })
+    expect(await exited).toBe(130)
+    expect(jobs.get(runId)?.status).toBe('stopped')
+  })
+
+  it('does not take a process the system gave the run\'s pid to since for the run', () => {
+    const studioDir = scratch()
+    mkdirSync(join(studioDir, 'eval-jobs'))
+    // This test's own process: alive, but its command line names no run.
+    writeFileSync(join(studioDir, 'eval-jobs', `${RUNNING.runId}.json`), JSON.stringify({ ...RUNNING, pid: process.pid }))
+
+    const jobs = new StudioEvalJobs(studioDir, undefined, () => {})
+
+    expect(jobs.get(RUNNING.runId)?.status).toBe('interrupted')
+    expect(() => jobs.stop(RUNNING.runId)).toThrow('is not running')
   })
 })

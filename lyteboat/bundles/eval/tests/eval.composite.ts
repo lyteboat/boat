@@ -5,7 +5,8 @@
  * run, and records the sessions; a replay of that run needs no model and
  * reproduces the same results; a failed check exits 1 and the report says
  * why; compare finds a regression; a run named by id runs only the cases it
- * names; usage errors exit 2.
+ * names; a replay of a case its run did not record is refused before any
+ * session opens; usage errors exit 2.
  */
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -14,6 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { LYTEBOAT_EVAL_BUNDLES, bootComposition, type CompositionRun } from '@lyteboat/testing/composition'
 import { createLyteboatScratch } from '@lyteboat/testing/scratch'
 import { scriptedModelEnv, startScriptedModel, withTitle, type RecordedRequest, type ScriptedModel } from '@lyteboat/testing/scripted-model'
+import { findSessionLogs } from '@lyteboat/testing/session-log'
 
 const FIXTURES = fileURLToPath(new URL('./fixtures', import.meta.url))
 const AGENTS = join(FIXTURES, 'agents')
@@ -129,6 +131,16 @@ describe('lyteboat eval (in process, scripted model)', () => {
     expect(badId.stderr).toContain('error: --run-id must be letters, digits, dots, dashes, and underscores')
     expect(noCase.code).toBe(2)
     expect(noCase.stderr).toContain('eval-runner: no case "missing" in the case files')
+  })
+
+  it('refuses to replay a case its run did not record, before it opens any session', async () => {
+    const sessionsBefore = findSessionLogs(home).length
+
+    const run = await evalRun(['--agents', AGENTS, '--agent', 'greeter', '--model', 'replay', '--from', join(home, 'evals', 'picked-1')], { DSH_TELEMETRY_DISABLED: '1' })
+
+    expect(run.code).toBe(2)
+    expect(run.stderr).toContain('recorded no session for case hello; replay only the cases it recorded (--case)')
+    expect(findSessionLogs(home)).toHaveLength(sessionsBefore)
   })
 
   it('refuses a replay without a recorded run, and a run without an agent, as usage errors', async () => {

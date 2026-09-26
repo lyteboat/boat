@@ -8,8 +8,10 @@
  * the last error line. One run per agent at a time, two overall. Stopping
  * sends SIGINT to the process group, which the launcher answers by exiting
  * 130 (SIGTERM would exit 0, which reads as a pass); the run is `stopped`. A
- * job still `running` when the Studio starts is `interrupted`: its process
- * may still be writing the run, which the run list shows once written.
+ * job still `running` when the Studio starts is `interrupted`; while its
+ * process still runs the run (its pid alive, its command line naming the run,
+ * read from /proc where the system has one) it reads as running and can be
+ * stopped, and the run it writes shows in the run list.
  * @module @lyteboat/studio-api/studio-eval-jobs
  */
 
@@ -99,9 +101,28 @@ function errorLineOf(log: string): string | undefined {
   return lines.findLast(line => /error|lyteboat:/iu.test(line)) ?? lines.at(-1)
 }
 
+/**
+ * Whether an interrupted job's process still runs its run. The command line
+ * must name the run, so a pid the system gave to another process since never
+ * passes; without /proc nothing can be told, and nothing passes.
+ */
+function stillRunning(job: StudioEvalJob): boolean {
+  if (job.pid === undefined) return false
+  let args: string[]
+  try {
+    args = readFileSync(`/proc/${String(job.pid)}/cmdline`, 'utf8').split('\0')
+  } catch {
+    // The process is gone, or the system has no /proc to ask.
+    return false
+  }
+  return args.some((arg, index) => arg === '--run-id' && args[index + 1] === job.runId)
+}
+
 /** The Studio's eval jobs. */
 export class StudioEvalJobs {
   private readonly dir: string
+  /** The runs this Studio started, whose exits it hears. */
+  private readonly children = new Set<string>()
 
   /**
    * @param studioDir - the Studio directory; jobs live in its `eval-jobs/`.
@@ -144,6 +165,7 @@ export class StudioEvalJobs {
     for (const id of request.caseIds ?? []) args.push('--case', id)
     const child = spawn(process.execPath, args, { detached: true, stdio: ['ignore', log, log], env: command.env })
     closeSync(log)
+    this.children.add(runId)
     const job: StudioEvalJob = {
       runId, agentId: request.agentId, mode: request.mode,
       ...request.from === undefined ? {} : { from: request.from.runId },
@@ -167,13 +189,14 @@ export class StudioEvalJobs {
   stop(runId: string): StudioEvalJob {
     const job = this.get(runId)
     if (job === undefined || job.status !== 'running' || job.pid === undefined) throw new StudioApiError('conflict', `eval run ${runId} is not running`)
-    const stopping = { ...job, stopRequested: true }
-    this.save(stopping)
     try {
       process.kill(-job.pid, 'SIGINT')
     } catch {
-      // The process group is gone: its exit handler records how it ended.
+      // The process group is gone: its exit handler, or the next read, records how it ended.
     }
+    // A run an earlier Studio started has no exit handler here; SIGINT ends it before it writes anything.
+    const stopping: StudioEvalJob = this.children.has(runId) ? { ...job, stopRequested: true } : { ...job, stopRequested: true, status: 'stopped' }
+    this.save(stopping)
     return stopping
   }
 
@@ -185,6 +208,7 @@ export class StudioEvalJobs {
   }
 
   private finish(runId: string, code: number | null, signal: NodeJS.Signals | null, spawnError?: string): void {
+    this.children.delete(runId)
     const job = this.read(runId)
     if (job === undefined || job.status !== 'running') return
     const log = this.log(runId)
@@ -209,7 +233,10 @@ export class StudioEvalJobs {
       this.warn(`lyteboat studio api: eval job ${runId} does not read and is skipped`)
       return undefined
     }
-    return parsed.data.status === 'running' ? this.withProgress(parsed.data) : parsed.data
+    const job = parsed.data
+    if (job.status === 'running') return this.withProgress(job)
+    // An interrupted job's process may outlive the Studio that started it; while it runs, so does the run.
+    return job.status === 'interrupted' && stillRunning(job) ? { ...this.withProgress(job), status: 'running' } : job
   }
 
   /** A job with the cases its output shows finished; a finished job keeps the count it ended with. */

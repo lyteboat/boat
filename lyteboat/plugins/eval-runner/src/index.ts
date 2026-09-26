@@ -14,6 +14,7 @@
  * @module @lyteboat/eval-runner
  */
 
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -89,6 +90,15 @@ function selectedCases(cases: EvalCase[], ids: readonly string[] | undefined): E
   return cases.filter(evalCase => ids.includes(evalCase.id))
 }
 
+/**
+ * A replay plays back only what its run recorded.
+ * @throws before any session is opened when a case has no recording, so a replay never leaves a case's session half made.
+ */
+function requireRecordings(from: string, cases: readonly EvalCase[]): void {
+  const missing = cases.filter(evalCase => !existsSync(recordedSessionFile(from, evalCase.id))).map(evalCase => evalCase.id)
+  if (missing.length > 0) throw new Error(`eval-runner: ${from} recorded no session for case ${missing.join(', ')}; replay only the cases it recorded (--case), or record them with --model real first`)
+}
+
 /** The run a replay plays back; a replay without one cannot start. */
 function replaySourceOf(options: EvalRunOptions): string {
   if (options.from === undefined) throw new Error('eval-runner: a replay needs the run to play back (from)')
@@ -115,6 +125,7 @@ export class EvalRunnerService extends Service {
     const agent = this.ctx.agentCatalog.get(options.agentId)
     if (agent === undefined) throw new Error(`eval-runner: no agent ${JSON.stringify(options.agentId)}`)
     const cases = selectedCases(loadEvalCases(options.cases.length > 0 ? options.cases : [join(agent.dir, 'evals')]), options.caseIds)
+    if (options.mode === 'replay') requireRecordings(replaySourceOf(options), cases)
     const startedAt = new Date()
     const replay = options.mode === 'replay' ? new EvalReplay() : undefined
     // A replay answers every call itself: nothing behind it may reach a provider.

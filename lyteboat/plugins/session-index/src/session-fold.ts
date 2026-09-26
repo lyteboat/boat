@@ -47,7 +47,7 @@ export interface SessionSearchFacts {
 }
 
 /** A folded session. */
-export interface FoldedSession {
+interface FoldedSession {
   summary: StudioSessionSummary
   items: StudioTimelineItem[]
   search: SessionSearchFacts

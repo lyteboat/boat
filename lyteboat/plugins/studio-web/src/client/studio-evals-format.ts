@@ -13,9 +13,17 @@ import type { StudioEvalRun } from '@lyteboat/contracts/studio'
 /** A score's colour. */
 export type StudioEvalsTone = 'ok' | 'warn' | 'err'
 
-/** The share of a run's cases that passed; null while the run has no case total, or none. */
+/**
+ * A written run's case results; none for a run that has not written them (it
+ * runs, or ended before it could), whose case figures are only its progress.
+ */
+export function studioEvalCaseResults(run: StudioEvalRun): StudioEvalRun['cases'] | undefined {
+  return run.turns === undefined ? undefined : run.cases
+}
+
+/** The share of a written run's cases that passed; null for a run without results or cases. */
 export function studioEvalPassRate(run: StudioEvalRun): number | null {
-  const total = run.cases.total
+  const total = studioEvalCaseResults(run)?.total
   return total === undefined || total === 0 ? null : run.cases.passed / total
 }
 

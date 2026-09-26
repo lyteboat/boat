@@ -20,7 +20,7 @@ import { studioApi, studioErrorMessage } from './studio-api-client.ts'
 import { canRunStudioEvals, useStudioAuth } from './studio-auth-context.tsx'
 import { useStudioConfirm } from './studio-confirm-dialog.tsx'
 import { useStudioEvalsAgent } from './studio-evals-agent-scope.tsx'
-import { formatStudioEvalDuration, formatStudioEvalFraction, formatStudioEvalPercent, studioEvalModelLabel, studioEvalPassRate, studioEvalShortDigest, studioEvalTone } from './studio-evals-format.ts'
+import { formatStudioEvalDuration, formatStudioEvalFraction, formatStudioEvalPercent, studioEvalCaseResults, studioEvalModelLabel, studioEvalPassRate, studioEvalShortDigest, studioEvalTone } from './studio-evals-format.ts'
 import { StudioEvalsCrumbs, StudioEvalsEmpty, StudioEvalsErrorCallout, StudioEvalsScoreBar, StudioEvalsStatusPill } from './studio-evals-primitives.tsx'
 import { StudioEvalsRunCases, StudioEvalsRunProgress } from './studio-evals-run-cases.tsx'
 import { DownloadIcon } from './studio-icons.tsx'
@@ -213,7 +213,7 @@ function StudioEvalsRunHero({ run, passed, failed }: { run: StudioEvalRun; passe
         <span className="evals-pill">Σ {run.cases.total ?? '—'}</span>
       </div>
       <div className="evals-run-hero-spacer" />
-      <span className="evals-mono-sm evals-muted">cases {formatStudioEvalFraction(run.cases)} · turns {formatStudioEvalFraction(run.turns)} · checks {formatStudioEvalFraction(run.checks)}</span>
+      <span className="evals-mono-sm evals-muted">cases {formatStudioEvalFraction(studioEvalCaseResults(run))} · turns {formatStudioEvalFraction(run.turns)} · checks {formatStudioEvalFraction(run.checks)}</span>
     </section>
   )
 }
@@ -239,7 +239,7 @@ function StudioEvalsRunSummary({ run }: { run: StudioEvalRun }) {
         <span className="evals-surface-head-meta">passed / total</span>
       </header>
       <div className="evals-summary-body">
-        <StudioEvalsSummaryRow figures={run.cases} label="cases" />
+        <StudioEvalsSummaryRow figures={studioEvalCaseResults(run)} label="cases" />
         <StudioEvalsSummaryRow figures={run.turns} label="turns" />
         <StudioEvalsSummaryRow figures={run.checks} label="checks" />
         <div className="evals-summary-row">

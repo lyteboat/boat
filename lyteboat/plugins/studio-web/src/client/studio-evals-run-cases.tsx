@@ -30,8 +30,6 @@ const STUDIO_EVAL_OUTCOME_PILL: Record<LyteboatTurnOutcome, string> = {
 }
 const STUDIO_EVAL_CASE_COLUMNS = 6
 const STUDIO_EVAL_FAILING_SHOWN = 3
-// As the original's terminal: a short id leaves room on the line for the tools and the verdict.
-const STUDIO_EVAL_TERM_CASE_ID = 14
 
 /** A case's failed checks; a multi-turn case names the turn (`T2/tools.called`). */
 function studioEvalFailingChecks(result: StudioEvalCaseResult): string[] {
@@ -185,7 +183,7 @@ function StudioEvalsProgressLine({ result, index }: { result: StudioEvalCaseResu
   return (
     <div className={`evals-run-progress-term-line ${result.pass ? 'ok' : 'err'}`}>
       <span className="seq">{String(index + 1).padStart(3, '0')}</span>{' '}
-      <span className="case-id" title={result.caseId}>{result.caseId.slice(0, STUDIO_EVAL_TERM_CASE_ID)}</span>{' '}
+      <span className="case-id" title={result.caseId}>{result.caseId}</span>{' '}
       <span className="chain">{tools.length === 0 ? '∅' : tools.join(' → ')}</span>{' '}
       <span className={`tag ${result.pass ? 'ok' : 'err'}`}>{result.pass ? `✓ pass${suffix}` : `✗ fail${suffix}`}</span>
       {!result.pass && fail !== undefined && <span className="fail-reason"> — {fail}</span>}

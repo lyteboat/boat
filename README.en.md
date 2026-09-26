@@ -144,7 +144,7 @@ All seven accept:
 | `--agents <dir>` | A directory of agents to inspect (repeatable, at least one); re-read when it changes |
 | `--host <host>` | `127.0.0.1` (the default) or `0.0.0.0` (with `--trusted-host`) |
 | `--port <port>` | 8090 by default; 0 lets the OS pick a free port |
-| `--trusted-host <name>` | A host name people reach the Studio by, or `name:port` (repeatable); beside the loopback names only these Host headers are answered, any other gets 421 |
+| `--trusted-host <name>` | A host name people reach the Studio by, or `name:port` (repeatable); beside the loopback names the API (`/api/studio`) answers only these Host headers, any other gets 421; the pages hold no data and are the same for any Host |
 | `--gateway-secret-env <name>` | Gateway mode: an authorizing gateway sends this variable's value and the user's id on every request, and a request without them gets 401; an identity seen for the first time becomes a viewer |
 | `--admin <user-id>` | Gateway mode: makes this user an admin at startup (repeatable) |
 | `--anonymous-viewer` | Account mode: a request without a token reads as an anonymous viewer (`127.0.0.1` only) |

@@ -4,14 +4,15 @@
  * and three cards (recent skills, tools, the release lock) whose entries
  * deep-link into their sections. Skills and tools load together; the sessions
  * (their total and the three latest) load on their own, so the rest shows
- * while they come or when they cannot be read. The in-flight reading is not
- * served to the Studio yet, and its row says so instead of showing a number.
+ * while they come or when they cannot be read. The running messages are the
+ * agent's turns serve processes run now, from `dashboard/running`, read once
+ * as the page opens.
  * @module @lyteboat/studio-web/client/studio-agent-overview
  */
 
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { StudioAgent, StudioSessionsAnswer, StudioSkillRouting, StudioSkillSummary, StudioTool } from '@lyteboat/contracts/studio'
+import type { StudioAgent, StudioDashboardRunning, StudioSessionsAnswer, StudioSkillRouting, StudioSkillSummary, StudioTool } from '@lyteboat/contracts/studio'
 import { studioApi } from './studio-api-client.ts'
 import { studioToolReachLabel } from './studio-agent-tools.tsx'
 import { useStudioCall } from './studio-call-state.ts'
@@ -101,6 +102,14 @@ function studioLatestSessionText({ answer, error }: StudioOverviewSessions): str
   return latest === undefined ? '暂无会话活动。' : `${studioSessionOwnerLabel(latest.owner)} · updated ${formatStudioRelativeTime(latest.updatedAt)}`
 }
 
+/** The original Studio's wording: none, or how many of the agent's messages run now. */
+function studioRunningText({ answer, error }: { answer: StudioDashboardRunning | null; error: string | null }, agentId: string): string {
+  if (error !== null) return '读数暂不可用。'
+  if (answer === null) return '正在读取…'
+  const running = answer.agents.find(agent => agent.agentId === agentId)?.running ?? 0
+  return running === 0 ? '当前没有正在执行的消息。' : `${String(running)} 条正在执行中。`
+}
+
 function studioHealthRows(agent: StudioAgent, snapshot: StudioOverviewSnapshot, sessions: StudioOverviewSessions): StudioHealthRow[] {
   const validSkills = snapshot.skills.filter(skill => skill.metadataProblem === undefined).length
   // The original counted a tool without parameters as unparsed; here every schema is the registry's, so an object schema is a parsed one.
@@ -125,7 +134,7 @@ function StudioOverviewMetric({ label, note, value }: { label: string; note: str
   )
 }
 
-function StudioOverviewSignals({ agent, snapshot, sessions }: { agent: StudioAgent; snapshot: StudioOverviewSnapshot; sessions: StudioOverviewSessions }) {
+function StudioOverviewSignals({ agent, snapshot, sessions, runningText }: { agent: StudioAgent; snapshot: StudioOverviewSnapshot; sessions: StudioOverviewSessions; runningText: string }) {
   return (
     <section className="workspace-grid-two">
       <article className="workspace-surface">
@@ -135,7 +144,7 @@ function StudioOverviewSignals({ agent, snapshot, sessions }: { agent: StudioAge
         <div className="signal-list">
           <div className="signal-card">
             <strong>正在执行的消息</strong>
-            <p>读数暂不可用。</p>
+            <p>{runningText}</p>
           </div>
           <div className="signal-card">
             <strong>最近会话活动</strong>
@@ -250,6 +259,7 @@ export function StudioAgentOverview({ agent }: { agent: StudioAgent }) {
     return { skills: skills.skills, routing: skills.routing, tools: tools.tools }
   }, [agent.id]))
   const sessions = useStudioCall(useCallback(() => studioApi.sessions(agent.id, { limit: STUDIO_LATEST_SESSIONS }), [agent.id]))
+  const running = useStudioCall(useCallback(() => studioApi.dashboardRunning(), []))
 
   if (error !== null) return <div className="empty-surface">{error}</div>
   if (answer === null) return <div className="empty-surface">Loading overview...</div>
@@ -264,7 +274,7 @@ export function StudioAgentOverview({ agent }: { agent: StudioAgent }) {
         <StudioOverviewMetric label="Release" note={STUDIO_RELEASE_NOTE[state]} value={agent.release === undefined ? '—' : `v${agent.release.version}`} />
       </section>
 
-      <StudioOverviewSignals agent={agent} sessions={sessions} snapshot={answer} />
+      <StudioOverviewSignals agent={agent} runningText={studioRunningText(running, agent.id)} sessions={sessions} snapshot={answer} />
 
       <section className="workspace-grid-three">
         <StudioOverviewRecentSkills agentId={agent.id} skills={answer.skills} />

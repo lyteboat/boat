@@ -18,7 +18,7 @@ import type { StudioEvalRun, StudioEvalRunStatus } from '@lyteboat/contracts/stu
 import { studioApi, studioErrorMessage } from './studio-api-client.ts'
 import { useStudioConfirm } from './studio-confirm-dialog.tsx'
 import { useStudioEvalsAgent } from './studio-evals-agent-scope.tsx'
-import { formatStudioEvalDuration, formatStudioEvalFraction, studioEvalModelLabel, studioEvalPassRate, studioEvalShortDigest, studioEvalTone } from './studio-evals-format.ts'
+import { formatStudioEvalDuration, formatStudioEvalFraction, studioEvalCaseResults, studioEvalModelLabel, studioEvalPassRate, studioEvalShortDigest, studioEvalTone } from './studio-evals-format.ts'
 import { StudioEvalsEmpty, StudioEvalsErrorCallout, StudioEvalsFilterChip, StudioEvalsModePill, StudioEvalsPagination, StudioEvalsProgressBar, StudioEvalsScoreBar, StudioEvalsStatusPill } from './studio-evals-primitives.tsx'
 import { CloseIcon, SearchIcon } from './studio-icons.tsx'
 import { formatStudioRelativeTime } from './studio-relative-time.ts'
@@ -79,7 +79,7 @@ function StudioEvalsRunRow({ run, selected, canRun, onToggle, onOpen, onDelete }
       <td><StudioEvalsModePill run={run} /></td>
       <td><StudioEvalsStatusPill status={run.status} /></td>
       <td><StudioEvalsRunPassCell run={run} /></td>
-      <td className="evals-mono-sm evals-nowrap">{formatStudioEvalFraction(run.cases)} · {formatStudioEvalFraction(run.turns)} · {formatStudioEvalFraction(run.checks)}</td>
+      <td className="evals-mono-sm evals-nowrap">{formatStudioEvalFraction(studioEvalCaseResults(run))} · {formatStudioEvalFraction(run.turns)} · {formatStudioEvalFraction(run.checks)}</td>
       <td title={run.agent?.digest}>
         {run.agent === undefined ? <span className="evals-muted">—</span> : (
           <div className="evals-cell-stack">

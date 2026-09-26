@@ -2250,7 +2250,7 @@ lyteboat studio: agents finance
 **参数**（`lyteboat studio --help`，`startup.ts:78-142`）：
 
 - `--agents <目录>`：可重复，至少一个；目录一改，300 ms 内没有新的变化就重新声明，已经挂上的 agent 按新内容再挂一遍。
-- `--host`：`127.0.0.1`（默认）或 `0.0.0.0`；后者必须同时给 `--trusted-host`，人们访问 Studio 用的每个主机名（或 `名字:端口`）一个。回环地址之外的 Host 头只认这些，其余回 421。
+- `--host`：`127.0.0.1`（默认）或 `0.0.0.0`；后者必须同时给 `--trusted-host`，人们访问 Studio 用的每个主机名（或 `名字:端口`）一个。回环地址之外，API（`/api/studio`）只认这些 Host 头，其余回 421；页面本身不含数据，对任何 Host 都一样。
 - `--port`：默认 8090；`0` 让系统挑一个空闲端口。
 - `--gateway-secret-env <变量名>`、`--admin <用户 id>`：网关模式。授权网关在每个请求上带这个变量的值（请求头 `x-gateway-secret`）和用户 id（`x-gateway-user-id`，显示名可以放在 `x-gateway-display-name`），缺了或不对回 401；第一次出现的用户自动是 viewer，`--admin`（可重复）在启动时把这些用户设为 admin。网关模式没有登录页，也用不着 `account` 命令（`lyteboat/plugins/studio-auth/src/index.ts`）。
 - `--anonymous-viewer`：账户模式下，不带令牌的请求按匿名 viewer 处理；只能配 `127.0.0.1`。

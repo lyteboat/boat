@@ -4,7 +4,8 @@
  * asked, newest first), one run with its cases, and two runs compared
  * (`evals/compare`). An editor or admin starts a run (`POST evals/runs`, a
  * `lyteboat eval` process; a replay plays back a real run of the same
- * agent), stops one, and deletes one that is not running; each is audited.
+ * agent, the cases it recorded unless asked for some of them), stops one,
+ * and deletes one that is not running; each is audited.
  * @module @lyteboat/studio-api/studio-eval-routes
  */
 
@@ -74,7 +75,13 @@ async function jobRequestOf(services: StudioEvalServices, request: StudioEvalRun
   if (from?.record === undefined || from.record.mode !== 'real' || from.record.agent.id !== agent.id) {
     throw new StudioApiError('invalid_request', `a replay plays back a written real run of agent ${agent.id}; ${request.from ?? 'none'} is not one`)
   }
-  return { agentId: agent.id, mode: 'replay', from: { runId: from.runId, dir: from.dir }, ...request.caseIds === undefined ? {} : { caseIds: request.caseIds }, casesTotal }
+  // A replay plays back only what its run recorded: asked for nothing, it replays those cases the agent still has.
+  const recorded = from.record.cases.map(evalCase => evalCase.id).filter(id => ids.includes(id))
+  const unrecorded = (request.caseIds ?? []).filter(id => !recorded.includes(id))
+  if (unrecorded.length > 0) throw new StudioApiError('invalid_request', `run ${from.runId} recorded no case ${unrecorded.join(', ')}`)
+  if (recorded.length === 0) throw new StudioApiError('invalid_request', `run ${from.runId} recorded none of agent ${agent.id}'s cases`)
+  const caseIds = request.caseIds ?? (recorded.length === ids.length ? undefined : recorded)
+  return { agentId: agent.id, mode: 'replay', from: { runId: from.runId, dir: from.dir }, ...caseIds === undefined ? {} : { caseIds }, casesTotal: caseIds === undefined ? ids.length : new Set(caseIds).size }
 }
 
 async function startRun(services: StudioEvalServices, call: StudioApiCall): Promise<StudioEvalRun> {

@@ -144,7 +144,7 @@ lyteboat studio --agents ./examples/agents                     # Studio 工作�
 | `--agents <目录>` | 要查看的 agent 目录（可重复，至少一个）；目录一变就重新读 |
 | `--host <地址>` | `127.0.0.1`（默认）或 `0.0.0.0`（须同时给 `--trusted-host`） |
 | `--port <端口>` | 默认 8090；0 由系统挑一个空闲端口 |
-| `--trusted-host <名字>` | 人们访问 Studio 用的主机名，或 `名字:端口`（可重复）；回环地址之外的 Host 头只认这些，其余回 421 |
+| `--trusted-host <名字>` | 人们访问 Studio 用的主机名，或 `名字:端口`（可重复）；回环地址之外，API（`/api/studio`）只认这些 Host 头，其余回 421；页面本身不含数据，对任何 Host 都一样 |
 | `--gateway-secret-env <变量名>` | 网关模式：授权网关在每个请求上带这个变量的值和用户 id，缺了或不对回 401；第一次出现的身份自动成为 viewer |
 | `--admin <用户 id>` | 网关模式：启动时把这个用户设为 admin（可重复） |
 | `--anonymous-viewer` | 账户模式：不带令牌的请求按匿名 viewer 处理（只能配 `127.0.0.1`） |

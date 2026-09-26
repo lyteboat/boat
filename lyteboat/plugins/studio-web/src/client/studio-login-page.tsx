@@ -15,7 +15,8 @@ import { StudioThemeToggle } from './studio-theme-toggle.tsx'
 
 /** A `?next=` target inside the Studio, never another origin or the login page itself. */
 function studioNextPath(value: string | null): string {
-  if (value === null || !value.startsWith('/') || value.startsWith('//')) return '/'
+  // `//host` and `/\host` name another origin (browsers read `\` as `/`); only a path on this one is followed.
+  if (value === null || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return '/'
   if (value === '/login' || value.startsWith('/login?')) return '/'
   return value
 }
