@@ -213,7 +213,7 @@ The guides are written in Chinese.
 
 ```
 dsh/                  the kernel: the 14 dsh packages dsh/kernel.json lists, under their @deepseek-ai/* names
-lyteboat/             lyteboat's 21 packages, one directory per layer
+lyteboat/             lyteboat's 28 packages, one directory per layer
   apps/               processes: the lyteboat launcher
   bundles/            compositions: host (in every profile), business-base (in the three business modes), and one each behind lyteboat try, serve, eval, and web
   plugins/            capability plugins

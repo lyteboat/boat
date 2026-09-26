@@ -211,7 +211,7 @@ lyteboat studio --agents ./examples/agents                     # Studio 工作�
 
 ```
 dsh/                  内核：dsh/kernel.json 列出的 14 个 dsh 包，沿用 @deepseek-ai/* 包名
-lyteboat/             轻舟自己的 21 个包，每层一个目录
+lyteboat/             轻舟自己的 28 个包，每层一个目录
   apps/               进程：lyteboat 启动器
   bundles/            组合：每个 profile 都带的 host，三种业务模式共用的 business-base，lyteboat try、serve、eval、web 各自的 bundle
   plugins/            能力插件
