@@ -157,3 +157,20 @@ export function ServerIcon(props: StudioIconProps) {
     </StudioIconBase>
   )
 }
+
+export function ChevronRightIcon(props: StudioIconProps) {
+  return (
+    <StudioIconBase {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </StudioIconBase>
+  )
+}
+
+export function CopyIcon(props: StudioIconProps) {
+  return (
+    <StudioIconBase {...props}>
+      <rect height="11" rx="2" width="11" x="9" y="9" />
+      <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
+    </StudioIconBase>
+  )
+}

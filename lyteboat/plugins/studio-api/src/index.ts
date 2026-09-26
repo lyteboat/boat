@@ -8,8 +8,9 @@
  * gateway's headers). Request bodies are JSON, at most `maxBodyBytes`, and
  * checked against the schemas of `@lyteboat/contracts/studio`, an unknown key
  * included. Changes made through the API are appended to the Studio's audit
- * log. The API reads the agents from `agentCatalog` and runs nothing of
- * theirs: Studio never creates or continues a session.
+ * log. The API reads the agents from `agentCatalog` and `agentInspector` and
+ * runs nothing of theirs: Studio never creates or continues a session. The one
+ * write to an agent is an admin's hot-fix of an existing skill's SKILL.md.
  * @module @lyteboat/studio-api
  */
 
@@ -18,6 +19,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@lyteboat/agent-catalog'
+import type {} from '@lyteboat/agent-inspector'
 import type {} from '@lyteboat/contracts'
 import type {} from '@lyteboat/studio-auth'
 import { studioAgentRoutes } from './studio-agent-routes.ts'
@@ -25,12 +27,13 @@ import { StudioApiRouter } from './studio-api-router.ts'
 import { StudioAudit } from './studio-audit.ts'
 import { studioAuthRoutes } from './studio-auth-routes.ts'
 import { studioSystemRoutes } from './studio-system-routes.ts'
+import { studioWorkspaceRoutes } from './studio-workspace-routes.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-studio-api'
 
 /** The services the API answers from. */
-export const inject = ['webServer', 'studioAuth', 'agentCatalog', 'lyteboatDistro']
+export const inject = ['webServer', 'studioAuth', 'agentCatalog', 'agentInspector', 'lyteboatDistro']
 
 /** Where the API sits on the web server. */
 export const STUDIO_API_PREFIX = '/api/studio'
@@ -93,6 +96,7 @@ export function apply(ctx: Context, config: Config): void {
       env: process.env,
     }), config.traceLinkTemplate),
     ...studioAgentRoutes(ctx.agentCatalog, audit),
+    ...studioWorkspaceRoutes({ catalog: ctx.agentCatalog, inspector: ctx.agentInspector, audit }),
   ])
   ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: STUDIO_API_PREFIX, handler: (request, response) => router.handle(request, response) }), 'studio-api: /api/studio')
 }

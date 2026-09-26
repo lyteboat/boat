@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../core/contracts" },
     { "path": "../agent-catalog" },
+    { "path": "../agent-inspector" },
     { "path": "../studio-auth" }
   ]
 }

@@ -30,7 +30,7 @@ import { z as zod } from 'zod'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type { Session } from '@deepseek-ai/dsh-session'
-import { AnonymousEntries, ScopedLayers, scopeOf } from '@deepseek-ai/dsh-scope'
+import { AnonymousEntries, ScopedLayers } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { isModelInvocable, renderSkillContent } from '@deepseek-ai/dsh-skill'
 import type { SkillDefinition, SkillInvocationSource, SkillViewOptions } from '@deepseek-ai/dsh-skill'
@@ -256,12 +256,13 @@ export class SkillRouterService extends Service {
     )
   }
 
-  /** The settings one agent runs under: defaults, then every layer on its chain, nearest last. */
-  settingsFor(agent: Agent): SkillRouterSettings {
-    return this.settingsOf(scopeOf(agent.ctx))
-  }
-
-  private settingsOf(scope: ScopeKey | undefined): SkillRouterSettings {
+  /**
+   * The settings a scope runs under: defaults, then every layer on its chain,
+   * nearest last. An agent is its own scope key (the agent loop keys each
+   * agent's scope by the agent), so an agent and a preset's standing scope resolve alike.
+   * @param scope - the agent, or a preset's standing scope; omitted for the process defaults.
+   */
+  settingsFor(scope: ScopeKey | undefined): SkillRouterSettings {
     let settings: SkillRouterSettings = { ...DEFAULT_SETTINGS }
     for (const layer of [this.layers.global, ...this.layers.chainLayers(scope)]) {
       for (const entry of layer.entries.values()) settings = { ...settings, ...entry }

@@ -14,7 +14,7 @@ import { StudioApiError, studioValueOf, type StudioApiCall, type StudioApiRoute 
 const USERS_PAGE_LIMIT = 200
 
 /** Parse a body against its request schema; a failure names every issue. */
-async function studioRequestOf<T>(call: StudioApiCall, schema: z.ZodType<T>): Promise<T> {
+export async function studioRequestOf<T>(call: StudioApiCall, schema: z.ZodType<T>): Promise<T> {
   const parsed = schema.safeParse(await call.body())
   if (!parsed.success) throw new StudioApiError('invalid_request', parsed.error.issues.map(issue => `${issue.path.join('.') || '(the body)'}: ${issue.message}`).join('; '))
   return parsed.data

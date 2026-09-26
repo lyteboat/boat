@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { createScope } from '@deepseek-ai/dsh-scope'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import { defineContentToolFixture, defineTool, type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import LyteboatDistroService from '@lyteboat/distro'
@@ -56,7 +57,7 @@ describe('visibility', () => {
     await send(agent, 'hello')
     expect(toolNames(adapter, 0)).toEqual(['always_tool'])
     expect(changes).toBe(1)
-    expect(ctx.toolPolicy.visible(agent)).toEqual(['always_tool'])
+    expect(ctx.tools.schemas(agent).map(schema => schema.name)).toEqual(['always_tool'])
 
     await send(agent, 'again')
     expect(toolNames(adapter, 1)).toEqual(['always_tool'])
@@ -112,6 +113,26 @@ describe('visibility', () => {
 
     await send(plain, 'hello')
     expect(toolNames(adapter, 2).sort()).toEqual(['kept_tool', 'official_tool'])
+  })
+
+  it('answers what a new agent under a standing scope sees before anything is activated', async () => {
+    const ctx = await harness(new MockAdapter([]))
+    ctx.tools.register(echo('official_tool'))
+    ctx.tools.register(echo('host_tool'))
+    const key = {}
+    const standing = createScope(ctx, key)
+    // A standing scope's rows register the way a preset's rows do: through the scope's own context.
+    standing.ctx.get('tools')?.register(echo('auto_tool'))
+    standing.ctx.get('tools')?.register(echo('row_tool'))
+    const open = {}
+    createScope(ctx, open)
+
+    await standing.ctx.plugin(ToolPolicyAgent, { inherited: 'hidden', tools: { auto_tool: { visibility: 'auto' }, official_tool: { visibility: 'always' } } })
+
+    expect(ctx.toolPolicy.visible(key)).toEqual(['official_tool'])
+    expect(ctx.toolPolicy.visible(open)).toEqual(['official_tool', 'host_tool'])
+    expect(ctx.toolPolicy.metaOf('auto_tool', key)).toEqual({ visibility: 'auto' })
+    expect(ctx.toolPolicy.metaOf('auto_tool')).toBeUndefined()
   })
 
   it('refuses a second declaration of the inherited visibility in one scope', async () => {

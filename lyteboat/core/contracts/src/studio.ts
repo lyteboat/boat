@@ -142,6 +142,109 @@ export type StudioAgentsAnswer = {
   failures: StudioAgentFailure[]
 }
 
+/** How an agent's tool policy declares a tool: `always` or `auto` by a declaration, `inherited` by none. */
+export type StudioToolDeclaration = 'always' | 'auto' | 'inherited'
+
+/**
+ * Whether a tool reaches the model when an agent starts: `always`; `activated`,
+ * once a skill that requires it is active or the agent's code activates it;
+ * `hidden`, never (an inherited tool the policy hides).
+ */
+export type StudioToolReach = 'always' | 'activated' | 'hidden'
+
+/** One tool an agent can reach, as the Tools page shows it. */
+export type StudioTool = {
+  name: string
+  description: string
+  /** The parameters' JSON Schema, as the model receives it. */
+  parameters: { [key: string]: unknown }
+  declared: StudioToolDeclaration
+  reach: StudioToolReach
+  /** The skills whose metadata requires the tool. */
+  requiredBy: string[]
+}
+
+/** `GET agents/:id/tools`. */
+export type StudioToolsAnswer = {
+  tools: StudioTool[]
+}
+
+/** How an agent picks its skills (its skill router's settings). */
+export type StudioSkillRouting = {
+  mode: 'off' | 'full' | 'dynamic'
+  /** The router's own model, when it does not use the agent's. */
+  provider?: string
+  model?: string
+}
+
+/** One skill of an agent, as the Skills list shows it. */
+export type StudioSkillSummary = {
+  name: string
+  description: string
+  whenToUse?: string
+  modelInvocable: boolean
+  userInvocable: boolean
+  /** The tools its lyteboat metadata requires. */
+  requiredTools: string[]
+  /** Its SKILL.md relative to the agent directory; absent for a skill registered in code or outside the directory. */
+  path?: string
+  /** When its SKILL.md last changed (epoch ms). */
+  updatedAt?: number
+  /** Why its lyteboat metadata cannot be read; the router would refuse it. */
+  metadataProblem?: string
+}
+
+/** `GET agents/:id/skills`. */
+export type StudioSkillsAnswer = {
+  skills: StudioSkillSummary[]
+  routing: StudioSkillRouting
+}
+
+/** `GET agents/:id/skills/:name`: a skill with its body and, when it has one, its file. */
+export type StudioSkillDetail = StudioSkillSummary & {
+  /** The body the model loads. */
+  content: string
+  /** The SKILL.md as stored, frontmatter included; what a hot-fix replaces. */
+  file?: string
+  /** The sha256 (hex) of `file`: a hot-fix sends it as `If-Match`. */
+  sha256?: string
+}
+
+/** `PUT agents/:id/skills/:name` (admins): the SKILL.md's new text, frontmatter included. */
+export type StudioSkillUpdateRequest = {
+  file: string
+}
+
+/** The schema of {@link StudioSkillUpdateRequest}. */
+export const studioSkillUpdateRequestSchema: z.ZodType<StudioSkillUpdateRequest> = z.strictObject({
+  file: z.string().min(1).max(512 * 1024),
+})
+
+/** The answer to a hot-fix: the skill as stored now, and the agent (its digest, whether it deviates from its release). */
+export type StudioSkillUpdateAnswer = {
+  skill: StudioSkillDetail
+  agent: StudioAgent
+}
+
+/** One deterministic check of a skill. */
+export type StudioSkillFinding = {
+  ruleId: string
+  label: string
+  passed: boolean
+  /** How much a failure matters: `error` breaks the agent at runtime, `warn` does not. */
+  level: 'error' | 'warn'
+  message: string
+  evidence?: string
+  suggestion?: string
+}
+
+/** `POST agents/:id/skills/:name/diagnostics`. */
+export type StudioSkillDiagnosticsAnswer = {
+  skill: string
+  generatedAt: number
+  findings: StudioSkillFinding[]
+}
+
 /** Why a Studio request was refused. */
 export type StudioErrorCode =
   | 'invalid_request'

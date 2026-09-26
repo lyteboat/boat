@@ -184,12 +184,14 @@ export class ToolPolicyService extends Service {
   }
 
   /**
-   * The metadata one agent resolves for a tool: its own chain, nearest scope last.
+   * The metadata a scope resolves for a tool: its own chain, nearest scope last.
+   * An agent is its own scope key (the agent loop keys each agent's scope by
+   * the agent), so an agent and a preset's standing scope resolve alike.
    * @param name - the tool name.
-   * @param agent - the viewing agent; omitted for the global view.
+   * @param scope - the viewing agent or scope; omitted for the global view.
    */
-  metaOf(name: string, agent?: Agent): LyteboatToolMeta | undefined {
-    return this.layers.merge(agent === undefined ? undefined : scopeOf(agent.ctx), layer => layer.metas).get(name)
+  metaOf(name: string, scope?: ScopeKey): LyteboatToolMeta | undefined {
+    return this.layers.merge(scope, layer => layer.metas).get(name)
   }
 
   /**
@@ -225,9 +227,16 @@ export class ToolPolicyService extends Service {
     return [...this.agents.get(agent)?.activated ?? []].sort()
   }
 
-  /** The tool names the model currently sees for one agent, in registry order. */
-  visible(agent: Agent): string[] {
-    return this.ctx.tools.schemas(scopeOf(agent.ctx)).map(schema => schema.name)
+  /**
+   * The tool names an agent started under a scope (a preset's standing scope)
+   * sees before anything is activated, in registry order: its `auto` tools and,
+   * with inherited tools hidden, every undeclared inherited tool, are left out.
+   * A running agent's current view is `ctx.tools.schemas(agent)`.
+   * @param scope - the standing scope a new agent inherits from.
+   */
+  visible(scope: ScopeKey): string[] {
+    const denied = new Set(this.deniedFor(scope, scope, new Set()))
+    return this.ctx.tools.schemas(scope).map(schema => schema.name).filter(name => !denied.has(name))
   }
 
   private stateOf(agent: Agent): AgentPolicyState {
@@ -244,6 +253,26 @@ export class ToolPolicyService extends Service {
     let visibility: LyteboatInheritedToolVisibility = 'visible'
     for (const layer of [this.layers.global, ...this.layers.chainLayers(key)]) visibility = layer.inherited ?? visibility
     return visibility
+  }
+
+  /**
+   * The names an agent of `scope`, inheriting `inheritedView`, is denied: every
+   * declared `auto` tool not activated and, with inherited tools `hidden`, every
+   * inherited tool no declaration names. Sorted.
+   */
+  private deniedFor(scope: ScopeKey, inheritedView: ScopeKey | undefined, activated: ReadonlySet<string>): string[] {
+    const declared = [...this.layers.merge(scope, layer => layer.metas)]
+    const declaredNames = new Set(declared.map(([name]) => name))
+    // The parent's view is what the agent inherits before its own restriction;
+    // the PTC transport sits outside every restriction and is never named.
+    const hiddenInherited = this.inheritedOf(scope) === 'hidden'
+      ? this.ctx.tools.schemas(inheritedView).map(schema => schema.name).filter(name => name !== RUN_CODE_NAME && !declaredNames.has(name))
+      : []
+    return declared
+      .filter(([name, meta]) => meta.visibility === 'auto' && !activated.has(name))
+      .map(([name]) => name)
+      .concat(hiddenInherited)
+      .sort()
   }
 
   /**
@@ -275,17 +304,7 @@ export class ToolPolicyService extends Service {
     if (unrestrictable.length > 0) {
       throw new Error(`lyteboat tool policy: auto tool${unrestrictable.length > 1 ? 's' : ''} ${unrestrictable.map(name => JSON.stringify(name)).join(', ')} registered in agent "${agent.id}"'s own layer, which restrict() cannot hide; register through the host or an agent row`)
     }
-    const declaredNames = new Set(declared.map(([name]) => name))
-    // The parent's view is what the agent inherits before its own restriction;
-    // the PTC transport sits outside every restriction and is never named.
-    const hiddenInherited = this.inheritedOf(key) === 'hidden'
-      ? this.ctx.tools.schemas(inheritedView).map(schema => schema.name).filter(name => name !== RUN_CODE_NAME && !declaredNames.has(name))
-      : []
-    const deny = declared
-      .filter(([name, meta]) => meta.visibility === 'auto' && !state.activated.has(name))
-      .map(([name]) => name)
-      .concat(hiddenInherited)
-      .sort()
+    const deny = this.deniedFor(key, inheritedView, state.activated)
     if (sameNames(deny, state.deny)) return
     state.dispose?.()
     state.dispose = deny.length === 0 ? undefined : agent.ctx.tools.restrict({ deny })

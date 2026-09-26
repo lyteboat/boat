@@ -12,13 +12,17 @@
       "default": "./lib/index.js"
     }
   },
-  "files": ["lib"],
+  "files": [
+    "lib"
+  ],
   "dependencies": {
     "@lyteboat/agent-catalog": "workspace:*",
+    "@lyteboat/agent-inspector": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/studio-auth": "workspace:*",
     "@deepseek-ai/dsh-home-paths": "catalog:dsh",
     "@deepseek-ai/schemastery": "catalog:",
+    "js-yaml": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
@@ -26,11 +30,17 @@
     "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2"
   },
   "devDependencies": {
+    "@lyteboat/aux-llm": "workspace:*",
     "@lyteboat/distro": "workspace:*",
+    "@lyteboat/skill-router": "workspace:*",
     "@lyteboat/testing": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
     "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
-    "@deepseek-ai/dsh-host-webserver": "catalog:dsh"
+    "@deepseek-ai/dsh-host-webserver": "catalog:dsh",
+    "@deepseek-ai/dsh-skill": "workspace:*",
+    "@types/js-yaml": "catalog:"
   }
 }

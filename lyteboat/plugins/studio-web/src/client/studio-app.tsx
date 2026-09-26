@@ -6,9 +6,10 @@
  */
 
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { StudioAgentPage } from './studio-agent-page.tsx'
 import { useStudioAuth } from './studio-auth-context.tsx'
 import { StudioLoginPage } from './studio-login-page.tsx'
-import { StudioAgentPage, StudioDashboardPage } from './studio-pending-pages.tsx'
+import { StudioDashboardPage } from './studio-pending-pages.tsx'
 import { StudioShell } from './studio-shell.tsx'
 import { StudioSystemPage } from './studio-system-page.tsx'
 import { StudioUsersPage } from './studio-users-page.tsx'

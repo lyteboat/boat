@@ -87,6 +87,9 @@
       "path": "./lyteboat/plugins/web-pages/tsconfig.client.json"
     },
     {
+      "path": "./lyteboat/plugins/agent-inspector"
+    },
+    {
       "path": "./lyteboat/plugins/studio-auth"
     },
     {

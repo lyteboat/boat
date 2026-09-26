@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@lyteboat/agent-catalog": "workspace:*",
+    "@lyteboat/agent-inspector": "workspace:*",
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/studio-api": "workspace:*",
     "@lyteboat/studio-auth": "workspace:*",

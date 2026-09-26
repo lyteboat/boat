@@ -1354,6 +1354,67 @@ pre.code-block {
   grid-template-columns: 44px minmax(0, 1fr);
 }
 
+/* Collapsible rail: the collapse chevron in a split list's heading, and the
+   thin strip that stands in for the collapsed list. */
+.studio-rail-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-4);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.studio-rail-toggle:hover { background: var(--bg-2); color: var(--ink-2); }
+.studio-rail-toggle svg { width: 15px; height: 15px; }
+
+.studio-rail-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg, 10px);
+  background: var(--surface);
+  color: var(--ink-3);
+  cursor: pointer;
+  font: inherit;
+  overflow: hidden;
+}
+.studio-rail-collapsed:hover { background: var(--surface-2); color: var(--ink); }
+.studio-rail-collapsed-chevron {
+  display: inline-flex;
+  color: var(--ink-4);
+}
+.studio-rail-collapsed:hover .studio-rail-collapsed-chevron { color: var(--ink-2); }
+.studio-rail-collapsed-chevron svg { width: 16px; height: 16px; }
+.studio-rail-collapsed-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+.studio-rail-collapsed-label {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-weight: 600;
+}
+
 .split-list {
   display: flex;
   flex-direction: column;
@@ -2632,6 +2693,8 @@ pre.code-block {
 }
 .status-dot.warn { background: var(--warn); }
 .status-dot.error { background: var(--err); }
+/* A row with nothing to judge yet (no release lock, sessions not served). */
+.status-dot.idle { background: var(--ink-4); }
 
 /* Badge — uppercase mono pill */
 .badge {

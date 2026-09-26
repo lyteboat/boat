@@ -17,7 +17,13 @@ import type {
   StudioLoginRequest,
   StudioPrincipal,
   StudioRole,
+  StudioSkillDetail,
+  StudioSkillDiagnosticsAnswer,
+  StudioSkillsAnswer,
+  StudioSkillUpdateAnswer,
+  StudioSkillUpdateRequest,
   StudioSystemAnswer,
+  StudioToolsAnswer,
   StudioUsersAnswer,
 } from '@lyteboat/contracts/studio'
 
@@ -49,7 +55,7 @@ async function studioErrorOf(response: Response): Promise<StudioApiCallError> {
   }
 }
 
-async function studioCall<T>(method: 'GET' | 'POST' | 'DELETE', path: string, body?: unknown, signingIn = false): Promise<T> {
+async function studioCall<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown, signingIn = false, extraHeaders: Record<string, string> = {}): Promise<T> {
   let response: Response
   try {
     response = await fetch(`/api/studio/${path}`, {
@@ -57,6 +63,7 @@ async function studioCall<T>(method: 'GET' | 'POST' | 'DELETE', path: string, bo
       headers: {
         ...studioApiSession.token === undefined ? {} : { authorization: `Bearer ${studioApiSession.token}` },
         ...body === undefined ? {} : { 'content-type': 'application/json' },
+        ...extraHeaders,
       },
       ...body === undefined ? {} : { body: JSON.stringify(body) },
     })
@@ -85,6 +92,14 @@ function usersQueryString(query: StudioUsersQuery): string {
   return params.toString()
 }
 
+function studioAgentPath(agentId: string): string {
+  return `agents/${encodeURIComponent(agentId)}`
+}
+
+function studioSkillPath(agentId: string, name: string): string {
+  return `${studioAgentPath(agentId)}/skills/${encodeURIComponent(name)}`
+}
+
 /** The endpoints the pages call. */
 export const studioApi = {
   authConfig: () => studioCall<StudioAuthConfigAnswer>('GET', 'auth/config'),
@@ -96,6 +111,18 @@ export const studioApi = {
   grant: (request: StudioGrantRequest) => studioCall<StudioGrant>('POST', 'users', request),
   revoke: (userId: string) => studioCall<StudioGrant>('DELETE', `users/${encodeURIComponent(userId)}`),
   system: () => studioCall<StudioSystemAnswer>('GET', 'system/properties'),
+  skills: (agentId: string) => studioCall<StudioSkillsAnswer>('GET', `${studioAgentPath(agentId)}/skills`),
+  skill: (agentId: string, name: string) => studioCall<StudioSkillDetail>('GET', studioSkillPath(agentId, name)),
+  /** A hot-fix (admins), refused with `precondition_failed` when the file is no longer the one `sha256` names. */
+  updateSkill: (agentId: string, name: string, request: StudioSkillUpdateRequest, sha256: string) =>
+    studioCall<StudioSkillUpdateAnswer>('PUT', studioSkillPath(agentId, name), request, false, { 'if-match': sha256 }),
+  diagnoseSkill: (agentId: string, name: string) => studioCall<StudioSkillDiagnosticsAnswer>('POST', `${studioSkillPath(agentId, name)}/diagnostics`),
+  tools: (agentId: string) => studioCall<StudioToolsAnswer>('GET', `${studioAgentPath(agentId)}/tools`),
+}
+
+/** Why a caught error's Studio call was refused; undefined for an error that did not come from a call. */
+export function studioErrorCode(error: unknown): StudioErrorCode | 'unreachable' | undefined {
+  return error instanceof StudioApiCallError ? error.code : undefined
 }
 
 /** A caught error's message, for a page's error banner. */
