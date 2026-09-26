@@ -7,10 +7,10 @@
 # roots and reloads them when a root changes; one that fails is reported on the
 # radar instead of stopping the Studio. The web server listens where startup
 # says; studio-auth signs people in (Studio's own accounts, or an authorizing
-# gateway) and studio-api answers /api/studio on it. No session controller or
-# client connection is mounted, so dsh's /api/remote.mux is not served and
-# Studio never creates or continues a session. The last row reports the
-# listener once the catalog is ready.
+# gateway), studio-api answers /api/studio on it, and studio-web serves the
+# pages at /studio. No session controller or client connection is mounted, so
+# dsh's /api/remote.mux is not served and Studio never creates or continues a
+# session. The last row reports the listener once the catalog is ready.
 
 - insert:
     - id: lyteboat-studio-startup
@@ -54,6 +54,9 @@
         lyteboatVersion: !!js ctx.lyteboatStudioStartup.lyteboatVersion
         traceLinkTemplate: !!js ctx.lyteboatStudioStartup.traceLinkTemplate
         maskedEnv: !!js ctx.lyteboatStudioStartup.maskedEnv
+
+    - id: studio-web
+      name: '@lyteboat/studio-web'
 
     - id: lyteboat-studio
       name: '@lyteboat/studio'

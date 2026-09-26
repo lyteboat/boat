@@ -3,7 +3,7 @@
  * @lyteboat/business-base, @lyteboat/studio) over fixture agents: an operator's
  * accounts sign in, the radar lists the agent that mounted and the one that
  * failed, roles gate the Users endpoints and a reload, the System page answers,
- * and neither /chat nor dsh's session channel is served. A Studio without
+ * the pages are served at /studio, and neither /chat nor dsh's session channel is served. A Studio without
  * accounts refuses to start and names the command that makes one.
  */
 import { join } from 'node:path'
@@ -50,7 +50,7 @@ describe('lyteboat studio (in process)', () => {
       env: {},
       timeoutMs: 170_000,
     })
-    const [, port] = await studio.waitForStdout(/^lyteboat studio: http:\/\/127\.0\.0\.1:(\d+)\/api\/studio \(internal sign-in\)$/mu) as unknown as [string, string]
+    const [, port] = await studio.waitForStdout(/^lyteboat studio: http:\/\/127\.0\.0\.1:(\d+)\/studio\/ \(internal sign-in\)$/mu) as unknown as [string, string]
     origin = `http://127.0.0.1:${port}`
     await studio.waitForStdout(/^lyteboat studio: agents helper$/mu)
   })
@@ -85,6 +85,16 @@ describe('lyteboat studio (in process)', () => {
     expect(reload.status).toBe(403)
     expect(system.body['lyteboat']).toMatchObject({ agentRoots: [AGENTS] })
     expect(grants.body).toMatchObject({ total: 2, users: [{ userId: 'root', role: 'admin' }, { userId: 'vera', role: 'viewer' }] })
+  })
+
+  it('serves the pages at /studio under their CSP, and sends / there', async () => {
+    const page = await fetch(`${origin}/studio/users`)
+    const root = await fetch(`${origin}/`, { redirect: 'manual' })
+
+    expect(page.status).toBe(200)
+    expect(page.headers.get('content-security-policy')).toContain('script-src \'self\'')
+    expect(await page.text()).toContain('<title>轻舟 Studio</title>')
+    expect(root.headers.get('location')).toBe('/studio/')
   })
 
   it('serves neither /chat nor dsh\'s session channel: Studio never runs a session', async () => {

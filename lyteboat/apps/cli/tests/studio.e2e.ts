@@ -1,8 +1,8 @@
 /**
  * `lyteboat studio` on the built launcher: an operator makes, lists, changes,
  * and removes accounts with the password on stdin; the Studio refuses to start
- * without one, serves `/api/studio` once there is one (sign-in, the agent
- * radar), and stops cleanly on SIGTERM; flags that would widen who can reach
+ * without one, serves `/api/studio` and the built pages once there is one
+ * (sign-in, the agent radar, the page's script), and stops cleanly on SIGTERM; flags that would widen who can reach
  * it are usage errors.
  */
 import { fileURLToPath } from 'node:url'
@@ -38,16 +38,21 @@ describe('lyteboat studio (built bin)', () => {
 
     const studio = startLyteboat(['studio', '--agents', AGENTS, '--port', '0'], { cwd: workspace, env })
     try {
-      const origin = (await studio.waitForStdout(/lyteboat studio: (http:\/\/127\.0\.0\.1:\d+)\/api\/studio \(internal sign-in\)/u, 90_000))[1] ?? ''
+      const origin = (await studio.waitForStdout(/lyteboat studio: (http:\/\/127\.0\.0\.1:\d+)\/studio\/ \(internal sign-in\)/u, 90_000))[1] ?? ''
       await studio.waitForStdout(/^lyteboat studio: agents echo$/mu, 30_000)
       const stale = await fetch(`${origin}/api/studio/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'root', password: 'first-pw' }) })
       const login = await fetch(`${origin}/api/studio/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'root', password: 'second-pw' }) })
       const { token } = await login.json() as { token: string }
       const agents = await fetch(`${origin}/api/studio/agents`, { headers: { authorization: `Bearer ${token}` } })
+      const page = await fetch(`${origin}/studio/`)
+      const script = /src="(\/studio\/assets\/[^"]+\.js)"/u.exec(await page.text())?.[1] ?? ''
+      const bundle = await fetch(`${origin}${script}`)
 
       expect(stale.status).toBe(401)
       expect(login.status).toBe(200)
       expect(await agents.json()).toMatchObject({ agents: [{ id: 'echo', deviates: false }], failures: [] })
+      expect(bundle.status, script).toBe(200)
+      expect(bundle.headers.get('content-type')).toBe('text/javascript; charset=utf-8')
     } finally {
       const code = await studio.stop('SIGTERM')
       expect(code, studio.output()).toBe(0)
@@ -84,7 +89,7 @@ describe('lyteboat studio (built bin)', () => {
       env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: '1', STUDIO_E2E_SECRET: 'gw-secret' },
     })
     try {
-      const origin = (await studio.waitForStdout(/lyteboat studio: (http:\/\/127\.0\.0\.1:\d+)\/api\/studio \(gateway sign-in\)/u, 90_000))[1] ?? ''
+      const origin = (await studio.waitForStdout(/lyteboat studio: (http:\/\/127\.0\.0\.1:\d+)\/studio\/ \(gateway sign-in\)/u, 90_000))[1] ?? ''
       const bare = await fetch(`${origin}/api/studio/auth/session`, { headers: { 'x-gateway-user-id': 'boss' } })
       const boss = await fetch(`${origin}/api/studio/auth/session`, { headers: { 'x-gateway-secret': 'gw-secret', 'x-gateway-user-id': 'boss' } })
       const system = await fetch(`${origin}/api/studio/system/properties`, { headers: { 'x-gateway-secret': 'gw-secret', 'x-gateway-user-id': 'boss' } })

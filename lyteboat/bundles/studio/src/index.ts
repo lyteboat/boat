@@ -4,7 +4,8 @@
  * and skills mount as they do in `lyteboat serve`: its startup row takes
  * `--agents` and the Studio's flags, the agent catalog declares every agent
  * of those directories and reloads them when they change, and the web server
- * carries studio-auth's sign-in and studio-api's `/api/studio`. No session
+ * carries studio-auth's sign-in, studio-api's `/api/studio`, and studio-web's
+ * pages at `/studio`. No session
  * controller is mounted: Studio reads what serve writes and never creates or
  * continues a session. This row reports where the Studio listens and its
  * agents once the catalog has declared them; an agent that fails is reported,
@@ -39,7 +40,7 @@ export function apply(ctx: Context): void {
       process.stderr.write(`lyteboat studio: ${error instanceof Error ? error.message : String(error)}\n`)
     }
     const { host } = ctx.lyteboatStudioStartup
-    process.stdout.write(`lyteboat studio: http://${host}:${String(ctx.webServer.port)}/api/studio (${ctx.studioAuth.mode().mode} sign-in)\n`)
+    process.stdout.write(`lyteboat studio: http://${host}:${String(ctx.webServer.port)}/studio/ (${ctx.studioAuth.mode().mode} sign-in)\n`)
     process.stdout.write(`lyteboat studio: agents ${ctx.agentCatalog.list().map(agent => agent.id).join(', ') || 'none'}\n`)
     for (const failure of ctx.agentCatalog.failures()) process.stderr.write(`lyteboat studio: agent ${failure.id} failed: ${failure.reason}\n`)
   })()

@@ -33,6 +33,7 @@
     "@lyteboat/contracts": "workspace:*",
     "@lyteboat/studio-api": "workspace:*",
     "@lyteboat/studio-auth": "workspace:*",
+    "@lyteboat/studio-web": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-app-boot": "catalog:dsh",
     "@deepseek-ai/dsh-cmdline": "catalog:dsh",

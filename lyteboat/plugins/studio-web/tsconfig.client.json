@@ -1,0 +1,16 @@
+{
+  // The pages, type-checked as the browser runs them (DOM, React JSX, no Node) by
+  // `pnpm run typecheck`; Vite bundles them (scripts/dist/build-studio-web.ts), so nothing is emitted.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": []
+  },
+  "include": ["src/client"]
+}

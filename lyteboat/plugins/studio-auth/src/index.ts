@@ -155,10 +155,11 @@ export class StudioAuthService extends Service {
    */
   grants(query: { text?: string; role?: StudioRole; limit: number; offset: number }): StudioUsersAnswer {
     const text = query.text?.toLowerCase() ?? ''
-    const matching = Object.values(readStudioGrants(this.dir))
+    const grants = Object.values(readStudioGrants(this.dir))
+    const matching = grants
       .filter(grant => grant.userId.toLowerCase().includes(text) && (query.role === undefined || grant.role === query.role))
       .sort((a, b) => a.userId.localeCompare(b.userId))
-    return { users: matching.slice(query.offset, query.offset + query.limit), total: matching.length }
+    return { users: matching.slice(query.offset, query.offset + query.limit), total: matching.length, adminCount: grants.filter(grant => grant.role === 'admin').length }
   }
 
   /** Grant a role, or change one, as `actor`. */

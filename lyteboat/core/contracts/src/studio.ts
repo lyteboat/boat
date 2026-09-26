@@ -71,6 +71,8 @@ export type StudioGrant = {
 export type StudioUsersAnswer = {
   users: StudioGrant[]
   total: number
+  /** Admins among all grants, filter aside: the last one cannot lose the role. */
+  adminCount: number
 }
 
 /** `POST users`: grant or change a role. */

@@ -133,7 +133,7 @@ describe('the studioAuth service (internal mode)', () => {
     expect(demoteRoot.ok).toBe(true)
     expect(lastAdmin).toMatchObject({ ok: false, code: 'conflict', message: 'the last admin cannot lose the admin role' })
     expect(again).toMatchObject({ ok: true, value: { userId: 'root', role: 'editor' } })
-    expect(ctx.studioAuth.grants({ limit: 50, offset: 0 })).toMatchObject({ total: 1, users: [{ userId: 'ops', role: 'admin' }] })
+    expect(ctx.studioAuth.grants({ limit: 50, offset: 0 })).toMatchObject({ total: 1, adminCount: 1, users: [{ userId: 'ops', role: 'admin' }] })
   })
 })
 
