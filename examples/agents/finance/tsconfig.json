@@ -9,6 +9,9 @@
   ],
   "references": [
     {
+      "path": "../../../dsh/llm/llm"
+    },
+    {
       "path": "../../../dsh/core/agent"
     },
     {
