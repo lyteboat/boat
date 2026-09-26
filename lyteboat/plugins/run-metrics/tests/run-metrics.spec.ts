@@ -145,6 +145,11 @@ describe('the run-metrics reader', () => {
     return ctx
   }
 
+  it('refuses a config its schema rejects instead of reading from it', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+    await expect(ctx.plugin(RunMetricsReaderService, { dir: 42 } as never)).rejects.toThrow(/dir/u)
+  })
+
   it('answers the turns of a range across day files, of one agent or all, skipping lines that are not metrics', async () => {
     const dir = scratch()
     writeFileSync(join(dir, `${runMetricDayOf(T)}.jsonl`), `${JSON.stringify(metric('alpha', T))}\nnot json\n${JSON.stringify({ agentId: 'x' })}\n`)
