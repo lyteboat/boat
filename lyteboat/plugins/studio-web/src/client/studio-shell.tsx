@@ -2,18 +2,19 @@
  * The Studio's frame, as the original Studio lays it out: the top bar (brand,
  * role and user, theme, sign-out), the resizable agent radar on the left (the
  * agents the catalog serves, searchable; one that deviates from its release
- * marked; the ones that failed listed with why), the page navigation under it,
- * and the page in the workspace. Pages read the radar's state through
+ * marked; the ones that failed listed with why), the page navigation under it
+ * (Evals opens its own surface in a new tab, as the original Studio's did), and
+ * the page in the workspace. Pages read the radar's state through
  * {@link useStudioShell}.
  * @module @lyteboat/studio-web/client/studio-shell
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { NavLink, Outlet, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { NavLink, Outlet, useHref, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import type { StudioAgent, StudioAgentFailure } from '@lyteboat/contracts/studio'
 import { studioApi, studioErrorMessage } from './studio-api-client.ts'
 import { canManageStudioUsers, useStudioAuth } from './studio-auth-context.tsx'
-import { LogoutIcon, OverviewIcon, PlusIcon, RefreshIcon, SearchIcon, ServerIcon, SparkIcon, UsersIcon } from './studio-icons.tsx'
+import { BeakerIcon, LogoutIcon, OverviewIcon, PlusIcon, RefreshIcon, SearchIcon, ServerIcon, SparkIcon, UsersIcon } from './studio-icons.tsx'
 import { StudioThemeToggle } from './studio-theme-toggle.tsx'
 
 /** What the shell gives its pages. */
@@ -44,7 +45,8 @@ export function studioAgentName(agent: StudioAgent): string {
   return agent.name ?? agent.id
 }
 
-function useStudioAgents(): Pick<StudioShellContext, 'agents' | 'failures' | 'agentsLoading' | 'agentsError' | 'refreshAgents'> {
+/** The catalog's agents in the radar's order (`order`, then id), the ones that failed, and a refresh; read on mount. */
+export function useStudioAgents(): Pick<StudioShellContext, 'agents' | 'failures' | 'agentsLoading' | 'agentsError' | 'refreshAgents'> {
   const [agents, setAgents] = useState<StudioAgent[]>([])
   const [failures, setFailures] = useState<StudioAgentFailure[]>([])
   const [agentsLoading, setAgentsLoading] = useState(true)
@@ -183,6 +185,8 @@ function StudioRadarList({ shell, query }: { shell: StudioShellContext; query: s
 
 function StudioNavFooter() {
   const { user } = useStudioAuth()
+  // A plain link, so the browser opens a tab; useHref puts the router's /studio basename in front.
+  const evalsHref = useHref('/evals')
   const navClass = ({ isActive }: { isActive: boolean }): string => `nav-item ${isActive ? 'active' : ''}`
   return (
     <nav aria-label="Studio navigation" className="studio-nav-footer">
@@ -190,6 +194,10 @@ function StudioNavFooter() {
         <OverviewIcon />
         <span>Dashboard</span>
       </NavLink>
+      <a aria-label="Evals" className="nav-item" href={evalsHref} rel="noopener noreferrer" target="_blank">
+        <BeakerIcon />
+        <span>Evals</span>
+      </a>
       {canManageStudioUsers(user?.role) && (
         <NavLink aria-label="Users" className={navClass} to="/users">
           <UsersIcon />

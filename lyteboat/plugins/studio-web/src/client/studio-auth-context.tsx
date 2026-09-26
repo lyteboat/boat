@@ -116,3 +116,8 @@ export function useStudioAuth(): StudioAuthValue {
 export function canManageStudioUsers(role: StudioRole | undefined): boolean {
   return role === 'admin'
 }
+
+/** Whether a role may start, stop, and delete eval runs. */
+export function canRunStudioEvals(role: StudioRole | undefined): boolean {
+  return role === 'admin' || role === 'editor'
+}

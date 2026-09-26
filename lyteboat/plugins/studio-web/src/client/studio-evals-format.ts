@@ -1,0 +1,57 @@
+/**
+ * How the Evals pages say a run's facts, the way the original Studio's Evals
+ * surface says them: a pass rate as the share of cases passed, toned ok from
+ * 90 %, warn from 70 %, err below; a duration in seconds, or minutes and
+ * seconds past one minute; `passed/total` figures; an agent digest cut to its
+ * first eight hex digits; a model as `provider/model`.
+ * @module @lyteboat/studio-web/client/studio-evals-format
+ */
+
+import type { LyteboatAgentModel } from '@lyteboat/contracts'
+import type { StudioEvalRun } from '@lyteboat/contracts/studio'
+
+/** A score's colour. */
+export type StudioEvalsTone = 'ok' | 'warn' | 'err'
+
+/** The share of a run's cases that passed; null while the run has no case total, or none. */
+export function studioEvalPassRate(run: StudioEvalRun): number | null {
+  const total = run.cases.total
+  return total === undefined || total === 0 ? null : run.cases.passed / total
+}
+
+/** A pass rate's tone. */
+export function studioEvalTone(rate: number): StudioEvalsTone {
+  if (rate >= 0.9) return 'ok'
+  return rate >= 0.7 ? 'warn' : 'err'
+}
+
+/** `83%`, or `83.3%` with one digit; `—` for none. */
+export function formatStudioEvalPercent(rate: number | null, digits = 0): string {
+  return rate === null ? '—' : `${(rate * 100).toFixed(digits)}%`
+}
+
+/** `12.4s`, `2m 5s`; `—` for none. */
+export function formatStudioEvalDuration(ms: number | undefined): string {
+  if (ms === undefined || ms <= 0) return '—'
+  const seconds = ms / 1000
+  if (seconds < 60) return `${seconds.toFixed(1)}s`
+  const minutes = Math.floor(seconds / 60)
+  const rest = Math.round(seconds % 60)
+  return rest > 0 ? `${String(minutes)}m ${String(rest)}s` : `${String(minutes)}m`
+}
+
+/** `5/6`; `—` while the total is unknown. */
+export function formatStudioEvalFraction(figures: { total?: number; passed: number } | undefined): string {
+  return figures?.total === undefined ? '—' : `${String(figures.passed)}/${String(figures.total)}`
+}
+
+/** `sha256:0123…` → `01234567`. */
+export function studioEvalShortDigest(digest: string): string {
+  return digest.replace(/^sha256:/u, '').slice(0, 8)
+}
+
+/** `deepseek/deepseek-chat`, with the reasoning effort after a dot when set; `—` for none (a replay sends no request). */
+export function studioEvalModelLabel(model: LyteboatAgentModel | undefined): string {
+  if (model === undefined) return '—'
+  return `${model.provider}/${model.model}${model.reasoningEffort === undefined ? '' : ` · ${model.reasoningEffort}`}`
+}

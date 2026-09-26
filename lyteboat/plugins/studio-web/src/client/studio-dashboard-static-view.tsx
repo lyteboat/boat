@@ -3,11 +3,11 @@
  * totals and the last activity, the metric cards (agents; skills, users, and
  * sessions with their six-month trends; tools with their total only), the
  * skills and sessions coverage (figures and two distributions each), the
- * Running messages panel, and the activity feed, filterable by kind. lyteboat
- * keeps no memory, so there is no Memory card; the skills distributions are
- * skills per agent and the tools skills require, where the original Studio had
- * skill groups and tags. The summary loads once the radar has, and again after
- * each refresh of it.
+ * Running messages panel, and the activity feed (sessions, skills, and eval
+ * runs), filterable by kind. lyteboat keeps no memory, so there is no Memory
+ * card; the skills distributions are skills per agent and the tools skills
+ * require, where the original Studio had skill groups and tags. The summary
+ * loads once the radar has, and again after each refresh of it.
  * @module @lyteboat/studio-web/client/studio-dashboard-static-view
  */
 

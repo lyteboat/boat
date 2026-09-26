@@ -14,6 +14,13 @@ import type {
   StudioDashboardSummary,
   StudioErrorAnswer,
   StudioErrorCode,
+  StudioEvalCasesAnswer,
+  StudioEvalCompareAnswer,
+  StudioEvalRun,
+  StudioEvalRunDeleted,
+  StudioEvalRunDetail,
+  StudioEvalRunRequest,
+  StudioEvalRunsAnswer,
   StudioGrant,
   StudioGrantRequest,
   StudioLoginAnswer,
@@ -148,6 +155,10 @@ function studioSessionPath(agentId: string, sessionId: string): string {
   return `${studioAgentPath(agentId)}/sessions/${encodeURIComponent(sessionId)}`
 }
 
+function studioEvalRunPath(runId: string): string {
+  return `evals/runs/${encodeURIComponent(runId)}`
+}
+
 /** The endpoints the pages call. */
 export const studioApi = {
   authConfig: () => studioCall<StudioAuthConfigAnswer>('GET', 'auth/config'),
@@ -179,6 +190,19 @@ export const studioApi = {
   dashboardHealth: (query: StudioDashboardHealthQuery) => studioCall<StudioDashboardHealth>('GET', `dashboard/health?${studioQueryString(query)}`),
   dashboardSummary: () => studioCall<StudioDashboardSummary>('GET', 'dashboard/summary'),
   dashboardRunning: () => studioCall<StudioDashboardRunning>('GET', 'dashboard/running'),
+  evalCases: (agentId: string) => studioCall<StudioEvalCasesAnswer>('GET', `${studioAgentPath(agentId)}/evals/cases`),
+  /** Newest first. */
+  evalRuns: (agentId: string) => studioCall<StudioEvalRunsAnswer>('GET', `evals/runs?${studioQueryString({ agent: agentId })}`),
+  /** `cases` stays empty until the run is written. */
+  evalRun: (runId: string) => studioCall<StudioEvalRunDetail>('GET', studioEvalRunPath(runId)),
+  /** A is the baseline. */
+  compareEvalRuns: (a: string, b: string) => studioCall<StudioEvalCompareAnswer>('GET', `evals/compare?${studioQueryString({ a, b })}`),
+  /** Editors and admins; refused with `conflict` while the agent already runs one, or two runs are running. */
+  startEvalRun: (request: StudioEvalRunRequest) => studioCall<StudioEvalRun>('POST', 'evals/runs', request),
+  /** Editors and admins; `conflict` when the run is not running. */
+  stopEvalRun: (runId: string) => studioCall<StudioEvalRun>('POST', `${studioEvalRunPath(runId)}/stop`),
+  /** Editors and admins; `conflict` while the run is running. */
+  deleteEvalRun: (runId: string) => studioCall<StudioEvalRunDeleted>('DELETE', studioEvalRunPath(runId)),
 }
 
 /** Why a caught error's Studio call was refused; undefined for an error that did not come from a call. */
