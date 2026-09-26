@@ -1121,6 +1121,9 @@ importers:
       '@lyteboat/agent-catalog':
         specifier: workspace:*
         version: link:../../plugins/agent-catalog
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
       '@lyteboat/eval-runner':
         specifier: workspace:*
         version: link:../../plugins/eval-runner
@@ -1200,6 +1203,9 @@ importers:
       '@lyteboat/chat-api':
         specifier: workspace:*
         version: link:../../plugins/chat-api
+      '@lyteboat/contracts':
+        specifier: workspace:*
+        version: link:../../core/contracts
       commander:
         specifier: 'catalog:'
         version: 15.0.0
@@ -1213,6 +1219,9 @@ importers:
       '@lyteboat/business-base':
         specifier: workspace:*
         version: link:../business-base
+      '@lyteboat/eval':
+        specifier: workspace:*
+        version: link:../eval
       '@lyteboat/host':
         specifier: workspace:*
         version: link:../host

@@ -152,6 +152,59 @@ describe('the agent catalog', () => {
     })
   })
 
+  describe('an agent pinned by a release', () => {
+    const roots: string[] = []
+    afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
+
+    /** A root holding a copy of the fixture agent beta at version 1.0.0, and the pin that matches it. */
+    function releasedBeta(): { root: string; pin: { version: string; digest: string; files: Record<string, string> } } {
+      const root = mkdtempSync(join(tmpdir(), 'agent-catalog-pin-'))
+      roots.push(root)
+      cpSync(fixture('good/beta'), join(root, 'beta'), { recursive: true })
+      writeFileSync(join(root, 'beta', 'agent.yml'), 'version: 1.0.0\n')
+      const { digest, files } = agentDigest(join(root, 'beta'))
+      return { root, pin: { version: '1.0.0', digest, files: { ...files } } }
+    }
+
+    it('serves a pinned agent whose directory is what its release says', async () => {
+      const { root, pin } = releasedBeta()
+
+      const ctx = await catalogHost({ roots: [root], pinnedAgents: { beta: pin } })
+      await ctx.agentCatalog.whenReady()
+
+      expect(ctx.agentCatalog.get('beta')?.identity).toEqual({ id: 'beta', version: '1.0.0', digest: pin.digest })
+    })
+
+    it('fails a pinned agent whose files differ from its release, naming each file, before registering it', async () => {
+      const { root, pin } = releasedBeta()
+      writeFileSync(join(root, 'beta', 'agent.cordis.yml'), '[]\n# edited\n')
+      writeFileSync(join(root, 'beta', 'notes.md'), 'new\n')
+
+      const ctx = await catalogHost({ roots: [root], strict: false, pinnedAgents: { beta: { ...pin, files: { ...pin.files, 'gone.md': '0'.repeat(64) } } } })
+      await ctx.agentCatalog.whenReady()
+
+      expect(ctx.agentCatalog.failures().map(problem => problem.reason)).toEqual([`the directory differs from its release 1.0.0 (${pin.digest}): changed agent.cordis.yml; added notes.md; removed gone.md`])
+      expect((await ctx.agentPresets.list()).map(preset => preset.id)).not.toContain('beta')
+    })
+
+    it('fails a pinned agent whose manifest declares another version', async () => {
+      const { root, pin } = releasedBeta()
+
+      const ctx = await catalogHost({ roots: [root], strict: false, pinnedAgents: { beta: { ...pin, version: '1.0.1' } } })
+      await ctx.agentCatalog.whenReady()
+
+      expect(ctx.agentCatalog.failures()[0]?.reason).toBe('agent.yml declares version 1.0.0, but its release pins 1.0.1')
+    })
+
+    it('fails whenReady when a pin names an agent the catalog does not declare', async () => {
+      const { root, pin } = releasedBeta()
+
+      const ctx = await catalogHost({ roots: [root], pinnedAgents: { gamma: pin } })
+
+      await expect(ctx.agentCatalog.whenReady()).rejects.toThrow('agent-catalog: pinned agent(s) "gamma" are not declared; pin only agents the roots and include name')
+    })
+  })
+
   describe('when the roots change', () => {
     const roots: string[] = []
     afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })

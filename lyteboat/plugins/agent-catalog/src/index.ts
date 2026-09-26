@@ -6,7 +6,9 @@
  * that fail to read or mount, using the registry's own diagnostics. It answers
  * only which agents there are and where each one works (its working directory,
  * the `cwd` its sessions are recorded under); driving them is the caller's
- * (`lyteboat try`, `/chat`, eval, and Studio).
+ * (`lyteboat try`, `/chat`, eval, and Studio). Before an agent's code runs,
+ * its directory's digest is checked against its release pin, when a release
+ * lock pins it, and its declared model against this process's, when enforced.
  *
  * The declarations are made once the host tree has settled: the registry's
  * diagnostics wait for that settlement, so they cannot run inside this row's
@@ -61,6 +63,13 @@ export interface AgentCatalogEntry {
   readonly model?: LyteboatAgentModel
 }
 
+/** What a release lock pins an agent to: its version, its digest, and the per-file hashes behind the digest. */
+export interface AgentCatalogPin {
+  readonly version: string
+  readonly digest: string
+  readonly files: Readonly<Record<string, string>>
+}
+
 /** One agent the catalog cannot serve, and why. */
 export interface AgentCatalogFailure {
   readonly id: string
@@ -83,6 +92,8 @@ export interface Config {
   workdirsDir?: string
   /** An agent whose `agent.yml` declares a model other than this process's default model fails, before its code runs. */
   enforceDeclaredModel?: boolean
+  /** Agents that must be exactly what their release locks say, by id; one that differs fails, before its code runs. */
+  pinnedAgents?: Record<string, AgentCatalogPin>
 }
 
 export const Config: z<Config> = z.object({
@@ -93,6 +104,11 @@ export const Config: z<Config> = z.object({
   watchDelayMs: z.natural().default(300),
   workdirsDir: z.string(),
   enforceDeclaredModel: z.boolean().default(false),
+  pinnedAgents: z.dict(z.object({
+    version: z.string().required(),
+    digest: z.string().required(),
+    files: z.dict(z.string()).required(),
+  })),
 })
 
 /** Host service: the agent roster and its failures. */
@@ -179,11 +195,27 @@ export class AgentCatalogService extends Service {
 
   private async declareAll(): Promise<void> {
     const locations = locateAgents(this.config.roots.map(root => resolve(root)), this.config.include)
+    const unlocated = Object.keys(this.config.pinnedAgents ?? {}).filter(id => !locations.some(location => location.id === id))
+    if (unlocated.length > 0) throw new Error(`agent-catalog: pinned agent(s) ${unlocated.map(id => JSON.stringify(id)).join(', ')} are not declared; pin only agents the roots and include name`)
     for (const location of locations) await this.declare(location)
     if (this.config.strict !== false && this.problems.size > 0) {
       const lines = this.failures().map(failure => `  ${failure.id}: ${failure.reason}`)
       throw new Error(`agent-catalog: ${String(this.problems.size)} agent(s) failed:\n${lines.join('\n')}`)
     }
+  }
+
+  /** Why an agent differs from its pin; undefined when it matches, or is not pinned. */
+  private pinProblem(id: string, version: string | undefined, digest: AgentDigest): string | undefined {
+    const pin = this.config.pinnedAgents?.[id]
+    if (pin === undefined) return undefined
+    if (pin.version !== version) return `agent.yml declares version ${version ?? '(none)'}, but its release pins ${pin.version}`
+    if (pin.digest === digest.digest) return undefined
+    const changed = Object.keys(digest.files).filter(path => path in pin.files && pin.files[path] !== digest.files[path])
+    const added = Object.keys(digest.files).filter(path => !(path in pin.files))
+    const removed = Object.keys(pin.files).filter(path => !(path in digest.files))
+    const lists = [['changed', changed], ['added', added], ['removed', removed]] as const
+    const differences = lists.filter(([, paths]) => paths.length > 0).map(([kind, paths]) => `${kind} ${paths.join(', ')}`)
+    return `the directory differs from its release ${pin.version} (${pin.digest}): ${differences.join('; ') || 'the release lists other file hashes'}`
   }
 
   /** Why this process may not serve an agent's declared model; undefined when it may, or nothing is enforced. */
@@ -211,6 +243,8 @@ export class AgentCatalogService extends Service {
     } catch (error: unknown) {
       return fail(error instanceof Error ? error.message : String(error))
     }
+    const pinProblem = this.pinProblem(id, definition.version, digest)
+    if (pinProblem !== undefined) return fail(pinProblem)
     const modelProblem = this.modelProblem(definition.model)
     if (modelProblem !== undefined) return fail(modelProblem)
     // The registry takes the declaration's base URL from its caller's context.

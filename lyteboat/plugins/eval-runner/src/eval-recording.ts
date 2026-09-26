@@ -1,14 +1,14 @@
 /**
  * Facts read back from a recorded session's events: the model each loop
  * request used, from its `request/header` (an effort the adapter defaulted is
- * no choice, as dsh's session controller also reads it). They are read the
- * same way from a session the runner just inspected and from a recording on
- * disk.
+ * no choice, as dsh's session controller also reads it), and the agent each
+ * human message went to, from its request's `agent`. They are read the same
+ * way from a session the runner just inspected and from a recording on disk.
  * @module @lyteboat/eval-runner/eval-recording
  */
 
 import { z } from 'zod'
-import type { LyteboatAgentModel } from '@lyteboat/contracts'
+import { lyteboatAgentIdentitySchema, type LyteboatAgentIdentity, type LyteboatAgentModel } from '@lyteboat/contracts'
 
 const requestHeaderEventSchema = z.object({
   type: z.literal('request/header'),
@@ -35,4 +35,25 @@ export function recordedModelsOf(events: readonly unknown[]): LyteboatAgentModel
     models.set(JSON.stringify(model), model)
   }
   return [...models.values()]
+}
+
+const humanMessageEventSchema = z.object({
+  type: z.literal('user/message'),
+  data: z.object({
+    source: z.object({
+      kind: z.literal('user'),
+      lyteboatRequest: z.object({ agent: lyteboatAgentIdentitySchema.optional() }).optional(),
+    }),
+  }),
+})
+
+/**
+ * The agent each human message of a session went to, in log order; undefined for a message whose request names none.
+ * @param events - the session's events, in log order.
+ */
+export function recordedAgentsOf(events: readonly unknown[]): (LyteboatAgentIdentity | undefined)[] {
+  return events.flatMap(event => {
+    const parsed = humanMessageEventSchema.safeParse(event)
+    return parsed.success ? [parsed.data.data.source.lyteboatRequest?.agent] : []
+  })
 }

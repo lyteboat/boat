@@ -63,6 +63,6 @@ describe('lyteboat serve (built bin, scripted model)', () => {
     const result = await runLyteboat(['serve'], { cwd: workspace, env: { LYTEBOAT_HOME: home, DSH_TELEMETRY_DISABLED: '1' } })
 
     expect(result.code).not.toBe(0)
-    expect(result.stderr).toContain('error: at least one --agents directory is required')
+    expect(result.stderr).toContain('error: at least one --agents directory or --release lock is required')
   })
 })

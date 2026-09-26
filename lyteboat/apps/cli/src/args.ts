@@ -68,6 +68,8 @@ Examples:
   lyteboat studio --agents ./agents --no-open --port 8080  without opening a browser, on another port
   lyteboat serve --agents ./agents                     serve the agents over HTTP: POST /chat (lyteboat serve --help)
   lyteboat eval --agents ./agents --agent finance      run an agent's eval cases and check every turn (lyteboat eval --help)
+  lyteboat release --agents ./agents --agent finance   check an agent against its baseline and write its release lock
+  lyteboat serve --release ./agents/finance/agent.release.json  serve an agent exactly as released
   lyteboat config dump --profile try                   print the composed plugin tree and exit
 `
 
@@ -150,6 +152,18 @@ export function parseLyteboatArgs(argv: readonly string[], versions: LyteboatVer
     .action((args: string[], options: BootOptions) => {
       const { profile, patches, plugins } = validateBoot(evalCommand, options)
       resolved = { mode: 'profile', profile, patches, plugins, args }
+    })
+
+  // A release is an eval run: the eval profile with the eval app's release command.
+  const release = passThrough(program.command('release'))
+    .description(`put an agent through the release gate and write its release lock (profile: ${DEFAULT_EVAL_PROFILE}, as lyteboat eval release); the release command's own flags follow`)
+    .argument('[args...]', 'arguments for the release command (see: lyteboat release --help)')
+    .option('--profile <name>', 'the profile under $LYTEBOAT_HOME/profiles to boot', DEFAULT_EVAL_PROFILE)
+    .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
+    .option('--plugin <file>', 'insert a local ESM plugin file as a row of the tree (repeatable)', collect)
+    .action((args: string[], options: BootOptions) => {
+      const { profile, patches, plugins } = validateBoot(release, options)
+      resolved = { mode: 'profile', profile, patches, plugins, args: ['release', ...args] }
     })
 
   const config = program.command('config').description('inspect profile composition without booting')

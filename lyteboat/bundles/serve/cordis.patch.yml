@@ -1,7 +1,8 @@
 # The @lyteboat/serve bundle patch: lyteboat's service mode over dsh-base and
-# @lyteboat/host. The startup row parses `--agents` / `--host` / `--port` /
-# `--auth` / `--secret-env` into the `lyteboatServeStartup`
-# service; the agent catalog declares every agent of the roots; dsh's session
+# @lyteboat/host. The startup row parses `--agents` or `--release` / `--host` /
+# `--port` / `--auth` / `--secret-env` into the `lyteboatServeStartup`
+# service; the agent catalog declares every agent of the roots, or the
+# released agents pinned to their locks; dsh's session
 # controller runs without the web UI (workspace, connection, and file upload are
 # its host services); the web server listens where startup says, and chat-api
 # serves /chat, /agents, and /health on it. The last row reports the service
@@ -19,6 +20,8 @@
       inject: [lyteboatServeStartup]
       config:
         roots: !!js ctx.lyteboatServeStartup.agentRoots
+        include: !!js ctx.lyteboatServeStartup.include
+        pinnedAgents: !!js ctx.lyteboatServeStartup.pinnedAgents
         enforceDeclaredModel: true
 
     # Every /chat session names its agent; a session without one runs none.

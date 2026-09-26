@@ -278,7 +278,7 @@ describe('lyteboat serve startup (in process)', () => {
     expect(open.code).not.toBe(0)
     expect(open.stderr).toContain('error: --auth none serves only 127.0.0.1; use --auth shared-secret with --host 0.0.0.0')
     expect(none.code).not.toBe(0)
-    expect(none.stderr).toContain('error: at least one --agents directory is required')
+    expect(none.stderr).toContain('error: at least one --agents directory or --release lock is required')
   })
 
   it('refuses to serve an agent that declares a model other than the one this process runs', async () => {

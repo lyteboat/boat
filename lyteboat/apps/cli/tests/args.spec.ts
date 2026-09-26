@@ -47,6 +47,13 @@ describe('parseLyteboatArgs', () => {
       .toEqual({ mode: 'profile', profile: 'eval', plugins: [], patches: [], args: ['compare', 'a', 'b'] })
   })
 
+  it('boots the eval profile with the release command for a release', () => {
+    expect(parse(['release', '--agents', './agents', '--agent', 'finance']))
+      .toEqual({ mode: 'profile', profile: 'eval', plugins: [], patches: [], args: ['release', '--agents', './agents', '--agent', 'finance'] })
+    expect(parse(['release', '--patch', 'm.yml', '-h']))
+      .toEqual({ mode: 'profile', profile: 'eval', plugins: [], patches: ['m.yml'], args: ['release', '-h'] })
+  })
+
   it('inserts local plugin files that exist, each once', () => {
     expect(parse(['try', '--plugin', INTAKE_PLUGIN, '--plugin', ANNOUNCE_PLUGIN, 'hi']))
       .toEqual({ mode: 'profile', profile: 'try', plugins: [INTAKE_PLUGIN, ANNOUNCE_PLUGIN], patches: [], args: ['hi'] })

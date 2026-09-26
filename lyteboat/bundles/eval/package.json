@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@lyteboat/agent-catalog": "workspace:*",
+    "@lyteboat/contracts": "workspace:*",
     "@lyteboat/eval-runner": "workspace:*",
     "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
     "@deepseek-ai/dsh-api-session-controller": "workspace:*",

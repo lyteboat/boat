@@ -3,9 +3,11 @@
  * <id>` runs the agent's cases (`--cases` names other case files or
  * directories; `--model replay --from <run>` plays a recorded run back
  * without a model); `lyteboat eval compare <before> <after>` compares two
- * runs. A run is named by its directory or by its id under
- * `$LYTEBOAT_HOME/evals`. A bad flag, a missing directory, or a replay without
- * a recorded run is a usage error (exit 2), so nothing is provided.
+ * runs; `lyteboat eval release --agents <dir> --agent <id>` (also `lyteboat
+ * release`) puts the agent through the release gate. A run is named by its
+ * directory or by its id under `$LYTEBOAT_HOME/evals`. A bad flag, a missing
+ * directory, or a replay without a recorded run is a usage error (exit 2), so
+ * nothing is provided.
  * @module @lyteboat/eval/startup
  */
 
@@ -46,13 +48,21 @@ export interface LyteboatEvalCompareCommand {
   after: string
 }
 
+/** Put one agent through the release gate and write its lock. */
+export interface LyteboatEvalReleaseCommand {
+  action: 'release'
+  agent: string
+  /** Where the baseline's replay is written: `$LYTEBOAT_HOME/evals/<run id>`. */
+  runDir: string
+}
+
 /** What the rows read from {@link LYTEBOAT_EVAL_STARTUP_SERVICE}. */
 export interface LyteboatEvalStartupValues {
   /** Absolute agent roots; empty for a comparison. */
   agentRoots: string[]
-  /** The agents the catalog declares: the one the cases talk to. */
+  /** The agents the catalog declares: the one the cases talk to, or the one released. */
   include: string[]
-  command: LyteboatEvalRunCommand | LyteboatEvalCompareCommand
+  command: LyteboatEvalRunCommand | LyteboatEvalCompareCommand | LyteboatEvalReleaseCommand
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -76,6 +86,18 @@ function runDirOf(ref: string): string | undefined {
   return isDirectory(named) ? named : undefined
 }
 
+/** The agent roots and the agent a run or a release names; a missing or empty one is a usage error. */
+function agentOf(cmd: Command, options: { agents?: string[]; agent?: string }): { agentRoots: string[]; agent: string } {
+  const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
+  if (agentRoots.length === 0) cmd.error('error: at least one --agents directory is required', USAGE)
+  for (const dir of agentRoots) {
+    if (!isDirectory(dir)) cmd.error(`error: --agents directory not found: ${dir}`, USAGE)
+  }
+  const agent = options.agent ?? ''
+  if (agent === '') cmd.error('error: --agent is required', USAGE)
+  return { agentRoots, agent }
+}
+
 /** A new run's id: its UTC start to the second, and four random hex digits. */
 function newRunId(): string {
   return `${new Date().toISOString().replace(/[-:]/gu, '').replace(/\.\d+Z$/u, 'Z')}-${randomBytes(2).toString('hex')}`
@@ -84,8 +106,10 @@ function newRunId(): string {
 function command(): Command {
   return new Command()
     .name('lyteboat eval')
-    .description('Run an agent\'s eval cases through dsh\'s session controller and check every turn; or compare two runs.')
+    .description('Run an agent\'s eval cases through dsh\'s session controller and check every turn; compare two runs; or release an agent.')
     .helpOption('-h, --help', 'show this help')
+    // The subcommands parse their own --agents and --agent.
+    .enablePositionalOptions()
     .option('--agents <dir>', 'a directory of agents (repeatable, at least one)', collect)
     .option('--agent <id>', 'the agent whose cases run')
     .option('--cases <path>', 'a case file or a directory of them (repeatable; default: the agent\'s evals/)', collect)
@@ -97,6 +121,7 @@ Examples:
   lyteboat eval --agents ./agents --agent finance --model replay --from <run>
                                                                           play a recorded run back without a model
   lyteboat eval compare <before> <after>                                  list the checks whose results changed
+  lyteboat eval release --agents ./agents --agent finance                 check finance against its baseline and write its release lock
 `)
 }
 
@@ -108,13 +133,7 @@ export function apply(ctx: Context): void {
   const program = command()
   program.action(() => {
     const options = program.opts<{ agents?: string[]; agent?: string; cases?: string[]; model: string; from?: string }>()
-    const agentRoots = (options.agents ?? []).map(dir => resolve(dir))
-    if (agentRoots.length === 0) program.error('error: at least one --agents directory is required', USAGE)
-    for (const dir of agentRoots) {
-      if (!isDirectory(dir)) program.error(`error: --agents directory not found: ${dir}`, USAGE)
-    }
-    const agent = options.agent ?? ''
-    if (agent === '') program.error('error: --agent is required', USAGE)
+    const { agentRoots, agent } = agentOf(program, options)
     if (options.model !== 'real' && options.model !== 'replay') program.error('error: --model must be real or replay', USAGE)
     // program.error() exits, but TypeScript cannot narrow through it.
     const mode = options.model === 'replay' ? 'replay' : 'real'
@@ -141,6 +160,18 @@ export function apply(ctx: Context): void {
         agentRoots: [],
         include: [],
         command: { action: 'compare', before: before ?? '', after: after ?? '' },
+      } satisfies LyteboatEvalStartupValues)
+    })
+  const release = program.command('release')
+    .description('put an agent through the release gate and write <agent>/agent.release.json: agent.yml declares a version and a model; evals/baseline is a real run of this agent on that model; replaying it shows every turn as recorded and passes; no lock releases the same version with other content (exit 1 when the gate refuses)')
+    .option('--agents <dir>', 'a directory of agents (repeatable, at least one)', collect)
+    .option('--agent <id>', 'the agent to release')
+    .action((options: { agents?: string[]; agent?: string }) => {
+      const { agentRoots, agent } = agentOf(release, options)
+      ctx.provide(LYTEBOAT_EVAL_STARTUP_SERVICE, {
+        agentRoots,
+        include: [agent],
+        command: { action: 'release', agent, runDir: dshHomePath('evals', newRunId()) },
       } satisfies LyteboatEvalStartupValues)
     })
   parseCmdline(ctx, program)

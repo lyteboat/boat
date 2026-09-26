@@ -8,7 +8,9 @@
  * check. A real run records every case's session; a replay run answers every
  * model call from those recordings, with no provider and no key, so the same
  * recording replays into the same results. The run is written to its
- * directory (`run.json`, `results.jsonl`, `sessions/`, `report.md`).
+ * directory (`run.json`, `results.jsonl`, `sessions/`, `report.md`). A
+ * release replays the agent's baseline through the release gate and, when it
+ * passes, writes the agent's lock (`agent.release.json`).
  * @module @lyteboat/eval-runner
  */
 
@@ -23,12 +25,14 @@ import type {} from '@lyteboat/request-context'
 import { loadEvalCases, type EvalCase } from './eval-case.ts'
 import { checkTurn } from './eval-check.ts'
 import { recordedModelsOf } from './eval-recording.ts'
+import { releaseAgent, type EvalReleaseOutcome } from './eval-release.ts'
 import { EvalReplay } from './eval-replay.ts'
 import { compareEvalResults, readEvalResults, recordedSessionFile, writeEvalRun, writeRecordedSession, type EvalChange, type EvalRunRecord, type EvalTurnResult } from './eval-report.ts'
 import { runEvalTurn } from './eval-turn.ts'
 
 export type { EvalCase, EvalExpect, EvalTurn } from './eval-case.ts'
 export type { EvalCheck, EvalObservation } from './eval-check.ts'
+export type { EvalReleaseOutcome, EvalReleaseStep } from './eval-release.ts'
 export type { EvalChange, EvalRunRecord, EvalTurnResult } from './eval-report.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -62,13 +66,23 @@ export interface EvalRunOptions {
   onCase?: (evalCase: EvalCase, results: readonly EvalTurnResult[]) => void
 }
 
+/** One release. */
+export interface EvalReleaseOptions {
+  /** The agent to release, by catalog id. */
+  agentId: string
+  /** The dsh release of this build's kernel, recorded in the lock. */
+  dshBase: string
+  /** The directory the baseline's replay is written to. */
+  out: string
+}
+
 /** The run a replay plays back; a replay without one cannot start. */
 function replaySourceOf(options: EvalRunOptions): string {
   if (options.from === undefined) throw new Error('eval-runner: a replay needs the run to play back (from)')
   return options.from
 }
 
-/** Host service: run an agent's eval cases, and compare two runs. */
+/** Host service: run an agent's eval cases, compare two runs, and release an agent. */
 export class EvalRunnerService extends Service {
   static inject = ['sessionController', 'agentCatalog', 'requestContext', 'a2ui', 'llm']
   // The loader applies a class plugin's static Config, not the module's.
@@ -118,6 +132,22 @@ export class EvalRunnerService extends Service {
     }
     writeEvalRun(options.out, record, results)
     return { record, results }
+  }
+
+  /**
+   * Put an agent through the release gate: its manifest declares a version
+   * and a model, its baseline is a real run of this agent on that model, a
+   * replay of the baseline shows every turn as recorded and passes, and no
+   * lock releases the same version with other content. When it passes, the
+   * agent's lock is written.
+   * @returns the lock written, or the step that refused it and why.
+   * @throws when the agent is unknown.
+   */
+  async release(options: EvalReleaseOptions): Promise<EvalReleaseOutcome> {
+    await this.ctx.agentCatalog.whenReady()
+    const agent = this.ctx.agentCatalog.get(options.agentId)
+    if (agent === undefined) throw new Error(`eval-runner: no agent ${JSON.stringify(options.agentId)}`)
+    return releaseAgent(agent, options.dshBase, from => this.run({ agentId: options.agentId, cases: [], mode: 'replay', from, out: options.out }))
   }
 
   /**

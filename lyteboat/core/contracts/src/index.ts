@@ -281,12 +281,16 @@ export type LyteboatAgentManifest = {
   model?: LyteboatAgentModel
 }
 
+const lyteboatAgentVersionSchema = z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1')
+
+const lyteboatAgentDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u, 'must be sha256: and 64 lowercase hex digits')
+
 /** The schema of {@link LyteboatAgentManifest}; an unknown key fails. */
 export const lyteboatAgentManifestSchema: z.ZodType<LyteboatAgentManifest> = z.strictObject({
   name: z.string().exactOptional(),
   description: z.string().exactOptional(),
   order: z.number().finite().exactOptional(),
-  version: z.string().regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1').exactOptional(),
+  version: lyteboatAgentVersionSchema.exactOptional(),
   model: lyteboatAgentModelSchema.exactOptional(),
 })
 
@@ -306,7 +310,7 @@ export type LyteboatAgentIdentity = {
 export const lyteboatAgentIdentitySchema: z.ZodType<LyteboatAgentIdentity> = z.strictObject({
   id: z.string().min(1),
   version: z.string().min(1).exactOptional(),
-  digest: z.string().regex(/^sha256:[0-9a-f]{64}$/u, 'must be sha256: and 64 lowercase hex digits'),
+  digest: lyteboatAgentDigestSchema,
 })
 
 /**
@@ -340,6 +344,38 @@ export const lyteboatEvalRunRecordSchema: z.ZodType<LyteboatEvalRunRecord> = z.o
   checks: lyteboatEvalTotalsSchema,
   startedAt: z.string(),
   durationMs: z.number(),
+})
+
+/**
+ * An agent's release lock, `<agent>/agent.release.json`, written by `lyteboat
+ * release` once the agent passed its release gate and read by `lyteboat serve
+ * --release`: the agent released (id, version, digest), the model it was
+ * evaluated on, the dsh release of the kernel that evaluated it, the per-file
+ * content hashes behind the digest (POSIX relative path → sha256), and the
+ * baseline that was replayed (its start, its case, turn, and check totals,
+ * and the sha256 of its `results.jsonl`).
+ */
+export type LyteboatAgentRelease = {
+  agent: { id: string; version: string; digest: string }
+  model: LyteboatAgentModel
+  dshBase: string
+  files: { [path: string]: string }
+  baseline: { startedAt: string; cases: number; turns: number; checks: number; results: string }
+}
+
+/** The schema of {@link LyteboatAgentRelease}: a lock is a file, read at a boundary; an unknown key fails. */
+export const lyteboatAgentReleaseSchema: z.ZodType<LyteboatAgentRelease> = z.strictObject({
+  agent: z.strictObject({ id: z.string().min(1), version: lyteboatAgentVersionSchema, digest: lyteboatAgentDigestSchema }),
+  model: lyteboatAgentModelSchema,
+  dshBase: z.string().min(1),
+  files: z.record(z.string().min(1), z.string().regex(/^[0-9a-f]{64}$/u, 'must be 64 lowercase hex digits')),
+  baseline: z.strictObject({
+    startedAt: z.string(),
+    cases: z.number().int().nonnegative(),
+    turns: z.number().int().nonnegative(),
+    checks: z.number().int().nonnegative(),
+    results: lyteboatAgentDigestSchema,
+  }),
 })
 
 /**

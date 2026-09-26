@@ -6,21 +6,23 @@
  * `@lyteboat/eval-runner`. This row runs the invocation once the tree has
  * settled, prints each case as it finishes and where the report is, and
  * exits: 0 when every check passed, 1 when one failed (or, comparing, when
- * a check that passed before fails now), 2 when the run could not start.
+ * a check that passed before fails now; releasing, when the gate refused),
+ * 2 when the run could not start.
  * @module @lyteboat/eval
  */
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
+import type {} from '@lyteboat/contracts'
 import type { EvalChange, EvalTurnResult } from '@lyteboat/eval-runner'
-import type { LyteboatEvalCompareCommand, LyteboatEvalRunCommand } from './startup.ts'
+import type { LyteboatEvalCompareCommand, LyteboatEvalReleaseCommand, LyteboatEvalRunCommand } from './startup.ts'
 
 /** Stable Cordis plugin name. */
 export const name = 'lyteboat-eval'
 
 /** The rows this one drives. */
-export const inject = ['evalRunner', 'lyteboatEvalStartup']
+export const inject = ['evalRunner', 'lyteboatEvalStartup', 'lyteboatDistro']
 
 /** One case as the terminal shows it: ✓ with its turn count, or ✗ with each failed turn's checks. */
 function caseLine(id: string, results: readonly EvalTurnResult[]): string {
@@ -54,8 +56,19 @@ function compareRuns(ctx: Context, command: LyteboatEvalCompareCommand): number 
   return count === 0 ? 0 : 1
 }
 
+async function releaseAgent(ctx: Context, command: LyteboatEvalReleaseCommand): Promise<number> {
+  const outcome = await ctx.evalRunner.release({ agentId: command.agent, dshBase: ctx.lyteboatDistro.dsh, out: command.runDir })
+  if (!outcome.released) {
+    process.stderr.write(`lyteboat release: refused at ${outcome.step}: ${outcome.reason}\n`)
+    return 1
+  }
+  const { agent } = outcome.release
+  process.stdout.write(`lyteboat release: ${agent.id} ${agent.version} (${agent.digest}) released; lock: ${outcome.file}; replay: ${command.runDir}/report.md\n`)
+  return 0
+}
+
 /**
- * Run or compare, then exit with the result.
+ * Run, compare, or release, then exit with the result.
  * @param ctx - plugin context carrying the eval runner, the invocation, and the launcher's exit request.
  */
 export function apply(ctx: Context): void {
@@ -65,7 +78,7 @@ export function apply(ctx: Context): void {
     await ctx.get('loader')?.await()
     const { command } = ctx.lyteboatEvalStartup
     try {
-      exit(command.action === 'compare' ? compareRuns(ctx, command) : await runCases(ctx, command))
+      exit(command.action === 'compare' ? compareRuns(ctx, command) : command.action === 'release' ? await releaseAgent(ctx, command) : await runCases(ctx, command))
     } catch (error: unknown) {
       process.stderr.write(`lyteboat: ${error instanceof Error ? error.message : String(error)}\n`)
       exit(2)
