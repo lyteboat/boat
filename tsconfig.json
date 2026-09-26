@@ -42,6 +42,9 @@
       "path": "./dsh/test-support/agent-loop-testkit"
     },
     {
+      "path": "./dsh/api/session-controller"
+    },
+    {
       "path": "./lyteboat/core/contracts"
     },
     {
@@ -69,7 +72,55 @@
       "path": "./lyteboat/plugins/distro"
     },
     {
-      "path": "./lyteboat/bundles/run"
+      "path": "./lyteboat/plugins/agent-catalog"
+    },
+    {
+      "path": "./lyteboat/plugins/chat-api"
+    },
+    {
+      "path": "./lyteboat/plugins/eval-runner"
+    },
+    {
+      "path": "./lyteboat/plugins/web-pages"
+    },
+    {
+      "path": "./lyteboat/plugins/web-pages/tsconfig.client.json"
+    },
+    {
+      "path": "./lyteboat/plugins/agent-inspector"
+    },
+    {
+      "path": "./lyteboat/plugins/session-index"
+    },
+    {
+      "path": "./lyteboat/plugins/run-metrics"
+    },
+    {
+      "path": "./lyteboat/plugins/studio-auth"
+    },
+    {
+      "path": "./lyteboat/plugins/studio-api"
+    },
+    {
+      "path": "./lyteboat/plugins/studio-web"
+    },
+    {
+      "path": "./lyteboat/bundles/try"
+    },
+    {
+      "path": "./lyteboat/bundles/serve"
+    },
+    {
+      "path": "./lyteboat/bundles/eval"
+    },
+    {
+      "path": "./lyteboat/bundles/inspect"
+    },
+    {
+      "path": "./lyteboat/bundles/web"
+    },
+    {
+      "path": "./lyteboat/bundles/studio"
     },
     {
       "path": "./lyteboat/apps/cli"

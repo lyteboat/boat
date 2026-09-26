@@ -99,12 +99,13 @@ export const LYTEBOAT_SKILLS_SECTION_ORDER = 450
 /** When a tool's schema reaches the model: always, or only after a skill (or a plugin) activated it. */
 export type LyteboatToolVisibility = 'always' | 'auto'
 
+/** Whether the tools an agent inherits from the host, and no declaration names, reach the model. */
+export type LyteboatInheritedToolVisibility = 'visible' | 'hidden'
+
 /** lyteboat-side metadata registered beside a dsh ToolDefinition (the reference AgentTool fields). */
 export interface LyteboatToolMeta {
   /** Defaults to `always`. */
   visibility?: LyteboatToolVisibility
-  /** Route the call through the approval seam before execution. */
-  requiresConfirmation?: boolean
   /**
    * Derive a state delta (dot-path keys, deep-merged into the session state
    * projection) from the tool's validated return value. Runs where dsh
@@ -230,6 +231,158 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 })
 
 /**
+ * Who a request comes from: `user`, an end user the caller names (`/chat`'s
+ * `user_id`); `operator`, a person at a lyteboat surface (the web pages,
+ * the command line); `system`, lyteboat itself (an eval run). Only a `user`
+ * owner can continue a session over `/chat`. Not dsh's `source.kind: 'user'`,
+ * which says a human message came from the conversation's human side, whoever
+ * sent it.
+ */
+export type LyteboatRequestOwner = {
+  kind: 'user' | 'operator' | 'system'
+  id: string
+}
+
+/** The schema of {@link LyteboatRequestOwner}. */
+export const lyteboatRequestOwnerSchema: z.ZodType<LyteboatRequestOwner> = z.object({
+  kind: z.enum(['user', 'operator', 'system']),
+  id: z.string().min(1),
+})
+
+/**
+ * The model an agent declares in its `agent.yml`: the provider route, the
+ * provider's model id, and the reasoning effort when the agent fixes one. A
+ * business mode that enforces the declaration compares all three exactly.
+ */
+export type LyteboatAgentModel = {
+  provider: string
+  model: string
+  reasoningEffort?: string
+}
+
+/** The schema of {@link LyteboatAgentModel}. */
+export const lyteboatAgentModelSchema: z.ZodType<LyteboatAgentModel> = z.strictObject({
+  provider: z.string().min(1),
+  model: z.string().min(1),
+  reasoningEffort: z.string().min(1).exactOptional(),
+})
+
+/**
+ * An agent's manifest, `<agent>/agent.yml`: display fields (`name`,
+ * `description`, `order`), the version its author promises (`1.2.3` or
+ * `1.2.3-rc.1`), and the model it is evaluated on. Every field is optional; a
+ * release needs `version` and `model`.
+ */
+export type LyteboatAgentManifest = {
+  name?: string
+  description?: string
+  order?: number
+  version?: string
+  model?: LyteboatAgentModel
+}
+
+// YAML reads an unquoted 1.0 as a number: say how to write it.
+const lyteboatAgentVersionSchema = z.string({ error: 'must be a string such as 1.2.3; quote it in YAML (version: "1.0.0")' }).regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u, 'must look like 1.2.3 or 1.2.3-rc.1')
+
+const lyteboatAgentDigestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/u, 'must be sha256: and 64 lowercase hex digits')
+
+/** The schema of {@link LyteboatAgentManifest}; an unknown key fails. */
+export const lyteboatAgentManifestSchema: z.ZodType<LyteboatAgentManifest> = z.strictObject({
+  name: z.string().exactOptional(),
+  description: z.string().exactOptional(),
+  order: z.number().finite().exactOptional(),
+  version: lyteboatAgentVersionSchema.exactOptional(),
+  model: lyteboatAgentModelSchema.exactOptional(),
+})
+
+/**
+ * Which agent answered: its id, the version its manifest declares, and the
+ * digest of its directory (`sha256:` and 64 lowercase hex digits, computed by
+ * `@lyteboat/agent-catalog`). A request, an eval run, and a release lock carry
+ * the same shape.
+ */
+export type LyteboatAgentIdentity = {
+  id: string
+  version?: string
+  digest: string
+}
+
+/** The schema of {@link LyteboatAgentIdentity}. */
+export const lyteboatAgentIdentitySchema: z.ZodType<LyteboatAgentIdentity> = z.strictObject({
+  id: z.string().min(1),
+  version: z.string().min(1).exactOptional(),
+  digest: lyteboatAgentDigestSchema,
+})
+
+/**
+ * What an eval run was and how it went, as its `run.json`: the agent it ran
+ * (identity), the model its recorded requests used (a real run whose loop sent
+ * requests; a replay records none), the mode, the run a replay played back,
+ * and the case, turn, and check totals.
+ */
+export type LyteboatEvalRunRecord = {
+  agent: LyteboatAgentIdentity
+  model?: LyteboatAgentModel
+  mode: 'real' | 'replay'
+  from?: string
+  cases: { id: string; pass: boolean }[]
+  turns: { total: number; passed: number }
+  checks: { total: number; passed: number }
+  startedAt: string
+  durationMs: number
+}
+
+const lyteboatEvalTotalsSchema = z.object({ total: z.number(), passed: z.number() })
+
+/** An eval run's id, its directory's name under `$LYTEBOAT_HOME/evals`: one path segment of letters, digits, dots, dashes, and underscores. */
+export const LYTEBOAT_EVAL_RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u
+
+/** The schema of {@link LyteboatEvalRunRecord}: a `run.json` is a file, read at a boundary. */
+export const lyteboatEvalRunRecordSchema: z.ZodType<LyteboatEvalRunRecord> = z.object({
+  agent: lyteboatAgentIdentitySchema,
+  model: lyteboatAgentModelSchema.exactOptional(),
+  mode: z.enum(['real', 'replay']),
+  from: z.string().exactOptional(),
+  cases: z.array(z.object({ id: z.string(), pass: z.boolean() })),
+  turns: lyteboatEvalTotalsSchema,
+  checks: lyteboatEvalTotalsSchema,
+  startedAt: z.string(),
+  durationMs: z.number(),
+})
+
+/**
+ * An agent's release lock, `<agent>/agent.release.json`, written by `lyteboat
+ * release` once the agent passed its release gate and read by `lyteboat serve
+ * --release`: the agent released (id, version, digest), the model it was
+ * evaluated on, the dsh release of the kernel that evaluated it, the per-file
+ * content hashes behind the digest (POSIX relative path → sha256), and the
+ * baseline that was replayed (its start, its case, turn, and check totals,
+ * and the sha256 of its `results.jsonl`).
+ */
+export type LyteboatAgentRelease = {
+  agent: { id: string; version: string; digest: string }
+  model: LyteboatAgentModel
+  dshBase: string
+  files: { [path: string]: string }
+  baseline: { startedAt: string; cases: number; turns: number; checks: number; results: string }
+}
+
+/** The schema of {@link LyteboatAgentRelease}: a lock is a file, read at a boundary; an unknown key fails. */
+export const lyteboatAgentReleaseSchema: z.ZodType<LyteboatAgentRelease> = z.strictObject({
+  agent: z.strictObject({ id: z.string().min(1), version: lyteboatAgentVersionSchema, digest: lyteboatAgentDigestSchema }),
+  model: lyteboatAgentModelSchema,
+  dshBase: z.string().min(1),
+  files: z.record(z.string().min(1), z.string().regex(/^[0-9a-f]{64}$/u, 'must be 64 lowercase hex digits')),
+  baseline: z.strictObject({
+    startedAt: z.string(),
+    cases: z.number().int().nonnegative(),
+    turns: z.number().int().nonnegative(),
+    checks: z.number().int().nonnegative(),
+    results: lyteboatAgentDigestSchema,
+  }),
+})
+
+/**
  * The request a human message answers to, carried on its `source` beside
  * `kind: 'user'`, so every dsh consumer still reads the message as human
  * input. `@lyteboat/request-context` reads it back.
@@ -237,6 +390,12 @@ export const lyteboatIntakeVerdictSchema: z.ZodType<LyteboatIntakeVerdict> = z.o
 export type LyteboatRequest = {
   /** The caller's id for the request, when it gave one. */
   requestId?: string
+  /** Who sent the request; a session's owner is its first request's. */
+  owner?: LyteboatRequestOwner
+  /** The caller's trace id for the request, so its logs and the session's can be joined. */
+  traceId?: string
+  /** The agent the request went to, as the caller's agent catalog knew it when the request was sent. */
+  agent?: LyteboatAgentIdentity
   /** The request context as the caller passed it; absent keeps the session's earlier context. */
   context?: { [key: string]: JsonValue }
   intake?: LyteboatIntakeVerdict
@@ -245,6 +404,9 @@ export type LyteboatRequest = {
 /** The schema of {@link LyteboatRequest}, the envelope on a human message's `source.lyteboatRequest`. */
 export const lyteboatRequestSchema: z.ZodType<LyteboatRequest> = z.object({
   requestId: z.string().exactOptional(),
+  owner: lyteboatRequestOwnerSchema.exactOptional(),
+  traceId: z.string().exactOptional(),
+  agent: lyteboatAgentIdentitySchema.exactOptional(),
   context: lyteboatJsonObjectSchema.exactOptional(),
   intake: lyteboatIntakeVerdictSchema.exactOptional(),
 })
@@ -257,6 +419,8 @@ export type LyteboatRequestState = {
   context: { [key: string]: JsonValue }
   /** The latest request's verdict, when an admission function ran on it. */
   intake: LyteboatIntakeVerdict | null
+  /** The first owner a request named; null before any did. */
+  owner: LyteboatRequestOwner | null
 }
 
 /** The schema of {@link LyteboatRequestState}. */
@@ -264,6 +428,104 @@ export const lyteboatRequestStateSchema: z.ZodType<LyteboatRequestState> = z.obj
   requests: z.number(),
   context: lyteboatJsonObjectSchema,
   intake: lyteboatIntakeVerdictSchema.nullable(),
+  owner: lyteboatRequestOwnerSchema.nullable(),
+})
+
+/**
+ * How one turn ended, as a caller that submitted a request reads it:
+ * `completed` (the model answered), `rejected` (the admission answered in the
+ * loop, without a model request), `tool_stopped` (a tool was blocked and the
+ * turn stopped), `stopped_by_limit` (a step reached its output-token ceiling),
+ * `aborted` (cancelled), `errored` (failed).
+ */
+export type LyteboatTurnOutcome = 'completed' | 'rejected' | 'tool_stopped' | 'stopped_by_limit' | 'aborted' | 'errored'
+
+/**
+ * A turn's outcome by the kind of its `turn/end` reason. A kind not listed is
+ * `errored`: `error`; `interrupted` and `forked`, which close a turn after the
+ * fact; and any reason a plugin merges into dsh's open reason map. A
+ * `completed` turn whose answer came from the admission in the loop (an
+ * assistant message with provider {@link LYTEBOAT_ASSISTANT_PROVIDER}) is
+ * `rejected`.
+ */
+export const LYTEBOAT_TURN_OUTCOME_OF_REASON: { readonly [reason: string]: LyteboatTurnOutcome } = {
+  completed: 'completed',
+  blocked: 'tool_stopped',
+  'max-tokens': 'stopped_by_limit',
+  aborted: 'aborted',
+}
+
+/** The turn outcomes, as a list. */
+export const LYTEBOAT_TURN_OUTCOMES = ['completed', 'rejected', 'tool_stopped', 'stopped_by_limit', 'aborted', 'errored'] as const satisfies readonly LyteboatTurnOutcome[]
+
+/**
+ * One turn a service ran, as its run-metrics recorder appends it to
+ * `$LYTEBOAT_HOME/run-metrics/<YYYY-MM-DD>.jsonl` (the UTC day the turn
+ * started), one line each, after the turn's `turn/end`. It carries counts and
+ * timings, no message text: the Studio's dashboard reads it.
+ */
+export type LyteboatRunMetric = {
+  agentId: string
+  sessionId: string
+  turn: number
+  owner?: LyteboatRequestOwner
+  /** When the turn started (epoch ms). */
+  startedAt: number
+  durationMs: number
+  /** From the start to the first answer text or immediate card; the duration when there was neither. */
+  firstContentMs: number
+  steps: number
+  modelRequests: number
+  auxCalls: number
+  /** The tool calls, dsh's `skill` tool (a skill load) left out. */
+  tools: { name: string; durationMs?: number; isError: boolean; errorCode?: string }[]
+  /** Every skill active at some point of the turn, in order, once each. */
+  activatedSkills: string[]
+  /** The skill active when the turn ended. */
+  activeSkill?: string
+  outcome: LyteboatTurnOutcome
+  /** The failure code of an `errored` turn. */
+  errorCode?: string
+}
+
+/** The schema of {@link LyteboatRunMetric}. */
+export const lyteboatRunMetricSchema: z.ZodType<LyteboatRunMetric> = z.object({
+  agentId: z.string(),
+  sessionId: z.string(),
+  turn: z.number(),
+  owner: lyteboatRequestOwnerSchema.exactOptional(),
+  startedAt: z.number(),
+  durationMs: z.number(),
+  firstContentMs: z.number(),
+  steps: z.number(),
+  modelRequests: z.number(),
+  auxCalls: z.number(),
+  tools: z.array(z.object({ name: z.string(), durationMs: z.number().exactOptional(), isError: z.boolean(), errorCode: z.string().exactOptional() })),
+  activatedSkills: z.array(z.string()),
+  activeSkill: z.string().exactOptional(),
+  outcome: z.enum(LYTEBOAT_TURN_OUTCOMES),
+  errorCode: z.string().exactOptional(),
+})
+
+/**
+ * The turns one service process is running, as its recorder keeps them in
+ * `$LYTEBOAT_HOME/run-metrics/running/<host>-<pid>.json`: rewritten at each
+ * turn's start and end and every ten seconds. A reader treats a file whose
+ * heartbeat is older than 30 seconds as a process that is gone.
+ */
+export type LyteboatRunHeartbeat = {
+  host: string
+  pid: number
+  heartbeatAt: number
+  turns: { agentId: string; sessionId: string; turn: number; startedAt: number }[]
+}
+
+/** The schema of {@link LyteboatRunHeartbeat}. */
+export const lyteboatRunHeartbeatSchema: z.ZodType<LyteboatRunHeartbeat> = z.object({
+  host: z.string(),
+  pid: z.number(),
+  heartbeatAt: z.number(),
+  turns: z.array(z.object({ agentId: z.string(), sessionId: z.string(), turn: z.number(), startedAt: z.number() })),
 })
 
 /** The `lyteboatActiveSkill` fold state. */

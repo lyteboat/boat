@@ -27,11 +27,25 @@ overrides:
   "@deepseek-ai/dsh-compaction": "workspace:*"
   "@deepseek-ai/dsh-compaction-basic": "workspace:*"
   "@deepseek-ai/dsh-agent-loop-testkit": "workspace:*"
+  "@deepseek-ai/dsh-api-session-controller": "workspace:*"
   # The bundler behind tsdown at the version upstream's lockfile resolves, so the kernel
   # bundles (lib/index.js, lib/worker.cjs) come out byte for byte as npm publishes them.
   "rolldown": "1.1.1"
 
-# An agent directory (`lyteboat run --agents`) names its rows by bare package name, and they
+# A promoted kernel package is an importer of its own, and pnpm resolves the peers of its
+# dependencies from what that importer declares. session-controller's dependencies reach kernel
+# peers it does not declare itself (dsh-subagent wants dsh-system-prompt and dsh-tools;
+# dsh-session-query reaches dsh-compaction through dsh-session-format-catalog); without them
+# pnpm keeps second copies of dsh-subagent and dsh-session-query for this importer alone, and
+# an error class imported from one copy fails `instanceof` against the other.
+packageExtensions:
+  "@deepseek-ai/dsh-api-session-controller":
+    peerDependencies:
+      "@deepseek-ai/dsh-compaction": "0.1.7-rc.2"
+      "@deepseek-ai/dsh-system-prompt": "0.1.7-rc.2"
+      "@deepseek-ai/dsh-tools": "0.1.7-rc.2"
+
+# An agent directory (`lyteboat headless --agents`) names its rows by bare package name, and they
 # resolve from the agent directory upward; the composition tests resolve rows from the
 # workspace root. Under pnpm's isolated layout both only reach the dsh and lyteboat packages
 # at the root node_modules, so every @deepseek-ai and @lyteboat package is hoisted there. All
@@ -73,13 +87,23 @@ catalogs:
     "@deepseek-ai/dsh-atomic-write": "0.1.7-rc.2"
     "@deepseek-ai/dsh-base": "0.1.7-rc.2"
     "@deepseek-ai/dsh-brand": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-connection": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-file-upload": "0.1.7-rc.2"
     "@deepseek-ai/dsh-client-ui-agent-preset": "0.1.7-rc.2"
     "@deepseek-ai/dsh-client-ui-cordis": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-session": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-sidebar-right": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.7-rc.2"
     "@deepseek-ai/dsh-cmdline": "0.1.7-rc.2"
     "@deepseek-ai/dsh-command-compact": "0.1.7-rc.2"
     "@deepseek-ai/dsh-command-goal": "0.1.7-rc.2"
     "@deepseek-ai/dsh-compaction-tool-result-pruner": "0.1.7-rc.2"
     "@deepseek-ai/dsh-cordis-client-runner": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-credentials": "0.1.7-rc.2"
     "@deepseek-ai/dsh-experimental-agent-team-profile": "0.1.7-rc.2"
     "@deepseek-ai/dsh-experimental-auto-review": "0.1.7-rc.2"
     "@deepseek-ai/dsh-experimental-voice-input-bundle": "0.1.7-rc.2"
@@ -92,6 +116,7 @@ catalogs:
     "@deepseek-ai/dsh-home-paths": "0.1.7-rc.2"
     "@deepseek-ai/dsh-hooks-claude-code": "0.1.7-rc.2"
     "@deepseek-ai/dsh-hooks-codex": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2"
     "@deepseek-ai/dsh-http-proxy": "0.1.7-rc.2"
     "@deepseek-ai/dsh-invariants": "0.1.7-rc.2"
     "@deepseek-ai/dsh-jobs-local": "0.1.7-rc.2"
@@ -99,6 +124,7 @@ catalogs:
     "@deepseek-ai/dsh-llm-deepseek": "0.1.7-rc.2"
     "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.2"
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-llm-replay": "0.1.7-rc.2"
     "@deepseek-ai/dsh-mcp-client": "0.1.7-rc.2"
     "@deepseek-ai/dsh-mcp-resources": "0.1.7-rc.2"
     "@deepseek-ai/dsh-persona": "0.1.7-rc.2"
@@ -111,6 +137,7 @@ catalogs:
     "@deepseek-ai/dsh-scope": "0.1.7-rc.2"
     "@deepseek-ai/dsh-sdk-app": "0.1.7-rc.2"
     "@deepseek-ai/dsh-sdk-minimal": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-session-format-catalog": "0.1.7-rc.2"
     "@deepseek-ai/dsh-session-query": "0.1.7-rc.2"
     "@deepseek-ai/dsh-session-reference": "0.1.7-rc.2"
     "@deepseek-ai/dsh-skill-filesystem": "0.1.7-rc.2"
@@ -149,6 +176,7 @@ catalogs:
     "@deepseek-ai/dsh-webhook": "0.1.7-rc.2"
     "@deepseek-ai/dsh-webhook-github": "0.1.7-rc.2"
     "@deepseek-ai/dsh-workflow-ptc": "0.1.7-rc.2"
+    "@deepseek-ai/dsh-workspace": "0.1.7-rc.2"
   cordis:
     "@deepseek-ai/cordis": "4.0.4"
     "@deepseek-ai/cordis-plugin-include": "1.0.9"

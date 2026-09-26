@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../dsh/core/tools" },
+    { "path": "../../../dsh/skill/skill" },
+    { "path": "../../core/contracts" },
+    { "path": "../agent-catalog" },
+    { "path": "../skill-router" },
+    { "path": "../tool-policy" }
+  ]
+}

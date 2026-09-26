@@ -25,9 +25,11 @@
     "dsh-compat/**/*.ts"
   ],
   // Upstream code carried by the G2 harness (it reads cordis const enums, which
-  // isolatedModules rejects); upstream type-checks it, lyteboat runs it.
+  // isolatedModules rejects); upstream type-checks it, lyteboat runs it. A plugin's
+  // browser face is type-checked by its own tsconfig.client.json (DOM, React JSX, no Node).
   "exclude": [
     "dsh-compat/tests/upstream-harness/test-invariants.ts",
-    "dsh-compat/tests/upstream-harness/shims/*.ts"
+    "dsh-compat/tests/upstream-harness/shims/*.ts",
+    "lyteboat/plugins/*/src/client/**"
   ]
 }

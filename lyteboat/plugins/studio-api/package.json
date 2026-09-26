@@ -1,0 +1,52 @@
+{
+  "name": "@lyteboat/studio-api",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat Studio's HTTP API under /api/studio on the host web server: the Host allowlist and security headers, sign-in, role checks, users, the system page, and the agent radar, with an audit log of every change",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "dependencies": {
+    "@lyteboat/agent-catalog": "workspace:*",
+    "@lyteboat/agent-inspector": "workspace:*",
+    "@lyteboat/contracts": "workspace:*",
+    "@lyteboat/eval-runner": "workspace:*",
+    "@lyteboat/run-metrics": "workspace:*",
+    "@lyteboat/session-index": "workspace:*",
+    "@lyteboat/studio-auth": "workspace:*",
+    "@deepseek-ai/dsh-home-paths": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "js-yaml": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/dsh-host-webserver": "0.1.7-rc.2"
+  },
+  "devDependencies": {
+    "@lyteboat/aux-llm": "workspace:*",
+    "@lyteboat/distro": "workspace:*",
+    "@lyteboat/skill-router": "workspace:*",
+    "@lyteboat/testing": "workspace:*",
+    "@lyteboat/tool-policy": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis",
+    "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
+    "@deepseek-ai/dsh-agent-default-model": "catalog:dsh",
+    "@deepseek-ai/dsh-agent-preset-registry": "catalog:dsh",
+    "@deepseek-ai/dsh-host-webserver": "catalog:dsh",
+    "@deepseek-ai/dsh-llm": "workspace:*",
+    "@deepseek-ai/dsh-session": "workspace:*",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "workspace:*",
+    "@deepseek-ai/dsh-skill": "workspace:*",
+    "@types/js-yaml": "catalog:"
+  }
+}

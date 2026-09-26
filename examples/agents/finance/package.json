@@ -24,7 +24,7 @@
   },
   "files": [
     "lib",
-    "preset.yml",
+    "agent.yml",
     "agent.cordis.yml",
     "assets"
   ],
@@ -48,10 +48,13 @@
     "@lyteboat/aux-llm": "workspace:*",
     "@lyteboat/cli": "workspace:*",
     "@lyteboat/distro": "workspace:*",
+    "@lyteboat/eval": "workspace:*",
     "@lyteboat/host": "workspace:*",
+    "@lyteboat/business-base": "workspace:*",
     "@lyteboat/intake-guard": "workspace:*",
     "@lyteboat/request-context": "workspace:*",
-    "@lyteboat/run": "workspace:*",
+    "@lyteboat/try": "workspace:*",
+    "@lyteboat/serve": "workspace:*",
     "@lyteboat/skill-router": "workspace:*",
     "@lyteboat/testing": "workspace:*",
     "@lyteboat/tool-policy": "workspace:*",

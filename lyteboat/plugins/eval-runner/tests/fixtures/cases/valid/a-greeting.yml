@@ -1,0 +1,10 @@
+cases:
+  - id: greeting
+    context: { channel: app }
+    turns:
+      - message: hello
+        expect:
+          outcome: completed
+          text: { includes: [OK] }
+      - message: again
+        context: { channel: web }

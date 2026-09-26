@@ -1,7 +1,7 @@
 # The finance agent's composition. Every row runs in this agent's standing
 # scope, so it reaches exactly the sessions of this agent: the persona, which
 # is the whole system prompt; the router's dynamic mode; every inherited tool
-# the policy does not declare made `auto` and `skill` kept, so only the routed
+# the policy does not declare hidden and `skill` kept, so only the routed
 # skill's tool (and `skill`) reach the model; and ./lib/agent.js with the
 # skills, the admission, and the tools.
 - id: persona
@@ -31,7 +31,7 @@
 - id: finance-tool-surface
   name: '@lyteboat/tool-policy/agent'
   config:
-    undeclared: auto
+    inherited: hidden
     tools:
       skill: { visibility: always }
 

@@ -1,0 +1,7 @@
+cases:
+  - id: expects-too-much
+    turns:
+      - message: hello
+        expect:
+          text: { includes: ['something the model never says'] }
+          cards: { count: 1 }

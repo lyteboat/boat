@@ -1,0 +1,69 @@
+# The @lyteboat/serve bundle patch: lyteboat's service mode over dsh-base and
+# @lyteboat/host. The startup row parses `--agents` or `--release` / `--host` /
+# `--port` / `--auth` / `--secret-env` into the `lyteboatServeStartup`
+# service; the agent catalog declares every agent of the roots, or the
+# released agents pinned to their locks; dsh's session
+# controller runs without the web UI (workspace, connection, and file upload are
+# its host services); the web server listens where startup says, and chat-api
+# serves /chat, /agents, and /health on it. The run-metrics recorder writes one
+# line per turn and a heartbeat of the running turns under
+# $LYTEBOAT_HOME/run-metrics, which the Studio's Dashboard reads. The last row
+# reports the service once the catalog is ready, or stops it. lyteboat's
+# service rows come from @lyteboat/host, the agent loop (lyteboat's kernel)
+# from dsh-base, and the business base from @lyteboat/business-base, all
+# listed before this bundle in the serve profile.
+
+- insert:
+    - id: lyteboat-serve-startup
+      name: '@lyteboat/serve/startup'
+
+    - id: agent-catalog
+      name: '@lyteboat/agent-catalog'
+      inject: [lyteboatServeStartup]
+      config:
+        roots: !!js ctx.lyteboatServeStartup.agentRoots
+        include: !!js ctx.lyteboatServeStartup.include
+        pinnedAgents: !!js ctx.lyteboatServeStartup.pinnedAgents
+        enforceDeclaredModel: true
+
+    # Every /chat session names its agent; a session without one runs none.
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: none
+
+    - id: workspace
+      name: '@deepseek-ai/dsh-workspace'
+
+    - id: connection
+      name: '@deepseek-ai/dsh-client-connection'
+
+    - id: file-upload
+      name: '@deepseek-ai/dsh-client-file-upload'
+
+    - id: session-controller
+      name: '@deepseek-ai/dsh-api-session-controller'
+
+    - id: run-metrics
+      name: '@lyteboat/run-metrics'
+
+    - id: webserver
+      name: '@deepseek-ai/dsh-host-webserver'
+      inject: [lyteboatServeStartup]
+      config:
+        host: !!js ctx.lyteboatServeStartup.host
+        port: !!js ctx.lyteboatServeStartup.port
+
+    - id: chat-api
+      name: '@lyteboat/chat-api'
+      inject: [lyteboatServeStartup]
+      config:
+        auth: !!js ctx.lyteboatServeStartup.auth
+        credentialRef: !!js ctx.lyteboatServeStartup.credentialRef
+
+    - id: lyteboat-serve
+      name: '@lyteboat/serve'
+
+# A service applies the user layers at startup only, as the try mode does.
+- id: hmr
+  disabled: true

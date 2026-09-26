@@ -8,7 +8,7 @@ the most recent `Dist-Import` commit names (dsh-v0.1.7-rc.2, commit 477b4f42), a
 lyteboat's changes as commits on top; `src/lyteboat/` and `tests/lyteboat/` inside those packages are lyteboat's
 own. Files elsewhere marked "Adapted from deepseek-ai/deepseek-harness" (or "Modeled on") in their
 header are derived from the same repository at dsh-v0.1.7-rc.2 (commit 477b4f42), the tag their
-header names, except `lyteboat/bundles/run/src/agent-directory.ts`: it is adapted from
+header names, except `lyteboat/plugins/agent-catalog/src/agent-directory.ts`: it is adapted from
 packages/preset/agent-presets/src/discovery.ts and metadata.ts at dsh-v0.1.5-alpha.2 (commit
 b2e3b2a0), files dsh-v0.1.7-rc.2 does not carry.
 

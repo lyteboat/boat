@@ -10,6 +10,16 @@
       "@lyteboat/source": "./src/index.ts",
       "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
+    },
+    "./studio": {
+      "@lyteboat/source": "./src/studio.ts",
+      "types": "./lib/studio.d.ts",
+      "default": "./lib/studio.js"
+    },
+    "./cli": {
+      "@lyteboat/source": "./src/cli.ts",
+      "types": "./lib/cli.d.ts",
+      "default": "./lib/cli.js"
     }
   },
   "files": [

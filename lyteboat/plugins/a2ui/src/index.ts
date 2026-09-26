@@ -23,21 +23,23 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import { lyteboatResultCardSchema } from '@lyteboat/contracts'
 import type { LyteboatCard, LyteboatResultCard } from '@lyteboat/contracts'
 import type {} from '@lyteboat/tool-policy'
-import { cardsPresentationMeta, lyteboatCardsProjectionDefinition, preparedCardsOf } from './cards-projection.ts'
+import { cardsPresentationMeta, lyteboatCardsProjectionDefinition } from './cards-projection.ts'
 import { TemplateEngine } from './engine.ts'
 import type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
 import { DEFAULT_A2UI_COMPONENT_CATALOG, validateFullPayload } from './contract.ts'
 import type { A2uiComponentCatalog } from './contract.ts'
 import { collectRawData, parseObjectArgs } from './render-tool-input.ts'
 import type { A2uiLog, RawData } from './transforms.ts'
-import { composeTurnParts, type LyteboatTurnPart } from './turn-parts.ts'
+import { LyteboatLiveTurn } from './live-turn.ts'
+import type { LyteboatTurnPart } from './turn-parts.ts'
 
 export { cardsPresentationMeta } from './cards-projection.ts'
 export type { TemplateRenderOptions, TemplateRenderResult } from './engine.ts'
 export type { A2uiLog, RawData } from './transforms.ts'
 export { validateFullPayload } from './contract.ts'
 export type { A2uiComponentCatalog, GuardResult } from './contract.ts'
-export { cardMarker } from './turn-parts.ts'
+export { LyteboatTurnComposer, cardMarker } from './turn-parts.ts'
+export { LyteboatLiveTurn } from './live-turn.ts'
 export type { LyteboatTurnPart } from './turn-parts.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -139,28 +141,29 @@ export class A2uiService extends Service {
   }
 
   /**
-   * One finished turn as a client shows it: its answer with the cards its
-   * results (and an admission reply) prepared, placed by their markers and
-   * emission modes.
+   * One finished turn as a client shows it: its answer text, step by step,
+   * with the cards its results (and an admission reply) prepared, placed by
+   * their markers and emission modes. A {@link liveTurn} fed as the turn
+   * happens shows the same parts.
    * @param session - the session the turn ran in.
    * @param fromSeq - the log position the turn starts at.
    */
   turnParts(session: Session, fromSeq: SessionLogOffset): LyteboatTurnPart[] {
-    const cards: LyteboatCard[] = []
-    let text = ''
-    let completed = false
+    const turn = new LyteboatLiveTurn()
     for (let seq = fromSeq; seq < session.seq; seq++) {
       const event = session.eventAt(SessionSeq(seq))
-      if ((event?.type === 'user/message' || event?.type === 'tool/result') && event.surfaceOp === 'append') {
-        cards.push(...preparedCardsOf(event))
-      } else if (event?.type === 'assistant/message') {
-        const answer = event.data.message.content.filter(block => block.type === 'text').map(block => block.text).join('')
-        if (answer !== '') text = answer
-      } else if (event?.type === 'turn/end') {
-        completed = event.data.reason.kind === 'completed'
-      }
+      if (event !== undefined) turn.event(event)
     }
-    return composeTurnParts(text, cards, completed)
+    return turn.parts()
+  }
+
+  /**
+   * A turn to feed as it happens, for a caller that streams it: the
+   * session's events and the assistant's streamed text, each returning the
+   * parts it adds.
+   */
+  liveTurn(): LyteboatLiveTurn {
+    return new LyteboatLiveTurn()
   }
 
   /**

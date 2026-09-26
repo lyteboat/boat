@@ -5,8 +5,9 @@
  * rides the message's own `source` beside `kind: 'user'`, so dsh reads the
  * message as human input as before and the log keeps the request with the
  * words it came with. One host service, `ctx.requestContext`, writes such a
- * message and reads it back; the `lyteboatRequest` projection keeps the
- * session's context, and a request that carries none keeps the earlier one.
+ * message (or the source fields a session-controller prompt carries it in)
+ * and reads it back; the `lyteboatRequest` projection keeps the session's
+ * context, and a request that carries none keeps the earlier one.
  *
  * The context is logged as the caller passed it and never shown to the model:
  * a tool reads what it needs through `contextOf`. Credentials do not belong in
@@ -18,6 +19,7 @@ import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import { lyteboatRequestSchema } from '@lyteboat/contracts'
 import type { JsonValue, LyteboatRequest } from '@lyteboat/contracts'
 import { lyteboatRequestOf, lyteboatRequestProjectionDefinition } from './request-projection.ts'
 
@@ -44,11 +46,22 @@ export class RequestContextService extends Service {
    * @param request - the request id, context, and verdict to record.
    */
   message(text: string, request: LyteboatRequest): UserMessage {
-    const empty = request.requestId === undefined && request.context === undefined && request.intake === undefined
     return createUserMessage({
       content: [{ type: 'text', text }],
-      source: empty ? { kind: 'user' } : { kind: 'user', lyteboatRequest: request },
+      source: recordsNothing(request) ? { kind: 'user' } : { kind: 'user', lyteboatRequest: request },
     })
+  }
+
+  /**
+   * The fields that carry one request on a session-controller prompt
+   * (`SessionPromptRequest.sourceFields`, the kernel extension
+   * `session-controller-prompt-source`), which puts them on the message's
+   * source as {@link message} does. A request with nothing to record adds none.
+   * @param request - the request to record.
+   * @throws when the request fails the contract's schema.
+   */
+  sourceFields(request: LyteboatRequest): { readonly [key: string]: JsonValue } {
+    return recordsNothing(request) ? {} : { lyteboatRequest: lyteboatRequestSchema.parse(request) }
   }
 
   /**
@@ -63,6 +76,10 @@ export class RequestContextService extends Service {
   contextOf(agent: Agent): { [key: string]: JsonValue } {
     return this.ctx.sessionProjections.stateOf(agent.session, 'lyteboatRequest')?.context ?? {}
   }
+}
+
+function recordsNothing(request: LyteboatRequest): boolean {
+  return Object.values(request).every(value => value === undefined)
 }
 
 export default RequestContextService

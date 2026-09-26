@@ -1,0 +1,80 @@
+[
+  {
+    "protocol": "AGUI",
+    "id": 1,
+    "event": "run_started",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-out-of-scope",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 2,
+    "event": "text_message_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-out-of-scope",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 3,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-out-of-scope",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "这个问题不在我的服务范围内。我可以帮您看看资产、诊断配置，或者讲讲理财常识。",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 4,
+    "event": "text_message_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-out-of-scope",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "这个问题不在我的服务范围内。我可以帮您看看资产、诊断配置，或者讲讲理财常识。",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 5,
+    "event": "run_finished",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-out-of-scope",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "这个问题不在我的服务范围内。我可以帮您看看资产、诊断配置，或者讲讲理财常识。",
+      "turn": 1,
+      "agent_name": "finance",
+      "extra": {
+        "run_outcome": "rejected"
+      }
+    }
+  }
+]

@@ -1,0 +1,454 @@
+[
+  {
+    "protocol": "AGUI",
+    "id": 1,
+    "event": "run_started",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 2,
+    "event": "reasoning_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "allocation_diagnosis",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 3,
+    "event": "reasoning_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "allocation_diagnosis",
+        "content": [
+          {}
+        ]
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 4,
+    "event": "text_message_start",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 5,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "F",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 6,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "I",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 7,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 8,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "A",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 9,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "N",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 10,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "C",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 11,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "E",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 12,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "-",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 13,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "O",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 14,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "K",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 15,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "\n",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 16,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "A2UI",
+      "ui_data": {
+        "event": "beginRendering",
+        "version": "1.0.0",
+        "surfaceId": "allocation_diagnosis-<surface>",
+        "rootComponentId": "root-container",
+        "showType": "card",
+        "components": [
+          {
+            "id": "title-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "配置诊断"
+                },
+                "fontSize": "18px",
+                "fontWeight": 600,
+                "color": "#1A1A1A"
+              }
+            }
+          },
+          {
+            "id": "verdict-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "您的配置比较合适"
+                },
+                "fontSize": "16px",
+                "fontWeight": 600
+              }
+            }
+          },
+          {
+            "id": "risky-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "风险资产占 45.0%，按「100 减年龄」，45 岁建议 45%–65%"
+                }
+              }
+            }
+          },
+          {
+            "id": "steady-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "稳健资产占 55.0%"
+                }
+              }
+            }
+          },
+          {
+            "id": "root-container",
+            "component": {
+              "Column": {
+                "width": 100,
+                "gap": 12,
+                "children": {
+                  "explicitList": [
+                    "title-text",
+                    "verdict-text",
+                    "risky-text",
+                    "steady-text"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "businessPayload": {
+          "risky_line": "风险资产占 45.0%，按「100 减年龄」，45 岁建议 45%–65%",
+          "steady_line": "稳健资产占 55.0%",
+          "verdict_line": "您的配置比较合适"
+        }
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 17,
+    "event": "text_message_content",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "A2UI",
+      "ui_data": {
+        "event": "beginRendering",
+        "version": "1.0.0",
+        "surfaceId": "allocation_plan-<surface>",
+        "rootComponentId": "root-container",
+        "showType": "card",
+        "components": [
+          {
+            "id": "title-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "调整方向"
+                },
+                "fontSize": "18px",
+                "fontWeight": 600,
+                "color": "#1A1A1A"
+              }
+            }
+          },
+          {
+            "id": "direction-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "保持现在的比例，每年检查一次，偏离较多时再平衡。"
+                }
+              }
+            }
+          },
+          {
+            "id": "note-text",
+            "component": {
+              "Text": {
+                "text": {
+                  "literalString": "以上只是按公开理财常识的方向性建议，不构成具体产品推荐。"
+                },
+                "fontSize": "12px",
+                "color": "#8F8F8F"
+              }
+            }
+          },
+          {
+            "id": "root-container",
+            "component": {
+              "Column": {
+                "width": 100,
+                "gap": 12,
+                "children": {
+                  "explicitList": [
+                    "title-text",
+                    "direction-text",
+                    "note-text"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "businessPayload": {
+          "direction": "保持现在的比例，每年检查一次，偏离较多时再平衡。",
+          "note": "以上只是按公开理财常识的方向性建议，不构成具体产品推荐。"
+        }
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 18,
+    "event": "text_message_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK\n",
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 19,
+    "event": "reasoning_end",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "json",
+      "ui_data": {
+        "think": "",
+        "content": []
+      },
+      "turn": 1,
+      "agent_name": "finance"
+    }
+  },
+  {
+    "protocol": "AGUI",
+    "id": 20,
+    "event": "run_finished",
+    "data": {
+      "code": "200",
+      "conversation_id": "<session>",
+      "message_id": "golden-diagnosis",
+      "timestamp": "<timestamp>",
+      "ui_protocol": "text",
+      "ui_data": "FINANCE-OK\n",
+      "turn": 1,
+      "agent_name": "finance",
+      "extra": {
+        "run_outcome": "completed"
+      }
+    }
+  }
+]

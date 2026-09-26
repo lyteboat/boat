@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../dsh/llm/llm" },
+    { "path": "../../../dsh/core/session" },
+    { "path": "../../../dsh/session/session-persistence" },
+    { "path": "../../../dsh/skill/skill" },
+    { "path": "../../core/contracts" },
+    { "path": "../agent-catalog" }
+  ]
+}

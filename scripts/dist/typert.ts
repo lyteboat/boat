@@ -15,7 +15,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { repoRoot, stableJson } from './kernel.ts'
 
-interface TypertManifest {
+export interface TypertManifest {
   exports?: Record<string, unknown>
   files?: string[]
 }

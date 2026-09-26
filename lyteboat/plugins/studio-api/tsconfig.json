@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../core/contracts" },
+    { "path": "../agent-catalog" },
+    { "path": "../agent-inspector" },
+    { "path": "../eval-runner" },
+    { "path": "../run-metrics" },
+    { "path": "../session-index" },
+    { "path": "../studio-auth" }
+  ]
+}

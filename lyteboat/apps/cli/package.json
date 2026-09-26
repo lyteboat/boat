@@ -14,7 +14,13 @@
   "scripts": {},
   "dependencies": {
     "@lyteboat/host": "workspace:*",
-    "@lyteboat/run": "workspace:*",
+    "@lyteboat/business-base": "workspace:*",
+    "@lyteboat/eval": "workspace:*",
+    "@lyteboat/inspect": "workspace:*",
+    "@lyteboat/try": "workspace:*",
+    "@lyteboat/serve": "workspace:*",
+    "@lyteboat/studio": "workspace:*",
+    "@lyteboat/web": "workspace:*",
     "@deepseek-ai/cordis": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-include": "catalog:cordis",
     "@deepseek-ai/cordis-plugin-loader": "catalog:cordis",
@@ -99,6 +105,7 @@
     "node-addon-require-builtin": "^0.1.6"
   },
   "devDependencies": {
+    "@lyteboat/contracts": "workspace:*",
     "@lyteboat/testing": "workspace:*",
     "@deepseek-ai/dsh-llm-mock-server": "catalog:dsh",
     "@deepseek-ai/dsh-session-persistence": "workspace:*",

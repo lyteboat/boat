@@ -1,0 +1,12 @@
+# The desk's cases: `lyteboat inspect` lists them with the file.
+cases:
+  - id: time
+    turns:
+      - message: 几点了
+        expect:
+          tools: { called: [desk_clock] }
+  - id: quote
+    turns:
+      - message: 查 600000 的报价
+        expect:
+          skill: quote-lookup

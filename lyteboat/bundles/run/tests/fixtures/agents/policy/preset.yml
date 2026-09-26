@@ -1,3 +1,0 @@
-name: 工具策略示例
-description: 用 @lyteboat/tool-policy/agent 给官方工具声明策略：bash 需确认，todo_write 按需可见。
-order: 2

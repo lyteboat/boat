@@ -55,6 +55,28 @@
       "signature": "'agent-loop/config-start-failed'(payload: { sessionId: SessionId; error: unknown; }): void;"
     }
   },
+  "@deepseek-ai/dsh-api-session-controller": {
+    "api-session/activity": {
+      "mode": "emit",
+      "signature": "'api-session/activity'(sessionId: SessionId, updatedAt: number): void;"
+    },
+    "api-session/added": {
+      "mode": "emit",
+      "signature": "'api-session/added'(summary: SessionSummary): void;"
+    },
+    "api-session/error": {
+      "mode": "emit",
+      "signature": "'api-session/error'(sessionId: SessionId, message: string): void;"
+    },
+    "api-session/removed": {
+      "mode": "emit",
+      "signature": "'api-session/removed'(sessionId: SessionId): void;"
+    },
+    "api-session/status": {
+      "mode": "emit",
+      "signature": "'api-session/status'(sessionId: SessionId, running: boolean): void;"
+    }
+  },
   "@deepseek-ai/dsh-compaction": {
     "compaction/summary-error": {
       "mode": "waterfall",

@@ -1,0 +1,35 @@
+{
+  "name": "@lyteboat/studio-auth",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "description": "lyteboat Studio's sign-in: operator-managed accounts (scrypt), admin/editor/viewer role grants, signed bearer tokens, and gateway mode",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@lyteboat/source": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./accounts": {
+      "@lyteboat/source": "./src/studio-accounts.ts",
+      "types": "./lib/studio-accounts.d.ts",
+      "default": "./lib/studio-accounts.js"
+    }
+  },
+  "files": ["lib"],
+  "dependencies": {
+    "@lyteboat/contracts": "workspace:*",
+    "@deepseek-ai/dsh-credentials": "catalog:dsh",
+    "@deepseek-ai/dsh-home-paths": "catalog:dsh",
+    "@deepseek-ai/schemastery": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "catalog:cordis"
+  },
+  "devDependencies": {
+    "@lyteboat/testing": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:cordis"
+  }
+}

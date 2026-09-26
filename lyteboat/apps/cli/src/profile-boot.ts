@@ -53,6 +53,7 @@ import { installProxyFromEnvironment } from '@deepseek-ai/dsh-http-proxy'
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline, type AppReady } from '@deepseek-ai/dsh-cmdline'
 import { FIBER_STATE } from './fiber-state.ts'
+import { inactiveModeRunner } from './mode-runners.ts'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 import { LYTEBOAT_PROFILE_TEMPLATES } from './templates.ts'
 
@@ -137,7 +138,7 @@ export function ensureProfileInitialized(name: string, home: string = resolveDsh
  * lists, and report every other skipped bundle the way dsh's launcher does.
  * dsh skips a bundle it cannot resolve, or whose dsh peers the running
  * release does not satisfy, and boots the rest; without `@lyteboat/host` or
- * `@lyteboat/run` that is a different application than the profile names.
+ * `@lyteboat/try` that is a different application than the profile names.
  * @param name - the profile name.
  * @param profile - the bundles dsh skipped while loading it.
  * @throws when a skipped bundle is one the profile's lyteboat template lists.
@@ -259,6 +260,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     overlays: composed.overlays,
     telemetryDisabledEnv: process.env['DSH_TELEMETRY_DISABLED'],
   }
+  let exitRequested = false
   const ctx = await boot(NAME, rootConfig, readProfilePatches(NAME, profileContext, composed.profile), async (hostCtx) => {
     app.current = hostCtx
     hostCtx.provide('profileContext', profileContext)
@@ -267,11 +269,22 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     await hostCtx.plugin(PluginPackages, { resolution: composed.resolution })
     provideCmdline(hostCtx, {
       args: options.args,
-      exit: code => void shutdown.shutdown(code),
+      exit: (code) => {
+        exitRequested = true
+        void shutdown.shutdown(code)
+      },
       ready: appReady.service,
     })
   })
   app.current = ctx
+  // A runner that already asked to exit is tearing the tree down, and has reported why.
+  const inactiveRunner = exitRequested ? undefined : inactiveModeRunner(ctx)
+  if (inactiveRunner !== undefined) {
+    // The launcher reports its own startup failures on stderr, as dsh's audit does.
+    process.stderr.write(`${NAME}: startup failed: ${inactiveRunner} did not activate (the entries above say why)\n`)
+    void shutdown.shutdown(1)
+    return { ctx, shutdown }
+  }
   if (!signalShutdown.signal.aborted
     && ctx.fiber.state === FIBER_STATE.ACTIVE
     && ctx.get('loader') !== undefined) {

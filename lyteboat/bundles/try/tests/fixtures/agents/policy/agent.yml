@@ -1,0 +1,3 @@
+name: 工具策略示例
+description: 自带官方 todo 工具，用 @lyteboat/tool-policy/agent 收起继承的工具：只有它声明的工具可见。
+order: 2

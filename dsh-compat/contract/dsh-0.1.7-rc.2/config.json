@@ -214,6 +214,83 @@
     }
   },
   "@deepseek-ai/dsh-agent-loop-testkit": {},
+  "@deepseek-ai/dsh-api-session-controller": {
+    ".": {
+      "SessionController": {
+        "Config": [
+          {
+            "dict": {
+              "nativeOpen": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {},
+            "type": "boolean"
+          }
+        ],
+        "inject": [
+          "agentDefaultModel",
+          "agents",
+          "attachments",
+          "fileUploads",
+          "fs",
+          "llm",
+          "sessions",
+          "sessionProjections",
+          "sessionQuery",
+          "typert",
+          "workspaceRegistry"
+        ]
+      },
+      "SessionFileReferences": {
+        "inject": [
+          "fileReferences",
+          "typert"
+        ]
+      },
+      "SessionSkillCatalog": {
+        "inject": [
+          "agents",
+          "sessionQuery",
+          "typert"
+        ]
+      },
+      "default": {
+        "Config": [
+          {
+            "dict": {
+              "nativeOpen": 1
+            },
+            "meta": {
+              "default": {}
+            },
+            "type": "object"
+          },
+          {
+            "meta": {},
+            "type": "boolean"
+          }
+        ],
+        "inject": [
+          "agentDefaultModel",
+          "agents",
+          "attachments",
+          "fileUploads",
+          "fs",
+          "llm",
+          "sessions",
+          "sessionProjections",
+          "sessionQuery",
+          "typert",
+          "workspaceRegistry"
+        ]
+      }
+    }
+  },
   "@deepseek-ai/dsh-compaction": {
     "./invariant": {
       "$module": {

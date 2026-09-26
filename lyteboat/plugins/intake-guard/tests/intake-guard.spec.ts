@@ -69,6 +69,16 @@ describe('admission ahead of the loop', () => {
     expect(humanSources(agent)).toEqual([{ kind: 'user', lyteboatRequest: { requestId: 'r-1', context: { customer: 'c-1' }, intake } }])
   })
 
+  it('submit records who sent the request and the agent it went to', async () => {
+    const ctx = await harness(new MockAdapter([textResponse('好的')]))
+    const agent = await ctx.agentLoop.create(SessionId('identity'), { provider: 'mock', model: 'mock' })
+    const identity = { id: 'finance', version: '1.0.0', digest: `sha256:${'a'.repeat(64)}` }
+
+    await submitAndWait(ctx, agent, { text: '你好', owner: { kind: 'operator', id: 'cli' }, agent: identity })
+
+    expect(humanSources(agent)).toEqual([{ kind: 'user', lyteboatRequest: { owner: { kind: 'operator', id: 'cli' }, agent: identity } }])
+  })
+
   it('submit records a reply verdict on the request, and the loop answers it without a model request', async () => {
     const adapter = new MockAdapter([])
     const ctx = await harness(adapter)

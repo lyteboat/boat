@@ -1,0 +1,7 @@
+# A persona and nothing else: the smallest agent `lyteboat serve` and `lyteboat eval` run.
+- id: persona
+  name: '@deepseek-ai/dsh-persona'
+  config:
+    prefix: >-
+      You are SERVE-SMOKE, a test agent powered by the {{model}} model.
+    suffix: Your working directory is {{cwd}}.

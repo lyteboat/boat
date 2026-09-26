@@ -16,4 +16,5 @@ export const DISTRO_EXTENSIONS: readonly LyteboatDistroExtension[] = Object.free
   { id: 'agent-loop-intake', package: '@deepseek-ai/dsh-agent-loop', kind: 'event' },
   { id: 'agent-loop-pre-assemble', package: '@deepseek-ai/dsh-agent-loop', kind: 'event' },
   { id: 'session-append-ignorable', package: '@deepseek-ai/dsh-session', kind: 'api-option' },
+  { id: 'session-controller-prompt-source', package: '@deepseek-ai/dsh-api-session-controller', kind: 'api-option' },
 ])

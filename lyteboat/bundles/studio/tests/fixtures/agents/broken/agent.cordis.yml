@@ -1,0 +1,3 @@
+# A row whose package does not exist: the Studio lists this agent as failed and serves the rest.
+- id: missing
+  name: '@lyteboat/no-such-plugin'

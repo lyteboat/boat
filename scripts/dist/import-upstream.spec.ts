@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
-import { IMPORT_TRAILER, lastImport } from './import-upstream.ts'
+import { IMPORT_TRAILER, lastImport, normalizedTsconfig } from './import-upstream.ts'
 
 const repositories: string[] = []
 
@@ -36,4 +36,32 @@ test('lastImport returns the newest import reachable from HEAD when later commit
   commit(repository, 'chore: work on top of the import')
 
   expect(lastImport('HEAD', repository)).toBe(newest)
+})
+
+function tsconfigFile(references: string[]): string {
+  const dir = mkdtempSync(join(tmpdir(), 'lyteboat-tsconfig-spec-'))
+  repositories.push(dir)
+  const file = join(dir, 'tsconfig.json')
+  writeFileSync(file, JSON.stringify({ files: [], references: references.map(path => ({ path })) }))
+  return file
+}
+
+function keptPaths(text: string): string[] {
+  return (JSON.parse(text) as { references: { path: string }[] }).references.map(reference => reference.path)
+}
+
+const sessionController = { name: '@deepseek-ai/dsh-api-session-controller', dir: 'api/session-controller' }
+const kernelDirs = new Set(['core/session', 'api/session-controller'])
+
+test('normalizedTsconfig keeps kernel references and the package\'s own configs, and drops npm packages', () => {
+  const file = tsconfigFile(['./tsconfig.host.json', '../../core/session', '../../workspace/workspace', '../../client/connection/tsconfig.host.json', '../../../vendor/cordis'])
+
+  expect(keptPaths(normalizedTsconfig(file, sessionController, kernelDirs, false))).toEqual(['./tsconfig.host.json', '../../core/session'])
+})
+
+test('normalizedTsconfig drops the browser-face config when the browser face is carried', () => {
+  const file = tsconfigFile(['./tsconfig.host.json', './tsconfig.client.json'])
+
+  expect(keptPaths(normalizedTsconfig(file, sessionController, kernelDirs, true))).toEqual(['./tsconfig.host.json'])
+  expect(keptPaths(normalizedTsconfig(file, sessionController, kernelDirs, false))).toEqual(['./tsconfig.host.json', './tsconfig.client.json'])
 })

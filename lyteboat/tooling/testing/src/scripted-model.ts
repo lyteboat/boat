@@ -52,7 +52,8 @@ export type ScriptedReply =
   | { text: string }
   | { toolCall: { name: string; arguments: unknown; id?: string } }
 
-export type Script = (request: RecordedRequest) => ScriptedReply
+/** Chooses the reply to one request; a promise holds the reply until it settles. */
+export type Script = (request: RecordedRequest) => ScriptedReply | Promise<ScriptedReply>
 
 export interface ScriptedModel {
   /** Base URL without `/v1`; `/v1/messages` is served. */
@@ -138,8 +139,12 @@ export async function startScriptedModel(script: Script, options: { apiKey?: str
       }
       const recorded = classify(await readJson(request))
       requests.push(recorded)
-      writeReply(response, script(recorded))
+      const reply = await script(recorded)
+      // A held reply may outlive the caller, who aborted the request.
+      if (response.destroyed) return
+      writeReply(response, reply)
     })().catch((error: unknown) => {
+      if (response.headersSent) return
       response.writeHead(500, { 'content-type': 'application/json' })
       response.end(JSON.stringify({ error: { message: String(error) } }))
     })

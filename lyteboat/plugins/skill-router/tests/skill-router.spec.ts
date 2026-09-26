@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import { createScope } from '@deepseek-ai/dsh-scope'
 import type { GenerateOptions, UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId, SessionLogOffset, SessionSeq, buildForkSeed, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SkillRegistry, { renderSkillContent } from '@deepseek-ai/dsh-skill'
@@ -233,6 +234,15 @@ describe('full mode', () => {
 })
 
 describe('off mode and preset settings', () => {
+  it('answers the settings of a standing scope the way it answers its agents', async () => {
+    const ctx = await harness(new MockAdapter([]), {})
+    const key = {}
+    createScope(ctx, key).ctx.get('skillRouter')?.declare({ mode: 'full' })
+
+    expect(ctx.skillRouter.settingsFor(key)).toEqual({ mode: 'full', historyWindow: 6, timeoutMs: 10_000, maxTokens: 200 })
+    expect(ctx.skillRouter.settingsFor(undefined).mode).toBe('off')
+  })
+
   it('does nothing when off, and a scoped declaration overrides the host default', async () => {
     const adapter = new MockAdapter([textResponse('one'), textResponse('{"skill_id": "market-news", "reason": "r"}'), textResponse('two')])
     const ctx = await harness(adapter, {})
