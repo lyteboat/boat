@@ -160,6 +160,12 @@ describe('the run-metrics reader', () => {
     expect(later.map(row => row.agentId)).toEqual(['beta'])
   })
 
+  it('refuses a Config its schema refuses', async () => {
+    const ctx = await createLyteboatUnitHost(new MockAdapter([]))
+
+    await expect(ctx.plugin(RunMetricsReaderService, { dir: 42 } as unknown as { dir: string })).rejects.toThrow('expected string but got 42')
+  })
+
   it('reads a day file again once it changes', async () => {
     const dir = scratch()
     const file = join(dir, `${runMetricDayOf(T)}.jsonl`)
