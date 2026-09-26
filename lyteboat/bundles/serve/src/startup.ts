@@ -66,7 +66,7 @@ function readReleaseLock(program: Command, file: string, dshBase: string): { dir
     return program.error(`error: --release ${path} cannot be read: ${error instanceof Error ? error.message : String(error)}`)
   }
   const parsed = lyteboatAgentReleaseSchema.safeParse(raw)
-  if (!parsed.success) return program.error(`error: --release ${path} is not a release lock: ${parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}`)
+  if (!parsed.success) return program.error(`error: --release ${path} is not a release lock: ${parsed.error.issues.map(issue => `${issue.path.join('.') || '(the file)'}: ${issue.message}`).join('; ')}`)
   const release = parsed.data
   const dir = dirname(path)
   if (basename(dir) !== release.agent.id) program.error(`error: --release ${path} releases ${release.agent.id}, but lies in ${dir}; a lock stays in its agent's directory`)

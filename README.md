@@ -85,6 +85,8 @@ lyteboat try --agents ./examples/agents --agent finance "什么是再平衡"   #
 lyteboat try --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # 金融智能体：请求上下文指明客户
 lyteboat serve --agents ./examples/agents                      # HTTP 服务：POST /chat，同步或 enterprise 流式
 lyteboat eval --agents ./examples/agents --agent finance       # 跑 agent 的评测用例，逐轮检查
+lyteboat release --agents ./examples/agents --agent finance    # 按基线检查 agent，写下发布锁 agent.release.json
+lyteboat serve --release ./examples/agents/finance/agent.release.json   # 只服务发布过的那个 agent
 lyteboat studio --agents ./examples/agents --no-open           # 浏览器界面：dsh web 加轻舟的页面
 ```
 
@@ -97,10 +99,11 @@ lyteboat studio --agents ./examples/agents --no-open           # 浏览器界面
 | `lyteboat try [选项] "任务"` | 回答一个任务，打印结果后退出（profile `try`）；不带 `--agent` 时模型只有 `skill` 工具，用来试插件、做快速检查，不是编码助手 |
 | `lyteboat serve [选项]` | 把 `--agents` 目录里的全部 agent 以 HTTP 服务出去（profile `serve`）：`POST /chat`、`GET /agents`、`GET /health` |
 | `lyteboat eval [选项]` | 跑一个 agent 的评测用例并逐轮检查（profile `eval`）；`lyteboat eval compare <前> <后>` 比较两次运行 |
+| `lyteboat release [选项]` | 让一个 agent 过发布闸门，通过就写下它的发布锁 `<agent>/agent.release.json`（profile `eval`，同 `lyteboat eval release`）；`--agents`、`--agent` 必填；通过退出 0，被拒退出 1 并在 stderr 说明是哪一步 |
 | `lyteboat studio [选项]` | 启动浏览器界面 Studio（profile `studio`）：dsh web 加轻舟的 Agents、Evals 页面和会话右侧栏的 lyteboat 页签；`--agents`（可重复，目录一变就重新声明）、`--agent`（新会话默认用的 agent），其余参数同 dsh web；`lyteboat studio --help` |
 | `lyteboat config dump [选项]` | 打印组合后的插件树并退出；`--default` 只看 bundle 层 |
 
-五个命令都接受：
+六个命令都接受：
 
 | 选项 | 作用 |
 |---|---|
@@ -124,7 +127,8 @@ lyteboat studio --agents ./examples/agents --no-open           # 浏览器界面
 
 | 选项 | 作用 |
 |---|---|
-| `--agents <目录>` | 存放 agent 的目录（可重复，至少一个）；其中每个 agent 都能被 `/chat` 调用 |
+| `--agents <目录>` | 存放 agent 的目录（可重复）；其中每个 agent 都能被 `/chat` 调用 |
+| `--release <文件>` | 代替 `--agents`：agent 的发布锁 `<agent>/agent.release.json`（可重复）；只服务锁里的 agent，它的目录内容、版本、模型或内核的 dsh 版本和锁对不上就不启动 |
 | `--host <地址>` | `127.0.0.1`（默认）或 `0.0.0.0` |
 | `--port <端口>` | 默认 8080；0 由系统挑一个空闲端口 |
 | `--auth <方式>` | `none`（默认，只能配 `127.0.0.1`）或 `shared-secret`（`Authorization: Bearer <密钥>`） |
@@ -148,6 +152,8 @@ lyteboat studio --agents ./examples/agents --no-open           # 浏览器界面
 | `--from <运行>` | 回放哪次运行：它的目录，或 `$LYTEBOAT_HOME/evals` 下的运行 id |
 
 每个用例是一个新会话，逐轮经 session-controller 提交（和 `/chat` 同一条路），一轮结束后从会话里读出激活的技能、调用的工具、出的卡片、结局、正文和主循环的模型调用次数，按用例里写的 `expect` 逐项检查。结果写在 `$LYTEBOAT_HOME/evals/<运行 id>/`：`run.json`、`results.jsonl`（每轮一行，不含耗时，同一份录音回放出来逐行相同）、`sessions/`（real 模式的录音）、`report.md`。全部通过退出 0，有检查失败退出 1，跑不起来（用例文件不合法、没有录音）退出 2。用例的写法见 [`examples/agents/finance/evals/cases.yml`](examples/agents/finance/evals/cases.yml)。
+
+`lyteboat release`（即 `lyteboat eval release`）检查：`agent.yml` 声明了版本和模型；`evals/baseline` 是这个 agent 在这个模型上的一次真实运行；在当前构建上回放它，每一轮都和录下的一样并且全部通过；没有已有的锁用同一个版本发布过别的内容。通过就写 `<agent>/agent.release.json`，交给 `lyteboat serve --release` 服务。锁不覆盖轻舟自己的代码，所以要用发布它的同一个构建去服务。完整步骤见[开发业务 agent](docs/03-agent-development.md) §4.16。
 
 不带 `stream` 时返回一个 JSON：`session_id`、`message_id`、`outcome`（`completed`、`tool_stopped`、`rejected`、`stopped_by_limit`、`aborted`、`errored`）、`response`、`cards`（`area`、`surface_id`、`a2ui`）、`tool_calls`。`"stream": true` 时返回 enterprise 事件流（SSE，AGUI 信封）：`run_started`，至多一对 `reasoning_*`（思考增量与工具调用），至多一对 `text_message_*`（文字增量，卡片以 `ui_protocol: "A2UI"` 插在正文标记的位置），最后恰好一个 `run_finished` 或 `run_error`；空闲时每 15 秒发一次 `: keep-alive`。会话属于第一次创建它的 `user_id`：别的用户的会话，以及不是经 `/chat` 建的会话（Studio、命令行、评测建的），都按不存在处理（404）；同一会话里重复的 `message_id` 返回 409；同一会话的消息排队依次作答；流式连接断开会取消这条消息正在跑的那一轮。
 

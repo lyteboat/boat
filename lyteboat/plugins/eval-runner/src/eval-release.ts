@@ -67,7 +67,7 @@ function readBaseline(baselineDir: string): LyteboatEvalRunRecord {
   const file = join(baselineDir, 'run.json')
   if (!existsSync(file)) throw new EvalReleaseRefusal('baseline', `no baseline at ${baselineDir}: run lyteboat eval with the real model and copy its run directory there`)
   const parsed = lyteboatEvalRunRecordSchema.safeParse(readJsonFile(file, 'baseline'))
-  if (!parsed.success) throw new EvalReleaseRefusal('baseline', `${file} is not a run this build reads (${parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('; ')}); record the baseline again`)
+  if (!parsed.success) throw new EvalReleaseRefusal('baseline', `${file} is not a run this build reads (${parsed.error.issues.map(issue => `${issue.path.join('.') || '(the file)'}: ${issue.message}`).join('; ')}); record the baseline again`)
   if (parsed.data.mode !== 'real') throw new EvalReleaseRefusal('baseline', `${baselineDir} is a replay; a release baseline must be a real run`)
   return parsed.data
 }

@@ -85,6 +85,8 @@ lyteboat try --agents ./examples/agents --agent finance "什么是再平衡"   #
 lyteboat try --agents ./examples/agents --agent finance --context '{"customer":"young-idle-cash"}' "看看我的资产"   # the finance agent: the request context names the customer
 lyteboat serve --agents ./examples/agents                     # HTTP service: POST /chat, answered at once or as an enterprise stream
 lyteboat eval --agents ./examples/agents --agent finance      # run an agent's eval cases and check every turn
+lyteboat release --agents ./examples/agents --agent finance   # check an agent against its baseline and write its release lock
+lyteboat serve --release ./examples/agents/finance/agent.release.json   # serve only the agent the lock releases
 lyteboat studio --agents ./examples/agents --no-open          # browser UI: dsh web with lyteboat's pages
 ```
 
@@ -97,10 +99,11 @@ lyteboat studio --agents ./examples/agents --no-open          # browser UI: dsh 
 | `lyteboat try [options] "task"` | Answers one task, prints the result, and exits (profile `try`); without `--agent` the model has the `skill` tool only, for plugin smoke tests and quick checks, not as a coding assistant |
 | `lyteboat serve [options]` | Serves every agent of the `--agents` directories over HTTP (profile `serve`): `POST /chat`, `GET /agents`, `GET /health` |
 | `lyteboat eval [options]` | Runs an agent's eval cases and checks every turn (profile `eval`); `lyteboat eval compare <before> <after>` compares two runs |
+| `lyteboat release [options]` | Puts an agent through the release gate and, when it passes, writes its release lock `<agent>/agent.release.json` (profile `eval`, as `lyteboat eval release`); `--agents` and `--agent` are required; exits 0 when released, 1 when refused, naming the step on stderr |
 | `lyteboat studio [options]` | Serves Studio, the browser UI (profile `studio`): dsh web with lyteboat's Agents and Evals pages and the lyteboat tab of a session's right sidebar; `--agents` (repeatable, reloaded when a directory changes), `--agent` (the agent a new session runs), and dsh web's own flags; `lyteboat studio --help` |
 | `lyteboat config dump [options]` | Prints the composed plugin tree and exits; `--default` shows the bundle layers only |
 
-All five accept:
+All six accept:
 
 | Option | What it does |
 |---|---|
@@ -124,7 +127,8 @@ All five accept:
 
 | Option | What it does |
 |---|---|
-| `--agents <dir>` | A directory of agents (repeatable, at least one); `/chat` answers for every agent in it |
+| `--agents <dir>` | A directory of agents (repeatable); `/chat` answers for every agent in it |
+| `--release <file>` | Instead of `--agents`: an agent's release lock, `<agent>/agent.release.json` (repeatable); serves only the agent it releases, and refuses to start when the agent's files, version, or model, or the kernel's dsh release, differ from the lock |
 | `--host <host>` | `127.0.0.1` (the default) or `0.0.0.0` |
 | `--port <port>` | 8080 by default; 0 lets the OS pick a free port |
 | `--auth <mode>` | `none` (the default, `127.0.0.1` only) or `shared-secret` (`Authorization: Bearer <secret>`) |
@@ -148,6 +152,8 @@ A `/chat` request:
 | `--from <run>` | The run a replay plays back: its directory, or its id under `$LYTEBOAT_HOME/evals` |
 
 Every case is a new session whose turns go through the session controller (the path a `/chat` message takes). After each turn the session is read for the active skill, the tools called, the cards shown, the outcome, the answer text, and the loop's model calls, and each `expect` of the case is checked. A run is written to `$LYTEBOAT_HOME/evals/<run id>/`: `run.json`, `results.jsonl` (one line per turn and no timings, so one recording replays into the same lines), `sessions/` (a real run's recordings), and `report.md`. It exits 0 when every check passed, 1 when one failed, and 2 when it could not run (an invalid case file, a missing recording). [`examples/agents/finance/evals/cases.yml`](examples/agents/finance/evals/cases.yml) shows how cases are written.
+
+`lyteboat release` (that is, `lyteboat eval release`) checks that `agent.yml` declares a version and a model; that `evals/baseline` is a real run of this agent on that model; that replaying it through this build shows every turn as recorded and passes; and that no existing lock releases the same version with other content. It then writes `<agent>/agent.release.json`, which `lyteboat serve --release` serves. The lock does not cover lyteboat's own code, so serve it with the build that released it. The steps are in the [agent development guide](docs/03-agent-development.md) §4.16.
 
 Without `stream`, the answer is one JSON body: `session_id`, `message_id`, `outcome` (`completed`, `tool_stopped`, `rejected`, `stopped_by_limit`, `aborted`, `errored`), `response`, `cards` (`area`, `surface_id`, `a2ui`), and `tool_calls`. With `"stream": true` it is the enterprise event stream (SSE, AGUI envelopes): `run_started`, at most one `reasoning_*` pair (reasoning deltas and tool calls), at most one `text_message_*` pair (text deltas, with each card as a `ui_protocol: "A2UI"` frame where the answer marks it), and exactly one `run_finished` or `run_error`; an idle stream sends `: keep-alive` every 15 seconds. A session belongs to the `user_id` that created it: another user's session, and a session not started through `/chat` (from Studio, the command line, or an eval), answers as one that does not exist (404); a repeated `message_id` in a session is refused with 409; a session's messages queue and are answered in turn; a stream whose caller disconnects cancels that message's running turn.
 
