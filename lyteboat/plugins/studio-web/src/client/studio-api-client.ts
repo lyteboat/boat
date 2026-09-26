@@ -9,6 +9,9 @@
 import type {
   StudioAgentsAnswer,
   StudioAuthConfigAnswer,
+  StudioDashboardHealth,
+  StudioDashboardRunning,
+  StudioDashboardSummary,
   StudioErrorAnswer,
   StudioErrorCode,
   StudioGrant,
@@ -115,7 +118,17 @@ type StudioSessionsFindQuery = {
   offset?: number
 }
 
-function sessionsQueryString(query: { [key: string]: string | number | undefined }): string {
+/** A health window of the Dashboard (epoch ms): one agent or all, the bucket in minutes (else the server picks one), and the window to compare with. */
+export type StudioDashboardHealthQuery = {
+  from: number
+  to: number
+  agent?: string
+  bucket?: number
+  compareFrom?: number
+  compareTo?: number
+}
+
+function studioQueryString(query: { [key: string]: string | number | undefined }): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined) params.set(key, String(value))
@@ -156,12 +169,16 @@ export const studioApi = {
   tools: (agentId: string) => studioCall<StudioToolsAnswer>('GET', `${studioAgentPath(agentId)}/tools`),
   /** Newest first by `updatedAt`; eval sessions are never listed. */
   sessions: (agentId: string, query: StudioSessionsQuery) =>
-    studioCall<StudioSessionsAnswer>('GET', `${studioAgentPath(agentId)}/sessions?${sessionsQueryString(query)}`),
+    studioCall<StudioSessionsAnswer>('GET', `${studioAgentPath(agentId)}/sessions?${studioQueryString(query)}`),
   findSessions: (agentId: string, query: StudioSessionsFindQuery) =>
-    studioCall<StudioSessionFindAnswer>('GET', `${studioAgentPath(agentId)}/sessions/find?${sessionsQueryString(query)}`),
+    studioCall<StudioSessionFindAnswer>('GET', `${studioAgentPath(agentId)}/sessions/find?${studioQueryString(query)}`),
   /** Named apart from `session`, which reads the sign-in. */
   sessionDetail: (agentId: string, sessionId: string) => studioCall<StudioSessionDetail>('GET', studioSessionPath(agentId, sessionId)),
   sessionRaw: (agentId: string, sessionId: string) => studioCall<StudioSessionRaw>('GET', `${studioSessionPath(agentId, sessionId)}/raw`),
+  /** Refused (`invalid_request`) for a window that ends before it starts or makes more than 500 buckets; `not_found` for an unknown agent. */
+  dashboardHealth: (query: StudioDashboardHealthQuery) => studioCall<StudioDashboardHealth>('GET', `dashboard/health?${studioQueryString(query)}`),
+  dashboardSummary: () => studioCall<StudioDashboardSummary>('GET', 'dashboard/summary'),
+  dashboardRunning: () => studioCall<StudioDashboardRunning>('GET', 'dashboard/running'),
 }
 
 /** Why a caught error's Studio call was refused; undefined for an error that did not come from a call. */

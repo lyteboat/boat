@@ -2156,6 +2156,8 @@ pre.code-block {
   border-radius: var(--r-lg);
   overflow: hidden;
 }
+/* Five cards where the original Studio had six (no Memory card); narrower screens keep the original's columns. */
+.dashboard-metric-grid-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .dashboard-metric-card {
   display: flex;
   flex-direction: column;
@@ -2526,6 +2528,8 @@ pre.code-block {
   .dashboard-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .dashboard-metric-card:nth-child(3n) { border-right: none; }
   .dashboard-metric-card:nth-child(-n+3) { border-bottom: 1px solid var(--line); }
+  /* The fifth card fills the second row's empty slot, as it does the third row's at two columns. */
+  .dashboard-metric-grid-five .dashboard-metric-card:last-child { grid-column: span 2; border-right: none; }
 }
 @media (max-width: 1100px) {
   .dashboard-insight-grid { grid-template-columns: 1fr; }
@@ -2542,6 +2546,7 @@ pre.code-block {
 @media (max-width: 720px) {
   .dashboard-metric-grid { grid-template-columns: 1fr; }
   .dashboard-metric-card { border-right: none !important; border-bottom: 1px solid var(--line); }
+  .dashboard-metric-grid-five .dashboard-metric-card:last-child { grid-column: auto; }
   .mcp-form-grid { grid-template-columns: 1fr; }
   .mcp-form-switches { flex-wrap: wrap; }
   .sandbox-tool-filter { align-items: stretch; flex-direction: column; }
