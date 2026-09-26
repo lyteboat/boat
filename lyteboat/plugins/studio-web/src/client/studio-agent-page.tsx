@@ -2,15 +2,15 @@
  * An agent's workspace at `/agents/:agentId/:section`, laid out as the
  * original Studio's: the context bar (the agent's name, id, version, and
  * description, and the actions still to come) over the section tabs, then the
- * section: Overview, Skills, Tools, or Sessions (a placeholder until serve's
- * sessions reach the Studio). An unknown section opens the Overview. Each
- * section mounts per agent, so switching agents starts it fresh.
+ * section: Overview, Skills, Tools, or Sessions. An unknown section opens the
+ * Overview. Each section mounts per agent, so switching agents starts it fresh.
  * @module @lyteboat/studio-web/client/studio-agent-page
  */
 
 import { NavLink, Navigate, useNavigate, useParams } from 'react-router-dom'
 import type { StudioAgent } from '@lyteboat/contracts/studio'
 import { StudioAgentOverview } from './studio-agent-overview.tsx'
+import { StudioAgentSessions } from './studio-agent-sessions.tsx'
 import { StudioAgentSkills } from './studio-agent-skills.tsx'
 import { StudioAgentTools } from './studio-agent-tools.tsx'
 import { studioAgentName, useStudioShell } from './studio-shell.tsx'
@@ -87,11 +87,7 @@ export function StudioAgentPage() {
       {activeSection === 'overview' && <StudioAgentOverview agent={selectedAgent} key={selectedAgent.id} />}
       {activeSection === 'skills' && <StudioAgentSkills agent={selectedAgent} key={selectedAgent.id} />}
       {activeSection === 'tools' && <StudioAgentTools agentId={selectedAgent.id} key={selectedAgent.id} />}
-      {activeSection === 'sessions' && (
-        <div className="workspace-overview-scroll">
-          <div className="empty-surface">会话列表尚未接入：serve 写下的会话会显示在这里。</div>
-        </div>
-      )}
+      {activeSection === 'sessions' && <StudioAgentSessions agentId={selectedAgent.id} key={selectedAgent.id} />}
     </div>
   )
 }

@@ -1545,7 +1545,8 @@ pre.code-block {
 
 .session-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  /* The title keeps some room however many badges a session has; they wrap instead. */
+  grid-template-columns: minmax(96px, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 7px 12px 7px 22px;
@@ -1594,7 +1595,7 @@ pre.code-block {
   border: 1px solid var(--line);
 }
 .session-row.active .session-row-count { background: var(--surface); }
-.session-row-time { color: var(--ink-4); }
+.session-row-time { color: var(--ink-4); white-space: nowrap; }
 .session-row-main {
   display: flex;
   flex-direction: column;
@@ -1616,6 +1617,8 @@ pre.code-block {
 }
 .session-row-badges {
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 4px;
 }
@@ -4243,6 +4246,124 @@ pre.code-block {
   align-items: center;
   justify-content: space-between;
 }
+
+/* The read-only Raw view fills the detail body in place of the timeline and scrolls on its own. */
+.session-raw-view {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border-bottom: 0;
+}
+.session-raw-drawer-head .action-button svg { width: 12px; height: 12px; }
+
+/* Row badges with no counterpart in the original Studio, in its badge style:
+   a cancelled turn, a turn still open, a session that starts with imported history. */
+.session-badge.badge-cancel {
+  color: var(--ink-3);
+  border-style: dashed;
+}
+.session-badge.badge-open {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+.session-badge.badge-imported {
+  color: var(--ink-3);
+  border-color: var(--line-2);
+  border-style: dashed;
+}
+
+/* A turn's heading on the timeline's event line. */
+.tlm-turn-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 4px 36px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+.tlm-turn-head::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+.tlm-turn-head:first-child::before { top: 50%; }
+.tlm-turn-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.tlm-turn-head-note {
+  color: var(--warn);
+  letter-spacing: 0.04em;
+}
+
+/* The marker rides its row (the item's 36px gutter plus the row's 1px border), so an opened
+   entry keeps it beside the row instead of midway down its detail. */
+.tlm-row { position: relative; }
+.tlm-row > .tlm-marker { left: -21px; }
+
+/* Timeline entries lyteboat adds: a skill activation, a side model call, a compaction, a turn's end. */
+.tlm-marker-skill {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--accent-2), 0 0 0 3px var(--surface);
+}
+.tlm-row > .tlm-marker-aux,
+.tlm-row > .tlm-marker-compaction {
+  left: -19px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  background: var(--line-2);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.tlm-marker-aux.err { background: var(--err); box-shadow: 0 0 0 3px var(--surface); }
+.tlm-marker-turn-end {
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--ok), 0 0 0 3px var(--surface);
+}
+.tlm-pill-skill {
+  color: var(--accent-2);
+  border-color: color-mix(in srgb, var(--accent-2) 35%, var(--line));
+}
+.tlm-duration.err {
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 45%, var(--line));
+  background: color-mix(in srgb, var(--err) 8%, transparent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* A turn's outcome, as the original Studio's inline status pills (keyed to the status tokens). */
+.session-outcome {
+  flex: none;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  letter-spacing: .03em;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.session-outcome-completed { background: var(--ok-tint); color: var(--ok); }
+.session-outcome-errored { background: var(--err-tint); color: var(--err); }
+.session-outcome-rejected,
+.session-outcome-tool_stopped,
+.session-outcome-stopped_by_limit { background: var(--warn-tint); color: var(--warn); }
+.session-outcome-aborted { color: var(--ink-3); }
 
 /* Session state — collapsible block with nested JSON */
 .session-state-block {

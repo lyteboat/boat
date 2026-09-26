@@ -174,3 +174,28 @@ export function CopyIcon(props: StudioIconProps) {
     </StudioIconBase>
   )
 }
+
+export function ExpandIcon(props: StudioIconProps) {
+  return (
+    <StudioIconBase {...props}>
+      <path d="M8 3H3v5" />
+      <path d="M16 3h5v5" />
+      <path d="M21 16v5h-5" />
+      <path d="M3 16v5h5" />
+      <path d="m3 8 6-5" />
+      <path d="m15 3 6 5" />
+      <path d="m21 16-6 5" />
+      <path d="m9 21-6-5" />
+    </StudioIconBase>
+  )
+}
+
+export function DownloadIcon(props: StudioIconProps) {
+  return (
+    <StudioIconBase {...props}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M12 15V3" />
+    </StudioIconBase>
+  )
+}

@@ -2,7 +2,8 @@
  * A block of code or text with a copy button floating at its top right, as the
  * original Studio shows a SKILL.md or a tool's parameters. The button copies
  * `value`, which may differ from what the block shows (an empty file shows a
- * note, and copies nothing).
+ * note, and copies nothing). The copy button and the copy itself serve other
+ * places that copy an id.
  * @module @lyteboat/studio-web/client/studio-code-body
  */
 
@@ -11,7 +12,8 @@ import { CopyIcon } from './studio-icons.tsx'
 
 const STUDIO_COPIED_MS = 1200
 
-async function copyStudioText(value: string): Promise<void> {
+/** Put `value` on the clipboard; rejects when the browser refuses. */
+export async function copyStudioText(value: string): Promise<void> {
   // The Clipboard API exists only in a secure context; a Studio served over plain
   // HTTP on an internal host copies through a hidden textarea instead.
   if (window.isSecureContext) {
@@ -29,7 +31,8 @@ async function copyStudioText(value: string): Promise<void> {
   document.body.removeChild(textarea)
 }
 
-function StudioCopyButton({ value, title }: { value: string; title: string }) {
+/** An icon button that copies `value`; `title` names it (`Copy session id`). */
+export function StudioCopyButton({ value, title }: { value: string; title: string }) {
   const [copied, setCopied] = useState(false)
   const timer = useRef<number | undefined>(undefined)
 

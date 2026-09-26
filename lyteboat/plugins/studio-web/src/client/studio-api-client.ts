@@ -17,6 +17,10 @@ import type {
   StudioLoginRequest,
   StudioPrincipal,
   StudioRole,
+  StudioSessionDetail,
+  StudioSessionFindAnswer,
+  StudioSessionRaw,
+  StudioSessionsAnswer,
   StudioSkillDetail,
   StudioSkillDiagnosticsAnswer,
   StudioSkillsAnswer,
@@ -24,6 +28,7 @@ import type {
   StudioSkillUpdateRequest,
   StudioSystemAnswer,
   StudioToolsAnswer,
+  StudioTraceLinkAnswer,
   StudioUsersAnswer,
 } from '@lyteboat/contracts/studio'
 
@@ -92,12 +97,42 @@ function usersQueryString(query: StudioUsersQuery): string {
   return params.toString()
 }
 
+/** A page of an agent's sessions: the window on `updatedAt` (epoch ms), one owner (`user:alice`), and the page. */
+type StudioSessionsQuery = {
+  since?: number
+  until?: number
+  owner?: string
+  limit?: number
+  offset?: number
+}
+
+/** A page of a search of an agent's sessions: the text (1 to 200 characters), the window, and the page. */
+type StudioSessionsFindQuery = {
+  q: string
+  since?: number
+  until?: number
+  limit?: number
+  offset?: number
+}
+
+function sessionsQueryString(query: { [key: string]: string | number | undefined }): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) params.set(key, String(value))
+  }
+  return params.toString()
+}
+
 function studioAgentPath(agentId: string): string {
   return `agents/${encodeURIComponent(agentId)}`
 }
 
 function studioSkillPath(agentId: string, name: string): string {
   return `${studioAgentPath(agentId)}/skills/${encodeURIComponent(name)}`
+}
+
+function studioSessionPath(agentId: string, sessionId: string): string {
+  return `${studioAgentPath(agentId)}/sessions/${encodeURIComponent(sessionId)}`
 }
 
 /** The endpoints the pages call. */
@@ -111,6 +146,7 @@ export const studioApi = {
   grant: (request: StudioGrantRequest) => studioCall<StudioGrant>('POST', 'users', request),
   revoke: (userId: string) => studioCall<StudioGrant>('DELETE', `users/${encodeURIComponent(userId)}`),
   system: () => studioCall<StudioSystemAnswer>('GET', 'system/properties'),
+  traceLink: () => studioCall<StudioTraceLinkAnswer>('GET', 'config/trace-link'),
   skills: (agentId: string) => studioCall<StudioSkillsAnswer>('GET', `${studioAgentPath(agentId)}/skills`),
   skill: (agentId: string, name: string) => studioCall<StudioSkillDetail>('GET', studioSkillPath(agentId, name)),
   /** A hot-fix (admins), refused with `precondition_failed` when the file is no longer the one `sha256` names. */
@@ -118,6 +154,14 @@ export const studioApi = {
     studioCall<StudioSkillUpdateAnswer>('PUT', studioSkillPath(agentId, name), request, false, { 'if-match': sha256 }),
   diagnoseSkill: (agentId: string, name: string) => studioCall<StudioSkillDiagnosticsAnswer>('POST', `${studioSkillPath(agentId, name)}/diagnostics`),
   tools: (agentId: string) => studioCall<StudioToolsAnswer>('GET', `${studioAgentPath(agentId)}/tools`),
+  /** Newest first by `updatedAt`; eval sessions are never listed. */
+  sessions: (agentId: string, query: StudioSessionsQuery) =>
+    studioCall<StudioSessionsAnswer>('GET', `${studioAgentPath(agentId)}/sessions?${sessionsQueryString(query)}`),
+  findSessions: (agentId: string, query: StudioSessionsFindQuery) =>
+    studioCall<StudioSessionFindAnswer>('GET', `${studioAgentPath(agentId)}/sessions/find?${sessionsQueryString(query)}`),
+  /** Named apart from `session`, which reads the sign-in. */
+  sessionDetail: (agentId: string, sessionId: string) => studioCall<StudioSessionDetail>('GET', studioSessionPath(agentId, sessionId)),
+  sessionRaw: (agentId: string, sessionId: string) => studioCall<StudioSessionRaw>('GET', `${studioSessionPath(agentId, sessionId)}/raw`),
 }
 
 /** Why a caught error's Studio call was refused; undefined for an error that did not come from a call. */
