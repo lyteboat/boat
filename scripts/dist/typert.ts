@@ -34,12 +34,13 @@ export function kernelTypertFiles(dir: string): string[] {
   return publishedTypertFiles(JSON.parse(readFileSync(join(repoRoot, 'dsh', dir, 'package.json'), 'utf8')) as TypertManifest)
 }
 
-/** SHA-256 over the relative paths and contents of every file under `dsh/<dir>/src`. */
+/** SHA-256 over the relative paths ('/'-separated on every platform) and contents of every file under `dsh/<dir>/src`. */
 export function typertSourceDigest(dir: string): string {
   const src = join(repoRoot, 'dsh', dir, 'src')
   const files = readdirSync(src, { recursive: true, withFileTypes: true })
     .filter(entry => entry.isFile())
-    .map(entry => relative(src, join(entry.parentPath, entry.name)))
+    // dsh/typert.json records the digest once for every platform; Windows' relative() answers with backslashes.
+    .map(entry => relative(src, join(entry.parentPath, entry.name)).split('\\').join('/'))
     .sort()
   const hash = createHash('sha256')
   for (const file of files) hash.update(`${file}\0`).update(readFileSync(join(src, file))).update('\0')
